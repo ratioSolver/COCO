@@ -2,14 +2,16 @@
 
 #include "json.h"
 #include "clips.h"
+#include "mqtt/async_client.h"
+#include <mongocxx/client.hpp>
 
-#define BUILD_MQTT_URI(host, port) host ":" port
-#define MQTT_URI(host, port) BUILD_MQTT_URI(host, port)
-#define BUILD_MONGODB_URI(host, port) "mongodb://" host ":" port
-#define MONGODB_URI(host, port) BUILD_MONGODB_URI(host, port)
+#define MQTT_URI(host, port) host ":" port
+#define MONGODB_URI(host, port) "mongodb://" host ":" port
 
 namespace coco
 {
+  class sensor_network;
+
   struct location
   {
     double x, y;
@@ -65,13 +67,42 @@ namespace coco
     std::unique_ptr<json::json> value;
   };
 
+  class mqtt_callback : public mqtt::callback
+  {
+  public:
+    mqtt_callback(sensor_network &sn);
+
+  private:
+    void connected(const std::string &cause) override;
+    void connection_lost(const std::string &cause) override;
+    void message_arrived(mqtt::const_message_ptr msg) override;
+
+  private:
+    sensor_network &sn;
+  };
+
   class sensor_network
   {
+    friend class mqtt_callback;
+
   public:
     sensor_network(const std::string &root = COCO_ROOT, const std::string &mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT), const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     ~sensor_network();
 
   private:
+    void update_sensor_network(json::json msg);
+
+  private:
     const std::string root;
+    mqtt::async_client mqtt_client;
+    mqtt::connect_options options;
+    mqtt_callback msg_callback;
+    mongocxx::client conn;
+    mongocxx::v_noabi::database db;
+    mongocxx::v_noabi::collection sensor_types_collection;
+    mongocxx::v_noabi::collection sensors_collection;
+    mongocxx::v_noabi::collection sensor_data_collection;
+    std::unordered_map<std::string, std::unique_ptr<sensor_type>> sensor_types;
+    std::unordered_map<std::string, std::unique_ptr<sensor>> sensors;
   };
 } // namespace coco

@@ -105,6 +105,13 @@ namespace coco
 
     void update_sensor_network(json::json msg);
 
+    friend void new_solver(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void read_script(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void read_files(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
+
   private:
     const std::string root;
     mqtt::async_client mqtt_client;

@@ -29,6 +29,8 @@ set(MQTT_PORT "1883" CACHE STRING "The MQTT Port")
 set(MONGODB_HOST "localhost" CACHE STRING "The MongoDB Host")
 set(MONGODB_PORT "27017" CACHE STRING "The MongoDB Port")
 
+option(SOLVING_MONITORING "Publishes any changes during the resolution process" OFF)
+
 set(COMPUTE_NAMES ON CACHE BOOL "Computes the objects' names" FORCE)
 
 add_subdirectory(extern/plexa)
@@ -42,6 +44,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURR
 target_link_directories(${PROJECT_NAME} PUBLIC ${CLIPS_LIB_DIR})
 target_link_libraries(${PROJECT_NAME} PRIVATE PlExA oRatioSolver ratioCore RiDDLe SeMiTONE json ${CMAKE_THREAD_LIBS_INIT} PahoMqttCpp::paho-mqttpp3-static clips mongo::bsoncxx_shared mongo::mongocxx_shared)
 target_compile_definitions(${PROJECT_NAME} PRIVATE COCO_ROOT="${COCO_ROOT}" MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}" MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
+
+message(STATUS "Solving monitoring:     ${SOLVING_MONITORING}")
+if(SOLVING_MONITORING)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE SOLVING_MONITORING)
+endif()
 
 if(BUILD_TESTING)
     add_subdirectory(tests)

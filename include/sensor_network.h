@@ -2,15 +2,22 @@
 
 #include "json.h"
 #include "clips.h"
+#include "timer.h"
 #include "mqtt/async_client.h"
 #include <mongocxx/client.hpp>
 
 #define MQTT_URI(host, port) host ":" port
 #define MONGODB_URI(host, port) "mongodb://" host ":" port
 
+#define SOLVERS_TOPIC "/solvers"
+#define SOLVER_TOPIC "/solver"
+#define SENSORS_TOPIC "/sensors"
+#define SENSOR_TOPIC "/sensor"
+
 namespace coco
 {
   class sensor_network;
+  class coco_executor;
 
   struct location
   {
@@ -84,12 +91,18 @@ namespace coco
   class sensor_network
   {
     friend class mqtt_callback;
+    friend class coco_executor;
 
   public:
     sensor_network(const std::string &root = COCO_ROOT, const std::string &mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT), const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     ~sensor_network();
 
+    void connect();
+    void disconnect();
+
   private:
+    void tick();
+
     void update_sensor_network(json::json msg);
 
   private:
@@ -104,5 +117,8 @@ namespace coco
     mongocxx::v_noabi::collection sensor_data_collection;
     std::unordered_map<std::string, std::unique_ptr<sensor_type>> sensor_types;
     std::unordered_map<std::string, std::unique_ptr<sensor>> sensors;
+    ratio::time::timer coco_timer;
+    std::list<std::unique_ptr<coco_executor>> executors;
+    Environment *env;
   };
 } // namespace coco

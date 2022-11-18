@@ -1,11 +1,11 @@
 #include "coco_executor.h"
 #include "item.h"
 #include "predicate.h"
-#include "sensor_network.h"
+#include "coco.h"
 
 namespace coco
 {
-    coco_executor::coco_executor(sensor_network &sn, ratio::executor::executor &exec) : core_listener(exec.get_solver()), solver_listener(exec.get_solver()), executor_listener(exec), sn(sn), exec(exec) {}
+    coco_executor::coco_executor(coco &cc, ratio::executor::executor &exec) : core_listener(exec.get_solver()), solver_listener(exec.get_solver()), executor_listener(exec), cc(cc), exec(exec) {}
 
     void coco_executor::log([[maybe_unused]] const std::string &msg) {}
     void coco_executor::read([[maybe_unused]] const std::string &script) {}
@@ -24,7 +24,7 @@ namespace coco
         j_sc["executing"] = std::move(j_executing);
         j_sc["time"] = to_json(current_time);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sc.dump(), 2, true));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sc, 2, true));
 #endif
     }
 
@@ -34,7 +34,7 @@ namespace coco
         json::json j_ss;
         j_ss["type"] = "started_solving";
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ss.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ss);
     }
     void coco_executor::solution_found()
     {
@@ -51,7 +51,7 @@ namespace coco
         j_sf["executing"] = std::move(j_executing);
         j_sf["time"] = to_json(current_time);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sf.dump(), 2, true));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sf, 2, true);
 
         json::json j_gr;
         j_gr["type"] = "graph";
@@ -64,7 +64,7 @@ namespace coco
             j_resolvers.push_back(to_json(*r));
         j_gr["resolvers"] = std::move(j_resolvers);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/graph", j_gr.dump(), 2, true));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/graph", j_gr, 2, true);
 
         solved = true;
     }
@@ -77,7 +77,7 @@ namespace coco
         json::json j_ip;
         j_ip["type"] = "inconsistent_problem";
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ip.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ip);
     }
 
     void coco_executor::flaw_created(const ratio::solver::flaw &f)
@@ -105,7 +105,7 @@ namespace coco
         j_fc["pos"] = std::move(j_pos);
         j_fc["data"] = f.get_data();
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fc.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fc));
 #endif
     }
     void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -116,7 +116,7 @@ namespace coco
         j_fsc["id"] = get_id(f);
         j_fsc["state"] = slv.get_sat_core()->value(f.get_phi());
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fsc.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fsc));
 #endif
     }
     void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -127,7 +127,7 @@ namespace coco
         j_fcc["id"] = get_id(f);
         j_fcc["cost"] = to_json(f.get_estimated_cost());
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fcc.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fcc));
 #endif
     }
     void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -144,7 +144,7 @@ namespace coco
             j_pos["ub"] = ub;
         j_fpc["pos"] = std::move(j_pos);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fpc.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fpc));
 #endif
     }
     void coco_executor::current_flaw(const ratio::solver::flaw &f)
@@ -157,7 +157,7 @@ namespace coco
         j_cf["type"] = "current_flaw";
         j_cf["id"] = get_id(f);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cf.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cf));
 #endif
     }
 
@@ -180,7 +180,7 @@ namespace coco
         j_rc["intrinsic_cost"] = to_json(r.get_intrinsic_cost());
         j_rc["data"] = r.get_data();
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rc.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rc));
 #endif
     }
     void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::solver::resolver &r)
@@ -191,7 +191,7 @@ namespace coco
         j_rsc["id"] = get_id(r);
         j_rsc["state"] = slv.get_sat_core()->value(r.get_rho());
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rsc.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rsc));
 #endif
     }
     void coco_executor::current_resolver(const ratio::solver::resolver &r)
@@ -203,7 +203,7 @@ namespace coco
         j_cr["type"] = "current_resolver";
         j_cr["id"] = get_id(r);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cr.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cr));
 #endif
     }
 
@@ -215,7 +215,7 @@ namespace coco
         j_cla["flaw_id"] = get_id(f);
         j_cla["resolver_id"] = get_id(r);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cla.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cla));
 #endif
     }
 
@@ -233,7 +233,7 @@ namespace coco
         j_t["type"] = "tick";
         j_t["time"] = to_json(time);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_t.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_t);
     }
     void coco_executor::starting(const std::unordered_set<ratio::core::atom *> &atoms)
     {
@@ -244,17 +244,17 @@ namespace coco
             starting.push_back(get_id(*a));
         j_st["starting"] = std::move(starting);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st);
 
         for (const auto &atm : atoms)
-            AssertString(sn.env, to_task(*atm, "starting").c_str());
-        Run(sn.env, -1);
+            AssertString(cc.env, to_task(*atm, "starting").c_str());
+        Run(cc.env, -1);
 #ifdef VERBOSE_LOG
-        Eval(sn.env, "(facts)", NULL);
+        Eval(cc.env, "(facts)", NULL);
 #endif
 
         CLIPSValue res;
-        Eval(sn.env, "(find-all-facts ((?f dont_start_yet)) TRUE)", &res);
+        Eval(cc.env, "(find-all-facts ((?f dont_start_yet)) TRUE)", &res);
         if (res.multifieldValue->length)
         {
             std::unordered_map<const ratio::core::atom *, semitone::rational> dsy;
@@ -284,9 +284,9 @@ namespace coco
             for (const auto &f : dsy_facts)
                 Retract(f);
 
-            Run(sn.env, -1);
+            Run(cc.env, -1);
 #ifdef VERBOSE_LOG
-            Eval(sn.env, "(facts)", NULL);
+            Eval(cc.env, "(facts)", NULL);
 #endif
         }
     }
@@ -301,13 +301,13 @@ namespace coco
             start.push_back(get_id(*a));
         j_st["start"] = std::move(start);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st);
 
         for (const auto &atm : atoms)
-            AssertString(sn.env, to_task(*atm, "start").c_str());
-        Run(sn.env, -1);
+            AssertString(cc.env, to_task(*atm, "start").c_str());
+        Run(cc.env, -1);
 #ifdef VERBOSE_LOG
-        Eval(sn.env, "(facts)", NULL);
+        Eval(cc.env, "(facts)", NULL);
 #endif
     }
     void coco_executor::ending(const std::unordered_set<ratio::core::atom *> &atoms)
@@ -319,17 +319,17 @@ namespace coco
             ending.push_back(get_id(*a));
         j_en["ending"] = std::move(ending);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en);
 
         for (const auto &atm : atoms)
-            AssertString(sn.env, to_task(*atm, "ending").c_str());
-        Run(sn.env, -1);
+            AssertString(cc.env, to_task(*atm, "ending").c_str());
+        Run(cc.env, -1);
 #ifdef VERBOSE_LOG
-        Eval(sn.env, "(facts)", NULL);
+        Eval(cc.env, "(facts)", NULL);
 #endif
 
         CLIPSValue res;
-        Eval(sn.env, "(find-all-facts ((?f dont_end_yet)) TRUE)", &res);
+        Eval(cc.env, "(find-all-facts ((?f dont_end_yet)) TRUE)", &res);
         if (res.multifieldValue->length)
         {
             std::unordered_map<const ratio::core::atom *, semitone::rational> dey;
@@ -359,9 +359,9 @@ namespace coco
             for (const auto &f : dey_facts)
                 Retract(f);
 
-            Run(sn.env, -1);
+            Run(cc.env, -1);
 #ifdef VERBOSE_LOG
-            Eval(sn.env, "(facts)", NULL);
+            Eval(cc.env, "(facts)", NULL);
 #endif
         }
     }
@@ -377,13 +377,13 @@ namespace coco
             end.push_back(get_id(*a));
         j_en["end"] = std::move(end);
 
-        sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en.dump()));
+        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en);
 
         for (const auto &atm : atoms)
-            AssertString(sn.env, to_task(*atm, "end").c_str());
-        Run(sn.env, -1);
+            AssertString(cc.env, to_task(*atm, "end").c_str());
+        Run(cc.env, -1);
 #ifdef VERBOSE_LOG
-        Eval(sn.env, "(facts)", NULL);
+        Eval(cc.env, "(facts)", NULL);
 #endif
     }
 

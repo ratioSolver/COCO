@@ -1,7 +1,7 @@
-#include "sensor_network.h"
+#include "coco.h"
 
 int main(int argc, char const *argv[])
 {
-    coco::sensor_network st;
+    coco::coco st;
     return 0;
 }

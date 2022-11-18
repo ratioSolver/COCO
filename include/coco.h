@@ -3,7 +3,7 @@
 #include "json.h"
 #include "clips.h"
 #include "timer.h"
-#include "mqtt/async_client.h"
+#include <list>
 #include <mongocxx/client.hpp>
 
 #define MQTT_URI(host, port) host ":" port
@@ -16,7 +16,8 @@
 
 namespace coco
 {
-  class sensor_network;
+  class coco;
+  class coco_middleware;
   class coco_executor;
 
   struct location
@@ -74,28 +75,16 @@ namespace coco
     std::unique_ptr<json::json> value;
   };
 
-  class mqtt_callback : public mqtt::callback
+  class coco
   {
-  public:
-    mqtt_callback(sensor_network &sn);
-
-  private:
-    void connected(const std::string &cause) override;
-    void connection_lost(const std::string &cause) override;
-    void message_arrived(mqtt::const_message_ptr msg) override;
-
-  private:
-    sensor_network &sn;
-  };
-
-  class sensor_network
-  {
-    friend class mqtt_callback;
+    friend class coco_middleware;
     friend class coco_executor;
 
   public:
-    sensor_network(const std::string &root = COCO_ROOT, const std::string &mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT), const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
-    ~sensor_network();
+    coco(const std::string &root = COCO_ROOT, const std::string &mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT), const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
+    ~coco();
+
+    const std::string &get_root() const { return root; }
 
     void connect();
     void disconnect();
@@ -103,7 +92,8 @@ namespace coco
   private:
     void tick();
 
-    void update_sensor_network(json::json msg);
+    void publish(const std::string &topic, const json::json &msg, int qos = 0, bool retained = false);
+    void message_arrived(const json::json &msg);
 
     friend void new_solver(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void read_script(Environment *env, UDFContext *udfc, UDFValue *out);
@@ -114,9 +104,7 @@ namespace coco
 
   private:
     const std::string root;
-    mqtt::async_client mqtt_client;
-    mqtt::connect_options options;
-    mqtt_callback msg_callback;
+    std::list<std::unique_ptr<coco_middleware>> middlewares;
     mongocxx::client conn;
     mongocxx::v_noabi::database db;
     mongocxx::v_noabi::collection sensor_types_collection;

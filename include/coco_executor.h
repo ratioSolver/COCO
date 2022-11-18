@@ -6,14 +6,14 @@
 
 namespace coco
 {
-  class sensor_network;
+  class coco;
 
   class coco_executor : public ratio::core::core_listener, public ratio::solver::solver_listener, public ratio::executor::executor_listener
   {
-    friend class sensor_network;
+    friend class coco;
 
   public:
-    coco_executor(sensor_network &sn, ratio::executor::executor &exec);
+    coco_executor(coco &cc, ratio::executor::executor &exec);
 
     ratio::executor::executor &get_executor() { return exec; }
 
@@ -52,7 +52,7 @@ namespace coco
     std::string to_task(const ratio::core::atom &atm, const std::string &command);
 
   private:
-    sensor_network &sn;
+    coco &cc;
     ratio::executor::executor &exec;
     bool solved = false;
     std::unordered_set<const ratio::solver::flaw *> flaws;

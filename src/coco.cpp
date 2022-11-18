@@ -1,5 +1,6 @@
-#include "sensor_network.h"
+#include "coco.h"
 #include "logging.h"
+#include "coco_middleware.h"
 #include "coco_executor.h"
 
 namespace coco
@@ -11,7 +12,7 @@ namespace coco
         UDFValue network_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &network_ptr))
             return;
-        auto &e = *reinterpret_cast<sensor_network *>(network_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco *>(network_ptr.integerValue->contents);
 
         auto slv = new ratio::solver::solver();
         auto exec = new ratio::executor::executor(*slv);
@@ -20,18 +21,15 @@ namespace coco
 
         e.executors.push_back(std::move(coco_exec));
 
-        if (e.mqtt_client.is_connected())
-        {
-            json::json msg;
-            msg["type"] = "solvers";
-            json::array solvers;
-            solvers.reserve(e.executors.size());
-            for (const auto &exec : e.executors)
-                solvers.push_back(reinterpret_cast<uintptr_t>(exec.get()));
-            msg["solvers"] = std::move(solvers);
+        json::json msg;
+        msg["type"] = "solvers";
+        json::array solvers;
+        solvers.reserve(e.executors.size());
+        for (const auto &exec : e.executors)
+            solvers.push_back(reinterpret_cast<uintptr_t>(exec.get()));
+        msg["solvers"] = std::move(solvers);
 
-            e.mqtt_client.publish(mqtt::make_message(e.root + SOLVERS_TOPIC, msg.dump(), 2, true));
-        }
+        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
 
         out->integerValue = CreateInteger(env, exec_ptr);
     }
@@ -125,7 +123,7 @@ namespace coco
         UDFValue network_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &network_ptr))
             return;
-        auto &e = *reinterpret_cast<sensor_network *>(network_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco *>(network_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
@@ -140,38 +138,15 @@ namespace coco
         delete exec;
         delete slv;
 
-        if (e.mqtt_client.is_connected())
-        {
-            json::json msg;
-            msg["type"] = "deleted_reasoner";
-            msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
+        json::json msg;
+        msg["type"] = "deleted_reasoner";
+        msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
 
-            e.mqtt_client.publish(mqtt::make_message(e.root + SOLVERS_TOPIC, msg.dump()));
-        }
+        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
     }
 
-    mqtt_callback::mqtt_callback(sensor_network &sn) : sn(sn) {}
-
-    void mqtt_callback::connected([[maybe_unused]] const std::string &cause)
+    coco::coco(const std::string &root, const std::string &mqtt_uri, const std::string &mongodb_uri) : root(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
     {
-        LOG("MQTT client connected!");
-    }
-    void mqtt_callback::connection_lost([[maybe_unused]] const std::string &cause)
-    {
-        LOG_WARN("MQTT connection lost! trying to reconnect..");
-        sn.mqtt_client.reconnect()->wait();
-    }
-    void mqtt_callback::message_arrived(mqtt::const_message_ptr msg)
-    {
-    }
-
-    sensor_network::sensor_network(const std::string &root, const std::string &mqtt_uri, const std::string &mongodb_uri) : root(root), mqtt_client(mqtt_uri, "client_id"), msg_callback(*this), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["sensor_network"]), sensor_data_collection(db["sensor_data"]), coco_timer(1000, std::bind(&sensor_network::tick, this)), env(CreateEnvironment())
-    {
-        options.set_clean_session(true);
-        options.set_keep_alive_interval(20);
-
-        mqtt_client.set_callback(msg_callback);
-
         AddUDF(env, "new_solver", "l", 1, 1, "l", new_solver, "new_solver", NULL);
         AddUDF(env, "read_script", "v", 2, 2, "ls", read_script, "read_script", NULL);
         AddUDF(env, "read_files", "v", 2, 2, "lm", read_files, "read_files", NULL);
@@ -190,27 +165,37 @@ namespace coco
         Eval(env, "(facts)", NULL);
 #endif
     }
-    sensor_network::~sensor_network()
+    coco::~coco()
     {
         DestroyEnvironment(env);
     }
 
-    void sensor_network::connect()
+    void coco::connect()
     {
+        for (auto &mdlw : middlewares)
+            mdlw->connect();
         coco_timer.start();
     }
 
-    void sensor_network::disconnect()
+    void coco::disconnect()
     {
+        for (auto &mdlw : middlewares)
+            mdlw->disconnect();
+        coco_timer.stop();
     }
 
-    void sensor_network::tick()
+    void coco::tick()
     {
         for (auto &exec : executors)
             exec->tick();
     }
 
-    void sensor_network::update_sensor_network(json::json msg)
+    void coco::publish(const std::string &topic, const json::json &msg, int qos, bool retained)
+    {
+        for (auto &mdlw : middlewares)
+            mdlw->publish(topic, msg, qos, retained);
+    }
+    void coco::message_arrived(const json::json &msg)
     {
     }
 } // namespace coco

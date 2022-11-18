@@ -245,6 +245,50 @@ namespace coco
         j_st["starting"] = std::move(starting);
 
         sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st.dump()));
+
+        for (const auto &atm : atoms)
+            AssertString(sn.env, to_task(*atm, "starting").c_str());
+        Run(sn.env, -1);
+#ifdef VERBOSE_LOG
+        Eval(sn.env, "(facts)", NULL);
+#endif
+
+        CLIPSValue res;
+        Eval(sn.env, "(find-all-facts ((?f dont_start_yet)) TRUE)", &res);
+        if (res.multifieldValue->length)
+        {
+            std::unordered_map<const ratio::core::atom *, semitone::rational> dsy;
+            std::vector<Fact *> dsy_facts;
+            for (size_t i = 0; i < res.multifieldValue->length; ++i)
+            {
+                auto f = res.multifieldValue->contents[i].factValue;
+                auto atm = reinterpret_cast<ratio::core::atom *>(f->basisSlots[0].contents->integerValue->contents);
+                semitone::rational delay;
+                switch (f->basisSlots->length)
+                {
+                case 0:
+                    delay = semitone::rational(1);
+                    break;
+                case 1:
+                    delay = semitone::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents);
+                    break;
+                case 2:
+                    delay = semitone::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents, f->basisSlots[1].contents->multifieldValue[1].contents->integerValue->contents);
+                    break;
+                }
+                dsy[atm] = delay;
+                dsy_facts.push_back(f);
+            }
+            exec.dont_start_yet(dsy);
+
+            for (const auto &f : dsy_facts)
+                Retract(f);
+
+            Run(sn.env, -1);
+#ifdef VERBOSE_LOG
+            Eval(sn.env, "(facts)", NULL);
+#endif
+        }
     }
     void coco_executor::start(const std::unordered_set<ratio::core::atom *> &atoms)
     {
@@ -276,6 +320,50 @@ namespace coco
         j_en["ending"] = std::move(ending);
 
         sn.mqtt_client.publish(mqtt::make_message(sn.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en.dump()));
+
+        for (const auto &atm : atoms)
+            AssertString(sn.env, to_task(*atm, "ending").c_str());
+        Run(sn.env, -1);
+#ifdef VERBOSE_LOG
+        Eval(sn.env, "(facts)", NULL);
+#endif
+
+        CLIPSValue res;
+        Eval(sn.env, "(find-all-facts ((?f dont_end_yet)) TRUE)", &res);
+        if (res.multifieldValue->length)
+        {
+            std::unordered_map<const ratio::core::atom *, semitone::rational> dey;
+            std::vector<Fact *> dey_facts;
+            for (size_t i = 0; i < res.multifieldValue->length; ++i)
+            {
+                auto f = res.multifieldValue->contents[i].factValue;
+                auto atm = reinterpret_cast<ratio::core::atom *>(f->basisSlots[0].contents->integerValue->contents);
+                semitone::rational delay;
+                switch (f->basisSlots->length)
+                {
+                case 0:
+                    delay = semitone::rational(1);
+                    break;
+                case 1:
+                    delay = semitone::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents);
+                    break;
+                case 2:
+                    delay = semitone::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents, f->basisSlots[1].contents->multifieldValue[1].contents->integerValue->contents);
+                    break;
+                }
+                dey[atm] = delay;
+                dey_facts.push_back(f);
+            }
+            exec.dont_end_yet(dey);
+
+            for (const auto &f : dey_facts)
+                Retract(f);
+
+            Run(sn.env, -1);
+#ifdef VERBOSE_LOG
+            Eval(sn.env, "(facts)", NULL);
+#endif
+        }
     }
     void coco_executor::end(const std::unordered_set<ratio::core::atom *> &atoms)
     {
@@ -301,7 +389,7 @@ namespace coco
 
     std::string coco_executor::to_task(const ratio::core::atom &atm, const std::string &command)
     {
-        std::string task_str = "(task (task_type " + atm.get_type().get_name() + ") (command " + command + ")";
+        std::string task_str = "(task (task_type " + atm.get_type().get_name() + ") (id " + std::to_string(get_id(atm)) + ") (command " + command + ")";
         std::string pars_str = "(pars";
         std::string vals_str = "(vals";
 

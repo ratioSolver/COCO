@@ -3,12 +3,14 @@
 #include "coco_middleware.h"
 #include "mqtt/async_client.h"
 
+#define MQTT_URI(host, port) host ":" port
+
 namespace coco
 {
   class mqtt_middleware : public coco_middleware, public mqtt::callback
   {
   public:
-    mqtt_middleware(coco &cc, const std::string &mqtt_uri);
+    mqtt_middleware(coco &cc, const std::string &mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT));
     ~mqtt_middleware();
 
     mqtt::connect_options &get_options() { return options; }

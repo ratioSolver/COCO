@@ -5,19 +5,29 @@
 
 namespace coco
 {
-    void new_solver(Environment *env, UDFContext *udfc, UDFValue *out)
+    void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out)
     {
         LOG_DEBUG("Creating new solver..");
 
-        UDFValue network_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &network_ptr))
+        UDFValue coco_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto &e = *reinterpret_cast<coco *>(network_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+
+        UDFValue solver_type;
+        if (!UDFNextArgument(udfc, LEXEME_BITS, &solver_type))
+            return;
+
+        UDFValue riddle;
+        if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
+            return;
 
         auto slv = new ratio::solver::solver();
         auto exec = new ratio::executor::executor(*slv);
-        auto coco_exec = std::make_unique<coco_executor>(e, *exec);
+        auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
+
+        AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + ") (state reasoning))").c_str());
 
         e.executors.push_back(std::move(coco_exec));
 
@@ -25,56 +35,109 @@ namespace coco
         msg["type"] = "solvers";
         json::array solvers;
         solvers.reserve(e.executors.size());
-        for (const auto &exec : e.executors)
-            solvers.push_back(reinterpret_cast<uintptr_t>(exec.get()));
+        for (const auto &xct : e.executors)
+            solvers.push_back(reinterpret_cast<uintptr_t>(xct.get()));
         msg["solvers"] = std::move(solvers);
 
         e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
 
+        // we adapt to a riddle script..
+        exec->adapt(riddle.lexemeValue->contents);
+
         out->integerValue = CreateInteger(env, exec_ptr);
     }
 
-    void read_script([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out)
     {
-        LOG_DEBUG("Reading RiDDLe snippet..");
+        LOG_DEBUG("Creating new solver..");
 
-        UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        UDFValue coco_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        auto exec = &coco_exec->get_executor();
-        auto slv = &exec->get_solver();
+        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
 
-        UDFValue riddle;
-        if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
+        UDFValue solver_type;
+        if (!UDFFirstArgument(udfc, LEXEME_BITS, &solver_type))
             return;
-
-        // we read a riddle script..
-        slv->read(riddle.lexemeValue->contents);
-        slv->solve();
-    }
-
-    void read_files([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
-    {
-        LOG_DEBUG("Reading RiDDLe files..");
-
-        UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
-            return;
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        auto exec = &coco_exec->get_executor();
-        auto slv = &exec->get_solver();
 
         UDFValue riddle;
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &riddle))
             return;
 
-        // we read some riddle files..
+        auto slv = new ratio::solver::solver();
+        auto exec = new ratio::executor::executor(*slv);
+        auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
+        uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
+
+        AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + ") (state reasoning))").c_str());
+
+        e.executors.push_back(std::move(coco_exec));
+
+        json::json msg;
+        msg["type"] = "solvers";
+        json::array solvers;
+        solvers.reserve(e.executors.size());
+        for (const auto &xct : e.executors)
+            solvers.push_back(reinterpret_cast<uintptr_t>(xct.get()));
+        msg["solvers"] = std::move(solvers);
+
+        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
+
+        // we adapt to some riddle files..
         std::vector<std::string> fs;
         for (size_t i = 0; i < riddle.multifieldValue->length; ++i)
             fs.push_back(riddle.multifieldValue->contents[i].lexemeValue->contents);
-        slv->read(fs);
-        slv->solve();
+        exec->adapt(fs);
+
+        out->integerValue = CreateInteger(env, exec_ptr);
+    }
+
+    void start_execution(Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    {
+        LOG_DEBUG("Deleting solver..");
+
+        UDFValue coco_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+            return;
+        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+
+        UDFValue exec_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+            return;
+        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        coco_exec->start_execution();
+
+        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state executing)))").c_str(), NULL);
+
+        json::json msg;
+        msg["type"] = "start_execution";
+        msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
+
+        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
+    }
+
+    void pause_execution(Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    {
+        LOG_DEBUG("Deleting solver..");
+
+        UDFValue coco_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+            return;
+        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+
+        UDFValue exec_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+            return;
+        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        coco_exec->pause_execution();
+
+        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state paused)))").c_str(), NULL);
+
+        json::json msg;
+        msg["type"] = "pause_execution";
+        msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
+
+        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
     }
 
     void adapt_script([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -86,6 +149,8 @@ namespace coco
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         auto exec = &coco_exec->get_executor();
+
+        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state adapting)))").c_str(), NULL);
 
         UDFValue riddle;
         if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
@@ -109,6 +174,8 @@ namespace coco
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &riddle))
             return;
 
+        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state adapting)))").c_str(), NULL);
+
         // we adapt to some riddle files..
         std::vector<std::string> fs;
         for (size_t i = 0; i < riddle.multifieldValue->length; ++i)
@@ -120,10 +187,10 @@ namespace coco
     {
         LOG_DEBUG("Deleting solver..");
 
-        UDFValue network_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &network_ptr))
+        UDFValue coco_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto &e = *reinterpret_cast<coco *>(network_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
@@ -138,6 +205,8 @@ namespace coco
         delete exec;
         delete slv;
 
+        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state destroyed)))").c_str(), NULL);
+
         json::json msg;
         msg["type"] = "deleted_reasoner";
         msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
@@ -145,11 +214,10 @@ namespace coco
         e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
     }
 
-    coco::coco(const std::string &root, const std::string &mqtt_uri, const std::string &mongodb_uri) : root(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
+    coco::coco(const std::string &root, const std::string &mongodb_uri) : root(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
     {
-        AddUDF(env, "new_solver", "l", 1, 1, "l", new_solver, "new_solver", NULL);
-        AddUDF(env, "read_script", "v", 2, 2, "ls", read_script, "read_script", NULL);
-        AddUDF(env, "read_files", "v", 2, 2, "lm", read_files, "read_files", NULL);
+        AddUDF(env, "new_solver_script", "lys", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
+        AddUDF(env, "new_solver_files", "lym", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);
         AddUDF(env, "read_script", "v", 2, 2, "ls", adapt_script, "adapt_script", NULL);
         AddUDF(env, "read_files", "v", 2, 2, "lm", adapt_files, "adapt_files", NULL);
         AddUDF(env, "delete_solver", "v", 2, 2, "ll", delete_solver, "delete_solver", NULL);
@@ -158,7 +226,7 @@ namespace coco
         Load(env, "rules/rules.clp");
         Reset(env);
 
-        AssertString(env, ("(configuration (network_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + "))").c_str());
+        AssertString(env, ("(configuration (coco_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + "))").c_str());
 
         Run(env, -1);
 #ifdef VERBOSE_LOG

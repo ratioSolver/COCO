@@ -6,7 +6,6 @@
 #include <list>
 #include <mongocxx/client.hpp>
 
-#define MQTT_URI(host, port) host ":" port
 #define MONGODB_URI(host, port) "mongodb://" host ":" port
 
 #define SOLVERS_TOPIC "/solvers"
@@ -81,7 +80,7 @@ namespace coco
     friend class coco_executor;
 
   public:
-    coco(const std::string &root = COCO_ROOT, const std::string &mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT), const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
+    coco(const std::string &root = COCO_ROOT, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     ~coco();
 
     const std::string &get_root() const { return root; }
@@ -95,9 +94,10 @@ namespace coco
     void publish(const std::string &topic, const json::json &msg, int qos = 0, bool retained = false);
     void message_arrived(const json::json &msg);
 
-    friend void new_solver(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void read_script(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void read_files(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void pause_execution(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);

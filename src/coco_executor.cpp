@@ -5,7 +5,7 @@
 
 namespace coco
 {
-    coco_executor::coco_executor(coco &cc, ratio::executor::executor &exec) : core_listener(exec.get_solver()), solver_listener(exec.get_solver()), executor_listener(exec), cc(cc), exec(exec) {}
+    coco_executor::coco_executor(coco &cc, ratio::executor::executor &exec, const std::string &type) : core_listener(exec.get_solver()), solver_listener(exec.get_solver()), executor_listener(exec), cc(cc), exec(exec), type(type) {}
 
     void coco_executor::log([[maybe_unused]] const std::string &msg) {}
     void coco_executor::read([[maybe_unused]] const std::string &script) {}
@@ -46,7 +46,7 @@ namespace coco
         j_sf["state"] = to_json(exec.get_solver());
         j_sf["timelines"] = to_timelines(exec.get_solver());
         json::array j_executing;
-        for (const auto &atm : executing)
+        for (const auto &atm : executing_atoms)
             j_executing.push_back(get_id(*atm));
         j_sf["executing"] = std::move(j_executing);
         j_sf["time"] = to_json(current_time);
@@ -78,6 +78,12 @@ namespace coco
         j_ip["type"] = "inconsistent_problem";
 
         cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ip);
+
+        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state inconsistent)))").c_str(), NULL);
+        Run(cc.env, -1);
+#ifdef VERBOSE_LOG
+        Eval(cc.env, "(facts)", NULL);
+#endif
     }
 
     void coco_executor::flaw_created(const ratio::solver::flaw &f)
@@ -255,7 +261,7 @@ namespace coco
 
         CLIPSValue res;
         Eval(cc.env, "(find-all-facts ((?f dont_start_yet)) TRUE)", &res);
-        if (res.multifieldValue->length)
+        if (res.header->type == MULTIFIELD_TYPE && res.multifieldValue->length)
         {
             std::unordered_map<const ratio::core::atom *, semitone::rational> dsy;
             std::vector<Fact *> dsy_facts;
@@ -292,7 +298,7 @@ namespace coco
     }
     void coco_executor::start(const std::unordered_set<ratio::core::atom *> &atoms)
     {
-        executing.insert(atoms.cbegin(), atoms.cend());
+        executing_atoms.insert(atoms.cbegin(), atoms.cend());
 
         json::json j_st;
         j_st["type"] = "start";
@@ -368,7 +374,7 @@ namespace coco
     void coco_executor::end(const std::unordered_set<ratio::core::atom *> &atoms)
     {
         for (const auto &a : atoms)
-            executing.erase(a);
+            executing_atoms.erase(a);
 
         json::json j_en;
         j_en["type"] = "end";
@@ -381,6 +387,15 @@ namespace coco
 
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "end").c_str());
+        Run(cc.env, -1);
+#ifdef VERBOSE_LOG
+        Eval(cc.env, "(facts)", NULL);
+#endif
+    }
+
+    void coco_executor::finished()
+    {
+        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state finished)))").c_str(), NULL);
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);

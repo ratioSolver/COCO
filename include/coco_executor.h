@@ -3,6 +3,7 @@
 #include "core_listener.h"
 #include "solver_listener.h"
 #include "executor_listener.h"
+#include <atomic>
 
 namespace coco
 {
@@ -13,9 +14,12 @@ namespace coco
     friend class coco;
 
   public:
-    coco_executor(coco &cc, ratio::executor::executor &exec);
+    coco_executor(coco &cc, ratio::executor::executor &exec, const std::string &type);
 
     ratio::executor::executor &get_executor() { return exec; }
+
+    void start_execution() { executing = true; }
+    void pause_execution() { executing = false; }
 
   private:
     void log(const std::string &msg) override;
@@ -44,22 +48,29 @@ namespace coco
   private:
     void tick();
     void tick(const semitone::rational &time) override;
+
     void starting(const std::unordered_set<ratio::core::atom *> &atoms) override;
     void start(const std::unordered_set<ratio::core::atom *> &atoms) override;
+
     void ending(const std::unordered_set<ratio::core::atom *> &atoms) override;
     void end(const std::unordered_set<ratio::core::atom *> &atoms) override;
+
+    void finished() override;
 
     std::string to_task(const ratio::core::atom &atm, const std::string &command);
 
   private:
     coco &cc;
     ratio::executor::executor &exec;
-    bool solved = false;
+    const std::string type;
+    std::atomic<bool> solved = false;
+    std::atomic<bool> executing = false;
+    uint delay;
     std::unordered_set<const ratio::solver::flaw *> flaws;
     const ratio::solver::flaw *c_flaw = nullptr;
     std::unordered_set<const ratio::solver::resolver *> resolvers;
     const ratio::solver::resolver *c_resolver = nullptr;
     semitone::rational current_time;
-    std::unordered_set<ratio::core::atom *> executing;
+    std::unordered_set<ratio::core::atom *> executing_atoms;
   };
 } // namespace coco

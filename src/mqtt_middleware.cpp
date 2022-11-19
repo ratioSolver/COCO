@@ -12,7 +12,6 @@ namespace coco
 
         mqtt_client.set_callback(*this);
     }
-    mqtt_middleware::~mqtt_middleware() {}
 
     void mqtt_middleware::connect()
     {
@@ -41,9 +40,9 @@ namespace coco
 
     void mqtt_middleware::publish(const std::string &topic, const json::json &msg, int qos, bool retained) { mqtt_client.publish(mqtt::make_message(topic, msg.dump(), qos, retained)); }
 
-    void mqtt_middleware::connected(const std::string &cause) { LOG("MQTT client connected!"); }
+    void mqtt_middleware::connected([[maybe_unused]] const std::string &cause) { LOG("MQTT client connected!"); }
 
-    void mqtt_middleware::connection_lost(const std::string &cause)
+    void mqtt_middleware::connection_lost([[maybe_unused]] const std::string &cause)
     {
         LOG_WARN("MQTT connection lost! trying to reconnect..");
         mqtt_client.reconnect()->wait();

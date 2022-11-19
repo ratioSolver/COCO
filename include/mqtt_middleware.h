@@ -11,7 +11,6 @@ namespace coco
   {
   public:
     mqtt_middleware(coco &cc, const std::string &mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT));
-    ~mqtt_middleware();
 
     mqtt::connect_options &get_options() { return options; }
 

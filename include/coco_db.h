@@ -27,12 +27,15 @@ namespace coco
     virtual std::string create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
     sensor &get_sensor(const std::string &id) { return *sensors.at(id); }
     virtual void set_sensor_name(const std::string &id, const std::string &name);
-    virtual void set_sensor_type(const std::string &id, const sensor_type &type);
     virtual void set_sensor_location(const std::string &id, std::unique_ptr<location> l);
-    virtual void set_sensor_value(const std::string &id, std::unique_ptr<json::json> v);
+    void set_sensor_value(const std::string &id, std::unique_ptr<json::json> v);
     virtual void delete_sensor(const std::string &id);
 
   protected:
+    void create_sensor_type(const std::string &id, const std::string &name, const std::string &description);
+    void create_sensor(const std::string &id, const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
+
+  private:
     const std::string root;
     std::unordered_map<std::string, std::unique_ptr<sensor_type>> sensor_types;
     std::unordered_map<std::string, std::unique_ptr<sensor>> sensors;

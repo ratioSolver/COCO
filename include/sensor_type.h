@@ -5,12 +5,16 @@
 
 namespace coco
 {
+  class coco;
+  class coco_db;
+
   class sensor_type
   {
     friend class coco;
+    friend class coco_db;
 
   public:
-    sensor_type(const std::string &id, const std::string &name, const std::string &description, Fact *fact) : id(id), name(name), description(description), fact(fact) {}
+    sensor_type(const std::string &id, const std::string &name, const std::string &description) : id(id), name(name), description(description) {}
     ~sensor_type() = default;
 
     const std::string &get_id() const { return id; }
@@ -20,8 +24,8 @@ namespace coco
 
   private:
     const std::string id;
-    const std::string name;
-    const std::string description;
-    Fact *fact;
+    std::string name;
+    std::string description;
+    Fact *fact = nullptr;
   };
 } // namespace coco

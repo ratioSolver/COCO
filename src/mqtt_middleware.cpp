@@ -1,10 +1,11 @@
 #include "mqtt_middleware.h"
 #include "coco.h"
+#include "coco_db.h"
 #include "logging.h"
 
 namespace coco
 {
-    mqtt_middleware::mqtt_middleware(coco &cc, const std::string &mqtt_uri) : coco_middleware(cc), mqtt_client(mqtt_uri, cc.get_root() + "-client")
+    mqtt_middleware::mqtt_middleware(coco &cc, const std::string &mqtt_uri) : coco_middleware(cc), mqtt_client(mqtt_uri, cc.get_database().get_root() + "-client")
     {
         options.set_clean_session(true);
         options.set_keep_alive_interval(20);

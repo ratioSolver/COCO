@@ -2,6 +2,7 @@
 #include "logging.h"
 #include "coco_middleware.h"
 #include "coco_executor.h"
+#include "coco_db.h"
 
 namespace coco
 {
@@ -39,7 +40,7 @@ namespace coco
             solvers.push_back(reinterpret_cast<uintptr_t>(xct.get()));
         msg["solvers"] = std::move(solvers);
 
-        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
+        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
 
         // we adapt to a riddle script..
         exec->adapt(riddle.lexemeValue->contents);
@@ -81,7 +82,7 @@ namespace coco
             solvers.push_back(reinterpret_cast<uintptr_t>(xct.get()));
         msg["solvers"] = std::move(solvers);
 
-        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
+        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
 
         // we adapt to some riddle files..
         std::vector<std::string> fs;
@@ -113,7 +114,7 @@ namespace coco
         msg["type"] = "start_execution";
         msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
 
-        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
+        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
     }
 
     void pause_execution(Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -137,7 +138,7 @@ namespace coco
         msg["type"] = "pause_execution";
         msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
 
-        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
+        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
     }
 
     void delay_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -299,10 +300,10 @@ namespace coco
         msg["type"] = "deleted_reasoner";
         msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
 
-        e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
+        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
     }
 
-    coco::coco(const std::string &root, const std::string &mongodb_uri) : root(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
+    coco::coco(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
     {
         AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
         AddUDF(env, "new_solver_files", "l", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);

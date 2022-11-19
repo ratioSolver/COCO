@@ -2,6 +2,7 @@
 #include "item.h"
 #include "predicate.h"
 #include "coco.h"
+#include "coco_db.h"
 
 namespace coco
 {
@@ -24,7 +25,7 @@ namespace coco
         j_sc["executing"] = std::move(j_executing);
         j_sc["time"] = to_json(current_time);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sc, 2, true));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sc, 2, true));
 #endif
     }
 
@@ -34,7 +35,7 @@ namespace coco
         json::json j_ss;
         j_ss["type"] = "started_solving";
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ss);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ss);
     }
     void coco_executor::solution_found()
     {
@@ -51,7 +52,7 @@ namespace coco
         j_sf["executing"] = std::move(j_executing);
         j_sf["time"] = to_json(current_time);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sf, 2, true);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sf, 2, true);
 
         json::json j_gr;
         j_gr["type"] = "graph";
@@ -64,7 +65,7 @@ namespace coco
             j_resolvers.push_back(to_json(*r));
         j_gr["resolvers"] = std::move(j_resolvers);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/graph", j_gr, 2, true);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/graph", j_gr, 2, true);
 
         solved = true;
     }
@@ -77,7 +78,7 @@ namespace coco
         json::json j_ip;
         j_ip["type"] = "inconsistent_problem";
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ip);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ip);
 
         Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state inconsistent)))").c_str(), NULL);
         Run(cc.env, -1);
@@ -111,7 +112,7 @@ namespace coco
         j_fc["pos"] = std::move(j_pos);
         j_fc["data"] = f.get_data();
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fc));
 #endif
     }
     void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -122,7 +123,7 @@ namespace coco
         j_fsc["id"] = get_id(f);
         j_fsc["state"] = slv.get_sat_core()->value(f.get_phi());
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fsc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fsc));
 #endif
     }
     void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -133,7 +134,7 @@ namespace coco
         j_fcc["id"] = get_id(f);
         j_fcc["cost"] = to_json(f.get_estimated_cost());
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fcc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fcc));
 #endif
     }
     void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -150,7 +151,7 @@ namespace coco
             j_pos["ub"] = ub;
         j_fpc["pos"] = std::move(j_pos);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fpc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fpc));
 #endif
     }
     void coco_executor::current_flaw(const ratio::solver::flaw &f)
@@ -163,7 +164,7 @@ namespace coco
         j_cf["type"] = "current_flaw";
         j_cf["id"] = get_id(f);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cf));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cf));
 #endif
     }
 
@@ -186,7 +187,7 @@ namespace coco
         j_rc["intrinsic_cost"] = to_json(r.get_intrinsic_cost());
         j_rc["data"] = r.get_data();
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rc));
 #endif
     }
     void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::solver::resolver &r)
@@ -197,7 +198,7 @@ namespace coco
         j_rsc["id"] = get_id(r);
         j_rsc["state"] = slv.get_sat_core()->value(r.get_rho());
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rsc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rsc));
 #endif
     }
     void coco_executor::current_resolver(const ratio::solver::resolver &r)
@@ -209,7 +210,7 @@ namespace coco
         j_cr["type"] = "current_resolver";
         j_cr["id"] = get_id(r);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cr));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cr));
 #endif
     }
 
@@ -221,7 +222,7 @@ namespace coco
         j_cla["flaw_id"] = get_id(f);
         j_cla["resolver_id"] = get_id(r);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cla));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cla));
 #endif
     }
 
@@ -239,7 +240,7 @@ namespace coco
         j_t["type"] = "tick";
         j_t["time"] = to_json(time);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_t);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_t);
     }
     void coco_executor::starting(const std::unordered_set<ratio::core::atom *> &atoms)
     {
@@ -250,7 +251,7 @@ namespace coco
             starting.push_back(get_id(*a));
         j_st["starting"] = std::move(starting);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st);
 
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "starting").c_str());
@@ -307,7 +308,7 @@ namespace coco
             start.push_back(get_id(*a));
         j_st["start"] = std::move(start);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st);
 
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "start").c_str());
@@ -325,7 +326,7 @@ namespace coco
             ending.push_back(get_id(*a));
         j_en["ending"] = std::move(ending);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en);
 
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "ending").c_str());
@@ -383,7 +384,7 @@ namespace coco
             end.push_back(get_id(*a));
         j_en["end"] = std::move(end);
 
-        cc.publish(cc.root + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en);
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en);
 
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "end").c_str());

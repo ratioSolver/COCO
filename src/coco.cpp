@@ -94,7 +94,7 @@ namespace coco
 
     void start_execution(Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
     {
-        LOG_DEBUG("Deleting solver..");
+        LOG_DEBUG("Starting plan execution..");
 
         UDFValue coco_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
@@ -118,7 +118,7 @@ namespace coco
 
     void pause_execution(Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
     {
-        LOG_DEBUG("Deleting solver..");
+        LOG_DEBUG("Pausing plan execution..");
 
         UDFValue coco_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
@@ -138,6 +138,94 @@ namespace coco
         msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
 
         e.publish(e.root + SOLVERS_TOPIC, msg, 2, true);
+    }
+
+    void delay_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    {
+        LOG_DEBUG("Delaying task..");
+
+        UDFValue exec_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+            return;
+
+        UDFValue task_id;
+        if (!UDFNextArgument(udfc, NUMBER_BITS, &task_id))
+            return;
+
+        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        auto exec = &coco_exec->get_executor();
+
+        auto atm = reinterpret_cast<ratio::core::atom *>(task_id.integerValue->contents);
+        semitone::rational delay;
+        UDFValue delay_val;
+        if (UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
+            switch (delay_val.multifieldValue->length)
+            {
+            case 1:
+                delay = semitone::rational(delay_val.multifieldValue[0].contents->integerValue->contents);
+                break;
+            case 2:
+                delay = semitone::rational(delay_val.multifieldValue[0].contents->integerValue->contents, delay_val.multifieldValue[1].contents->integerValue->contents);
+                break;
+            }
+        else
+            delay = semitone::rational(1);
+
+        exec->dont_start_yet({std::pair<const ratio::core::atom *, semitone::rational>(atm, delay)});
+    }
+
+    void extend_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    {
+        LOG_DEBUG("Extending task..");
+
+        UDFValue exec_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+            return;
+
+        UDFValue task_id;
+        if (!UDFNextArgument(udfc, NUMBER_BITS, &task_id))
+            return;
+
+        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        auto exec = &coco_exec->get_executor();
+
+        auto atm = reinterpret_cast<ratio::core::atom *>(task_id.integerValue->contents);
+        semitone::rational delay;
+        UDFValue delay_val;
+        if (UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
+            switch (delay_val.multifieldValue->length)
+            {
+            case 1:
+                delay = semitone::rational(delay_val.multifieldValue[0].contents->integerValue->contents);
+                break;
+            case 2:
+                delay = semitone::rational(delay_val.multifieldValue[0].contents->integerValue->contents, delay_val.multifieldValue[1].contents->integerValue->contents);
+                break;
+            }
+        else
+            delay = semitone::rational(1);
+
+        exec->dont_end_yet({std::pair<const ratio::core::atom *, semitone::rational>(atm, delay)});
+    }
+
+    void failure([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    {
+        LOG_DEBUG("Task(s) failure..");
+
+        UDFValue exec_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+            return;
+
+        UDFValue task_ids;
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &task_ids))
+            return;
+
+        std::unordered_set<const ratio::core::atom *> atms;
+        for (size_t i = 0; i < task_ids.multifieldValue->length; ++i)
+            atms.insert(reinterpret_cast<ratio::core::atom *>(task_ids.multifieldValue->contents[i].integerValue->contents));
+
+        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        coco_exec->get_executor().failure(atms);
     }
 
     void adapt_script([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -216,10 +304,15 @@ namespace coco
 
     coco::coco(const std::string &root, const std::string &mongodb_uri) : root(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
     {
-        AddUDF(env, "new_solver_script", "lys", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
-        AddUDF(env, "new_solver_files", "lym", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);
-        AddUDF(env, "read_script", "v", 2, 2, "ls", adapt_script, "adapt_script", NULL);
-        AddUDF(env, "read_files", "v", 2, 2, "lm", adapt_files, "adapt_files", NULL);
+        AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
+        AddUDF(env, "new_solver_files", "l", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);
+        AddUDF(env, "start_execution", "v", 2, 2, "ll", start_execution, "start_execution", NULL);
+        AddUDF(env, "pause_execution", "v", 2, 2, "ll", pause_execution, "pause_execution", NULL);
+        AddUDF(env, "delay_task", "v", 2, 3, "llm", delay_task, "delay_task", NULL);
+        AddUDF(env, "extend_task", "v", 2, 3, "llm", extend_task, "extend_task", NULL);
+        AddUDF(env, "failure", "v", 2, 2, "lm", failure, "failure", NULL);
+        AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", NULL);
+        AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", NULL);
         AddUDF(env, "delete_solver", "v", 2, 2, "ll", delete_solver, "delete_solver", NULL);
 
         LOG("Loading policy rules..");

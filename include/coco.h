@@ -98,6 +98,9 @@ namespace coco
     friend void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void pause_execution(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void delay_task(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void failure(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);

@@ -38,7 +38,8 @@ namespace coco
         }
     }
 
-    void mqtt_middleware::publish(const std::string &topic, const json::json &msg, int qos, bool retained) { mqtt_client.publish(mqtt::make_message(topic, msg.dump(), qos, retained)); }
+    void mqtt_middleware::subscribe(const std::string &topic, int qos) { mqtt_client.subscribe(topic, qos); }
+    void mqtt_middleware::publish(const std::string &topic, json::json &msg, int qos, bool retained) { mqtt_client.publish(mqtt::make_message(topic, msg.dump(), qos, retained)); }
 
     void mqtt_middleware::connected([[maybe_unused]] const std::string &cause) { LOG("MQTT client connected!"); }
 

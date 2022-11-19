@@ -6,7 +6,7 @@
 (deftemplate dont_end_yet (slot task_id) (multislot delay_time))
 
 (deftemplate sensor_type (slot id) (slot name) (slot description))
-(deftemplate sensor (slot id) (slot sensor_type) (multislot location))
+(deftemplate sensor (slot id) (slot sensor_type) (slot name) (multislot location))
 
 (defrule new_configuration
     (configuration (coco_ptr ?ptr))

@@ -305,6 +305,8 @@ namespace coco
 
     coco::coco(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
     {
+        db.init();
+
         AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
         AddUDF(env, "new_solver_files", "l", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);
         AddUDF(env, "start_execution", "v", 2, 2, "ll", start_execution, "start_execution", NULL);
@@ -319,6 +321,19 @@ namespace coco
         LOG("Loading policy rules..");
         Load(env, "rules/rules.clp");
         Reset(env);
+
+        for (const auto &st : db.get_all_sensor_types())
+            st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name " + st.get().name + ") (description " + st.get().description + "))").c_str());
+
+        for (const auto &s : db.get_all_sensors())
+        {
+            std::string f_str = "(sensor (id " + s.get().id + ") (sensor_type " + s.get().type.id + ") (name " + s.get().name + ")";
+            if (s.get().loc)
+                f_str += " (location " + std::to_string(s.get().loc->x) + " " + std::to_string(s.get().loc->y) + ")";
+            f_str += ')';
+
+            s.get().fact = AssertString(env, f_str.c_str());
+        }
 
         AssertString(env, ("(configuration (coco_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + "))").c_str());
 
@@ -352,12 +367,82 @@ namespace coco
             exec->tick();
     }
 
-    void coco::publish(const std::string &topic, const json::json &msg, int qos, bool retained)
+    void coco::publish(const std::string &topic, json::json &msg, int qos, bool retained)
     {
         for (auto &mdlw : middlewares)
             mdlw->publish(topic, msg, qos, retained);
     }
-    void coco::message_arrived(const json::json &msg)
+    void coco::message_arrived(json::json &msg)
     {
+        json::string_val &j_msg_type = msg["type"];
+        std::string msg_type = j_msg_type;
+
+        if (msg_type == "new_sensor_type")
+        { // we have a new sensor type..
+            LOG("Creating new sensor type..");
+            json::string_val &j_st_name = msg["name"];
+            std::string st_name = j_st_name;
+            json::string_val &j_st_description = msg["description"];
+            std::string st_description = j_st_description;
+
+            // we store the new sensor type on the database..
+            auto id = db.create_sensor_type(st_name, st_description);
+            // we create a new fact for the new sensor type..
+            db.get_sensor(id).fact = AssertString(env, ("(sensor_type (id " + id + ") (name " + st_name + ") (description " + st_description + "))").c_str());
+            Run(env, -1);
+#ifdef VERBOSE_LOG
+            Eval(env, "(facts)", NULL);
+#endif
+        }
+        else if (msg_type == "update_sensor_type")
+        {
+            LOG("Updating existing sensor type..");
+            json::object &j_st = msg;
+            json::string_val &j_st_id = msg["id"];
+            std::string st_id = j_st_id;
+            if (j_st.has("name"))
+            {
+                json::string_val &j_st_name = msg["name"];
+                std::string st_name = j_st_name;
+                // we update the sensor type on the database..
+                db.set_sensor_type_name(st_id, st_name);
+                // we update the sensor type fact..
+                Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + st_id + ") (modify ?st (name " + st_name + ")))").c_str(), NULL);
+                Run(env, -1);
+#ifdef VERBOSE_LOG
+                Eval(env, "(facts)", NULL);
+#endif
+            }
+            if (j_st.has("description"))
+            {
+                json::string_val &j_st_description = msg["description"];
+                std::string st_description = j_st_description;
+
+                // we update the sensor type on the database..
+                db.set_sensor_type_description(st_id, st_description);
+                // we update the sensor type fact..
+                Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + st_id + ") (modify ?st (description " + st_description + ")))").c_str(), NULL);
+                Run(env, -1);
+#ifdef VERBOSE_LOG
+                Eval(env, "(facts)", NULL);
+#endif
+            }
+            else if (msg_type == "delete_sensor_type")
+            {
+                LOG("Deleting existing sensor type..");
+                json::string_val &j_st_id = msg["id"];
+                std::string st_id = j_st_id;
+                auto f = db.get_sensor_type(st_id).fact;
+
+                // we delete the sensor type from the database..
+                db.delete_sensor_type(st_id);
+                // we retract the sensor type fact..
+                Retract(f);
+                Run(env, -1);
+#ifdef VERBOSE_LOG
+                Eval(env, "(facts)", NULL);
+#endif
+            }
+        }
     }
 } // namespace coco

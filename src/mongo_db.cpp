@@ -1,5 +1,6 @@
 #include "mongo_db.h"
 #include "coco.h"
+#include "logging.h"
 #include <bsoncxx/json.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
 
@@ -7,6 +8,38 @@ namespace coco
 {
     mongo_db::mongo_db(const std::string &root, const std::string &mongodb_uri) : coco_db(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]) {}
 
+    void mongo_db::init()
+    {
+        LOG("Retrieving all sensor types..");
+        for (auto doc : sensor_types_collection.find({}))
+        {
+            auto id = doc["_id"].get_oid().value.to_string();
+            auto name = doc["name"].get_string().value.to_string();
+            auto description = doc["description"].get_string().value.to_string();
+            coco_db::create_sensor_type(id, name, description);
+        }
+
+        LOG("Retrieving all sensors..");
+        for (auto doc : sensors_collection.find({}))
+        {
+            auto id = doc["_id"].get_oid().value.to_string();
+            auto name = doc["name"].get_string().value.to_string();
+            auto type_id = doc["type_id"].get_string().value.to_string();
+
+            auto loc = doc.find("location");
+            std::unique_ptr<location> l;
+            if (loc != doc.end())
+            {
+                auto loc_doc = loc->get_document().value;
+                auto x = loc_doc["x"].get_double().value;
+                auto y = loc_doc["y"].get_double().value;
+                l = std::make_unique<location>();
+                l->x = x;
+                l->y = y;
+            }
+            coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
+        }
+    }
     std::string mongo_db::create_sensor_type(const std::string &name, const std::string &description)
     {
         auto result = sensor_types_collection.insert_one(bsoncxx::builder::stream::document{} << "name" << name << "description" << description << bsoncxx::builder::stream::finalize);

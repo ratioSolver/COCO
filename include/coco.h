@@ -34,8 +34,8 @@ namespace coco
   private:
     void tick();
 
-    void publish(const std::string &topic, const json::json &msg, int qos = 0, bool retained = false);
-    void message_arrived(const json::json &msg);
+    void publish(const std::string &topic, json::json &msg, int qos = 0, bool retained = false);
+    void message_arrived(json::json &msg);
 
     friend void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);

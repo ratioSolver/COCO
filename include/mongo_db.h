@@ -12,6 +12,8 @@ namespace coco
   public:
     mongo_db(const std::string &root = COCO_ROOT, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
 
+    void init() override;
+
     std::string create_sensor_type(const std::string &name, const std::string &description) override;
     void set_sensor_type_name(const std::string &id, const std::string &name) override;
     void set_sensor_type_description(const std::string &id, const std::string &description) override;

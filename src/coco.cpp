@@ -305,8 +305,6 @@ namespace coco
 
     coco::coco(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
     {
-        db.init();
-
         AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
         AddUDF(env, "new_solver_files", "l", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);
         AddUDF(env, "start_execution", "v", 2, 2, "ll", start_execution, "start_execution", NULL);
@@ -321,22 +319,6 @@ namespace coco
         LOG("Loading policy rules..");
         Load(env, "rules/rules.clp");
         Reset(env);
-
-        for (const auto &st : db.get_all_sensor_types())
-            st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name " + st.get().name + ") (description " + st.get().description + "))").c_str());
-
-        for (const auto &s : db.get_all_sensors())
-        {
-            std::string f_str = "(sensor (id " + s.get().id + ") (sensor_type " + s.get().type.id + ") (name " + s.get().name + ")";
-            if (s.get().loc)
-                f_str += " (location " + std::to_string(s.get().loc->x) + " " + std::to_string(s.get().loc->y) + ")";
-            f_str += ')';
-
-            s.get().fact = AssertString(env, f_str.c_str());
-
-            for (auto &mw : middlewares)
-                mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + s.get().id, 1);
-        }
 
         AssertString(env, ("(configuration (coco_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + "))").c_str());
 
@@ -355,6 +337,29 @@ namespace coco
         for (auto &mdlw : middlewares)
             mdlw->connect();
         coco_timer.start();
+
+        db.init();
+
+        for (const auto &st : db.get_all_sensor_types())
+            st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
+
+        for (const auto &s : db.get_all_sensors())
+        {
+            std::string f_str = "(sensor (id " + s.get().id + ") (sensor_type " + s.get().type.id + ") (name \"" + s.get().name + "\")";
+            if (s.get().loc)
+                f_str += " (location " + std::to_string(s.get().loc->x) + " " + std::to_string(s.get().loc->y) + ")";
+            f_str += ')';
+
+            s.get().fact = AssertString(env, f_str.c_str());
+
+            for (auto &mw : middlewares)
+                mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + s.get().id, 1);
+        }
+
+        Run(env, -1);
+#ifdef VERBOSE_LOG
+        Eval(env, "(facts)", NULL);
+#endif
     }
 
     void coco::disconnect()
@@ -391,7 +396,7 @@ namespace coco
             // we store the new sensor type on the database..
             auto id = db.create_sensor_type(st_name, st_description);
             // we create a new fact for the new sensor type..
-            db.get_sensor(id).fact = AssertString(env, ("(sensor_type (id " + id + ") (name " + st_name + ") (description " + st_description + "))").c_str());
+            db.get_sensor(id).fact = AssertString(env, ("(sensor_type (id " + id + ") (name \"" + st_name + "\") (description \"" + st_description + "\"))").c_str());
             Run(env, -1);
 #ifdef VERBOSE_LOG
             Eval(env, "(facts)", NULL);
@@ -410,7 +415,7 @@ namespace coco
                 // we update the sensor type on the database..
                 db.set_sensor_type_name(st_id, st_name);
                 // we update the sensor type fact..
-                Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + st_id + ") (modify ?st (name " + st_name + ")))").c_str(), NULL);
+                Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + st_id + ") (modify ?st (name \"" + st_name + "\")))").c_str(), NULL);
                 Run(env, -1);
 #ifdef VERBOSE_LOG
                 Eval(env, "(facts)", NULL);
@@ -424,7 +429,7 @@ namespace coco
                 // we update the sensor type on the database..
                 db.set_sensor_type_description(st_id, st_description);
                 // we update the sensor type fact..
-                Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + st_id + ") (modify ?st (description " + st_description + ")))").c_str(), NULL);
+                Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + st_id + ") (modify ?st (description \"" + st_description + "\")))").c_str(), NULL);
                 Run(env, -1);
 #ifdef VERBOSE_LOG
                 Eval(env, "(facts)", NULL);

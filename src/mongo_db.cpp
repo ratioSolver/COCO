@@ -24,7 +24,7 @@ namespace coco
         {
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
-            auto type_id = doc["type_id"].get_string().value.to_string();
+            auto type_id = doc["type_id"].get_oid().value.to_string();
 
             auto loc = doc.find("location");
             std::unique_ptr<location> l;
@@ -76,6 +76,7 @@ namespace coco
     std::string mongo_db::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
     {
         auto s_doc = bsoncxx::builder::basic::document{};
+        s_doc.append(bsoncxx::builder::basic::kvp("name", name));
         s_doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{bsoncxx::stdx::string_view{type.get_id()}}));
         if (l)
             s_doc.append(bsoncxx::builder::basic::kvp("location", [&l](bsoncxx::builder::basic ::sub_document subdoc)

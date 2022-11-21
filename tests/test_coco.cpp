@@ -2,6 +2,8 @@
 #include "mongo_db.h"
 #include "mqtt_middleware.h"
 
+using namespace std::chrono_literals;
+
 int main(int argc, char const *argv[])
 {
     mongocxx::instance inst{}; // This should be done only once.
@@ -18,6 +20,8 @@ int main(int argc, char const *argv[])
     auto mqtt = std::make_unique<coco::mqtt_middleware>(cc);
     cc.add_middleware(std::move(mqtt));
     cc.connect();
+
+    std::this_thread::sleep_for(10s);
 
     cc.disconnect();
     return 0;

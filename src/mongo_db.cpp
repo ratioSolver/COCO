@@ -6,7 +6,7 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(const std::string &root, const std::string &mongodb_uri) : coco_db(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]) {}
+    mongo_db::mongo_db(const std::string &root, const std::string &mongodb_uri) : coco_db(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]) { LOG("Connecting to `" + root + "` MongoDB database.."); }
 
     void mongo_db::init()
     {
@@ -45,7 +45,7 @@ namespace coco
         auto result = sensor_types_collection.insert_one(bsoncxx::builder::stream::document{} << "name" << name << "description" << description << bsoncxx::builder::stream::finalize);
         if (result)
         {
-            auto id = result.value().inserted_id().get_string().value.to_string();
+            auto id = result->inserted_id().get_oid().value.to_string();
             coco_db::create_sensor_type(id, name, description);
             return id;
         }
@@ -75,14 +75,16 @@ namespace coco
 
     std::string mongo_db::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
     {
-        auto s_doc = bsoncxx::builder::stream::document{} << "type_id" << bsoncxx::oid{bsoncxx::stdx::string_view{type.get_id()}};
+        auto s_doc = bsoncxx::builder::basic::document{};
+        s_doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{bsoncxx::stdx::string_view{type.get_id()}}));
         if (l)
-            s_doc << "location" << bsoncxx::builder::stream::open_document << "x" << l->x << "y" << l->y << bsoncxx::builder::stream::close_document;
+            s_doc.append(bsoncxx::builder::basic::kvp("location", [&l](bsoncxx::builder::basic ::sub_document subdoc)
+                                                      { subdoc.append(bsoncxx::builder::basic::kvp("x", l->x), bsoncxx::builder::basic::kvp("y", l->y)); }));
 
-        auto result = sensors_collection.insert_one(s_doc << bsoncxx::builder::stream::finalize);
+        auto result = sensors_collection.insert_one(s_doc.view());
         if (result)
         {
-            auto id = result.value().inserted_id().get_string().value.to_string();
+            auto id = result->inserted_id().get_oid().value.to_string();
             coco_db::create_sensor(id, name, type, std::move(l));
             return id;
         }
@@ -119,5 +121,11 @@ namespace coco
         auto result = sensors_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize);
         if (result)
             coco_db::delete_sensor(id);
+    }
+
+    void mongo_db::drop()
+    {
+        db.drop();
+        coco_db::drop();
     }
 } // namespace coco

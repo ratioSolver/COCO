@@ -31,6 +31,8 @@ namespace coco
 
     coco_db &get_database() { return db; }
 
+    void add_middleware(std::unique_ptr<coco_middleware> mw) { middlewares.push_back(std::move(mw)); }
+
   private:
     void tick();
 

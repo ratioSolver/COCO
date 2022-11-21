@@ -1,6 +1,7 @@
 #pragma once
 
 #include "coco_db.h"
+#include <mongocxx/instance.hpp>
 #include <mongocxx/client.hpp>
 
 #define MONGODB_URI(host, port) "mongodb://" host ":" port
@@ -23,6 +24,8 @@ namespace coco
     void set_sensor_name(const std::string &id, const std::string &name) override;
     void set_sensor_location(const std::string &id, std::unique_ptr<location> l) override;
     void delete_sensor(const std::string &id) override;
+
+    void drop() override;
 
   private:
     mongocxx::client conn;

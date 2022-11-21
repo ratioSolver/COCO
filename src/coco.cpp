@@ -333,6 +333,9 @@ namespace coco
             f_str += ')';
 
             s.get().fact = AssertString(env, f_str.c_str());
+
+            for (auto &mw : middlewares)
+                mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + s.get().id, 1);
         }
 
         AssertString(env, ("(configuration (coco_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + "))").c_str());

@@ -19,6 +19,7 @@ int main(int argc, char const *argv[])
     coco::coco cc(db);
     auto mqtt = std::make_unique<coco::mqtt_middleware>(cc);
     cc.add_middleware(std::move(mqtt));
+    cc.load_rules({"rules/rules.clp"});
     cc.connect();
 
     std::this_thread::sleep_for(10s);

@@ -27,12 +27,14 @@ namespace coco
     coco(coco_db &db);
     ~coco();
 
-    void connect();
-    void disconnect();
-
     coco_db &get_database() { return db; }
 
     void add_middleware(std::unique_ptr<coco_middleware> mw) { middlewares.push_back(std::move(mw)); }
+
+    void load_rules(const std::vector<std::string> &files);
+
+    void connect();
+    void disconnect();
 
   private:
     void tick();

@@ -337,9 +337,18 @@ namespace coco
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", NULL);
         AddUDF(env, "delete_solver", "v", 2, 2, "ll", delete_solver, "delete_solver", NULL);
         AddUDF(env, "send_message", "v", 3, 3, "lss", send_message, "send_message", NULL);
+    }
+    coco::~coco()
+    {
+        DestroyEnvironment(env);
+    }
 
+    void coco::load_rules(const std::vector<std::string> &files)
+    {
         LOG("Loading policy rules..");
-        Load(env, "rules/rules.clp");
+        for (const auto &f : files)
+            Load(env, f.c_str());
+
         Reset(env);
 
         AssertString(env, ("(configuration (coco_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + "))").c_str());
@@ -348,10 +357,6 @@ namespace coco
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-    }
-    coco::~coco()
-    {
-        DestroyEnvironment(env);
     }
 
     void coco::connect()

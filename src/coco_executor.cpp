@@ -31,7 +31,6 @@ namespace coco
 
     void coco_executor::started_solving()
     {
-        solved = false;
         json::json j_ss;
         j_ss["type"] = "started_solving";
 
@@ -67,11 +66,14 @@ namespace coco
 
         cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/graph", j_gr, 2, true);
 
-        solved = true;
+        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state " + (exec.is_finished() ? "finished" : "idle") + ")))").c_str(), NULL);
+        Run(cc.env, -1);
+#ifdef VERBOSE_LOG
+        Eval(cc.env, "(facts)", NULL);
+#endif
     }
     void coco_executor::inconsistent_problem()
     {
-        solved = false;
         c_flaw = nullptr;
         c_resolver = nullptr;
 
@@ -226,11 +228,7 @@ namespace coco
 #endif
     }
 
-    void coco_executor::tick()
-    {
-        if (solved)
-            exec.tick();
-    }
+    void coco_executor::tick() { exec.tick(); }
 
     void coco_executor::tick(const semitone::rational &time)
     {
@@ -388,15 +386,6 @@ namespace coco
 
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "end").c_str());
-        Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-        Eval(cc.env, "(facts)", NULL);
-#endif
-    }
-
-    void coco_executor::finished()
-    {
-        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state finished)))").c_str(), NULL);
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);

@@ -4,6 +4,7 @@
 #include "clips.h"
 #include "timer.h"
 #include <list>
+#include <mutex>
 
 #define SOLVERS_TOPIC "/solvers"
 #define SOLVER_TOPIC "/solver"
@@ -52,6 +53,7 @@ namespace coco
 
   private:
     coco_db &db;
+    std::mutex mtx;
     std::list<std::unique_ptr<coco_middleware>> middlewares;
     ratio::time::timer coco_timer;
     std::list<std::unique_ptr<coco_executor>> executors;

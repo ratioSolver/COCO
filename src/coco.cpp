@@ -24,7 +24,7 @@ namespace coco
             return;
 
         auto slv = new ratio::solver::solver();
-        auto exec = new ratio::executor::executor(*slv);
+        auto exec = new ratio::executor::executor(*slv, &e.mtx);
         auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
 
@@ -66,7 +66,7 @@ namespace coco
             return;
 
         auto slv = new ratio::solver::solver();
-        auto exec = new ratio::executor::executor(*slv);
+        auto exec = new ratio::executor::executor(*slv, &e.mtx);
         auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
 
@@ -382,6 +382,7 @@ namespace coco
     }
     void coco::message_arrived(json::json &msg)
     {
+        const std::lock_guard<std::mutex> lock(mtx);
         json::string_val &j_msg_type = msg["type"];
         std::string msg_type = j_msg_type;
 
@@ -397,10 +398,6 @@ namespace coco
             auto id = db.create_sensor_type(st_name, st_description);
             // we create a new fact for the new sensor type..
             db.get_sensor(id).fact = AssertString(env, ("(sensor_type (id " + id + ") (name \"" + st_name + "\") (description \"" + st_description + "\"))").c_str());
-            Run(env, -1);
-#ifdef VERBOSE_LOG
-            Eval(env, "(facts)", NULL);
-#endif
         }
         else if (msg_type == "update_sensor_type")
         {
@@ -416,10 +413,6 @@ namespace coco
                 db.set_sensor_type_name(st_id, st_name);
                 // we update the sensor type fact..
                 Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + st_id + ") (modify ?st (name \"" + st_name + "\")))").c_str(), NULL);
-                Run(env, -1);
-#ifdef VERBOSE_LOG
-                Eval(env, "(facts)", NULL);
-#endif
             }
             if (j_st.has("description"))
             {
@@ -430,27 +423,23 @@ namespace coco
                 db.set_sensor_type_description(st_id, st_description);
                 // we update the sensor type fact..
                 Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + st_id + ") (modify ?st (description \"" + st_description + "\")))").c_str(), NULL);
-                Run(env, -1);
-#ifdef VERBOSE_LOG
-                Eval(env, "(facts)", NULL);
-#endif
-            }
-            else if (msg_type == "delete_sensor_type")
-            {
-                LOG("Deleting existing sensor type..");
-                json::string_val &j_st_id = msg["id"];
-                std::string st_id = j_st_id;
-                auto f = db.get_sensor_type(st_id).fact;
-
-                // we delete the sensor type from the database..
-                db.delete_sensor_type(st_id);
-                // we retract the sensor type fact..
-                Retract(f);
-                Run(env, -1);
-#ifdef VERBOSE_LOG
-                Eval(env, "(facts)", NULL);
-#endif
             }
         }
+        else if (msg_type == "delete_sensor_type")
+        {
+            LOG("Deleting existing sensor type..");
+            json::string_val &j_st_id = msg["id"];
+            std::string st_id = j_st_id;
+            auto f = db.get_sensor_type(st_id).fact;
+
+            // we delete the sensor type from the database..
+            db.delete_sensor_type(st_id);
+            // we retract the sensor type fact..
+            Retract(f);
+        }
+        Run(env, -1);
+#ifdef VERBOSE_LOG
+        Eval(env, "(facts)", NULL);
+#endif
     }
 } // namespace coco

@@ -3,7 +3,6 @@
 #include "core_listener.h"
 #include "solver_listener.h"
 #include "executor_listener.h"
-#include <atomic>
 
 namespace coco
 {
@@ -55,17 +54,13 @@ namespace coco
     void ending(const std::unordered_set<ratio::core::atom *> &atoms) override;
     void end(const std::unordered_set<ratio::core::atom *> &atoms) override;
 
-    void finished() override;
-
     std::string to_task(const ratio::core::atom &atm, const std::string &command);
 
   private:
     coco &cc;
     ratio::executor::executor &exec;
     const std::string type;
-    std::atomic<bool> solved = false;
-    std::atomic<bool> executing = false;
-    uint delay;
+    bool executing = false;
     std::unordered_set<const ratio::solver::flaw *> flaws;
     const ratio::solver::flaw *c_flaw = nullptr;
     std::unordered_set<const ratio::solver::resolver *> resolvers;

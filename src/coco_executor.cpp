@@ -239,6 +239,15 @@ namespace coco
         j_t["time"] = to_json(time);
 
         cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_t);
+
+        if (exec.is_finished())
+        {
+            Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state finished)))").c_str(), NULL);
+            Run(cc.env, -1);
+#ifdef VERBOSE_LOG
+            Eval(cc.env, "(facts)", NULL);
+#endif
+        }
     }
     void coco_executor::starting(const std::unordered_set<ratio::core::atom *> &atoms)
     {

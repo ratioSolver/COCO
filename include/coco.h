@@ -38,7 +38,7 @@ namespace coco
     void tick();
 
     void publish(const std::string &topic, json::json &msg, int qos = 0, bool retained = false);
-    void message_arrived(json::json &msg);
+    void message_arrived(const std::string &topic, json::json &msg);
 
     friend void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);

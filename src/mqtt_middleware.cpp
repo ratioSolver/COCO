@@ -56,6 +56,6 @@ namespace coco
     void mqtt_middleware::message_arrived(mqtt::const_message_ptr msg)
     {
         auto j_msg = json::load(msg->get_payload());
-        coco_middleware::message_arrived(j_msg);
+        coco_middleware::message_arrived(msg->get_topic(), j_msg);
     }
 } // namespace coco

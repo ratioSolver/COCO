@@ -50,6 +50,7 @@ namespace coco
     friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void send_message(Environment *env, UDFContext *udfc, UDFValue *out);
 
   private:
     coco_db &db;

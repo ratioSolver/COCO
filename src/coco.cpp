@@ -303,6 +303,27 @@ namespace coco
         e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
     }
 
+    void send_message([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    {
+        LOG_DEBUG("Sending message..");
+
+        UDFValue coco_ptr;
+        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+            return;
+        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+
+        UDFValue topic;
+        if (!UDFNextArgument(udfc, STRING_BIT, &topic))
+            return;
+
+        UDFValue message;
+        if (!UDFNextArgument(udfc, STRING_BIT, &message))
+            return;
+
+        auto msg = json::load(message.lexemeValue->contents);
+        e.publish(e.db.get_root() + '/' + topic.lexemeValue->contents, msg);
+    }
+
     coco::coco(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
     {
         AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
@@ -315,6 +336,7 @@ namespace coco
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", NULL);
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", NULL);
         AddUDF(env, "delete_solver", "v", 2, 2, "ll", delete_solver, "delete_solver", NULL);
+        AddUDF(env, "send_message", "v", 3, 3, "lss", send_message, "send_message", NULL);
 
         LOG("Loading policy rules..");
         Load(env, "rules/rules.clp");

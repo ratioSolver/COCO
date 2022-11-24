@@ -66,7 +66,7 @@ namespace coco
 
         cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/graph", j_gr, 2, true);
 
-        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state " + (exec.is_finished() ? "finished" : "idle") + ")))").c_str(), NULL);
+        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state " + (exec.is_finished() ? "finished" : (exec.is_executing() ? "executing" : "idle")) + ")))").c_str(), NULL);
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);

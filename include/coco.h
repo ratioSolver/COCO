@@ -31,9 +31,22 @@ namespace coco
 
     void add_middleware(std::unique_ptr<coco_middleware> mw) { middlewares.push_back(std::move(mw)); }
 
+    /**
+     * @brief Loads the rules from the given files.
+     *
+     * @param files The files to load.
+     */
     void load_rules(const std::vector<std::string> &files);
 
+    /**
+     * @brief Connects all the middlewares and initializes the database.
+     *
+     */
     void connect();
+    /**
+     * @brief Disconnects all the middlewares.
+     *
+     */
     void disconnect();
 
   private:

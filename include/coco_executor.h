@@ -17,7 +17,15 @@ namespace coco
 
     ratio::executor::executor &get_executor() { return exec; }
 
+    /**
+     * @brief Start the execution of the current plan.
+     *
+     */
     void start_execution() { executing = true; }
+    /**
+     * @brief Pause the execution of the current plan.
+     *
+     */
     void pause_execution() { executing = false; }
 
   private:

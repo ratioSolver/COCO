@@ -13,7 +13,9 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 find_package(Threads REQUIRED)
-find_package(PahoMqttCpp REQUIRED)
+if(NOT PahoMqttCpp_FOUND)
+    find_package(PahoMqttCpp REQUIRED)
+endif()
 find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 

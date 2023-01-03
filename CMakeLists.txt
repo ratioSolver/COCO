@@ -35,6 +35,12 @@ option(SOLVING_MONITORING "Publishes any changes during the resolution process" 
 
 set(COMPUTE_NAMES ON CACHE BOOL "Computes the objects' names" FORCE)
 
+message(STATUS "CoCo root:              ${COCO_ROOT}")
+message(STATUS "MQTT host:              ${MQTT_HOST}")
+message(STATUS "MQTT port:              ${MQTT_PORT}")
+message(STATUS "MongoDB host:           ${MONGODB_HOST}")
+message(STATUS "MongoDB port:           ${MONGODB_PORT}")
+
 add_subdirectory(extern/plexa)
 
 file(GLOB COCO_SOURCES src/*.cpp)
@@ -45,7 +51,7 @@ GENERATE_EXPORT_HEADER(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> $<INSTALL_INTERFACE:> ${CLIPS_INCLUDE_DIR} ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})
 target_link_directories(${PROJECT_NAME} PUBLIC ${CLIPS_LIB_DIR})
 target_link_libraries(${PROJECT_NAME} PRIVATE PlExA oRatioSolver ratioCore RiDDLe SeMiTONE json ${CMAKE_THREAD_LIBS_INIT} PahoMqttCpp::paho-mqttpp3-static clips mongo::bsoncxx_shared mongo::mongocxx_shared)
-target_compile_definitions(${PROJECT_NAME} PRIVATE COCO_ROOT="${COCO_ROOT}" MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}" MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
+target_compile_definitions(${PROJECT_NAME} PUBLIC COCO_ROOT="${COCO_ROOT}" MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}" MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 
 message(STATUS "Solving monitoring:     ${SOLVING_MONITORING}")
 if(SOLVING_MONITORING)

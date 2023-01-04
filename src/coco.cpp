@@ -366,7 +366,10 @@ namespace coco
         coco_timer.start();
 
         db.init();
+    }
 
+    void coco::init()
+    {
         for (const auto &st : db.get_all_sensor_types())
             st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
 

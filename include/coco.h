@@ -17,11 +17,13 @@ namespace coco
   class coco_middleware;
   class coco_db;
   class coco_executor;
+  class coco_listener;
 
   class coco
   {
     friend class coco_middleware;
     friend class coco_executor;
+    friend class coco_listener;
 
   public:
     coco(coco_db &db);
@@ -43,6 +45,11 @@ namespace coco
      *
      */
     void connect();
+    /**
+     * @brief Initializes the knowledge base.
+     *
+     */
+    void init();
     /**
      * @brief Disconnects all the middlewares.
      *
@@ -74,5 +81,6 @@ namespace coco
     ratio::time::timer coco_timer;
     std::list<std::unique_ptr<coco_executor>> executors;
     Environment *env;
+    std::vector<coco_listener *> listeners; // the solver listeners..
   };
 } // namespace coco

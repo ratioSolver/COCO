@@ -7,6 +7,8 @@
 
 namespace coco
 {
+  class coco_executor;
+
   class coco_listener
   {
     friend class coco;
@@ -19,12 +21,18 @@ namespace coco
     coco &get_coco() { return cc; }
 
   private:
+    virtual void new_solver([[maybe_unused]] const coco_executor &exec) {}
+
+    virtual void started_solving([[maybe_unused]] const coco_executor &exec) {}
+    virtual void solution_found([[maybe_unused]] const coco_executor &exec) {}
+    virtual void inconsistent_problem([[maybe_unused]] const coco_executor &exec) {}
+
     virtual void message_arrived([[maybe_unused]] const std::string &topic, [[maybe_unused]] json::json &msg) {}
 
-    virtual void tick([[maybe_unused]] const semitone::rational &time) {}
+    virtual void tick([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const semitone::rational &time) {}
 
-    virtual void start([[maybe_unused]] const std::unordered_set<ratio::core::atom *> &atoms) {}
-    virtual void end([[maybe_unused]] const std::unordered_set<ratio::core::atom *> &atoms) {}
+    virtual void start([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::unordered_set<ratio::core::atom *> &atoms) {}
+    virtual void end([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::unordered_set<ratio::core::atom *> &atoms) {}
 
   protected:
     coco &cc;

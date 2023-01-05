@@ -1,5 +1,6 @@
 #pragma once
 
+#include "coco_export.h"
 #include "core_listener.h"
 #include "solver_listener.h"
 #include "executor_listener.h"
@@ -13,9 +14,21 @@ namespace coco
     friend class coco;
 
   public:
-    coco_executor(coco &cc, ratio::executor::executor &exec, const std::string &type);
+    COCO_EXPORT coco_executor(coco &cc, ratio::executor::executor &exec, const std::string &type);
 
+    /**
+     * @brief Get the executor object associated to this executor.
+     *
+     * @return ratio::executor::executor&
+     */
     ratio::executor::executor &get_executor() { return exec; }
+
+    /**
+     * @brief Get the type of the executor.
+     *
+     * @return const std::string&
+     */
+    const std::string &get_type() const { return type; }
 
     /**
      * @brief Start the execution of the current plan.
@@ -64,6 +77,9 @@ namespace coco
 
     std::string to_task(const ratio::core::atom &atm, const std::string &command);
 
+    friend COCO_EXPORT json::json to_state(const coco_executor &rhs) noexcept;
+    friend COCO_EXPORT json::json to_graph(const coco_executor &rhs) noexcept;
+
   private:
     coco &cc;
     ratio::executor::executor &exec;
@@ -76,4 +92,6 @@ namespace coco
     semitone::rational current_time;
     std::unordered_set<ratio::core::atom *> executing_atoms;
   };
+
+  inline uintptr_t get_id(const coco_executor &exec) noexcept { return reinterpret_cast<uintptr_t>(&exec); }
 } // namespace coco

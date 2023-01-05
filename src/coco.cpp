@@ -3,6 +3,7 @@
 #include "coco_middleware.h"
 #include "coco_executor.h"
 #include "coco_db.h"
+#include "coco_listener.h"
 
 namespace coco
 {
@@ -324,7 +325,7 @@ namespace coco
         e.publish(e.db.get_root() + '/' + topic.lexemeValue->contents, msg);
     }
 
-    coco::coco(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
+    COCO_EXPORT coco::coco(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
     {
         AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
         AddUDF(env, "new_solver_files", "l", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);
@@ -338,12 +339,12 @@ namespace coco
         AddUDF(env, "delete_solver", "v", 2, 2, "ll", delete_solver, "delete_solver", NULL);
         AddUDF(env, "send_message", "v", 3, 3, "lss", send_message, "send_message", NULL);
     }
-    coco::~coco()
+    COCO_EXPORT coco::~coco()
     {
         DestroyEnvironment(env);
     }
 
-    void coco::load_rules(const std::vector<std::string> &files)
+    COCO_EXPORT void coco::load_rules(const std::vector<std::string> &files)
     {
         LOG("Loading policy rules..");
         for (const auto &f : files)
@@ -359,7 +360,7 @@ namespace coco
 #endif
     }
 
-    void coco::connect()
+    COCO_EXPORT void coco::connect()
     {
         for (auto &mdlw : middlewares)
             mdlw->connect();
@@ -368,7 +369,7 @@ namespace coco
         db.init();
     }
 
-    void coco::init()
+    COCO_EXPORT void coco::init()
     {
         for (const auto &st : db.get_all_sensor_types())
             st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
@@ -392,7 +393,7 @@ namespace coco
 #endif
     }
 
-    void coco::disconnect()
+    COCO_EXPORT void coco::disconnect()
     {
         for (auto &mdlw : middlewares)
             mdlw->disconnect();
@@ -579,5 +580,50 @@ namespace coco
             Eval(env, "(facts)", NULL);
 #endif
         }
+    }
+
+    void coco::fire_new_solver(const coco_executor &exec)
+    {
+        for (const auto &l : listeners)
+            l->new_solver(exec);
+    }
+
+    void coco::fire_started_solving(const coco_executor &exec)
+    {
+        for (const auto &l : listeners)
+            l->started_solving(exec);
+    }
+    void coco::fire_solution_found(const coco_executor &exec)
+    {
+        for (const auto &l : listeners)
+            l->solution_found(exec);
+    }
+    void coco::fire_inconsistent_problem(const coco_executor &exec)
+    {
+        for (const auto &l : listeners)
+            l->inconsistent_problem(exec);
+    }
+
+    void coco::fire_message_arrived(const std::string &topic, json::json &msg)
+    {
+        for (const auto &l : listeners)
+            l->message_arrived(topic, msg);
+    }
+
+    void coco::fire_tick(const coco_executor &exec, const semitone::rational &time)
+    {
+        for (const auto &l : listeners)
+            l->tick(exec, time);
+    }
+
+    void coco::fire_start(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms)
+    {
+        for (const auto &l : listeners)
+            l->start(exec, atoms);
+    }
+    void coco::fire_end(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms)
+    {
+        for (const auto &l : listeners)
+            l->end(exec, atoms);
     }
 } // namespace coco

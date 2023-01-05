@@ -6,7 +6,7 @@
 
 namespace coco
 {
-    coco_executor::coco_executor(coco &cc, ratio::executor::executor &exec, const std::string &type) : core_listener(exec.get_solver()), solver_listener(exec.get_solver()), executor_listener(exec), cc(cc), exec(exec), type(type) {}
+    COCO_EXPORT coco_executor::coco_executor(coco &cc, ratio::executor::executor &exec, const std::string &type) : core_listener(exec.get_solver()), solver_listener(exec.get_solver()), executor_listener(exec), cc(cc), exec(exec), type(type) {}
 
     void coco_executor::log([[maybe_unused]] const std::string &msg) {}
     void coco_executor::read([[maybe_unused]] const std::string &script) {}
@@ -15,17 +15,10 @@ namespace coco
     void coco_executor::state_changed()
     {
 #ifdef SOLVING_MONITORING
-        json::json j_sc;
+        json::json j_sc = to_state(*this);
         j_sc["type"] = "state_changed";
-        j_sc["state"] = to_json(exec.get_solver());
-        j_sc["timelines"] = to_timelines(exec.get_solver());
-        json::array j_executing;
-        for (const auto &atm : executing)
-            j_executing.push_back(get_id(*atm));
-        j_sc["executing"] = std::move(j_executing);
-        j_sc["time"] = to_json(current_time);
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sc, 2, true));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sc, 2, true);
 #endif
     }
 
@@ -41,28 +34,13 @@ namespace coco
         c_flaw = nullptr;
         c_resolver = nullptr;
 
-        json::json j_sf;
+        json::json j_sf = to_state(*this);
         j_sf["type"] = "solution_found";
-        j_sf["state"] = to_json(exec.get_solver());
-        j_sf["timelines"] = to_timelines(exec.get_solver());
-        json::array j_executing;
-        for (const auto &atm : executing_atoms)
-            j_executing.push_back(get_id(*atm));
-        j_sf["executing"] = std::move(j_executing);
-        j_sf["time"] = to_json(current_time);
 
         cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sf, 2, true);
 
-        json::json j_gr;
+        json::json j_gr = to_graph(*this);
         j_gr["type"] = "graph";
-        json::array j_flaws;
-        for (const auto &f : flaws)
-            j_flaws.push_back(to_json(*f));
-        j_gr["flaws"] = std::move(j_flaws);
-        json::array j_resolvers;
-        for (const auto &r : resolvers)
-            j_resolvers.push_back(to_json(*r));
-        j_gr["resolvers"] = std::move(j_resolvers);
 
         cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/graph", j_gr, 2, true);
 
@@ -114,7 +92,7 @@ namespace coco
         j_fc["pos"] = std::move(j_pos);
         j_fc["data"] = f.get_data();
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fc);
 #endif
     }
     void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -125,7 +103,7 @@ namespace coco
         j_fsc["id"] = get_id(f);
         j_fsc["state"] = slv.get_sat_core()->value(f.get_phi());
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fsc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fsc);
 #endif
     }
     void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -136,7 +114,7 @@ namespace coco
         j_fcc["id"] = get_id(f);
         j_fcc["cost"] = to_json(f.get_estimated_cost());
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fcc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fcc);
 #endif
     }
     void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::solver::flaw &f)
@@ -153,7 +131,7 @@ namespace coco
             j_pos["ub"] = ub;
         j_fpc["pos"] = std::move(j_pos);
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fpc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fpc);
 #endif
     }
     void coco_executor::current_flaw(const ratio::solver::flaw &f)
@@ -166,7 +144,7 @@ namespace coco
         j_cf["type"] = "current_flaw";
         j_cf["id"] = get_id(f);
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cf));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cf);
 #endif
     }
 
@@ -189,7 +167,7 @@ namespace coco
         j_rc["intrinsic_cost"] = to_json(r.get_intrinsic_cost());
         j_rc["data"] = r.get_data();
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rc);
 #endif
     }
     void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::solver::resolver &r)
@@ -200,7 +178,7 @@ namespace coco
         j_rsc["id"] = get_id(r);
         j_rsc["state"] = slv.get_sat_core()->value(r.get_rho());
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rsc));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rsc);
 #endif
     }
     void coco_executor::current_resolver(const ratio::solver::resolver &r)
@@ -212,7 +190,7 @@ namespace coco
         j_cr["type"] = "current_resolver";
         j_cr["id"] = get_id(r);
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cr));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cr);
 #endif
     }
 
@@ -224,7 +202,7 @@ namespace coco
         j_cla["flaw_id"] = get_id(f);
         j_cla["resolver_id"] = get_id(r);
 
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cla));
+        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cla);
 #endif
     }
 
@@ -459,5 +437,35 @@ namespace coco
         task_str += " " + pars_str + " " + vals_str + ")";
 
         return task_str;
+    }
+
+    COCO_EXPORT json::json to_state(const coco_executor &rhs) noexcept
+    {
+        json::json j_state;
+        j_state["state"] = to_json(rhs.slv);
+        j_state["timelines"] = to_timelines(rhs.slv);
+        json::array j_executing;
+        for (const auto &atm : rhs.executing_atoms)
+            j_executing.push_back(get_id(*atm));
+        j_state["executing"] = std::move(j_executing);
+        j_state["time"] = to_json(rhs.current_time);
+        return j_state;
+    }
+    COCO_EXPORT json::json to_graph(const coco_executor &rhs) noexcept
+    {
+        json::json j_graph;
+        json::array j_flaws;
+        for (const auto &f : rhs.flaws)
+            j_flaws.push_back(to_json(*f));
+        j_graph["flaws"] = std::move(j_flaws);
+        if (rhs.c_flaw)
+            j_graph["current_flaw"] = get_id(*rhs.c_flaw);
+        json::array j_resolvers;
+        for (const auto &r : rhs.resolvers)
+            j_resolvers.push_back(to_json(*r));
+        j_graph["resolvers"] = std::move(j_resolvers);
+        if (rhs.c_resolver)
+            j_graph["current_resolver"] = get_id(*rhs.c_resolver);
+        return j_graph;
     }
 } // namespace use

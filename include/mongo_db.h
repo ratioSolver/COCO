@@ -20,7 +20,7 @@ namespace coco
     void set_sensor_type_description(const std::string &id, const std::string &description) override;
     void delete_sensor_type(const std::string &id) override;
 
-    std::string create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l) override;
+    std::string create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l = nullptr) override;
     void set_sensor_name(const std::string &id, const std::string &name) override;
     void set_sensor_location(const std::string &id, std::unique_ptr<location> l) override;
     void delete_sensor(const std::string &id) override;

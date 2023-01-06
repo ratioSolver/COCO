@@ -70,7 +70,7 @@ namespace coco
      * @param l the location of the sensor.
      * @return std::string the id of the created sensor.
      */
-    virtual std::string create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
+    virtual std::string create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l = nullptr);
     /**
      * @brief Get all the sensors object.
      *
@@ -99,10 +99,10 @@ namespace coco
      */
     virtual void set_sensor_location(const std::string &id, std::unique_ptr<location> l);
     /**
-     * @brief Set the location to the sensor object with the given id.
+     * @brief Set the value of the sensor object with the given id.
      *
      * @param id the id of the sensor.
-     * @param l the new location of the sensor.
+     * @param l the new value of the sensor.
      */
     void set_sensor_value(const std::string &id, std::unique_ptr<json::json> v);
     /**

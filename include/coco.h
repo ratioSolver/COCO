@@ -84,6 +84,20 @@ namespace coco
      */
     COCO_EXPORT void disconnect();
 
+    /**
+     * @brief Get the environment object.
+     *
+     * @return Environment* the environment.
+     */
+    Environment *get_environment() { return env; }
+
+    /**
+     * @brief Get all the registered listeners.
+     *
+     * @return const std::vector<coco_listener *>& the listeners.
+     */
+    const std::vector<coco_listener *> &get_listeners() const { return listeners; }
+
   private:
     void tick();
 

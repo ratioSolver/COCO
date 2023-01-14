@@ -17,21 +17,21 @@
 
 namespace coco
 {
-  class coco;
+  class coco_core;
   class coco_middleware;
   class coco_db;
   class coco_executor;
   class coco_listener;
 
-  class coco
+  class coco_core
   {
     friend class coco_middleware;
     friend class coco_executor;
     friend class coco_listener;
 
   public:
-    COCO_EXPORT coco(coco_db &db);
-    COCO_EXPORT ~coco();
+    COCO_EXPORT coco_core(coco_db &db);
+    COCO_EXPORT ~coco_core();
 
     /**
      * @brief Get the database object.

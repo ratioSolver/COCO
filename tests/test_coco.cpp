@@ -1,4 +1,4 @@
-#include "coco.h"
+#include "coco_core.h"
 #include "mongo_db.h"
 #include "mqtt_middleware.h"
 
@@ -16,7 +16,7 @@ int main(int argc, char const *argv[])
     temp0_loc->y = 15.083;
     auto temp0_id = db.create_sensor("Temp0", db.get_sensor_type(temp_type_id), std::move(temp0_loc));
 
-    coco::coco cc(db);
+    coco::coco_core cc(db);
     auto mqtt = std::make_unique<coco::mqtt_middleware>(cc);
     cc.add_middleware(std::move(mqtt));
     cc.load_rules({"rules/rules.clp"});

@@ -7,7 +7,7 @@
 
 namespace coco
 {
-  class coco;
+  class coco_core;
   class coco_db;
 
   class coco_db

@@ -1,4 +1,4 @@
-#include "coco.h"
+#include "coco_core.h"
 #include "logging.h"
 #include "coco_middleware.h"
 #include "coco_executor.h"
@@ -14,7 +14,7 @@ namespace coco
         UDFValue coco_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue solver_type;
         if (!UDFNextArgument(udfc, LEXEME_BITS, &solver_type))
@@ -56,7 +56,7 @@ namespace coco
         UDFValue coco_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue solver_type;
         if (!UDFFirstArgument(udfc, LEXEME_BITS, &solver_type))
@@ -101,7 +101,7 @@ namespace coco
         UDFValue coco_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
@@ -125,7 +125,7 @@ namespace coco
         UDFValue coco_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
@@ -280,7 +280,7 @@ namespace coco
         UDFValue coco_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
@@ -311,7 +311,7 @@ namespace coco
         UDFValue coco_ptr;
         if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
             return;
-        auto &e = *reinterpret_cast<coco *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue topic;
         if (!UDFNextArgument(udfc, STRING_BIT, &topic))
@@ -325,7 +325,7 @@ namespace coco
         e.publish(e.db.get_root() + '/' + topic.lexemeValue->contents, msg);
     }
 
-    COCO_EXPORT coco::coco(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco::tick, this)), env(CreateEnvironment())
+    COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())
     {
         AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
         AddUDF(env, "new_solver_files", "l", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);
@@ -339,12 +339,12 @@ namespace coco
         AddUDF(env, "delete_solver", "v", 2, 2, "ll", delete_solver, "delete_solver", NULL);
         AddUDF(env, "send_message", "v", 3, 3, "lss", send_message, "send_message", NULL);
     }
-    COCO_EXPORT coco::~coco()
+    COCO_EXPORT coco_core::~coco_core()
     {
         DestroyEnvironment(env);
     }
 
-    COCO_EXPORT void coco::load_rules(const std::vector<std::string> &files)
+    COCO_EXPORT void coco_core::load_rules(const std::vector<std::string> &files)
     {
         LOG("Loading policy rules..");
         for (const auto &f : files)
@@ -360,7 +360,7 @@ namespace coco
 #endif
     }
 
-    COCO_EXPORT void coco::connect()
+    COCO_EXPORT void coco_core::connect()
     {
         for (auto &mdlw : middlewares)
             mdlw->connect();
@@ -369,7 +369,7 @@ namespace coco
         db.init();
     }
 
-    COCO_EXPORT void coco::init()
+    COCO_EXPORT void coco_core::init()
     {
         for (const auto &st : db.get_all_sensor_types())
             st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
@@ -393,25 +393,25 @@ namespace coco
 #endif
     }
 
-    COCO_EXPORT void coco::disconnect()
+    COCO_EXPORT void coco_core::disconnect()
     {
         for (auto &mdlw : middlewares)
             mdlw->disconnect();
         coco_timer.stop();
     }
 
-    void coco::tick()
+    void coco_core::tick()
     {
         for (auto &exec : executors)
             exec->tick();
     }
 
-    void coco::publish(const std::string &topic, json::json &msg, int qos, bool retained)
+    void coco_core::publish(const std::string &topic, json::json &msg, int qos, bool retained)
     {
         for (auto &mdlw : middlewares)
             mdlw->publish(topic, msg, qos, retained);
     }
-    void coco::message_arrived(const std::string &topic, json::json &msg)
+    void coco_core::message_arrived(const std::string &topic, json::json &msg)
     {
         const std::lock_guard<std::mutex> lock(mtx);
 
@@ -582,46 +582,46 @@ namespace coco
         }
     }
 
-    void coco::fire_new_solver(const coco_executor &exec)
+    void coco_core::fire_new_solver(const coco_executor &exec)
     {
         for (const auto &l : listeners)
             l->new_solver(exec);
     }
 
-    void coco::fire_started_solving(const coco_executor &exec)
+    void coco_core::fire_started_solving(const coco_executor &exec)
     {
         for (const auto &l : listeners)
             l->started_solving(exec);
     }
-    void coco::fire_solution_found(const coco_executor &exec)
+    void coco_core::fire_solution_found(const coco_executor &exec)
     {
         for (const auto &l : listeners)
             l->solution_found(exec);
     }
-    void coco::fire_inconsistent_problem(const coco_executor &exec)
+    void coco_core::fire_inconsistent_problem(const coco_executor &exec)
     {
         for (const auto &l : listeners)
             l->inconsistent_problem(exec);
     }
 
-    void coco::fire_message_arrived(const std::string &topic, json::json &msg)
+    void coco_core::fire_message_arrived(const std::string &topic, json::json &msg)
     {
         for (const auto &l : listeners)
             l->message_arrived(topic, msg);
     }
 
-    void coco::fire_tick(const coco_executor &exec, const semitone::rational &time)
+    void coco_core::fire_tick(const coco_executor &exec, const semitone::rational &time)
     {
         for (const auto &l : listeners)
             l->tick(exec, time);
     }
 
-    void coco::fire_start(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms)
+    void coco_core::fire_start(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms)
     {
         for (const auto &l : listeners)
             l->start(exec, atoms);
     }
-    void coco::fire_end(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms)
+    void coco_core::fire_end(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms)
     {
         for (const auto &l : listeners)
             l->end(exec, atoms);

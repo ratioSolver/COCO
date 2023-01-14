@@ -1,12 +1,12 @@
 #include "coco_executor.h"
 #include "item.h"
 #include "predicate.h"
-#include "coco.h"
+#include "coco_core.h"
 #include "coco_db.h"
 
 namespace coco
 {
-    COCO_EXPORT coco_executor::coco_executor(coco &cc, ratio::executor::executor &exec, const std::string &type) : core_listener(exec.get_solver()), solver_listener(exec.get_solver()), executor_listener(exec), cc(cc), exec(exec), type(type) {}
+    COCO_EXPORT coco_executor::coco_executor(coco_core &cc, ratio::executor::executor &exec, const std::string &type) : core_listener(exec.get_solver()), solver_listener(exec.get_solver()), executor_listener(exec), cc(cc), exec(exec), type(type) {}
 
     void coco_executor::log([[maybe_unused]] const std::string &msg) {}
     void coco_executor::read([[maybe_unused]] const std::string &script) {}

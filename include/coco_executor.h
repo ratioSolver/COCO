@@ -7,14 +7,14 @@
 
 namespace coco
 {
-  class coco;
+  class coco_core;
 
   class coco_executor : public ratio::core::core_listener, public ratio::solver::solver_listener, public ratio::executor::executor_listener
   {
-    friend class coco;
+    friend class coco_core;
 
   public:
-    COCO_EXPORT coco_executor(coco &cc, ratio::executor::executor &exec, const std::string &type);
+    COCO_EXPORT coco_executor(coco_core &cc, ratio::executor::executor &exec, const std::string &type);
 
     /**
      * @brief Get the executor object associated to this executor.
@@ -81,7 +81,7 @@ namespace coco
     friend COCO_EXPORT json::json to_graph(const coco_executor &rhs) noexcept;
 
   private:
-    coco &cc;
+    coco_core &cc;
     ratio::executor::executor &exec;
     const std::string type;
     bool executing = false;

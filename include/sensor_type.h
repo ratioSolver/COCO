@@ -5,12 +5,12 @@
 
 namespace coco
 {
-  class coco;
+  class coco_core;
   class coco_db;
 
   class sensor_type
   {
-    friend class coco;
+    friend class coco_core;
     friend class coco_db;
 
   public:

@@ -4,12 +4,12 @@
 
 namespace coco
 {
-  class coco;
+  class coco_core;
 
   class coco_middleware
   {
   public:
-    coco_middleware(coco &cc);
+    coco_middleware(coco_core &cc);
     virtual ~coco_middleware() = default;
 
     /**
@@ -47,6 +47,6 @@ namespace coco
     void message_arrived(const std::string &topic, json::json &msg);
 
   protected:
-    coco &cc;
+    coco_core &cc;
   };
 } // namespace coco

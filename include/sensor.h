@@ -44,6 +44,13 @@ namespace coco
      */
     const sensor_type &get_type() const { return type; }
     /**
+     * @brief Check whether the sensor has a location.
+     *
+     * @return true if the sensor has a location.
+     * @return false if the sensor has no location.
+     */
+    bool has_location() const { return loc.operator bool(); }
+    /**
      * @brief Get the location of the sensor.
      *
      * @return const location& the location of the sensor.

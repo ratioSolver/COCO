@@ -85,13 +85,6 @@ namespace coco
     COCO_EXPORT void disconnect();
 
     /**
-     * @brief Get the environment object.
-     *
-     * @return Environment* the environment.
-     */
-    Environment *get_environment() { return env; }
-
-    /**
      * @brief Get all the registered listeners.
      *
      * @return const std::vector<coco_listener *>& the listeners.
@@ -136,7 +129,9 @@ namespace coco
     std::list<std::unique_ptr<coco_middleware>> middlewares;
     ratio::time::timer coco_timer;
     std::list<std::unique_ptr<coco_executor>> executors;
-    Environment *env;
     std::vector<coco_listener *> listeners; // the coco listeners..
+
+  protected:
+    Environment *env;
   };
 } // namespace coco

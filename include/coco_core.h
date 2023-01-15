@@ -22,6 +22,9 @@ namespace coco
   class coco_db;
   class coco_executor;
   class coco_listener;
+  class sensor_type;
+  class sensor;
+  class location;
 
   class coco_core
   {
@@ -84,17 +87,32 @@ namespace coco
      */
     COCO_EXPORT void disconnect();
 
+    COCO_EXPORT void create_sensor_type(const std::string &name, const std::string &description);
+    COCO_EXPORT void set_sensor_type_name(const sensor_type &type, const std::string &name);
+    COCO_EXPORT void set_sensor_type_description(const sensor_type &type, const std::string &description);
+    COCO_EXPORT void delete_sensor_type(const sensor_type &type);
+
+    COCO_EXPORT void create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
+    COCO_EXPORT void set_sensor_name(const sensor &s, const std::string &name);
+    COCO_EXPORT void set_sensor_location(const sensor &s, std::unique_ptr<location> l);
+    COCO_EXPORT void delete_sensor(const sensor &s);
+
+    COCO_EXPORT void set_sensor_value(const sensor &s, json::json &value, bool republish = true);
+
+  protected:
     /**
-     * @brief Get all the registered listeners.
+     * @brief Publish a message to the given topic.
      *
-     * @return const std::vector<coco_listener *>& the listeners.
+     * @param topic The topic to publish to.
+     * @param msg The message to publish.
+     * @param qos The quality of service.
+     * @param retained Whether the message is retained.
      */
-    const std::vector<coco_listener *> &get_listeners() const { return listeners; }
+    void publish(const std::string &topic, json::json &msg, int qos = 0, bool retained = false);
 
   private:
     void tick();
 
-    void publish(const std::string &topic, json::json &msg, int qos = 0, bool retained = false);
     void message_arrived(const std::string &topic, json::json &msg);
 
     friend void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);

@@ -74,6 +74,7 @@ namespace coco
     std::string name;
     const sensor_type &type;
     std::unique_ptr<location> loc;
+    int64_t last_update = 0;
     std::unique_ptr<json::json> value;
     Fact *fact = nullptr;
   };

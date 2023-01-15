@@ -102,9 +102,10 @@ namespace coco
      * @brief Set the value of the sensor object with the given id.
      *
      * @param id the id of the sensor.
-     * @param l the new value of the sensor.
+     * @param time the time of the sensor value.
+     * @param val the value of the sensor.
      */
-    void set_sensor_value(const std::string &id, std::unique_ptr<json::json> v);
+    virtual void set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, json::json &val);
     /**
      * @brief Delete the sensor object with the given id.
      *

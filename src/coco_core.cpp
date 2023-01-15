@@ -566,10 +566,16 @@ namespace coco
 
     COCO_EXPORT void coco_core::set_sensor_value(const sensor &s, json::json &value, bool republish)
     {
+        if (republish)
+            publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value);
+
         LOG("Setting sensor value..");
         json::object &j_val = value;
 
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        db.set_sensor_value(s.id, time, value);
+
         std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time) + ") (data";
         for (const auto &[id, val] : j_val)
         {
@@ -584,13 +590,6 @@ namespace coco
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-
-        if (republish)
-            publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value);
-
-        auto val = std::make_unique<json::json>(std::move(value));
-        db.get_sensor(s.id).last_update = time;
-        db.get_sensor(s.id).value.swap(val);
 
         Retract(sv_f);
         Run(env, -1);

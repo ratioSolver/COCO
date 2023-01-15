@@ -117,6 +117,12 @@ namespace coco
                 coco_db::set_sensor_location(id, std::move(l));
         }
     }
+    void mongo_db::set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, json::json &val)
+    {
+        auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << "timestamp" << bsoncxx::types::b_date{std::chrono::milliseconds{time}} << "value" << bsoncxx::from_json(val.dump()) << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_sensor_value(id, time, val);
+    }
     void mongo_db::delete_sensor(const std::string &id)
     {
         auto result = sensors_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize);
@@ -128,5 +134,6 @@ namespace coco
     {
         db.drop();
         coco_db::drop();
+        sensor_data_collection.create_index(bsoncxx::builder::stream::document{} << "sensor_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize);
     }
 } // namespace coco

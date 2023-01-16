@@ -10,6 +10,10 @@ namespace coco
 
     void mongo_db::init()
     {
+        for (const auto &c : conn.uri().hosts())
+        {
+            LOG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
+        }
         LOG("Retrieving all sensor types..");
         for (auto doc : sensor_types_collection.find({}))
         {
@@ -18,6 +22,7 @@ namespace coco
             auto description = doc["description"].get_string().value.to_string();
             coco_db::create_sensor_type(id, name, description);
         }
+        LOG("Retrieved " + std::to_string(get_all_sensor_types().size()) + " sensor types..");
 
         LOG("Retrieving all sensors..");
         for (auto doc : sensors_collection.find({}))
@@ -39,6 +44,7 @@ namespace coco
             }
             coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
         }
+        LOG("Retrieved " + std::to_string(get_all_sensors().size()) + " sensors..");
     }
     std::string mongo_db::create_sensor_type(const std::string &name, const std::string &description)
     {

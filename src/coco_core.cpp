@@ -413,13 +413,7 @@ namespace coco
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-        // we publish the new sensor type to the network..
-        json::json msg;
-        msg["type"] = "sensor_type_created";
-        msg["id"] = id;
-        msg["name"] = name;
-        msg["description"] = description;
-        publish(db.get_root() + SENSORS_TOPIC, msg);
+        fire_new_sensor_type(db.get_sensor_type(id));
     }
     COCO_EXPORT void coco_core::set_sensor_type_name(const sensor_type &type, const std::string &name)
     {
@@ -433,12 +427,7 @@ namespace coco
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-        // we publish the new sensor type to the network..
-        json::json msg;
-        msg["type"] = "sensor_type_updated";
-        msg["id"] = type.id;
-        msg["name"] = name;
-        publish(db.get_root() + SENSORS_TOPIC, msg);
+        fire_updated_sensor_type(type);
     }
     COCO_EXPORT void coco_core::set_sensor_type_description(const sensor_type &type, const std::string &description)
     {
@@ -452,17 +441,13 @@ namespace coco
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-        // we publish the new sensor type to the network..
-        json::json msg;
-        msg["type"] = "sensor_type_updated";
-        msg["id"] = type.id;
-        msg["description"] = description;
-        publish(db.get_root() + SENSORS_TOPIC, msg);
+        fire_updated_sensor_type(type);
     }
     COCO_EXPORT void coco_core::delete_sensor_type(const sensor_type &type)
     {
         LOG("Deleting sensor type..");
         const std::lock_guard<std::mutex> lock(mtx);
+        fire_removed_sensor_type(type);
         auto f = db.get_sensor_type(type.id).fact;
         // we delete the sensor type from the database..
         db.delete_sensor_type(type.id);
@@ -481,27 +466,17 @@ namespace coco
         // we store the sensor in the database..
         auto id = db.create_sensor(name, type, std::move(l));
         // we create a new fact for the new sensor..
-        db.get_sensor(id).fact = AssertString(env, ("(sensor (id " + id + ") (sensor_type " + type.id + ") (name \"" + name + "\")").c_str());
+        std::string f_str = "(sensor (id " + id + ") (sensor_type " + type.id + ") (name \"" + name + "\")";
         if (l)
-            AssertString(env, (" (location " + std::to_string(l->x) + " " + std::to_string(l->y) + ")").c_str());
-        AssertString(env, ")");
+            f_str += " (location " + std::to_string(l->x) + " " + std::to_string(l->y) + ")";
+        f_str += ')';
+        db.get_sensor(id).fact = AssertString(env, f_str.c_str());
         // we run the rules engine to update the policy..
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-        // we publish the new sensor to the network..
-        json::json msg;
-        msg["type"] = "sensor_created";
-        msg["id"] = id;
-        msg["name"] = name;
-        msg["sensor_type"] = type.id;
-        if (l)
-        {
-            msg["location"]["x"] = l->x;
-            msg["location"]["y"] = l->y;
-        }
-        publish(db.get_root() + SENSORS_TOPIC, msg);
+        fire_new_sensor(db.get_sensor(id));
     }
     COCO_EXPORT void coco_core::set_sensor_name(const sensor &s, const std::string &name)
     {
@@ -511,16 +486,12 @@ namespace coco
         db.set_sensor_name(s.id, name);
         // we update the sensor fact..
         Eval(env, ("(do-for-fact ((?s sensor)) (= ?s:id " + s.id + ") (modify ?s (name \"" + name + "\")))").c_str(), NULL);
+        // we run the rules engine to update the policy..
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-        // we publish the new sensor to the network..
-        json::json msg;
-        msg["type"] = "sensor_updated";
-        msg["id"] = s.id;
-        msg["name"] = name;
-        publish(db.get_root() + SENSORS_TOPIC, msg);
+        fire_updated_sensor(s);
     }
     COCO_EXPORT void coco_core::set_sensor_location(const sensor &s, std::unique_ptr<location> l)
     {
@@ -534,42 +505,29 @@ namespace coco
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-        // we publish the new sensor to the network..
-        json::json msg;
-        msg["type"] = "sensor_updated";
-        msg["id"] = s.id;
-        json::json loc;
-        loc["x"] = s_x;
-        loc["y"] = s_y;
-        msg["location"] = std::move(loc);
-        publish(db.get_root() + SENSORS_TOPIC, msg);
+        fire_updated_sensor(s);
     }
     COCO_EXPORT void coco_core::delete_sensor(const sensor &s)
     {
         LOG("Deleting sensor..");
         const std::lock_guard<std::mutex> lock(mtx);
+        fire_removed_sensor(s);
         auto f = db.get_sensor(s.id).fact;
         // we delete the sensor from the database..
         db.delete_sensor(s.id);
         // we retract the sensor fact..
         Retract(f);
+        // we run the rules engine to update the policy..
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
-        // we publish the new sensor to the network..
-        json::json msg;
-        msg["type"] = "sensor_deleted";
-        msg["id"] = s.id;
-        publish(db.get_root() + SENSORS_TOPIC, msg);
     }
 
-    COCO_EXPORT void coco_core::set_sensor_value(const sensor &s, json::json &value, bool republish)
+    COCO_EXPORT void coco_core::set_sensor_value(const sensor &s, const json::json &value)
     {
-        if (republish)
-            publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
-
         LOG("Setting sensor value..");
+        const std::lock_guard<std::mutex> lock(mtx);
         json::object &j_val = value;
 
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -584,6 +542,7 @@ namespace coco
         fact_str += "))";
 
         Fact *sv_f = AssertString(env, fact_str.c_str());
+        // we run the rules engine to update the policy..
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
@@ -591,7 +550,9 @@ namespace coco
 
         db.set_sensor_value(s.id, time, value);
 
+        // we retract the sensor value fact..
         Retract(sv_f);
+        // we run the rules engine to update the policy..
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
@@ -617,11 +578,48 @@ namespace coco
         { // we have a new sensor value..
             std::string sensor_id = topic;
             sensor_id.erase(0, (db.get_root() + SENSOR_TOPIC + '/').length());
-            set_sensor_value(db.get_sensor(sensor_id), msg, false);
+            set_sensor_value(db.get_sensor(sensor_id), msg);
         }
+        else // we notify the listeners that a message has arrived..
+            fire_message_arrived(topic, msg);
+    }
 
-        // we notify the listeners that a message has arrived..
-        fire_message_arrived(topic, msg);
+    void coco_core::fire_new_sensor_type(const sensor_type &st)
+    {
+        for (const auto &l : listeners)
+            l->new_sensor_type(st);
+    }
+    void coco_core::fire_updated_sensor_type(const sensor_type &st)
+    {
+        for (const auto &l : listeners)
+            l->updated_sensor_type(st);
+    }
+    void coco_core::fire_removed_sensor_type(const sensor_type &st)
+    {
+        for (const auto &l : listeners)
+            l->removed_sensor_type(st);
+    }
+
+    void coco_core::fire_new_sensor(const sensor &s)
+    {
+        for (const auto &l : listeners)
+            l->new_sensor(s);
+    }
+    void coco_core::fire_updated_sensor(const sensor &s)
+    {
+        for (const auto &l : listeners)
+            l->updated_sensor(s);
+    }
+    void coco_core::fire_removed_sensor(const sensor &s)
+    {
+        for (const auto &l : listeners)
+            l->removed_sensor(s);
+    }
+
+    void coco_core::fire_new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, json::json &value)
+    {
+        for (const auto &l : listeners)
+            l->new_sensor_value(s, time, value);
     }
 
     void coco_core::fire_new_solver(const coco_executor &exec)

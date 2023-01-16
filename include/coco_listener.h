@@ -8,6 +8,8 @@
 namespace coco
 {
   class coco_executor;
+  class sensor_type;
+  class sensor;
 
   class coco_listener
   {
@@ -21,6 +23,16 @@ namespace coco
     coco_core &get_coco() { return cc; }
 
   private:
+    virtual void new_sensor_type([[maybe_unused]] const sensor_type &s) {}
+    virtual void updated_sensor_type([[maybe_unused]] const sensor_type &s) {}
+    virtual void removed_sensor_type([[maybe_unused]] const sensor_type &s) {}
+
+    virtual void new_sensor([[maybe_unused]] const sensor &s) {}
+    virtual void updated_sensor([[maybe_unused]] const sensor &s) {}
+    virtual void removed_sensor([[maybe_unused]] const sensor &s) {}
+
+    virtual void new_sensor_value([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &value) {}
+
     virtual void new_solver([[maybe_unused]] const coco_executor &exec) {}
 
     virtual void started_solving([[maybe_unused]] const coco_executor &exec) {}

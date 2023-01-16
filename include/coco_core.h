@@ -12,7 +12,6 @@
 
 #define SOLVERS_TOPIC "/solvers"
 #define SOLVER_TOPIC "/solver"
-#define SENSORS_TOPIC "/sensors"
 #define SENSOR_TOPIC "/sensor"
 
 namespace coco
@@ -97,7 +96,7 @@ namespace coco
     COCO_EXPORT void set_sensor_location(const sensor &s, std::unique_ptr<location> l);
     COCO_EXPORT void delete_sensor(const sensor &s);
 
-    COCO_EXPORT void set_sensor_value(const sensor &s, json::json &value, bool republish = true);
+    COCO_EXPORT void set_sensor_value(const sensor &s, const json::json &value);
 
   protected:
     /**
@@ -128,6 +127,16 @@ namespace coco
     friend void send_message(Environment *env, UDFContext *udfc, UDFValue *out);
 
   private:
+    void fire_new_sensor_type(const sensor_type &type);
+    void fire_updated_sensor_type(const sensor_type &type);
+    void fire_removed_sensor_type(const sensor_type &type);
+
+    void fire_new_sensor(const sensor &s);
+    void fire_updated_sensor(const sensor &s);
+    void fire_removed_sensor(const sensor &s);
+
+    void fire_new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, json::json &value);
+
     void fire_new_solver(const coco_executor &exec);
 
     void fire_started_solving(const coco_executor &exec);

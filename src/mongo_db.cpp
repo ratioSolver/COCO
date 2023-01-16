@@ -123,7 +123,7 @@ namespace coco
                 coco_db::set_sensor_location(id, std::move(l));
         }
     }
-    void mongo_db::set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, json::json &val)
+    void mongo_db::set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, const json::json &val)
     {
         auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << "timestamp" << bsoncxx::types::b_date{std::chrono::milliseconds{time}} << "value" << bsoncxx::from_json(val.dump()) << bsoncxx::builder::stream::finalize);
         if (result)

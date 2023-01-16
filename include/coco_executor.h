@@ -22,6 +22,12 @@ namespace coco
      * @return ratio::executor::executor&
      */
     ratio::executor::executor &get_executor() { return exec; }
+    /**
+     * @brief Get the executor object associated to this executor.
+     *
+     * @return const ratio::executor::executor&
+     */
+    const ratio::executor::executor &get_executor() const { return exec; }
 
     /**
      * @brief Get the type of the executor.

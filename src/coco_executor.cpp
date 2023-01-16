@@ -256,7 +256,7 @@ namespace coco
         {
             if (&var->get_type() == &slv.get_bool_type())
             {
-                switch (slv.get_sat_core()->value(static_cast<const ratio::core::bool_item &>(*var).get_value()))
+                switch (slv.get_sat_core().value(static_cast<const ratio::core::bool_item &>(*var).get_value()))
                 {
                 case semitone::True:
                     pars_str += " " + var_name;

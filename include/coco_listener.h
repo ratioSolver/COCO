@@ -20,8 +20,6 @@ namespace coco
     coco_listener(const coco_listener &orig) = delete;
     virtual ~coco_listener() { cc.listeners.erase(std::find(cc.listeners.cbegin(), cc.listeners.cend(), this)); }
 
-    coco_core &get_coco() { return cc; }
-
   private:
     virtual void new_sensor_type([[maybe_unused]] const sensor_type &s) {}
     virtual void updated_sensor_type([[maybe_unused]] const sensor_type &s) {}
@@ -39,7 +37,7 @@ namespace coco
     virtual void solution_found([[maybe_unused]] const coco_executor &exec) {}
     virtual void inconsistent_problem([[maybe_unused]] const coco_executor &exec) {}
 
-    virtual void message_arrived([[maybe_unused]] const std::string &topic, [[maybe_unused]] json::json &msg) {}
+    virtual void message_arrived([[maybe_unused]] const std::string &topic, [[maybe_unused]] const json::json &msg) {}
 
     virtual void tick([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const semitone::rational &time) {}
 

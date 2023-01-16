@@ -112,7 +112,7 @@ namespace coco
   private:
     void tick();
 
-    void message_arrived(const std::string &topic, json::json &msg);
+    void message_arrived(const std::string &topic, const json::json &msg);
 
     friend void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);
@@ -143,7 +143,7 @@ namespace coco
     void fire_solution_found(const coco_executor &exec);
     void fire_inconsistent_problem(const coco_executor &exec);
 
-    void fire_message_arrived(const std::string &topic, json::json &msg);
+    void fire_message_arrived(const std::string &topic, const json::json &msg);
 
     void fire_tick(const coco_executor &exec, const semitone::rational &time);
 

@@ -371,6 +371,8 @@ namespace coco
 
     COCO_EXPORT void coco_core::init()
     {
+        LOG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
+
         for (const auto &st : db.get_all_sensor_types())
             st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
 
@@ -382,15 +384,16 @@ namespace coco
             f_str += ')';
 
             s.get().fact = AssertString(env, f_str.c_str());
-
-            for (auto &mw : middlewares)
-                mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + s.get().id, 1);
         }
 
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
 #endif
+
+        for (const auto &s : db.get_all_sensors())
+            for (auto &mw : middlewares)
+                mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + s.get().id, 1);
     }
 
     COCO_EXPORT void coco_core::disconnect()
@@ -570,10 +573,8 @@ namespace coco
         for (auto &mdlw : middlewares)
             mdlw->publish(topic, msg, qos, retained);
     }
-    void coco_core::message_arrived(const std::string &topic, json::json &msg)
+    void coco_core::message_arrived(const std::string &topic, const json::json &msg)
     {
-        const std::lock_guard<std::mutex> lock(mtx);
-
         if (topic.rfind(db.get_root() + SENSOR_TOPIC + '/', 0) == 0)
         { // we have a new sensor value..
             std::string sensor_id = topic;
@@ -644,7 +645,7 @@ namespace coco
             l->inconsistent_problem(exec);
     }
 
-    void coco_core::fire_message_arrived(const std::string &topic, json::json &msg)
+    void coco_core::fire_message_arrived(const std::string &topic, const json::json &msg)
     {
         for (const auto &l : listeners)
             l->message_arrived(topic, msg);

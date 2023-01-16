@@ -32,12 +32,30 @@ namespace coco
     virtual void new_sensor_value([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &value) {}
 
     virtual void new_solver([[maybe_unused]] const coco_executor &exec) {}
+    virtual void removed_solver([[maybe_unused]] const coco_executor &exec) {}
+
+    virtual void state_changed([[maybe_unused]] const coco_executor &exec) {}
 
     virtual void started_solving([[maybe_unused]] const coco_executor &exec) {}
     virtual void solution_found([[maybe_unused]] const coco_executor &exec) {}
     virtual void inconsistent_problem([[maybe_unused]] const coco_executor &exec) {}
 
+    virtual void flaw_created([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::flaw &f) {}
+    virtual void flaw_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::flaw &f) {}
+    virtual void flaw_cost_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::flaw &f) {}
+    virtual void flaw_position_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::flaw &f) {}
+    virtual void current_flaw([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::flaw &f) {}
+
+    virtual void resolver_created([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::resolver &r) {}
+    virtual void resolver_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::resolver &r) {}
+    virtual void current_resolver([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::resolver &r) {}
+
+    virtual void causal_link_added([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::solver::flaw &f, [[maybe_unused]] const ratio::solver::resolver &r) {}
+
     virtual void message_arrived([[maybe_unused]] const std::string &topic, [[maybe_unused]] const json::json &msg) {}
+
+    virtual void start_execution([[maybe_unused]] const coco_executor &exec) {}
+    virtual void pause_execution([[maybe_unused]] const coco_executor &exec) {}
 
     virtual void tick([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const semitone::rational &time) {}
 

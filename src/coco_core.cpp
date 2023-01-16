@@ -12,7 +12,7 @@ namespace coco
         LOG_DEBUG("Creating new solver..");
 
         UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
             return;
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
@@ -27,21 +27,12 @@ namespace coco
         auto slv = new ratio::solver::solver();
         auto exec = new ratio::executor::executor(*slv, &e.mtx);
         auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
+        e.fire_new_solver(*coco_exec);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
 
         AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + ") (state reasoning))").c_str());
 
         e.executors.push_back(std::move(coco_exec));
-
-        json::json msg;
-        msg["type"] = "solvers";
-        json::array solvers;
-        solvers.reserve(e.executors.size());
-        for (const auto &xct : e.executors)
-            solvers.push_back(reinterpret_cast<uintptr_t>(xct.get()));
-        msg["solvers"] = std::move(solvers);
-
-        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
 
         // we adapt to a riddle script..
         exec->adapt(riddle.lexemeValue->contents);
@@ -54,7 +45,7 @@ namespace coco
         LOG_DEBUG("Creating new solver..");
 
         UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
             return;
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
@@ -69,21 +60,12 @@ namespace coco
         auto slv = new ratio::solver::solver();
         auto exec = new ratio::executor::executor(*slv, &e.mtx);
         auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
+        e.fire_new_solver(*coco_exec);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
 
         AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + ") (state reasoning))").c_str());
 
         e.executors.push_back(std::move(coco_exec));
-
-        json::json msg;
-        msg["type"] = "solvers";
-        json::array solvers;
-        solvers.reserve(e.executors.size());
-        for (const auto &xct : e.executors)
-            solvers.push_back(reinterpret_cast<uintptr_t>(xct.get()));
-        msg["solvers"] = std::move(solvers);
-
-        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
 
         // we adapt to some riddle files..
         std::vector<std::string> fs;
@@ -99,23 +81,19 @@ namespace coco
         LOG_DEBUG("Starting plan execution..");
 
         UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
             return;
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         coco_exec->start_execution();
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state executing)))").c_str(), NULL);
 
-        json::json msg;
-        msg["type"] = "start_execution";
-        msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
-
-        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
+        e.fire_start_execution(*coco_exec);
     }
 
     void pause_execution(Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -123,23 +101,19 @@ namespace coco
         LOG_DEBUG("Pausing plan execution..");
 
         UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
             return;
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         coco_exec->pause_execution();
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state paused)))").c_str(), NULL);
 
-        json::json msg;
-        msg["type"] = "pause_execution";
-        msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
-
-        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
+        e.fire_pause_execution(*coco_exec);
     }
 
     void delay_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -147,11 +121,11 @@ namespace coco
         LOG_DEBUG("Delaying task..");
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
 
         UDFValue task_id;
-        if (!UDFNextArgument(udfc, NUMBER_BITS, &task_id))
+        if (!UDFNextArgument(udfc, INTEGER_BIT, &task_id))
             return;
 
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
@@ -181,11 +155,11 @@ namespace coco
         LOG_DEBUG("Extending task..");
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
 
         UDFValue task_id;
-        if (!UDFNextArgument(udfc, NUMBER_BITS, &task_id))
+        if (!UDFNextArgument(udfc, INTEGER_BIT, &task_id))
             return;
 
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
@@ -215,7 +189,7 @@ namespace coco
         LOG_DEBUG("Task(s) failure..");
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
 
         UDFValue task_ids;
@@ -235,7 +209,7 @@ namespace coco
         LOG_DEBUG("Adapting to RiDDLe snippet..");
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         auto exec = &coco_exec->get_executor();
@@ -255,7 +229,7 @@ namespace coco
         LOG_DEBUG("Adapting to RiDDLe files..");
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         auto exec = &coco_exec->get_executor();
@@ -278,12 +252,12 @@ namespace coco
         LOG_DEBUG("Deleting solver..");
 
         UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
             return;
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         auto exec = &coco_exec->get_executor();
@@ -297,11 +271,7 @@ namespace coco
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state destroyed)))").c_str(), NULL);
 
-        json::json msg;
-        msg["type"] = "deleted_reasoner";
-        msg["id"] = reinterpret_cast<uintptr_t>(coco_exec);
-
-        e.publish(e.db.get_root() + SOLVERS_TOPIC, msg, 2, true);
+        e.fire_removed_solver(*coco_exec);
     }
 
     void send_message([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -309,7 +279,7 @@ namespace coco
         LOG_DEBUG("Sending message..");
 
         UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, NUMBER_BITS, &coco_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
             return;
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
@@ -628,6 +598,17 @@ namespace coco
         for (const auto &l : listeners)
             l->new_solver(exec);
     }
+    void coco_core::fire_removed_solver(const coco_executor &exec)
+    {
+        for (const auto &l : listeners)
+            l->removed_solver(exec);
+    }
+
+    void coco_core::fire_state_changed(const coco_executor &exec)
+    {
+        for (const auto &l : listeners)
+            l->state_changed(exec);
+    }
 
     void coco_core::fire_started_solving(const coco_executor &exec)
     {
@@ -643,6 +624,65 @@ namespace coco
     {
         for (const auto &l : listeners)
             l->inconsistent_problem(exec);
+    }
+
+    void coco_core::fire_flaw_created(const coco_executor &exec, const ratio::solver::flaw &f)
+    {
+        for (const auto &l : listeners)
+            l->flaw_created(exec, f);
+    }
+    void coco_core::fire_flaw_state_changed(const coco_executor &exec, const ratio::solver::flaw &f)
+    {
+        for (const auto &l : listeners)
+            l->flaw_state_changed(exec, f);
+    }
+    void coco_core::fire_flaw_cost_changed(const coco_executor &exec, const ratio::solver::flaw &f)
+    {
+        for (const auto &l : listeners)
+            l->flaw_cost_changed(exec, f);
+    }
+    void coco_core::fire_flaw_position_changed(const coco_executor &exec, const ratio::solver::flaw &f)
+    {
+        for (const auto &l : listeners)
+            l->flaw_position_changed(exec, f);
+    }
+    void coco_core::fire_current_flaw(const coco_executor &exec, const ratio::solver::flaw &f)
+    {
+        for (const auto &l : listeners)
+            l->current_flaw(exec, f);
+    }
+
+    void coco_core::fire_resolver_created(const coco_executor &exec, const ratio::solver::resolver &r)
+    {
+        for (const auto &l : listeners)
+            l->resolver_created(exec, r);
+    }
+    void coco_core::fire_resolver_state_changed(const coco_executor &exec, const ratio::solver::resolver &r)
+    {
+        for (const auto &l : listeners)
+            l->resolver_state_changed(exec, r);
+    }
+    void coco_core::fire_current_resolver(const coco_executor &exec, const ratio::solver::resolver &r)
+    {
+        for (const auto &l : listeners)
+            l->current_resolver(exec, r);
+    }
+
+    void coco_core::fire_causal_link_added(const coco_executor &exec, const ratio::solver::flaw &f, const ratio::solver::resolver &r)
+    {
+        for (const auto &l : listeners)
+            l->causal_link_added(exec, f, r);
+    }
+
+    void coco_core::fire_start_execution(const coco_executor &exec)
+    {
+        for (const auto &l : listeners)
+            l->start_execution(exec);
+    }
+    void coco_core::fire_pause_execution(const coco_executor &exec)
+    {
+        for (const auto &l : listeners)
+            l->pause_execution(exec);
     }
 
     void coco_core::fire_message_arrived(const std::string &topic, const json::json &msg)

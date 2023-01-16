@@ -6,12 +6,12 @@
 #include "timer.h"
 #include "rational.h"
 #include "item.h"
+#include "flaw.h"
+#include "resolver.h"
 #include <unordered_set>
 #include <list>
 #include <mutex>
 
-#define SOLVERS_TOPIC "/solvers"
-#define SOLVER_TOPIC "/solver"
 #define SENSOR_TOPIC "/sensor"
 
 namespace coco
@@ -138,12 +138,30 @@ namespace coco
     void fire_new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, json::json &value);
 
     void fire_new_solver(const coco_executor &exec);
+    void fire_removed_solver(const coco_executor &exec);
+
+    void fire_state_changed(const coco_executor &exec);
 
     void fire_started_solving(const coco_executor &exec);
     void fire_solution_found(const coco_executor &exec);
     void fire_inconsistent_problem(const coco_executor &exec);
 
+    void fire_flaw_created(const coco_executor &exec, const ratio::solver::flaw &f);
+    void fire_flaw_state_changed(const coco_executor &exec, const ratio::solver::flaw &f);
+    void fire_flaw_cost_changed(const coco_executor &exec, const ratio::solver::flaw &f);
+    void fire_flaw_position_changed(const coco_executor &exec, const ratio::solver::flaw &f);
+    void fire_current_flaw(const coco_executor &exec, const ratio::solver::flaw &f);
+
+    void fire_resolver_created(const coco_executor &exec, const ratio::solver::resolver &r);
+    void fire_resolver_state_changed(const coco_executor &exec, const ratio::solver::resolver &r);
+    void fire_current_resolver(const coco_executor &exec, const ratio::solver::resolver &r);
+
+    void fire_causal_link_added(const coco_executor &exec, const ratio::solver::flaw &f, const ratio::solver::resolver &r);
+
     void fire_message_arrived(const std::string &topic, const json::json &msg);
+
+    void fire_start_execution(const coco_executor &exec);
+    void fire_pause_execution(const coco_executor &exec);
 
     void fire_tick(const coco_executor &exec, const semitone::rational &time);
 

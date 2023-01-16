@@ -15,56 +15,34 @@ namespace coco
     void coco_executor::state_changed()
     {
 #ifdef SOLVING_MONITORING
-        json::json j_sc = to_state(*this);
-        j_sc["type"] = "state_changed";
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sc, 2, true);
+        cc.fire_state_changed(*this);
 #endif
     }
 
-    void coco_executor::started_solving()
-    {
-        json::json j_ss;
-        j_ss["type"] = "started_solving";
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ss);
-    }
+    void coco_executor::started_solving() { cc.fire_started_solving(*this); }
     void coco_executor::solution_found()
     {
         c_flaw = nullptr;
         c_resolver = nullptr;
-
-        json::json j_sf = to_state(*this);
-        j_sf["type"] = "solution_found";
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/state", j_sf, 2, true);
-
-        json::json j_gr = to_graph(*this);
-        j_gr["type"] = "graph";
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "/graph", j_gr, 2, true);
 
         Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state " + (exec.is_finished() ? "finished" : (exec.is_executing() ? "executing" : "idle")) + ")))").c_str(), NULL);
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
 #endif
+        cc.fire_solution_found(*this);
     }
     void coco_executor::inconsistent_problem()
     {
         c_flaw = nullptr;
         c_resolver = nullptr;
 
-        json::json j_ip;
-        j_ip["type"] = "inconsistent_problem";
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_ip);
-
         Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state inconsistent)))").c_str(), NULL);
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
 #endif
+        cc.fire_inconsistent_problem(*this);
     }
 
     void coco_executor::flaw_created(const ratio::solver::flaw &f)
@@ -72,66 +50,25 @@ namespace coco
         flaws.insert(&f);
 
 #ifdef SOLVING_MONITORING
-        json::json j_fc;
-        j_fc["type"] = "flaw_created";
-        j_fc["id"] = get_id(f);
-        j_fc["phi"] = to_string(f.get_phi());
-        json::array j_causes;
-        j_causes.reserve(f.get_causes().size());
-        for (const auto &c : f.get_causes())
-            j_causes.push_back(get_id(*c));
-        j_fc["causes"] = std::move(j_causes);
-        j_fc["state"] = slv.get_sat_core()->value(f.get_phi());
-        j_fc["cost"] = to_json(f.get_estimated_cost());
-        auto [lb, ub] = f.get_solver().get_idl_theory().bounds(f.get_position());
-        json::json j_pos;
-        if (lb > std::numeric_limits<semitone::I>::min())
-            j_pos["lb"] = lb;
-        if (ub > std::numeric_limits<semitone::I>::max())
-            j_pos["ub"] = ub;
-        j_fc["pos"] = std::move(j_pos);
-        j_fc["data"] = f.get_data();
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fc);
+        cc.fire_flaw_created(*this, f);
 #endif
     }
     void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::solver::flaw &f)
     {
 #ifdef SOLVING_MONITORING
-        json::json j_fsc;
-        j_fsc["type"] = "flaw_state_changed";
-        j_fsc["id"] = get_id(f);
-        j_fsc["state"] = slv.get_sat_core()->value(f.get_phi());
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fsc);
+        cc.fire_flaw_state_changed(*this, f);
 #endif
     }
     void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::solver::flaw &f)
     {
 #ifdef SOLVING_MONITORING
-        json::json j_fcc;
-        j_fcc["type"] = "flaw_cost_changed";
-        j_fcc["id"] = get_id(f);
-        j_fcc["cost"] = to_json(f.get_estimated_cost());
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fcc);
+        cc.fire_flaw_cost_changed(*this, f);
 #endif
     }
     void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::solver::flaw &f)
     {
 #ifdef SOLVING_MONITORING
-        json::json j_fpc;
-        j_fpc["type"] = "flaw_position_changed";
-        j_fpc["id"] = get_id(f);
-        auto [lb, ub] = f.get_solver().get_idl_theory().bounds(f.get_position());
-        json::json j_pos;
-        if (lb > std::numeric_limits<semitone::I>::min())
-            j_pos["lb"] = lb;
-        if (ub > std::numeric_limits<semitone::I>::max())
-            j_pos["ub"] = ub;
-        j_fpc["pos"] = std::move(j_pos);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_fpc);
+        cc.fire_flaw_position_changed(*this, f);
 #endif
     }
     void coco_executor::current_flaw(const ratio::solver::flaw &f)
@@ -140,11 +77,7 @@ namespace coco
         c_resolver = nullptr;
 
 #ifdef SOLVING_MONITORING
-        json::json j_cf;
-        j_cf["type"] = "current_flaw";
-        j_cf["id"] = get_id(f);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cf);
+        cc.fire_current_flaw(*this, f);
 #endif
     }
 
@@ -153,32 +86,13 @@ namespace coco
         resolvers.insert(&r);
 
 #ifdef SOLVING_MONITORING
-        json::json j_rc;
-        j_rc["type"] = "resolver_created";
-        j_rc["id"] = get_id(r);
-        j_rc["rho"] = to_string(r.get_rho());
-        json::array j_preconditions;
-        j_preconditions.reserve(r.get_preconditions().size());
-        for (const auto &pre : r.get_preconditions())
-            j_preconditions.push_back(get_id(*pre));
-        j_rc["preconditions"] = std::move(j_preconditions);
-        j_rc["effect"] = get_id(r.get_effect());
-        j_rc["state"] = slv.get_sat_core()->value(r.get_rho());
-        j_rc["intrinsic_cost"] = to_json(r.get_intrinsic_cost());
-        j_rc["data"] = r.get_data();
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rc);
+        cc.fire_resolver_created(*this, r);
 #endif
     }
     void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::solver::resolver &r)
     {
 #ifdef SOLVING_MONITORING
-        json::json j_rsc;
-        j_rsc["type"] = "resolver_state_changed";
-        j_rsc["id"] = get_id(r);
-        j_rsc["state"] = slv.get_sat_core()->value(r.get_rho());
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_rsc);
+        cc.fire_resolver_state_changed(*this, r);
 #endif
     }
     void coco_executor::current_resolver(const ratio::solver::resolver &r)
@@ -186,23 +100,14 @@ namespace coco
         c_resolver = &r;
 
 #ifdef SOLVING_MONITORING
-        json::json j_cr;
-        j_cr["type"] = "current_resolver";
-        j_cr["id"] = get_id(r);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cr);
+        cc.fire_current_resolver(*this, r);
 #endif
     }
 
     void coco_executor::causal_link_added([[maybe_unused]] const ratio::solver::flaw &f, [[maybe_unused]] const ratio::solver::resolver &r)
     {
 #ifdef SOLVING_MONITORING
-        json::json j_cla;
-        j_cla["type"] = "causal_link_added";
-        j_cla["flaw_id"] = get_id(f);
-        j_cla["resolver_id"] = get_id(r);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_cla);
+        cc.fire_causal_link_added(*this, f, r);
 #endif
     }
 
@@ -212,11 +117,7 @@ namespace coco
     {
         current_time = time;
 
-        json::json j_t;
-        j_t["type"] = "tick";
-        j_t["time"] = to_json(time);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_t);
+        cc.fire_tick(*this, time);
 
         if (exec.is_finished())
         {
@@ -229,15 +130,6 @@ namespace coco
     }
     void coco_executor::starting(const std::unordered_set<ratio::core::atom *> &atoms)
     {
-        json::json j_st;
-        j_st["type"] = "starting";
-        json::array starting;
-        for (const auto &a : atoms)
-            starting.push_back(get_id(*a));
-        j_st["starting"] = std::move(starting);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st);
-
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "starting").c_str());
         Run(cc.env, -1);
@@ -286,33 +178,16 @@ namespace coco
     {
         executing_atoms.insert(atoms.cbegin(), atoms.cend());
 
-        json::json j_st;
-        j_st["type"] = "start";
-        json::array start;
-        for (const auto &a : atoms)
-            start.push_back(get_id(*a));
-        j_st["start"] = std::move(start);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_st);
-
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "start").c_str());
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
 #endif
+        cc.fire_start(*this, atoms);
     }
     void coco_executor::ending(const std::unordered_set<ratio::core::atom *> &atoms)
     {
-        json::json j_en;
-        j_en["type"] = "ending";
-        json::array ending;
-        for (const auto &a : atoms)
-            ending.push_back(get_id(*a));
-        j_en["ending"] = std::move(ending);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en);
-
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "ending").c_str());
         Run(cc.env, -1);
@@ -362,21 +237,13 @@ namespace coco
         for (const auto &a : atoms)
             executing_atoms.erase(a);
 
-        json::json j_en;
-        j_en["type"] = "end";
-        json::array end;
-        for (const auto &a : atoms)
-            end.push_back(get_id(*a));
-        j_en["end"] = std::move(end);
-
-        cc.publish(cc.db.get_root() + SOLVER_TOPIC + "/" + std::to_string(reinterpret_cast<uintptr_t>(this)), j_en);
-
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "end").c_str());
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
 #endif
+        cc.fire_end(*this, atoms);
     }
 
     std::string coco_executor::to_task(const ratio::core::atom &atm, const std::string &command)

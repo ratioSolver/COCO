@@ -10,7 +10,7 @@ namespace coco
 
     void mongo_db::init()
     {
-        for (const auto &c : conn.uri().hosts())
+        for ([[maybe_unused]] const auto &c : conn.uri().hosts())
         {
             LOG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
         }

@@ -33,6 +33,7 @@ set(MONGODB_PORT "27017" CACHE STRING "The MongoDB Port")
 
 option(SOLVING_MONITORING "Publishes any changes during the resolution process" OFF)
 
+set(MULTIPLE_EXECUTORS ON CACHE BOOL "Allows different executors" FORCE)
 set(COMPUTE_NAMES ON CACHE BOOL "Computes the objects' names" FORCE)
 
 message(STATUS "CoCo root:              ${COCO_ROOT}")

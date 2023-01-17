@@ -25,7 +25,7 @@ namespace coco
             return;
 
         auto slv = new ratio::solver::solver();
-        auto exec = new ratio::executor::executor(*slv, &e.mtx);
+        auto exec = new ratio::executor::executor(*slv);
         auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
         e.fire_new_solver(*coco_exec);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
@@ -58,7 +58,7 @@ namespace coco
             return;
 
         auto slv = new ratio::solver::solver();
-        auto exec = new ratio::executor::executor(*slv, &e.mtx);
+        auto exec = new ratio::executor::executor(*slv);
         auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
         e.fire_new_solver(*coco_exec);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());

@@ -18,7 +18,7 @@ namespace coco
     void disconnect() override;
 
     void subscribe(const std::string &topic, int qos = 0) override;
-    void publish(const std::string &topic, json::json &msg, int qos = 0, bool retained = false) override;
+    void publish(const std::string &topic, const json::json &msg, int qos = 0, bool retained = false) override;
 
   private:
     void connected(const std::string &cause) override;

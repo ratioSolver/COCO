@@ -396,6 +396,7 @@ namespace coco
         db.set_sensor_type_name(type.id, name);
         // we update the sensor type fact..
         Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + type.id + ") (modify ?st (name \"" + name + "\")))").c_str(), NULL);
+        // we run the rules engine to update the policy..
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
@@ -410,6 +411,7 @@ namespace coco
         db.set_sensor_type_description(type.id, description);
         // we update the sensor type fact
         Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + type.id + ") (modify ?st (description \"" + description + "\")))").c_str(), NULL);
+        // we run the rules engine to update the policy..
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
@@ -426,6 +428,7 @@ namespace coco
         db.delete_sensor_type(type.id);
         // we retract the sensor type fact..
         Retract(f);
+        // we run the rules engine to update the policy..
         Run(env, -1);
 #ifdef VERBOSE_LOG
         Eval(env, "(facts)", NULL);
@@ -497,6 +500,8 @@ namespace coco
 #endif
     }
 
+    COCO_EXPORT void coco_core::publish_sensor_value(const sensor &s, const json::json &value) { publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true); }
+
     COCO_EXPORT void coco_core::set_sensor_value(const sensor &s, const json::json &value)
     {
         LOG("Setting sensor value..");
@@ -538,7 +543,7 @@ namespace coco
             exec->tick();
     }
 
-    void coco_core::publish(const std::string &topic, json::json &msg, int qos, bool retained)
+    void coco_core::publish(const std::string &topic, const json::json &msg, int qos, bool retained)
     {
         for (auto &mdlw : middlewares)
             mdlw->publish(topic, msg, qos, retained);

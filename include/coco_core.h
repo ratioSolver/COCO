@@ -96,6 +96,9 @@ namespace coco
     COCO_EXPORT void set_sensor_location(const sensor &s, std::unique_ptr<location> l);
     COCO_EXPORT void delete_sensor(const sensor &s);
 
+    COCO_EXPORT void publish_sensor_value(const sensor &s, const json::json &value);
+
+  private:
     COCO_EXPORT void set_sensor_value(const sensor &s, const json::json &value);
 
   protected:
@@ -107,7 +110,7 @@ namespace coco
      * @param qos The quality of service.
      * @param retained Whether the message is retained.
      */
-    void publish(const std::string &topic, json::json &msg, int qos = 0, bool retained = false);
+    void publish(const std::string &topic, const json::json &msg, int qos = 0, bool retained = false);
 
   private:
     void tick();

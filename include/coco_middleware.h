@@ -33,9 +33,12 @@ namespace coco
     /**
      * @brief Unsubscribes from the given topic.
      *
-     * @param topic the topic to unsubscribe from.
+     * @param topic the topic on which to publish.
+     * @param msg the message to publish.
+     * @param qos the quality of service.
+     * @param retained whether the message is retained.
      */
-    virtual void publish(const std::string &topic, json::json &msg, int qos = 0, bool retained = false) = 0;
+    virtual void publish(const std::string &topic, const json::json &msg, int qos = 0, bool retained = false) = 0;
 
   protected:
     /**

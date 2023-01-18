@@ -8,6 +8,13 @@ namespace coco
   class coco_core;
   class coco_db;
 
+  enum parameter_type
+  {
+    Integer,
+    Float,
+    String
+  };
+
   class sensor_type
   {
     friend class coco_core;
@@ -21,7 +28,7 @@ namespace coco
      * @param name the name of the sensor type.
      * @param description the description of the sensor type.
      */
-    sensor_type(const std::string &id, const std::string &name, const std::string &description) : id(id), name(name), description(description) {}
+    sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) : id(id), name(name), description(description), parameter_types(parameter_types) {}
     ~sensor_type() = default;
 
     /**
@@ -53,6 +60,7 @@ namespace coco
     const std::string id;
     std::string name;
     std::string description;
+    std::map<std::string, parameter_type> parameter_types;
     Fact *fact = nullptr;
   };
 } // namespace coco

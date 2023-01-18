@@ -15,7 +15,7 @@ namespace coco
 
     void init() override;
 
-    std::string create_sensor_type(const std::string &name, const std::string &description) override;
+    std::string create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) override;
     void set_sensor_type_name(const std::string &id, const std::string &name) override;
     void set_sensor_type_description(const std::string &id, const std::string &description) override;
     void delete_sensor_type(const std::string &id) override;

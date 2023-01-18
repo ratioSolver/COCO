@@ -1,7 +1,6 @@
 #pragma once
 
 #include "sensor_type.h"
-#include "location.h"
 #include "sensor.h"
 #include <unordered_map>
 
@@ -25,9 +24,10 @@ namespace coco
      *
      * @param name the name of the sensor type
      * @param description the description of the sensor type
+     * @param parameter_types the parameter types of the sensors of the sensor type
      * @return std::string the id of the created sensor type
      */
-    virtual std::string create_sensor_type(const std::string &name, const std::string &description);
+    virtual std::string create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     /**
      * @brief Get the all sensor types object.
      *
@@ -120,7 +120,7 @@ namespace coco
     virtual void drop();
 
   protected:
-    void create_sensor_type(const std::string &id, const std::string &name, const std::string &description);
+    void create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     void create_sensor(const std::string &id, const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
 
   private:

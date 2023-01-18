@@ -9,6 +9,11 @@ namespace coco
   class coco_core;
   class coco_db;
 
+  struct location
+  {
+    double x, y;
+  };
+
   class sensor
   {
     friend class coco_core;
@@ -57,6 +62,12 @@ namespace coco
      * @return const location& the location of the sensor.
      */
     const location &get_location() const { return *loc; }
+    /**
+     * @brief Get the last update of the sensor.
+     *
+     * @return const std::chrono::milliseconds::rep& the last update of the sensor.
+     */
+    const std::chrono::milliseconds::rep &get_last_update() const { return last_update; }
     /**
      * @brief Get the value of the sensor.
      *

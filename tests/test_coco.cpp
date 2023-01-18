@@ -10,7 +10,7 @@ int main(int argc, char const *argv[])
     coco::mongo_db db;
 
     db.drop(); // Warning!! We are deleting all the current data!!
-    auto temp_type_id = db.create_sensor_type("temperature", "A type of sensor for measuring temperature");
+    auto temp_type_id = db.create_sensor_type("temperature", "A type of sensor for measuring temperature", {{"temp", coco::parameter_type::Float}});
     auto temp0_loc = std::make_unique<coco::location>();
     temp0_loc->x = 37.5078;
     temp0_loc->y = 15.083;

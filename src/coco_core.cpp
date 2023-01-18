@@ -373,12 +373,12 @@ namespace coco
         coco_timer.stop();
     }
 
-    COCO_EXPORT void coco_core::create_sensor_type(const std::string &name, const std::string &description)
+    COCO_EXPORT void coco_core::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
     {
         LOG("Creating new sensor type..");
         const std::lock_guard<std::mutex> lock(mtx);
         // we store the sensor type in the database..
-        auto id = db.create_sensor_type(name, description);
+        auto id = db.create_sensor_type(name, description, parameter_types);
         // we create a new fact for the new sensor type..
         db.get_sensor_type(id).fact = AssertString(env, ("(sensor_type (id " + id + ") (name \"" + name + "\") (description \"" + description + "\"))").c_str());
         // we run the rules engine to update the policy..

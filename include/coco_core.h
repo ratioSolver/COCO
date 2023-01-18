@@ -1,8 +1,8 @@
 #pragma once
 
 #include "coco_export.h"
-#include "json.h"
-#include "clips.h"
+#include "sensor_type.h"
+#include "sensor.h"
 #include "timer.h"
 #include "rational.h"
 #include "item.h"
@@ -21,9 +21,6 @@ namespace coco
   class coco_db;
   class coco_executor;
   class coco_listener;
-  class sensor_type;
-  class sensor;
-  class location;
 
   class coco_core
   {
@@ -86,7 +83,7 @@ namespace coco
      */
     COCO_EXPORT void disconnect();
 
-    COCO_EXPORT void create_sensor_type(const std::string &name, const std::string &description);
+    COCO_EXPORT void create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     COCO_EXPORT void set_sensor_type_name(const sensor_type &type, const std::string &name);
     COCO_EXPORT void set_sensor_type_description(const sensor_type &type, const std::string &description);
     COCO_EXPORT void delete_sensor_type(const sensor_type &type);

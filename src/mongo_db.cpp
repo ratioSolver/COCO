@@ -64,7 +64,7 @@ namespace coco
         {
             auto param_doc = bsoncxx::builder::basic::document{};
             param_doc.append(bsoncxx::builder::basic::kvp("name", param.first));
-            param_doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int32_t>(param.second)));
+            param_doc.append(bsoncxx::builder::basic::kvp("type", static_cast<long>(param.second)));
             param_types.append(param_doc);
         }
         s_doc.append(bsoncxx::builder::basic::kvp("parameter_types", param_types));

@@ -50,6 +50,12 @@ namespace coco
      */
     const std::string &get_description() const { return description; }
     /**
+     * @brief Get the parameter types of the sensor type.
+     *
+     * @return const std::map<std::string, parameter_type>& the parameter types of the sensor type.
+     */
+    const std::map<std::string, parameter_type> &get_parameter_types() const { return parameter_types; }
+    /**
      * @brief Get the fact of the sensor type.
      *
      * @return Fact* the fact of the sensor type.

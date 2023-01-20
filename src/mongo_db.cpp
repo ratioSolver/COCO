@@ -25,7 +25,7 @@ namespace coco
             {
                 auto param_doc = param.get_document().value;
                 auto param_name = param_doc["name"].get_string().value.to_string();
-                auto param_type = param_doc["type"].get_int32().value;
+                auto param_type = param_doc["type"].get_int64().value;
                 parameter_types.emplace(param_name, static_cast<parameter_type>(param_type));
             }
             coco_db::create_sensor_type(id, name, description, parameter_types);

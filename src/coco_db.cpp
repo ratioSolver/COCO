@@ -44,7 +44,7 @@ namespace coco
     }
     void coco_db::set_sensor_name(const std::string &id, const std::string &name) { sensors.at(id)->name = name; }
     void coco_db::set_sensor_location(const std::string &id, std::unique_ptr<location> l) { sensors.at(id)->loc.swap(l); }
-    json::json coco_db::get_sensor_values([[attribute_maybe_unused]] const std::string &id, [[attribute_maybe_unused]] const std::chrono::milliseconds::rep &from, [[attribute_maybe_unused]] const std::chrono::milliseconds::rep &to) { return json::json(); }
+    json::json coco_db::get_sensor_values([[maybe_unused]] const std::string &id, [[maybe_unused]] const std::chrono::milliseconds::rep &from, [[maybe_unused]] const std::chrono::milliseconds::rep &to) { return json::json(); }
     void coco_db::set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, const json::json &val)
     {
         json::json c_v = json::load(val.dump());

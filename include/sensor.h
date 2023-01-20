@@ -69,6 +69,13 @@ namespace coco
      */
     const std::chrono::milliseconds::rep &get_last_update() const { return last_update; }
     /**
+     * @brief Check whether the sensor has a value.
+     *
+     * @return true if the sensor has a value.
+     * @return false if the sensor has no value.
+     */
+    bool has_value() const { return value.operator bool(); }
+    /**
      * @brief Get the value of the sensor.
      *
      * @return const json::json& the value of the sensor.

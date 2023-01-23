@@ -518,6 +518,7 @@ namespace coco
             fact_str += j_v;
         }
         fact_str += "))";
+        LOG_DEBUG("Asserting fact: " << fact_str);
 
         Fact *sv_f = AssertString(env, fact_str.c_str());
         // we run the rules engine to update the policy..

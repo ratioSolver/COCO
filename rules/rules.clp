@@ -8,9 +8,3 @@
 (deftemplate sensor_type (slot id) (slot name) (slot description))
 (deftemplate sensor (slot id) (slot sensor_type) (slot name) (multislot location))
 (deftemplate sensor_data (slot sensor_id) (slot local_time) (multislot data))
-
-(defrule new_configuration
-    (configuration (coco_ptr ?ptr))
-    =>
-    (new_solver_script ?ptr main "")
-)

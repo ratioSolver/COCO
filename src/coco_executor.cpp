@@ -22,6 +22,8 @@ namespace coco
     void coco_executor::started_solving() { cc.fire_started_solving(*this); }
     void coco_executor::solution_found()
     {
+        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Solution found..");
+        const std::lock_guard<std::mutex> lock(cc.mtx);
         c_flaw = nullptr;
         c_resolver = nullptr;
 
@@ -34,6 +36,8 @@ namespace coco
     }
     void coco_executor::inconsistent_problem()
     {
+        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Inconsistent problem..");
+        const std::lock_guard<std::mutex> lock(cc.mtx);
         c_flaw = nullptr;
         c_resolver = nullptr;
 
@@ -115,6 +119,8 @@ namespace coco
 
     void coco_executor::tick(const semitone::rational &time)
     {
+        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Current time " << to_string(time));
+        const std::lock_guard<std::mutex> lock(cc.mtx);
         current_time = time;
 
         cc.fire_tick(*this, time);
@@ -130,6 +136,7 @@ namespace coco
     }
     void coco_executor::starting(const std::unordered_set<ratio::core::atom *> &atoms)
     {
+        const std::lock_guard<std::mutex> lock(cc.mtx);
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "starting").c_str());
         Run(cc.env, -1);
@@ -176,6 +183,7 @@ namespace coco
     }
     void coco_executor::start(const std::unordered_set<ratio::core::atom *> &atoms)
     {
+        const std::lock_guard<std::mutex> lock(cc.mtx);
         executing_atoms.insert(atoms.cbegin(), atoms.cend());
 
         for (const auto &atm : atoms)
@@ -186,8 +194,10 @@ namespace coco
 #endif
         cc.fire_start(*this, atoms);
     }
+
     void coco_executor::ending(const std::unordered_set<ratio::core::atom *> &atoms)
     {
+        const std::lock_guard<std::mutex> lock(cc.mtx);
         for (const auto &atm : atoms)
             AssertString(cc.env, to_task(*atm, "ending").c_str());
         Run(cc.env, -1);
@@ -234,6 +244,7 @@ namespace coco
     }
     void coco_executor::end(const std::unordered_set<ratio::core::atom *> &atoms)
     {
+        const std::lock_guard<std::mutex> lock(cc.mtx);
         for (const auto &a : atoms)
             executing_atoms.erase(a);
 

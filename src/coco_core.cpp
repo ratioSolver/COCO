@@ -17,7 +17,7 @@ namespace coco
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue solver_type;
-        if (!UDFNextArgument(udfc, LEXEME_BITS, &solver_type))
+        if (!UDFNextArgument(udfc, SYMBOL_BIT, &solver_type))
             return;
 
         UDFValue riddle;
@@ -50,7 +50,7 @@ namespace coco
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue solver_type;
-        if (!UDFFirstArgument(udfc, LEXEME_BITS, &solver_type))
+        if (!UDFNextArgument(udfc, SYMBOL_BIT, &solver_type))
             return;
 
         UDFValue riddle;
@@ -298,7 +298,7 @@ namespace coco
     COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())
     {
         AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
-        AddUDF(env, "new_solver_files", "l", 3, 3, "lys", new_solver_files, "new_solver_files", NULL);
+        AddUDF(env, "new_solver_files", "l", 3, 3, "lym", new_solver_files, "new_solver_files", NULL);
         AddUDF(env, "start_execution", "v", 2, 2, "ll", start_execution, "start_execution", NULL);
         AddUDF(env, "pause_execution", "v", 2, 2, "ll", pause_execution, "pause_execution", NULL);
         AddUDF(env, "delay_task", "v", 2, 3, "llm", delay_task, "delay_task", NULL);
@@ -316,7 +316,7 @@ namespace coco
 
     COCO_EXPORT void coco_core::load_rules(const std::vector<std::string> &files)
     {
-        LOG("Loading policy rules..");
+        LOG_DEBUG("Loading policy rules..");
         for (const auto &f : files)
             Load(env, f.c_str());
 
@@ -341,7 +341,7 @@ namespace coco
 
     COCO_EXPORT void coco_core::init()
     {
-        LOG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
+        LOG_DEBUG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
 
         for (const auto &st : db.get_all_sensor_types())
             st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
@@ -375,7 +375,7 @@ namespace coco
 
     COCO_EXPORT void coco_core::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
     {
-        LOG("Creating new sensor type..");
+        LOG_DEBUG("Creating new sensor type..");
         const std::lock_guard<std::mutex> lock(mtx);
         // we store the sensor type in the database..
         auto id = db.create_sensor_type(name, description, parameter_types);
@@ -390,7 +390,7 @@ namespace coco
     }
     COCO_EXPORT void coco_core::set_sensor_type_name(const sensor_type &type, const std::string &name)
     {
-        LOG("Setting sensor type name..");
+        LOG_DEBUG("Setting sensor type name..");
         const std::lock_guard<std::mutex> lock(mtx);
         // we update the sensor type in the database..
         db.set_sensor_type_name(type.id, name);
@@ -405,7 +405,7 @@ namespace coco
     }
     COCO_EXPORT void coco_core::set_sensor_type_description(const sensor_type &type, const std::string &description)
     {
-        LOG("Setting sensor type description..");
+        LOG_DEBUG("Setting sensor type description..");
         const std::lock_guard<std::mutex> lock(mtx);
         // we update the sensor type in the database..
         db.set_sensor_type_description(type.id, description);
@@ -420,7 +420,7 @@ namespace coco
     }
     COCO_EXPORT void coco_core::delete_sensor_type(const sensor_type &type)
     {
-        LOG("Deleting sensor type..");
+        LOG_DEBUG("Deleting sensor type..");
         const std::lock_guard<std::mutex> lock(mtx);
         fire_removed_sensor_type(type);
         auto f = db.get_sensor_type(type.id).fact;
@@ -437,7 +437,7 @@ namespace coco
 
     COCO_EXPORT void coco_core::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
     {
-        LOG("Creating new sensor..");
+        LOG_DEBUG("Creating new sensor..");
         const std::lock_guard<std::mutex> lock(mtx);
         // we store the sensor in the database..
         auto id = db.create_sensor(name, type, std::move(l));
@@ -456,7 +456,7 @@ namespace coco
     }
     COCO_EXPORT void coco_core::set_sensor_name(const sensor &s, const std::string &name)
     {
-        LOG("Setting sensor name..");
+        LOG_DEBUG("Setting sensor name..");
         const std::lock_guard<std::mutex> lock(mtx);
         // we update the sensor in the database..
         db.set_sensor_name(s.id, name);
@@ -471,7 +471,7 @@ namespace coco
     }
     COCO_EXPORT void coco_core::set_sensor_location(const sensor &s, std::unique_ptr<location> l)
     {
-        LOG("Setting sensor location..");
+        LOG_DEBUG("Setting sensor location..");
         const std::lock_guard<std::mutex> lock(mtx);
         double s_x = l->x, s_y = l->y;
         // we update the sensor in the database..
@@ -485,7 +485,7 @@ namespace coco
     }
     COCO_EXPORT void coco_core::delete_sensor(const sensor &s)
     {
-        LOG("Deleting sensor..");
+        LOG_DEBUG("Deleting sensor..");
         const std::lock_guard<std::mutex> lock(mtx);
         fire_removed_sensor(s);
         auto f = db.get_sensor(s.id).fact;
@@ -504,7 +504,7 @@ namespace coco
 
     COCO_EXPORT void coco_core::set_sensor_value(const sensor &s, const json::json &value)
     {
-        LOG("Setting sensor value..");
+        LOG_DEBUG("Setting sensor value..");
         const std::lock_guard<std::mutex> lock(mtx);
         json::object &j_val = value;
 

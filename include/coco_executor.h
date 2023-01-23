@@ -36,17 +36,6 @@ namespace coco
      */
     const std::string &get_type() const { return type; }
 
-    /**
-     * @brief Start the execution of the current plan.
-     *
-     */
-    void start_execution() { executing = true; }
-    /**
-     * @brief Pause the execution of the current plan.
-     *
-     */
-    void pause_execution() { executing = false; }
-
   private:
     void log(const std::string &msg) override;
     void read(const std::string &script) override;
@@ -90,7 +79,6 @@ namespace coco
     coco_core &cc;
     ratio::executor::executor &exec;
     const std::string type;
-    bool executing = false;
     std::unordered_set<const ratio::solver::flaw *> flaws;
     const ratio::solver::flaw *c_flaw = nullptr;
     std::unordered_set<const ratio::solver::resolver *> resolvers;

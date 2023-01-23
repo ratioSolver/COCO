@@ -86,10 +86,10 @@ namespace coco
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
+        if (!UDFNextArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        coco_exec->start_execution();
+        coco_exec->get_executor().start_execution();
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state executing)))").c_str(), NULL);
 
@@ -106,10 +106,10 @@ namespace coco
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
+        if (!UDFNextArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        coco_exec->pause_execution();
+        coco_exec->get_executor().pause_execution();
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state paused)))").c_str(), NULL);
 
@@ -257,7 +257,7 @@ namespace coco
         auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
 
         UDFValue exec_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
+        if (!UDFNextArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         auto exec = &coco_exec->get_executor();

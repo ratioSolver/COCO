@@ -25,7 +25,7 @@ namespace coco
             {
                 auto param_doc = param.get_document().value;
                 auto param_name = param_doc["name"].get_string().value.to_string();
-                auto param_type = param_doc["type"].get_int64().value;
+                auto param_type = param_doc["type"].get_int32().value;
                 parameter_types.emplace(param_name, static_cast<parameter_type>(param_type));
             }
             coco_db::create_sensor_type(id, name, description, parameter_types);
@@ -64,7 +64,7 @@ namespace coco
         {
             auto param_doc = bsoncxx::builder::basic::document{};
             param_doc.append(bsoncxx::builder::basic::kvp("name", param.first));
-            param_doc.append(bsoncxx::builder::basic::kvp("type", static_cast<long>(param.second)));
+            param_doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(param.second)));
             param_types.append(param_doc);
         }
         s_doc.append(bsoncxx::builder::basic::kvp("parameter_types", param_types));

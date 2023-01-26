@@ -20,15 +20,15 @@ namespace coco
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
-            std::map<std::string, parameter_type> parameter_types;
-            for (auto param : doc["parameter_types"].get_array().value)
+            std::map<std::string, parameter_type> parameters;
+            for (auto param : doc["parameters"].get_array().value)
             {
                 auto param_doc = param.get_document().value;
                 auto param_name = param_doc["name"].get_string().value.to_string();
                 auto param_type = param_doc["type"].get_int32().value;
-                parameter_types.emplace(param_name, static_cast<parameter_type>(param_type));
+                parameters.emplace(param_name, static_cast<parameter_type>(param_type));
             }
-            coco_db::create_sensor_type(id, name, description, parameter_types);
+            coco_db::create_sensor_type(id, name, description, parameters);
         }
         LOG("Retrieved " + std::to_string(get_all_sensor_types().size()) + " sensor types..");
 
@@ -54,25 +54,25 @@ namespace coco
         }
         LOG("Retrieved " + std::to_string(get_all_sensors().size()) + " sensors..");
     }
-    std::string mongo_db::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
+    std::string mongo_db::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameters)
     {
         auto s_doc = bsoncxx::builder::basic::document{};
         s_doc.append(bsoncxx::builder::basic::kvp("name", name));
         s_doc.append(bsoncxx::builder::basic::kvp("description", description));
         auto param_types = bsoncxx::builder::basic::array{};
-        for (const auto &param : parameter_types)
+        for (const auto &param : parameters)
         {
             auto param_doc = bsoncxx::builder::basic::document{};
             param_doc.append(bsoncxx::builder::basic::kvp("name", param.first));
             param_doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(param.second)));
             param_types.append(param_doc);
         }
-        s_doc.append(bsoncxx::builder::basic::kvp("parameter_types", param_types));
+        s_doc.append(bsoncxx::builder::basic::kvp("parameters", param_types));
         auto result = sensor_types_collection.insert_one(s_doc.view());
         if (result)
         {
             auto id = result->inserted_id().get_oid().value.to_string();
-            coco_db::create_sensor_type(id, name, description, parameter_types);
+            coco_db::create_sensor_type(id, name, description, parameters);
             return id;
         }
         else

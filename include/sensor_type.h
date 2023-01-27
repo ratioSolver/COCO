@@ -12,6 +12,7 @@ namespace coco
   {
     Integer,
     Float,
+    Boolean,
     String
   };
 
@@ -54,7 +55,7 @@ namespace coco
      *
      * @return const std::map<std::string, parameter_type>& the parameter types of the sensor type.
      */
-    const std::map<std::string, parameter_type> &get_parameter_types() const { return parameter_types; }
+    const std::map<std::string, parameter_type> &get_parameters() const { return parameter_types; }
     /**
      * @brief Get the fact of the sensor type.
      *

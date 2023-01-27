@@ -35,6 +35,14 @@ namespace coco
      */
     std::vector<std::reference_wrapper<sensor_type>> get_all_sensor_types();
     /**
+     * @brief Check if the sensor type object with the given id exists.
+     *
+     * @param id the id of the sensor type.
+     * @return true if the sensor type exists.
+     * @return false if the sensor type does not exist.
+     */
+    bool has_sensor_type(const std::string &id) const { return sensor_types.find(id) != sensor_types.end(); }
+    /**
      * @brief Get the sensor type object with the given id.
      *
      * @param id the id of the sensor type.
@@ -77,6 +85,14 @@ namespace coco
      * @return std::vector<std::reference_wrapper<sensor>> all the sensors.
      */
     std::vector<std::reference_wrapper<sensor>> get_all_sensors();
+    /**
+     * @brief Check if the sensor object with the given id exists.
+     *
+     * @param id the id of the sensor.
+     * @return true if the sensor exists.
+     * @return false if the sensor does not exist.
+     */
+    bool has_sensor(const std::string &id) const { return sensors.find(id) != sensors.end(); }
     /**
      * @brief Get the sensor object with the given id.
      *

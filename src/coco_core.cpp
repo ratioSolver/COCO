@@ -500,7 +500,35 @@ namespace coco
 #endif
     }
 
-    COCO_EXPORT void coco_core::publish_sensor_value(const sensor &s, const json::json &value) { publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true); }
+    COCO_EXPORT void coco_core::publish_sensor_value(const sensor &s, const json::json &value)
+    {
+        LOG_DEBUG("Publishing sensor value..");
+        publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
+    }
+
+    COCO_EXPORT void coco_core::publish_random_value(const sensor &s)
+    {
+        LOG_DEBUG("Publishing random value..");
+        json::json value;
+        for (const auto &[name, type] : s.get_type().get_parameters())
+            switch (type)
+            {
+            case parameter_type::Integer:
+                value[name] = (long)rand() % 100;
+                break;
+            case parameter_type::Float:
+                value[name] = (float)rand() / (float)RAND_MAX;
+                break;
+            case parameter_type::Boolean:
+                value[name] = rand() % 2 == 0;
+                break;
+            case parameter_type::String:
+                value[name] = "test";
+                break;
+            }
+
+        publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
+    }
 
     COCO_EXPORT void coco_core::set_sensor_value(const sensor &s, const json::json &value)
     {

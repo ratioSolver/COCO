@@ -13,6 +13,7 @@ namespace coco
     Integer,
     Float,
     Boolean,
+    Symbol,
     String
   };
 

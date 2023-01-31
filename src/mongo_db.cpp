@@ -167,6 +167,7 @@ namespace coco
 
     void mongo_db::drop()
     {
+        LOG_WARN("Dropping database..");
         db.drop();
         coco_db::drop();
         sensor_data_collection.create_index(bsoncxx::builder::stream::document{} << "sensor_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize);

@@ -55,7 +55,14 @@ namespace coco
 
     void mqtt_middleware::message_arrived(mqtt::const_message_ptr msg)
     {
-        auto j_msg = json::load(msg->get_payload());
-        coco_middleware::message_arrived(msg->get_topic(), j_msg);
+        try
+        {
+            auto j_msg = json::load(msg->get_payload());
+            coco_middleware::message_arrived(msg->get_topic(), j_msg);
+        }
+        catch (const std::invalid_argument &e)
+        {
+            LOG_ERR("Invalid JSON message received from MQTT broker: " + std::string(e.what()));
+        }
     }
 } // namespace coco

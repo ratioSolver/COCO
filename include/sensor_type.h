@@ -58,6 +58,21 @@ namespace coco
      */
     const std::map<std::string, parameter_type> &get_parameters() const { return parameter_types; }
     /**
+     * @brief Get the parameter type of the sensor type having the given name.
+     *
+     * @param name the name of the parameter.
+     * @return const parameter_type& the parameter type of the sensor type having the given name.
+     */
+    const parameter_type &get_parameter_type(const std::string &name) const { return parameter_types.at(name); }
+    /**
+     * @brief Check if the sensor type has a parameter having the given name.
+     *
+     * @param name the name of the parameter.
+     * @return true if the sensor type has a parameter having the given name.
+     * @return false if the sensor type has no parameter having the given name.
+     */
+    bool has_parameter(const std::string &name) const { return parameter_types.find(name) != parameter_types.end(); }
+    /**
      * @brief Get the fact of the sensor type.
      *
      * @return Fact* the fact of the sensor type.

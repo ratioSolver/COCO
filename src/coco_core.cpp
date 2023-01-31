@@ -522,6 +522,9 @@ namespace coco
             case parameter_type::Boolean:
                 value[name] = rand() % 2 == 0;
                 break;
+            case parameter_type::Symbol:
+                value[name] = "test";
+                break;
             case parameter_type::String:
                 value[name] = "test";
                 break;
@@ -541,20 +544,56 @@ namespace coco
 
         std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time) + ") (data";
         for (const auto &[id, val] : j_val)
-        {
-            json::string_val &j_v = val;
-            fact_str += ' ';
-            fact_str += j_v;
-        }
+            if (s.get_type().has_parameter(id))
+            {
+                fact_str += ' ';
+                switch (s.get_type().get_parameter_type(id))
+                {
+                case parameter_type::Integer:
+                {
+                    json::number_val &j_v = val;
+                    fact_str += std::to_string(j_v.operator long());
+                    break;
+                }
+                case parameter_type::Float:
+                {
+                    json::number_val &j_v = val;
+                    fact_str += std::to_string(j_v.operator double());
+                    break;
+                }
+                case parameter_type::Boolean:
+                {
+                    json::bool_val &j_v = val;
+                    fact_str += j_v ? "true" : "false";
+                    break;
+                }
+                case parameter_type::Symbol:
+                {
+                    json::string_val &j_v = val;
+                    fact_str += j_v;
+                    break;
+                }
+                case parameter_type::String:
+                {
+                    json::string_val &j_v = val;
+                    fact_str += '\"' + j_v.operator std::string() + '\"';
+                    break;
+                }
+                }
+            }
+            else
+            {
+                LOG_ERR("Sensor " << s.id << " does not have parameter " << id);
+            }
         fact_str += "))";
         LOG_DEBUG("Asserting fact: " << fact_str);
 
         Fact *sv_f = AssertString(env, fact_str.c_str());
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+//#ifdef VERBOSE_LOG
+//        Eval(env, "(facts)", NULL);
+//#endif
 
         db.set_sensor_value(s.id, time, value);
 
@@ -562,9 +601,9 @@ namespace coco
         Retract(sv_f);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+//#ifdef VERBOSE_LOG
+//        Eval(env, "(facts)", NULL);
+//#endif
     }
 
     void coco_core::tick()

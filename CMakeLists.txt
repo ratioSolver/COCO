@@ -26,6 +26,7 @@ set(CLIPS_INCLUDE_DIR /usr/local/include/clips CACHE PATH "CLIPS include directo
 set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 
 set(COCO_ROOT "COCO" CACHE STRING "The COCO Root")
+set(COCO_RULES "" CACHE STRING "The COCO Rules")
 set(MQTT_HOST "tcp://127.0.0.1" CACHE STRING "The MQTT Host")
 set(MQTT_PORT "1883" CACHE STRING "The MQTT Port")
 set(MONGODB_HOST "localhost" CACHE STRING "The MongoDB Host")
@@ -37,6 +38,7 @@ set(MULTIPLE_EXECUTORS ON CACHE BOOL "Allows different executors" FORCE)
 set(COMPUTE_NAMES ON CACHE BOOL "Computes the objects' names" FORCE)
 
 message(STATUS "CoCo root:              ${COCO_ROOT}")
+message(STATUS "CoCo rules:             ${COCO_RULES}")
 message(STATUS "MQTT host:              ${MQTT_HOST}")
 message(STATUS "MQTT port:              ${MQTT_PORT}")
 message(STATUS "MongoDB host:           ${MONGODB_HOST}")
@@ -52,7 +54,7 @@ GENERATE_EXPORT_HEADER(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> $<INSTALL_INTERFACE:> ${CLIPS_INCLUDE_DIR} ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})
 target_link_directories(${PROJECT_NAME} PUBLIC ${CLIPS_LIB_DIR})
 target_link_libraries(${PROJECT_NAME} PRIVATE PlExA oRatioSolver ratioCore RiDDLe SeMiTONE json ${CMAKE_THREAD_LIBS_INIT} PahoMqttCpp::paho-mqttpp3-static clips mongo::bsoncxx_shared mongo::mongocxx_shared)
-target_compile_definitions(${PROJECT_NAME} PUBLIC COCO_ROOT="${COCO_ROOT}" MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}" MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
+target_compile_definitions(${PROJECT_NAME} PUBLIC COCO_ROOT="${COCO_ROOT}" COCO_RULES="${COCO_RULES}" MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}" MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 
 configure_file(rules/rules.clp rules/rules.clp COPYONLY)
 

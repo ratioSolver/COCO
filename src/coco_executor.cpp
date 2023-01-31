@@ -137,8 +137,9 @@ namespace coco
     void coco_executor::starting(const std::unordered_set<ratio::core::atom *> &atoms)
     {
         const std::lock_guard<std::mutex> lock(cc.mtx);
+        std::vector<Fact *> facts;
         for (const auto &atm : atoms)
-            AssertString(cc.env, to_task(*atm, "starting").c_str());
+            facts.push_back(AssertString(cc.env, to_task(*atm, "starting").c_str()));
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
@@ -180,26 +181,46 @@ namespace coco
             Eval(cc.env, "(facts)", NULL);
 #endif
         }
+
+        // we retract the facts..
+        for (const auto &f : facts)
+            Retract(f);
+        // we run the rules engine to update the policy..
+        Run(cc.env, -1);
+        // #ifdef VERBOSE_LOG
+        //         Eval(env, "(facts)", NULL);
+        // #endif
     }
     void coco_executor::start(const std::unordered_set<ratio::core::atom *> &atoms)
     {
         const std::lock_guard<std::mutex> lock(cc.mtx);
         executing_atoms.insert(atoms.cbegin(), atoms.cend());
 
+        std::vector<Fact *> facts;
         for (const auto &atm : atoms)
-            AssertString(cc.env, to_task(*atm, "start").c_str());
+            facts.push_back(AssertString(cc.env, to_task(*atm, "start").c_str()));
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
 #endif
         cc.fire_start(*this, atoms);
+
+        // we retract the facts..
+        for (const auto &f : facts)
+            Retract(f);
+        // we run the rules engine to update the policy..
+        Run(cc.env, -1);
+        // #ifdef VERBOSE_LOG
+        //         Eval(env, "(facts)", NULL);
+        // #endif
     }
 
     void coco_executor::ending(const std::unordered_set<ratio::core::atom *> &atoms)
     {
         const std::lock_guard<std::mutex> lock(cc.mtx);
+        std::vector<Fact *> facts;
         for (const auto &atm : atoms)
-            AssertString(cc.env, to_task(*atm, "ending").c_str());
+            facts.push_back(AssertString(cc.env, to_task(*atm, "ending").c_str()));
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
@@ -241,6 +262,15 @@ namespace coco
             Eval(cc.env, "(facts)", NULL);
 #endif
         }
+
+        // we retract the facts..
+        for (const auto &f : facts)
+            Retract(f);
+        // we run the rules engine to update the policy..
+        Run(cc.env, -1);
+        // #ifdef VERBOSE_LOG
+        //         Eval(env, "(facts)", NULL);
+        // #endif
     }
     void coco_executor::end(const std::unordered_set<ratio::core::atom *> &atoms)
     {
@@ -248,18 +278,28 @@ namespace coco
         for (const auto &a : atoms)
             executing_atoms.erase(a);
 
+        std::vector<Fact *> facts;
         for (const auto &atm : atoms)
-            AssertString(cc.env, to_task(*atm, "end").c_str());
+            facts.push_back(AssertString(cc.env, to_task(*atm, "end").c_str()));
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
 #endif
         cc.fire_end(*this, atoms);
+
+        // we retract the facts..
+        for (const auto &f : facts)
+            Retract(f);
+        // we run the rules engine to update the policy..
+        Run(cc.env, -1);
+        // #ifdef VERBOSE_LOG
+        //         Eval(env, "(facts)", NULL);
+        // #endif
     }
 
     std::string coco_executor::to_task(const ratio::core::atom &atm, const std::string &command)
     {
-        std::string task_str = "(task (task_type " + atm.get_type().get_name() + ") (id " + std::to_string(get_id(atm)) + ") (command " + command + ")";
+        std::string task_str = "(task (solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (task_type " + atm.get_type().get_name() + ") (id " + std::to_string(get_id(atm)) + ") (command " + command + ")";
         std::string pars_str = "(pars";
         std::string vals_str = "(vals";
 

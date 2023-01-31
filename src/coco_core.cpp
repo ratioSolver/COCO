@@ -274,7 +274,7 @@ namespace coco
         e.fire_removed_solver(*coco_exec);
     }
 
-    void send_message([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    void publish_message([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
     {
         LOG_DEBUG("Sending message..");
 
@@ -307,7 +307,7 @@ namespace coco
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", NULL);
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", NULL);
         AddUDF(env, "delete_solver", "v", 2, 2, "ll", delete_solver, "delete_solver", NULL);
-        AddUDF(env, "send_message", "v", 3, 3, "lss", send_message, "send_message", NULL);
+        AddUDF(env, "publish_message", "v", 3, 3, "lss", publish_message, "publish_message", NULL);
     }
     COCO_EXPORT coco_core::~coco_core()
     {

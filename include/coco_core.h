@@ -125,7 +125,7 @@ namespace coco
     friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void send_message(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void publish_message(Environment *env, UDFContext *udfc, UDFValue *out);
 
   private:
     void fire_new_sensor_type(const sensor_type &type);

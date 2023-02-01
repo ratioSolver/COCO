@@ -57,6 +57,15 @@ namespace coco
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &riddle))
             return;
 
+        std::vector<std::string> fs;
+        for (size_t i = 0; i < riddle.multifieldValue->length; ++i)
+        {
+            auto &file = riddle.multifieldValue->contents[i];
+            if (file.header->type != STRING_TYPE)
+                return;
+            fs.push_back(file.lexemeValue->contents);
+        }
+
         auto slv = new ratio::solver::solver();
         auto exec = new ratio::executor::executor(*slv);
         auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
@@ -68,9 +77,6 @@ namespace coco
         e.executors.push_back(std::move(coco_exec));
 
         // we adapt to some riddle files..
-        std::vector<std::string> fs;
-        for (size_t i = 0; i < riddle.multifieldValue->length; ++i)
-            fs.push_back(riddle.multifieldValue->contents[i].lexemeValue->contents);
         exec->adapt(fs);
 
         out->integerValue = CreateInteger(env, exec_ptr);
@@ -138,11 +144,26 @@ namespace coco
             switch (delay_val.multifieldValue->length)
             {
             case 1:
-                delay = semitone::rational(delay_val.multifieldValue[0].contents->integerValue->contents);
+            {
+                auto &num = delay_val.multifieldValue[0].contents;
+                if (num->header->type != INTEGER_TYPE)
+                    return;
+                delay = semitone::rational(num->integerValue->contents);
                 break;
+            }
             case 2:
-                delay = semitone::rational(delay_val.multifieldValue[0].contents->integerValue->contents, delay_val.multifieldValue[1].contents->integerValue->contents);
+            {
+                auto &num = delay_val.multifieldValue[0].contents;
+                if (num->header->type != INTEGER_TYPE)
+                    return;
+                auto &den = delay_val.multifieldValue[1].contents;
+                if (den->header->type != INTEGER_TYPE)
+                    return;
+                delay = semitone::rational(num->integerValue->contents, den->integerValue->contents);
                 break;
+            }
+            default:
+                return;
             }
         else
             delay = semitone::rational(1);
@@ -172,11 +193,26 @@ namespace coco
             switch (delay_val.multifieldValue->length)
             {
             case 1:
-                delay = semitone::rational(delay_val.multifieldValue[0].contents->integerValue->contents);
+            {
+                auto &num = delay_val.multifieldValue[0].contents;
+                if (num->header->type != INTEGER_TYPE)
+                    return;
+                delay = semitone::rational(num->integerValue->contents);
                 break;
+            }
             case 2:
-                delay = semitone::rational(delay_val.multifieldValue[0].contents->integerValue->contents, delay_val.multifieldValue[1].contents->integerValue->contents);
+            {
+                auto &num = delay_val.multifieldValue[0].contents;
+                if (num->header->type != INTEGER_TYPE)
+                    return;
+                auto &den = delay_val.multifieldValue[1].contents;
+                if (den->header->type != INTEGER_TYPE)
+                    return;
+                delay = semitone::rational(num->integerValue->contents, den->integerValue->contents);
                 break;
+            }
+            default:
+                return;
             }
         else
             delay = semitone::rational(1);
@@ -198,7 +234,12 @@ namespace coco
 
         std::unordered_set<const ratio::core::atom *> atms;
         for (size_t i = 0; i < task_ids.multifieldValue->length; ++i)
-            atms.insert(reinterpret_cast<ratio::core::atom *>(task_ids.multifieldValue->contents[i].integerValue->contents));
+        {
+            auto &atm_id = task_ids.multifieldValue->contents[i];
+            if (atm_id.header->type != INTEGER_TYPE)
+                return;
+            atms.insert(reinterpret_cast<ratio::core::atom *>(atm_id.integerValue->contents));
+        }
 
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         coco_exec->get_executor().failure(atms);
@@ -237,13 +278,18 @@ namespace coco
         UDFValue riddle;
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &riddle))
             return;
+        std::vector<std::string> fs;
+        for (size_t i = 0; i < riddle.multifieldValue->length; ++i)
+        {
+            auto &file = riddle.multifieldValue->contents[i];
+            if (file.header->type != STRING_TYPE)
+                return;
+            fs.push_back(file.lexemeValue->contents);
+        }
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state adapting)))").c_str(), NULL);
 
         // we adapt to some riddle files..
-        std::vector<std::string> fs;
-        for (size_t i = 0; i < riddle.multifieldValue->length; ++i)
-            fs.push_back(riddle.multifieldValue->contents[i].lexemeValue->contents);
         exec->adapt(fs);
     }
 
@@ -591,9 +637,6 @@ namespace coco
         Fact *sv_f = AssertString(env, fact_str.c_str());
         // we run the rules engine to update the policy..
         Run(env, -1);
-//#ifdef VERBOSE_LOG
-//        Eval(env, "(facts)", NULL);
-//#endif
 
         db.set_sensor_value(s.id, time, value);
 
@@ -601,9 +644,6 @@ namespace coco
         Retract(sv_f);
         // we run the rules engine to update the policy..
         Run(env, -1);
-//#ifdef VERBOSE_LOG
-//        Eval(env, "(facts)", NULL);
-//#endif
     }
 
     void coco_core::tick()

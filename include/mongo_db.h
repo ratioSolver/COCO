@@ -13,7 +13,7 @@ namespace coco
   public:
     mongo_db(const std::string &root = COCO_ROOT, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
 
-    void init() override;
+    virtual void init() override;
 
     std::string create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) override;
     void set_sensor_type_name(const std::string &id, const std::string &name) override;
@@ -31,7 +31,11 @@ namespace coco
 
   private:
     mongocxx::client conn;
+
+  protected:
     mongocxx::v_noabi::database db;
+
+  private:
     mongocxx::v_noabi::collection sensor_types_collection;
     mongocxx::v_noabi::collection sensors_collection;
     mongocxx::v_noabi::collection sensor_data_collection;

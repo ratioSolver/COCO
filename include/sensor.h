@@ -1,6 +1,7 @@
 #pragma once
 
 #include "json.h"
+#include "location.h"
 #include "clips.h"
 #include <chrono>
 
@@ -8,11 +9,6 @@ namespace coco
 {
   class coco_core;
   class coco_db;
-
-  struct location
-  {
-    double x, y;
-  };
 
   class sensor
   {

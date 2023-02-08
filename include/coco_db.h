@@ -17,7 +17,7 @@ namespace coco
 
     const std::string &get_root() const { return root; }
 
-    virtual void init() {}
+    virtual void init();
 
     /**
      * @brief Create a sensor type object with the given name and description and returns its id.

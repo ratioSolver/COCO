@@ -4,6 +4,12 @@ namespace coco
 {
     coco_db::coco_db(const std::string &root) : root(root) {}
 
+    void coco_db::init()
+    {
+        sensor_types.clear();
+        sensors.clear();
+    }
+
     std::string coco_db::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
     {
         size_t c_id = sensor_types.size();

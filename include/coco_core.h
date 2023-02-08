@@ -42,9 +42,9 @@ namespace coco
     /**
      * @brief Get the mutex object. This mutex is used to synchronize the access to the system.
      *
-     * @return std::mutex& the mutex.
+     * @return std::recursive_mutex& the mutex.
      */
-    std::mutex &get_mutex() { return mtx; }
+    std::recursive_mutex &get_mutex() { return mtx; }
 
     /**
      * @brief Get the list of executors.
@@ -171,7 +171,7 @@ namespace coco
 
   private:
     coco_db &db;
-    std::mutex mtx;
+    std::recursive_mutex mtx;
     std::list<std::unique_ptr<coco_middleware>> middlewares;
     ratio::time::timer coco_timer;
     std::list<std::unique_ptr<coco_executor>> executors;

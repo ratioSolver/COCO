@@ -422,7 +422,7 @@ namespace coco
     COCO_EXPORT void coco_core::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
     {
         LOG_DEBUG("Creating new sensor type..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we store the sensor type in the database..
         auto id = db.create_sensor_type(name, description, parameter_types);
         // we create a new fact for the new sensor type..
@@ -437,7 +437,7 @@ namespace coco
     COCO_EXPORT void coco_core::set_sensor_type_name(const sensor_type &type, const std::string &name)
     {
         LOG_DEBUG("Setting sensor type name..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the sensor type in the database..
         db.set_sensor_type_name(type.id, name);
         // we update the sensor type fact..
@@ -452,7 +452,7 @@ namespace coco
     COCO_EXPORT void coco_core::set_sensor_type_description(const sensor_type &type, const std::string &description)
     {
         LOG_DEBUG("Setting sensor type description..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the sensor type in the database..
         db.set_sensor_type_description(type.id, description);
         // we update the sensor type fact
@@ -467,7 +467,7 @@ namespace coco
     COCO_EXPORT void coco_core::delete_sensor_type(const sensor_type &type)
     {
         LOG_DEBUG("Deleting sensor type..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         fire_removed_sensor_type(type);
         auto f = db.get_sensor_type(type.id).fact;
         // we delete the sensor type from the database..
@@ -484,7 +484,7 @@ namespace coco
     COCO_EXPORT void coco_core::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
     {
         LOG_DEBUG("Creating new sensor..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we store the sensor in the database..
         auto id = db.create_sensor(name, type, std::move(l));
         // we create a new fact for the new sensor..
@@ -503,7 +503,7 @@ namespace coco
     COCO_EXPORT void coco_core::set_sensor_name(const sensor &s, const std::string &name)
     {
         LOG_DEBUG("Setting sensor name..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the sensor in the database..
         db.set_sensor_name(s.id, name);
         // we update the sensor fact..
@@ -518,7 +518,7 @@ namespace coco
     COCO_EXPORT void coco_core::set_sensor_location(const sensor &s, std::unique_ptr<location> l)
     {
         LOG_DEBUG("Setting sensor location..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         double s_x = l->x, s_y = l->y;
         // we update the sensor in the database..
         db.set_sensor_location(s.id, std::move(l));
@@ -532,7 +532,7 @@ namespace coco
     COCO_EXPORT void coco_core::delete_sensor(const sensor &s)
     {
         LOG_DEBUG("Deleting sensor..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         fire_removed_sensor(s);
         auto f = db.get_sensor(s.id).fact;
         // we delete the sensor from the database..
@@ -582,7 +582,7 @@ namespace coco
     COCO_EXPORT void coco_core::set_sensor_value(const sensor &s, const json::json &value)
     {
         LOG_DEBUG("Setting sensor value..");
-        const std::lock_guard<std::mutex> lock(mtx);
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         json::object &j_val = value;
 
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -648,6 +648,7 @@ namespace coco
 
     void coco_core::tick()
     {
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         for (auto &exec : executors)
             exec->tick();
     }

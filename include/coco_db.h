@@ -52,23 +52,23 @@ namespace coco
     /**
      * @brief Set the name to the sensor type object with the given id.
      *
-     * @param id the id of the sensor type.
+     * @param st the sensor type.
      * @param name the new name of the sensor type.
      */
-    virtual void set_sensor_type_name(const std::string &id, const std::string &name);
+    virtual void set_sensor_type_name(sensor_type &st, const std::string &name);
     /**
      * @brief Set the description to the sensor type object with the given id.
      *
-     * @param id the id of the sensor type.
+     * @param st the sensor type.
      * @param description the new description of the sensor type.
      */
-    virtual void set_sensor_type_description(const std::string &id, const std::string &description);
+    virtual void set_sensor_type_description(sensor_type &st, const std::string &description);
     /**
      * @brief Delete the sensor type object with the given id.
      *
-     * @param id the id of the sensor type.
+     * @param st the sensor type.
      */
-    virtual void delete_sensor_type(const std::string &id);
+    virtual void delete_sensor_type(sensor_type &st);
 
     /**
      * @brief Create a sensor object with the given name, type and location and returns its id.
@@ -103,40 +103,40 @@ namespace coco
     /**
      * @brief Set the name to the sensor object with the given id.
      *
-     * @param id the id of the sensor.
+     * @param s the sensor.
      * @param name the new name of the sensor.
      */
-    virtual void set_sensor_name(const std::string &id, const std::string &name);
+    virtual void set_sensor_name(sensor &s, const std::string &name);
     /**
      * @brief Set the type to the sensor object with the given id.
      *
-     * @param id the id of the sensor.
+     * @param s the sensor.
      * @param type the new type of the sensor.
      */
-    virtual void set_sensor_location(const std::string &id, std::unique_ptr<location> l);
+    virtual void set_sensor_location(sensor &s, std::unique_ptr<location> l);
     /**
      * @brief Get the sensor values object with the given id.
      *
-     * @param id the id of the sensor.
+     * @param s the sensor.
      * @param from the start time of the sensor values.
      * @param to the end time of the sensor values.
      * @return json::json the sensor values with the given id.
      */
-    virtual json::json get_sensor_values(const std::string &id, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
+    virtual json::json get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
     /**
      * @brief Set the value of the sensor object with the given id.
      *
-     * @param id the id of the sensor.
+     * @param s the sensor.
      * @param time the time of the sensor value.
      * @param val the value of the sensor.
      */
-    virtual void set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, const json::json &val);
+    virtual void set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val);
     /**
      * @brief Delete the sensor object with the given id.
      *
-     * @param id the id of the sensor.
+     * @param s the sensor.
      */
-    virtual void delete_sensor(const std::string &id);
+    virtual void delete_sensor(sensor &s);
 
     /**
      * @brief Drop the database.

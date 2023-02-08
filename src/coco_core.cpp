@@ -434,12 +434,12 @@ namespace coco
 #endif
         fire_new_sensor_type(db.get_sensor_type(id));
     }
-    COCO_EXPORT void coco_core::set_sensor_type_name(const sensor_type &type, const std::string &name)
+    COCO_EXPORT void coco_core::set_sensor_type_name(sensor_type &type, const std::string &name)
     {
         LOG_DEBUG("Setting sensor type name..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the sensor type in the database..
-        db.set_sensor_type_name(type.id, name);
+        db.set_sensor_type_name(type, name);
         // we update the sensor type fact..
         Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + type.id + ") (modify ?st (name \"" + name + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
@@ -449,12 +449,12 @@ namespace coco
 #endif
         fire_updated_sensor_type(type);
     }
-    COCO_EXPORT void coco_core::set_sensor_type_description(const sensor_type &type, const std::string &description)
+    COCO_EXPORT void coco_core::set_sensor_type_description(sensor_type &type, const std::string &description)
     {
         LOG_DEBUG("Setting sensor type description..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the sensor type in the database..
-        db.set_sensor_type_description(type.id, description);
+        db.set_sensor_type_description(type, description);
         // we update the sensor type fact
         Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + type.id + ") (modify ?st (description \"" + description + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
@@ -464,14 +464,14 @@ namespace coco
 #endif
         fire_updated_sensor_type(type);
     }
-    COCO_EXPORT void coco_core::delete_sensor_type(const sensor_type &type)
+    COCO_EXPORT void coco_core::delete_sensor_type(sensor_type &type)
     {
         LOG_DEBUG("Deleting sensor type..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         fire_removed_sensor_type(type);
         auto f = db.get_sensor_type(type.id).fact;
         // we delete the sensor type from the database..
-        db.delete_sensor_type(type.id);
+        db.delete_sensor_type(type);
         // we retract the sensor type fact..
         Retract(f);
         // we run the rules engine to update the policy..
@@ -500,12 +500,12 @@ namespace coco
 #endif
         fire_new_sensor(db.get_sensor(id));
     }
-    COCO_EXPORT void coco_core::set_sensor_name(const sensor &s, const std::string &name)
+    COCO_EXPORT void coco_core::set_sensor_name(sensor &s, const std::string &name)
     {
         LOG_DEBUG("Setting sensor name..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the sensor in the database..
-        db.set_sensor_name(s.id, name);
+        db.set_sensor_name(s, name);
         // we update the sensor fact..
         Eval(env, ("(do-for-fact ((?s sensor)) (= ?s:id " + s.id + ") (modify ?s (name \"" + name + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
@@ -515,13 +515,13 @@ namespace coco
 #endif
         fire_updated_sensor(s);
     }
-    COCO_EXPORT void coco_core::set_sensor_location(const sensor &s, std::unique_ptr<location> l)
+    COCO_EXPORT void coco_core::set_sensor_location(sensor &s, std::unique_ptr<location> l)
     {
         LOG_DEBUG("Setting sensor location..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         double s_x = l->x, s_y = l->y;
         // we update the sensor in the database..
-        db.set_sensor_location(s.id, std::move(l));
+        db.set_sensor_location(s, std::move(l));
         // we update the sensor fact..
         Eval(env, ("(do-for-fact ((?s sensor_type)) (= ?s:id " + s.id + ") (modify ?s (location " + std::to_string(s_x) + " " + std::to_string(s_y) + ")))").c_str(), NULL);
 #ifdef VERBOSE_LOG
@@ -529,14 +529,14 @@ namespace coco
 #endif
         fire_updated_sensor(s);
     }
-    COCO_EXPORT void coco_core::delete_sensor(const sensor &s)
+    COCO_EXPORT void coco_core::delete_sensor(sensor &s)
     {
         LOG_DEBUG("Deleting sensor..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         fire_removed_sensor(s);
         auto f = db.get_sensor(s.id).fact;
         // we delete the sensor from the database..
-        db.delete_sensor(s.id);
+        db.delete_sensor(s);
         // we retract the sensor fact..
         Retract(f);
         // we run the rules engine to update the policy..
@@ -579,7 +579,7 @@ namespace coco
         publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
-    COCO_EXPORT void coco_core::set_sensor_value(const sensor &s, const json::json &value)
+    COCO_EXPORT void coco_core::set_sensor_value(sensor &s, const json::json &value)
     {
         LOG_DEBUG("Setting sensor value..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -638,7 +638,7 @@ namespace coco
         // we run the rules engine to update the policy..
         Run(env, -1);
 
-        db.set_sensor_value(s.id, time, value);
+        db.set_sensor_value(s, time, value);
 
         // we retract the sensor value fact..
         Retract(sv_f);

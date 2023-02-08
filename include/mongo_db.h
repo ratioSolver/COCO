@@ -16,16 +16,16 @@ namespace coco
     virtual void init() override;
 
     std::string create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) override;
-    void set_sensor_type_name(const std::string &id, const std::string &name) override;
-    void set_sensor_type_description(const std::string &id, const std::string &description) override;
-    void delete_sensor_type(const std::string &id) override;
+    void set_sensor_type_name(sensor_type &st, const std::string &name) override;
+    void set_sensor_type_description(sensor_type &st, const std::string &description) override;
+    void delete_sensor_type(sensor_type &st) override;
 
     std::string create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l = nullptr) override;
-    void set_sensor_name(const std::string &id, const std::string &name) override;
-    void set_sensor_location(const std::string &id, std::unique_ptr<location> l) override;
-    json::json get_sensor_values(const std::string &id, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end) override;
-    void set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, const json::json &val) override;
-    void delete_sensor(const std::string &id) override;
+    void set_sensor_name(sensor &s, const std::string &name) override;
+    void set_sensor_location(sensor &s, std::unique_ptr<location> l) override;
+    json::json get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end) override;
+    void set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val) override;
+    void delete_sensor(sensor &s) override;
 
     void drop() override;
 

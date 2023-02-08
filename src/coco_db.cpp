@@ -27,9 +27,9 @@ namespace coco
             sts.push_back(*st);
         return sts;
     }
-    void coco_db::set_sensor_type_name(const std::string &id, const std::string &name) { sensor_types.at(id)->name = name; }
-    void coco_db::set_sensor_type_description(const std::string &id, const std::string &description) { sensor_types.at(id)->description = description; }
-    void coco_db::delete_sensor_type(const std::string &id) { sensor_types.erase(id); }
+    void coco_db::set_sensor_type_name(sensor_type &st, const std::string &name) { st.name = name; }
+    void coco_db::set_sensor_type_description(sensor_type &st, const std::string &description) { st.description = description; }
+    void coco_db::delete_sensor_type(sensor_type &st) { sensor_types.erase(st.id); }
 
     std::string coco_db::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
     {
@@ -48,17 +48,17 @@ namespace coco
             sts.push_back(*st);
         return sts;
     }
-    void coco_db::set_sensor_name(const std::string &id, const std::string &name) { sensors.at(id)->name = name; }
-    void coco_db::set_sensor_location(const std::string &id, std::unique_ptr<location> l) { sensors.at(id)->loc.swap(l); }
-    json::json coco_db::get_sensor_values([[maybe_unused]] const std::string &id, [[maybe_unused]] const std::chrono::milliseconds::rep &from, [[maybe_unused]] const std::chrono::milliseconds::rep &to) { return json::json(); }
-    void coco_db::set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, const json::json &val)
+    void coco_db::set_sensor_name(sensor &s, const std::string &name) { s.name = name; }
+    void coco_db::set_sensor_location(sensor &s, std::unique_ptr<location> l) { s.loc.swap(l); }
+    json::json coco_db::get_sensor_values([[maybe_unused]] sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &from, [[maybe_unused]] const std::chrono::milliseconds::rep &to) { return json::json(); }
+    void coco_db::set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val)
     {
         json::json c_v = json::load(val.dump());
         auto v = std::make_unique<json::json>(std::move(c_v));
-        sensors.at(id)->last_update = time;
-        sensors.at(id)->value.swap(v);
+        s.last_update = time;
+        s.value.swap(v);
     }
-    void coco_db::delete_sensor(const std::string &id) { sensors.erase(id); }
+    void coco_db::delete_sensor(sensor &s) { sensors.erase(s.id); }
 
     void coco_db::drop()
     {

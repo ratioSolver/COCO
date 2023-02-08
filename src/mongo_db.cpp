@@ -79,25 +79,25 @@ namespace coco
         else
             return {};
     }
-    void mongo_db::set_sensor_type_name(const std::string &id, const std::string &name)
+    void mongo_db::set_sensor_type_name(sensor_type &st, const std::string &name)
     {
-        auto result = sensor_types_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize,
+        auto result = sensor_types_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{st.get_id()}} << bsoncxx::builder::stream::finalize,
                                                          bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "name" << name << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
         if (result)
-            coco_db::set_sensor_type_name(id, name);
+            coco_db::set_sensor_type_name(st, name);
     }
-    void mongo_db::set_sensor_type_description(const std::string &id, const std::string &description)
+    void mongo_db::set_sensor_type_description(sensor_type &st, const std::string &description)
     {
-        auto result = sensor_types_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize,
+        auto result = sensor_types_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{st.get_id()}} << bsoncxx::builder::stream::finalize,
                                                          bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "description" << description << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
         if (result)
-            coco_db::set_sensor_type_description(id, description);
+            coco_db::set_sensor_type_description(st, description);
     }
-    void mongo_db::delete_sensor_type(const std::string &id)
+    void mongo_db::delete_sensor_type(sensor_type &st)
     {
-        auto result = sensor_types_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize);
+        auto result = sensor_types_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{st.get_id()}} << bsoncxx::builder::stream::finalize);
         if (result)
-            coco_db::delete_sensor_type(id);
+            coco_db::delete_sensor_type(st);
     }
 
     std::string mongo_db::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
@@ -119,51 +119,51 @@ namespace coco
         else
             return {};
     }
-    void mongo_db::set_sensor_name(const std::string &id, const std::string &name)
+    void mongo_db::set_sensor_name(sensor &s, const std::string &name)
     {
-        auto result = sensors_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize,
+        auto result = sensors_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << bsoncxx::builder::stream::finalize,
                                                     bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "name" << name << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
         if (result)
-            coco_db::set_sensor_name(id, name);
+            coco_db::set_sensor_name(s, name);
     }
-    void mongo_db::set_sensor_location(const std::string &id, std::unique_ptr<location> l)
+    void mongo_db::set_sensor_location(sensor &s, std::unique_ptr<location> l)
     {
         if (l)
         {
-            auto result = sensors_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize,
+            auto result = sensors_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << bsoncxx::builder::stream::finalize,
                                                         bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "location" << bsoncxx::builder::stream::open_document << "x" << l->x << "y" << l->y << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
             if (result)
-                coco_db::set_sensor_location(id, std::move(l));
+                coco_db::set_sensor_location(s, std::move(l));
         }
         else
         {
-            auto result = sensors_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize,
+            auto result = sensors_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << bsoncxx::builder::stream::finalize,
                                                         bsoncxx::builder::stream::document{} << "$unset" << bsoncxx::builder::stream::open_document << "location"
                                                                                              << "" << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
             if (result)
-                coco_db::set_sensor_location(id, std::move(l));
+                coco_db::set_sensor_location(s, std::move(l));
         }
     }
 
-    json::json mongo_db::get_sensor_values(const std::string &id, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end)
+    json::json mongo_db::get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end)
     {
-        auto cursor = sensor_data_collection.find(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << "timestamp" << bsoncxx::builder::stream::open_document << "$gte" << bsoncxx::types::b_date{std::chrono::milliseconds{start}} << "$lte" << bsoncxx::types::b_date{std::chrono::milliseconds{end}} << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        auto cursor = sensor_data_collection.find(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::builder::stream::open_document << "$gte" << bsoncxx::types::b_date{std::chrono::milliseconds{start}} << "$lte" << bsoncxx::types::b_date{std::chrono::milliseconds{end}} << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
         json::array data;
         for (auto &&doc : cursor)
             data.push_back(json::load(bsoncxx::to_json(doc["value"].get_document().view())));
         return data;
     }
-    void mongo_db::set_sensor_value(const std::string &id, const std::chrono::milliseconds::rep &time, const json::json &val)
+    void mongo_db::set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val)
     {
-        auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << "timestamp" << bsoncxx::types::b_date{std::chrono::milliseconds{time}} << "value" << bsoncxx::from_json(val.dump()) << bsoncxx::builder::stream::finalize);
+        auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::types::b_date{std::chrono::milliseconds{time}} << "value" << bsoncxx::from_json(val.dump()) << bsoncxx::builder::stream::finalize);
         if (result)
-            coco_db::set_sensor_value(id, time, val);
+            coco_db::set_sensor_value(s, time, val);
     }
-    void mongo_db::delete_sensor(const std::string &id)
+    void mongo_db::delete_sensor(sensor &s)
     {
-        auto result = sensors_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize);
+        auto result = sensors_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << bsoncxx::builder::stream::finalize);
         if (result)
-            coco_db::delete_sensor(id);
+            coco_db::delete_sensor(s);
     }
 
     void mongo_db::drop()

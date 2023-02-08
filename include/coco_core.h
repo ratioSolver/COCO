@@ -84,20 +84,20 @@ namespace coco
     COCO_EXPORT void disconnect();
 
     COCO_EXPORT void create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
-    COCO_EXPORT void set_sensor_type_name(const sensor_type &type, const std::string &name);
-    COCO_EXPORT void set_sensor_type_description(const sensor_type &type, const std::string &description);
-    COCO_EXPORT void delete_sensor_type(const sensor_type &type);
+    COCO_EXPORT void set_sensor_type_name(sensor_type &type, const std::string &name);
+    COCO_EXPORT void set_sensor_type_description(sensor_type &type, const std::string &description);
+    COCO_EXPORT void delete_sensor_type(sensor_type &type);
 
     COCO_EXPORT void create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
-    COCO_EXPORT void set_sensor_name(const sensor &s, const std::string &name);
-    COCO_EXPORT void set_sensor_location(const sensor &s, std::unique_ptr<location> l);
-    COCO_EXPORT void delete_sensor(const sensor &s);
+    COCO_EXPORT void set_sensor_name(sensor &s, const std::string &name);
+    COCO_EXPORT void set_sensor_location(sensor &s, std::unique_ptr<location> l);
+    COCO_EXPORT void delete_sensor(sensor &s);
 
     COCO_EXPORT void publish_sensor_value(const sensor &s, const json::json &value);
     COCO_EXPORT void publish_random_value(const sensor &s);
 
   private:
-    COCO_EXPORT void set_sensor_value(const sensor &s, const json::json &value);
+    COCO_EXPORT void set_sensor_value(sensor &s, const json::json &value);
 
   protected:
     /**

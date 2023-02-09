@@ -106,14 +106,14 @@ namespace coco
      * @param s the sensor.
      * @param name the new name of the sensor.
      */
-    virtual void set_sensor_name(sensor &s, const std::string &name);
+    virtual void set_sensor_name(sensor &s, const std::string &name) { s.set_name(name); }
     /**
      * @brief Set the type to the sensor object with the given id.
      *
      * @param s the sensor.
      * @param type the new type of the sensor.
      */
-    virtual void set_sensor_location(sensor &s, std::unique_ptr<location> l);
+    virtual void set_sensor_location(sensor &s, std::unique_ptr<location> l) { s.set_location(std::move(l)); }
     /**
      * @brief Get the sensor values object with the given id.
      *
@@ -130,7 +130,7 @@ namespace coco
      * @param time the time of the sensor value.
      * @param val the value of the sensor.
      */
-    virtual void set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val);
+    virtual void set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val) { s.set_value(time, val); }
     /**
      * @brief Delete the sensor object with the given id.
      *

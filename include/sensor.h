@@ -9,11 +9,14 @@ namespace coco
 {
   class coco_core;
   class coco_db;
+  class sensor_type;
+  class sensor_listener;
 
   class sensor
   {
     friend class coco_core;
     friend class coco_db;
+    friend class sensor_listener;
 
   public:
     /**
@@ -24,8 +27,8 @@ namespace coco
      * @param type the type of the sensor.
      * @param l the location of the sensor.
      */
-    sensor(const std::string &id, const std::string &name, const sensor_type &type, std::unique_ptr<location> l) : id(id), name(name), type(type), loc(std::move(l)) {}
-    ~sensor() = default;
+    sensor(const std::string &id, const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
+    virtual ~sensor() = default;
 
     /**
      * @brief Get the id of the sensor.
@@ -84,6 +87,15 @@ namespace coco
      */
     Fact *get_fact() const { return fact; }
 
+    void add_sensor_listener(sensor_listener &l);
+    void remove_sensor_listener(sensor_listener &l);
+
+  private:
+    void set_name(const std::string &name);
+    void set_location(std::unique_ptr<location> l);
+
+    void set_value(const std::chrono::milliseconds::rep &time, const json::json &val);
+
   private:
     const std::string id;
     std::string name;
@@ -92,5 +104,20 @@ namespace coco
     std::chrono::milliseconds::rep last_update = 0;
     std::unique_ptr<json::json> value;
     Fact *fact = nullptr;
+    std::vector<sensor_listener *> listeners;
+  };
+
+  class sensor_listener
+  {
+    friend class sensor;
+
+  public:
+    virtual ~sensor_listener() = default;
+
+  private:
+    virtual void sensor_name_updated([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::string &name) {}
+    virtual void sensor_location_updated([[maybe_unused]] const sensor &s, [[maybe_unused]] const location &l) {}
+
+    virtual void sensor_value_updated([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &val) {}
   };
 } // namespace coco

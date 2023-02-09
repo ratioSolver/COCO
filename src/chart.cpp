@@ -91,7 +91,6 @@ namespace coco
 
         for (size_t i = 0; i < sensors.size(); i++)
         {
-            sensors[i].get().add_sensor_listener(*this);
             sensor_index[&sensors[i].get()] = i;
 
             std::vector<double> vs(parameter_index.size(), 0);
@@ -112,11 +111,6 @@ namespace coco
         }
 
         set_last_update(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
-    }
-    aggregator_chart::~aggregator_chart()
-    {
-        for (auto &s : sensors)
-            s.get().remove_sensor_listener(*this);
     }
 
     void aggregator_chart::new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value)

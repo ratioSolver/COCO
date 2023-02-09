@@ -74,21 +74,16 @@ namespace coco
     std::vector<std::vector<double>> values;
   };
 
-  class aggregator_chart : public sc_chart, public sensor_listener
+  class aggregator_chart : public sc_chart
   {
   public:
     aggregator_chart(coco_db &db, const std::string &title, const std::string &x_label, const std::string &y_label, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
-    ~aggregator_chart();
 
     virtual std::string get_type() const override { return "aggregator_chart"; }
 
     void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value);
 
   private:
-    void sensor_name_updated([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::string &name) override {}
-
-    void sensor_value_updated(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val) override { new_sensor_value(s, time, val); }
-
     json::json to_json() const override;
 
   private:

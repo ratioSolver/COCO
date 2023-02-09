@@ -5,7 +5,7 @@
 
 namespace coco
 {
-    chart::chart(coco_db &db, const std::string &title, const std::string &x_label, const std::string &y_label) : db(db), title(title), x_label(x_label), y_label(y_label) {}
+    chart::chart(const std::string &title, const std::string &x_label, const std::string &y_label) : title(title), x_label(x_label), y_label(y_label) {}
 
     json::json chart::to_json() const
     {
@@ -18,7 +18,20 @@ namespace coco
         return j;
     }
 
-    sc_chart::sc_chart(coco_db &db, const std::string &title, const std::string &x_label, const std::string &y_label, const std::vector<std::string> &categories, const std::vector<std::string> &series_names, const std::vector<std::vector<double>> &values) : chart(db, title, x_label, y_label), categories(categories), series_names(series_names), values(values)
+    sensor_aggregator::sensor_aggregator(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss) : db(db), type(type), sensors(ss)
+    {
+        assert(std::all_of(sensors.begin(), sensors.end(), [&type](const coco::sensor &s)
+                           { return &s.get_type() == &type; }));
+
+        size_t j = 0;
+        for (auto &[name, type] : type.get_parameters())
+            p_idx[name] = j++;
+
+        for (size_t i = 0; i < sensors.size(); i++)
+            s_idx[&sensors[i].get()] = i;
+    }
+
+    sc_chart::sc_chart(const std::string &title, const std::string &x_label, const std::string &y_label, const std::vector<std::string> &categories, const std::vector<std::string> &series_names, const std::vector<std::vector<double>> &values) : chart(title, x_label, y_label), categories(categories), series_names(series_names), values(values)
     {
         assert(categories.size() == values.size());
         assert(std::all_of(values.begin(), values.end(), [&series_names](const std::vector<double> &v)
@@ -33,7 +46,7 @@ namespace coco
 
     void sc_chart::add_category(const std::string &category, const std::vector<double> &vs)
     {
-        assert(values.size() == series_names.size());
+        assert(vs.size() == series_names.size());
 
         categories.push_back(category);
         category_index[category] = categories.size() - 1;
@@ -71,35 +84,49 @@ namespace coco
             json::array j_v;
             for (const auto &vv : v)
                 j_v.push_back(vv);
-            j_values.push_back(std::move(j_v));
+            json::json jj(std::move(j_v));
+            j_values.push_back(std::move(jj));
         }
         j["values"] = std::move(j_values);
+
         return j;
     }
 
-    aggregator_chart::aggregator_chart(coco_db &db, const std::string &title, const std::string &x_label, const std::string &y_label, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to) : sc_chart(db, title, x_label, y_label), type(type), sensors(ss), from(from), to(to)
+    sensor_aggregator_chart::sensor_aggregator_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to) : sensor_aggregator(db, type, ss), sc_chart(title, x_label, y_label), from(from), to(to)
     {
-        assert(std::all_of(sensors.begin(), sensors.end(), [&type](const coco::sensor &s)
-                           { return &s.get_type() == &type; }));
-
-        size_t j = 0;
         for (auto &[name, type] : type.get_parameters())
-        {
-            parameter_index[name] = j++;
             add_series(name, {});
-        }
 
+        set_last_update(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    }
+
+    void sensor_aggregator_chart::new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &value)
+    {
+        assert(&s.get_type() == &type);
+
+        set_last_update(time);
+    }
+
+    json::json sensor_aggregator_chart::to_json() const
+    {
+        json::json j = sc_chart::to_json();
+        j["sensor_type"] = type.get_name();
+        j["from"] = from;
+        j["to"] = to;
+        return j;
+    }
+
+    sensor_adder_chart::sensor_adder_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to) : sensor_aggregator_chart(db, type, ss, title, x_label, y_label, from, to)
+    {
         for (size_t i = 0; i < sensors.size(); i++)
         {
-            sensor_index[&sensors[i].get()] = i;
+            std::vector<double> vs(type.get_parameters().size(), 0);
 
-            std::vector<double> vs(parameter_index.size(), 0);
-
-            json::array &s_vals = db.get_sensor_values(sensors[i].get(), from, to);
-            for (auto &j_vals : s_vals)
+            json::array s_vals = db.get_sensor_values(sensors[i].get(), from, to);
+            for (const auto &j_vals : s_vals)
             {
                 json::object &j_val = j_vals;
-                for (auto &[name, j] : parameter_index)
+                for (auto &[name, j] : p_idx)
                 {
                     json::number_val &j_v = j_val[name];
                     double v = j_v;
@@ -109,31 +136,18 @@ namespace coco
 
             add_category(sensors[i].get().get_name(), vs);
         }
-
-        set_last_update(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
     }
 
-    void aggregator_chart::new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value)
+    void sensor_adder_chart::new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value)
     {
-        assert(&s.get_type() == &type);
+        sensor_aggregator_chart::new_sensor_value(s, time, value);
 
         json::object &j_val = value;
-        for (auto &[name, j] : parameter_index)
+        for (auto &[name, j] : p_idx)
         {
             json::number_val &j_v = j_val[name];
             double v = j_v;
             set_value(s.get_name(), name, get_value(s.get_name(), name) + v);
         }
-
-        set_last_update(time);
-    }
-
-    json::json aggregator_chart::to_json() const
-    {
-        json::json j = sc_chart::to_json();
-        j["sensor_type"] = type.get_name();
-        j["from"] = from;
-        j["to"] = to;
-        return j;
     }
 } // namespace coco

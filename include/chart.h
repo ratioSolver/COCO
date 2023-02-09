@@ -18,7 +18,7 @@ namespace coco
   class chart
   {
   public:
-    chart(coco_db &db, const std::string &title, const std::string &x_label, const std::string &y_label);
+    chart(const std::string &title, const std::string &x_label, const std::string &y_label);
 
     virtual std::string get_type() const = 0;
 
@@ -32,14 +32,26 @@ namespace coco
     virtual json::json to_json() const;
     friend json::json to_json(const chart &c) { return c.to_json(); }
 
-  protected:
-    coco_db &db;
-
   private:
     std::string title;
     std::string x_label;
     std::string y_label;
     std::chrono::milliseconds::rep last_update = 0;
+  };
+
+  class sensor_aggregator
+  {
+  public:
+    sensor_aggregator(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss);
+
+    virtual void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value) = 0;
+
+  protected:
+    coco_db &db;
+    const sensor_type &type;
+    const std::vector<std::reference_wrapper<sensor>> &sensors;
+    std::unordered_map<std::string, size_t> p_idx;
+    std::unordered_map<const sensor *, size_t> s_idx;
   };
 
   /**
@@ -49,7 +61,7 @@ namespace coco
   class sc_chart : public chart
   {
   public:
-    sc_chart(coco_db &db, const std::string &title, const std::string &x_label, const std::string &y_label, const std::vector<std::string> &categories = {}, const std::vector<std::string> &series_names = {}, const std::vector<std::vector<double>> &values = {});
+    sc_chart(const std::string &title, const std::string &x_label, const std::string &y_label, const std::vector<std::string> &categories = {}, const std::vector<std::string> &series_names = {}, const std::vector<std::vector<double>> &values = {});
 
     virtual std::string get_type() const override { return "sc_chart"; }
 
@@ -74,24 +86,30 @@ namespace coco
     std::vector<std::vector<double>> values;
   };
 
-  class aggregator_chart : public sc_chart
+  class sensor_aggregator_chart : public sensor_aggregator, public sc_chart
   {
   public:
-    aggregator_chart(coco_db &db, const std::string &title, const std::string &x_label, const std::string &y_label, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
+    sensor_aggregator_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
 
     virtual std::string get_type() const override { return "aggregator_chart"; }
 
-    void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value);
+    virtual void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value) override;
 
   private:
     json::json to_json() const override;
 
   private:
-    const sensor_type &type;
-    std::unordered_map<std::string, size_t> parameter_index;
-    std::vector<std::reference_wrapper<sensor>> sensors;
-    std::unordered_map<sensor *, size_t> sensor_index;
     std::chrono::milliseconds::rep from;
     std::chrono::milliseconds::rep to;
+  };
+
+  class sensor_adder_chart : public sensor_aggregator_chart
+  {
+  public:
+    sensor_adder_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
+
+    virtual std::string get_type() const override { return "adder_chart"; }
+
+    virtual void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value) override;
   };
 } // namespace coco

@@ -23,7 +23,7 @@ namespace coco
     std::string create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l = nullptr) override;
     void set_sensor_name(sensor &s, const std::string &name) override;
     void set_sensor_location(sensor &s, std::unique_ptr<location> l) override;
-    json::json get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end) override;
+    json::array get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end) override;
     void set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val) override;
     void delete_sensor(sensor &s) override;
 

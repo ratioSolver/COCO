@@ -2,13 +2,11 @@
 
 #include "sensor_type.h"
 #include "sensor.h"
+#include "user.h"
 #include <unordered_map>
 
 namespace coco
 {
-  class coco_core;
-  class coco_db;
-
   class coco_db
   {
   public:
@@ -139,6 +137,68 @@ namespace coco
     virtual void delete_sensor(sensor &s);
 
     /**
+     * @brief Create a user object with the given first name, last name, email, password and type and returns its id.
+     *
+     * @param first_name The first name of the user.
+     * @param last_name The last name of the user.
+     * @param email The email of the user.
+     * @param password The password of the user.
+     * @param type The type of the user.
+     * @return std::string The id of the created user.
+     */
+    virtual std::string create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data);
+
+    /**
+     * @brief Set the user's first name.
+     * 
+     * @param u the user to update.
+     * @param first_name the new first name of the user.
+     */
+    virtual void set_user_first_name(user &u, const std::string &first_name) { u.first_name = first_name; }
+    /**
+     * @brief Set the user's last name.
+     * 
+     * @param u the user to update.
+     * @param last_name the new last name of the user.
+     */
+    virtual void set_user_last_name(user &u, const std::string &last_name) { u.last_name = last_name; }
+    /**
+     * @brief Set the user's email.
+     * 
+     * @param u the user to update.
+     * @param email the new email of the user.
+     */
+    virtual void set_user_email(user &u, const std::string &email) { u.email = email; }
+    /**
+     * @brief Set the user's password.
+     * 
+     * @param u the user to update.
+     * @param password the new password of the user.
+     */
+    virtual void set_user_password(user &u, const std::string &password) { u.password = password; }
+    /**
+     * @brief Set the user's data.
+     * 
+     * @param u the user to update.
+     * @param data the new data of the user.
+     */
+    virtual void set_user_data(user &u, const json::json &data) { u.data = data; }
+
+    /**
+     * @brief Delete the user object with the given id.
+     * 
+     * @param u the user to delete.
+     */
+    virtual void delete_user(user &u);
+
+    /**
+     * @brief Get all the users object.
+     *
+     * @return std::vector<std::reference_wrapper<user>> all the users.
+     */
+    std::vector<std::reference_wrapper<user>> get_all_users();
+
+    /**
      * @brief Drop the database.
      *
      */
@@ -147,10 +207,12 @@ namespace coco
   protected:
     void create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     void create_sensor(const std::string &id, const std::string &name, const sensor_type &type, location_ptr l);
+    void create_user(const std::string &id, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data);
 
   private:
     const std::string root;
     std::unordered_map<std::string, sensor_type_ptr> sensor_types;
     std::unordered_map<std::string, sensor_ptr> sensors;
+    std::unordered_map<std::string, user_ptr> users;
   };
 } // namespace coco

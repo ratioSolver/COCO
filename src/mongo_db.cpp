@@ -6,15 +6,13 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(const std::string &root, const std::string &mongodb_uri) : coco_db(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]) { LOG("Connecting to `" + root + "` MongoDB database.."); }
+    mongo_db::mongo_db(const std::string &root, const std::string &mongodb_uri) : coco_db(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]), users_collection(db["users"]) { LOG("Connecting to `" + root + "` MongoDB database.."); }
 
     void mongo_db::init()
     {
         coco_db::init();
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
-        {
             LOG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
-        }
         LOG("Retrieving all sensor types..");
         for (auto doc : sensor_types_collection.find({}))
         {
@@ -160,6 +158,67 @@ namespace coco
         auto result = sensors_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << bsoncxx::builder::stream::finalize);
         if (result)
             coco_db::delete_sensor(s);
+    }
+
+    std::string mongo_db::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
+    {
+        auto u_doc = bsoncxx::builder::basic::document{};
+        u_doc.append(bsoncxx::builder::basic::kvp("first_name", first_name));
+        u_doc.append(bsoncxx::builder::basic::kvp("last_name", last_name));
+        u_doc.append(bsoncxx::builder::basic::kvp("email", email));
+        u_doc.append(bsoncxx::builder::basic::kvp("password", password));
+        u_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.to_string())));
+
+        auto result = users_collection.insert_one(u_doc.view());
+        if (result)
+        {
+            auto id = result->inserted_id().get_oid().value.to_string();
+            coco_db::create_user(id, first_name, last_name, email, password, data);
+            return id;
+        }
+        else
+            return {};
+    }
+    void mongo_db::set_user_first_name(user &u, const std::string &first_name)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "first_name" << first_name << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_first_name(u, first_name);
+    }
+    void mongo_db::set_user_last_name(user &u, const std::string &last_name)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "last_name" << last_name << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_last_name(u, last_name);
+    }
+    void mongo_db::set_user_email(user &u, const std::string &email)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "email" << email << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_email(u, email);
+    }
+    void mongo_db::set_user_password(user &u, const std::string &password)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "password" << password << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_password(u, password);
+    }
+    void mongo_db::set_user_data(user &u, const json::json &data)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "data" << bsoncxx::from_json(data.to_string()) << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_data(u, data);
+    }
+    void mongo_db::delete_user(user &u)
+    {
+        auto result = users_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::delete_user(u);
     }
 
     void mongo_db::drop()

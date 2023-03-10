@@ -68,20 +68,20 @@ namespace coco
     {
         json::json j = chart::to_json();
 
-        json::array j_categories;
+        json::json j_categories(json::json_type::array);
         for (const auto &c : categories)
             j_categories.push_back(c);
         j["categories"] = std::move(j_categories);
 
-        json::array j_series_names;
+        json::json j_series_names(json::json_type::array);
         for (const auto &s : series_names)
             j_series_names.push_back(s);
         j["series_names"] = std::move(j_series_names);
 
-        json::array j_values;
+        json::json j_values(json::json_type::array);
         for (const auto &v : values)
         {
-            json::array j_v;
+            json::json j_v(json::json_type::array);
             for (const auto &vv : v)
                 j_v.push_back(vv);
             json::json jj(std::move(j_v));
@@ -122,17 +122,10 @@ namespace coco
         {
             std::vector<double> vs(type.get_parameters().size(), 0);
 
-            json::array s_vals = db.get_sensor_values(sensors[i].get(), from, to);
-            for (const auto &j_vals : s_vals)
-            {
-                json::object &j_val = j_vals;
+            json::json s_vals = db.get_sensor_values(sensors[i].get(), from, to);
+            for (const auto &j_vals : s_vals.get_array())
                 for (auto &[name, j] : p_idx)
-                {
-                    json::number_val &j_v = j_val[name];
-                    double v = j_v;
-                    vs[j] += v;
-                }
-            }
+                    vs[j] += static_cast<double>(j_vals[name.c_str()]);
 
             add_category(sensors[i].get().get_name(), vs);
         }
@@ -142,11 +135,9 @@ namespace coco
     {
         sensor_aggregator_chart::new_sensor_value(s, time, value);
 
-        json::object &j_val = value;
         for (auto &[name, j] : p_idx)
         {
-            json::number_val &j_v = j_val[name];
-            double v = j_v;
+            double v = value[name.c_str()];
             set_value(s.get_name(), name, get_value(s.get_name(), name) + v);
         }
     }

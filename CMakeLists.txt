@@ -53,7 +53,7 @@ add_library(${PROJECT_NAME} STATIC ${COCO_SOURCES})
 GENERATE_EXPORT_HEADER(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> $<INSTALL_INTERFACE:> ${CLIPS_INCLUDE_DIR} ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})
 target_link_directories(${PROJECT_NAME} PUBLIC ${CLIPS_LIB_DIR})
-target_link_libraries(${PROJECT_NAME} PRIVATE PlExA oRatioSolver ratioCore RiDDLe SeMiTONE json ${CMAKE_THREAD_LIBS_INIT} PahoMqttCpp::paho-mqttpp3-static clips mongo::bsoncxx_shared mongo::mongocxx_shared)
+target_link_libraries(${PROJECT_NAME} PUBLIC PlExA PahoMqttCpp::paho-mqttpp3-static clips mongo::bsoncxx_shared mongo::mongocxx_shared)
 target_compile_definitions(${PROJECT_NAME} PUBLIC COCO_ROOT="${COCO_ROOT}" COCO_RULES="${COCO_RULES}" MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}" MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 
 configure_file(rules/rules.clp rules/rules.clp COPYONLY)

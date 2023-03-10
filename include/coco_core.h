@@ -4,10 +4,7 @@
 #include "sensor_type.h"
 #include "sensor.h"
 #include "timer.h"
-#include "rational.h"
-#include "item.h"
-#include "flaw.h"
-#include "resolver.h"
+#include "solver.h"
 #include <unordered_set>
 #include <list>
 #include <mutex>
@@ -18,8 +15,10 @@ namespace coco
 {
   class coco_core;
   class coco_middleware;
+  using coco_middleware_ptr = utils::u_ptr<coco_middleware>;
   class coco_db;
   class coco_executor;
+  using coco_executor_ptr = utils::u_ptr<coco_executor>;
   class coco_listener;
 
   class coco_core
@@ -49,16 +48,16 @@ namespace coco
     /**
      * @brief Get the list of executors.
      *
-     * @return std::list<std::unique_ptr<coco_executor>>& the list of executors.
+     * @return std::list<coco_executor_ptr>& the list of executors.
      */
-    std::list<std::unique_ptr<coco_executor>> &get_executors() { return executors; }
+    std::list<coco_executor_ptr> &get_executors() { return executors; }
 
     /**
      * @brief Adds a middleware to the list of middlewares.
      *
      * @param mw The middleware to add.
      */
-    void add_middleware(std::unique_ptr<coco_middleware> mw) { middlewares.push_back(std::move(mw)); }
+    void add_middleware(coco_middleware_ptr mw) { middlewares.push_back(std::move(mw)); }
 
     /**
      * @brief Loads the rules from the given files.
@@ -88,9 +87,9 @@ namespace coco
     COCO_EXPORT void set_sensor_type_description(sensor_type &type, const std::string &description);
     COCO_EXPORT void delete_sensor_type(sensor_type &type);
 
-    COCO_EXPORT void create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
+    COCO_EXPORT void create_sensor(const std::string &name, const sensor_type &type, location_ptr l);
     COCO_EXPORT void set_sensor_name(sensor &s, const std::string &name);
-    COCO_EXPORT void set_sensor_location(sensor &s, std::unique_ptr<location> l);
+    COCO_EXPORT void set_sensor_location(sensor &s, location_ptr l);
     COCO_EXPORT void delete_sensor(sensor &s);
 
     COCO_EXPORT void publish_sensor_value(const sensor &s, const json::json &value);
@@ -147,34 +146,34 @@ namespace coco
     void fire_solution_found(const coco_executor &exec);
     void fire_inconsistent_problem(const coco_executor &exec);
 
-    void fire_flaw_created(const coco_executor &exec, const ratio::solver::flaw &f);
-    void fire_flaw_state_changed(const coco_executor &exec, const ratio::solver::flaw &f);
-    void fire_flaw_cost_changed(const coco_executor &exec, const ratio::solver::flaw &f);
-    void fire_flaw_position_changed(const coco_executor &exec, const ratio::solver::flaw &f);
-    void fire_current_flaw(const coco_executor &exec, const ratio::solver::flaw &f);
+    void fire_flaw_created(const coco_executor &exec, const ratio::flaw &f);
+    void fire_flaw_state_changed(const coco_executor &exec, const ratio::flaw &f);
+    void fire_flaw_cost_changed(const coco_executor &exec, const ratio::flaw &f);
+    void fire_flaw_position_changed(const coco_executor &exec, const ratio::flaw &f);
+    void fire_current_flaw(const coco_executor &exec, const ratio::flaw &f);
 
-    void fire_resolver_created(const coco_executor &exec, const ratio::solver::resolver &r);
-    void fire_resolver_state_changed(const coco_executor &exec, const ratio::solver::resolver &r);
-    void fire_current_resolver(const coco_executor &exec, const ratio::solver::resolver &r);
+    void fire_resolver_created(const coco_executor &exec, const ratio::resolver &r);
+    void fire_resolver_state_changed(const coco_executor &exec, const ratio::resolver &r);
+    void fire_current_resolver(const coco_executor &exec, const ratio::resolver &r);
 
-    void fire_causal_link_added(const coco_executor &exec, const ratio::solver::flaw &f, const ratio::solver::resolver &r);
+    void fire_causal_link_added(const coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r);
 
     void fire_message_arrived(const std::string &topic, const json::json &msg);
 
     void fire_start_execution(const coco_executor &exec);
     void fire_pause_execution(const coco_executor &exec);
 
-    void fire_tick(const coco_executor &exec, const semitone::rational &time);
+    void fire_tick(const coco_executor &exec, const utils::rational &time);
 
-    void fire_start(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms);
-    void fire_end(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms);
+    void fire_start(const coco_executor &exec, const std::unordered_set<ratio::atom *> &atoms);
+    void fire_end(const coco_executor &exec, const std::unordered_set<ratio::atom *> &atoms);
 
   private:
     coco_db &db;
     std::recursive_mutex mtx;
-    std::list<std::unique_ptr<coco_middleware>> middlewares;
+    std::list<coco_middleware_ptr> middlewares;
     ratio::time::timer coco_timer;
-    std::list<std::unique_ptr<coco_executor>> executors;
+    std::list<coco_executor_ptr> executors;
     std::vector<coco_listener *> listeners; // the coco listeners..
 
   protected:

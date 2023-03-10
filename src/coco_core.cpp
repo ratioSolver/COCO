@@ -24,15 +24,15 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
             return;
 
-        auto slv = new ratio::solver::solver();
+        auto slv = new ratio::solver();
         auto exec = new ratio::executor::executor(*slv);
-        auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
+        auto coco_exec = new coco_executor(e, *exec, solver_type.lexemeValue->contents);
         e.fire_new_solver(*coco_exec);
-        uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
+        uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec);
 
         AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + ") (state reasoning))").c_str());
 
-        e.executors.push_back(std::move(coco_exec));
+        e.executors.push_back(coco_exec);
 
         // we adapt to a riddle script..
         exec->adapt(riddle.lexemeValue->contents);
@@ -66,15 +66,15 @@ namespace coco
             fs.push_back(file.lexemeValue->contents);
         }
 
-        auto slv = new ratio::solver::solver();
+        auto slv = new ratio::solver();
         auto exec = new ratio::executor::executor(*slv);
-        auto coco_exec = std::make_unique<coco_executor>(e, *exec, solver_type.lexemeValue->contents);
+        auto coco_exec = new coco_executor(e, *exec, solver_type.lexemeValue->contents);
         e.fire_new_solver(*coco_exec);
-        uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec.get());
+        uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec);
 
         AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + ") (state reasoning))").c_str());
 
-        e.executors.push_back(std::move(coco_exec));
+        e.executors.push_back(coco_exec);
 
         // we adapt to some riddle files..
         exec->adapt(fs);
@@ -137,8 +137,8 @@ namespace coco
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         auto exec = &coco_exec->get_executor();
 
-        auto atm = reinterpret_cast<ratio::core::atom *>(task_id.integerValue->contents);
-        semitone::rational delay;
+        auto atm = reinterpret_cast<ratio::atom *>(task_id.integerValue->contents);
+        utils::rational delay;
         UDFValue delay_val;
         if (UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
             switch (delay_val.multifieldValue->length)
@@ -148,7 +148,7 @@ namespace coco
                 auto &num = delay_val.multifieldValue[0].contents;
                 if (num->header->type != INTEGER_TYPE)
                     return;
-                delay = semitone::rational(num->integerValue->contents);
+                delay = utils::rational(num->integerValue->contents);
                 break;
             }
             case 2:
@@ -159,16 +159,16 @@ namespace coco
                 auto &den = delay_val.multifieldValue[1].contents;
                 if (den->header->type != INTEGER_TYPE)
                     return;
-                delay = semitone::rational(num->integerValue->contents, den->integerValue->contents);
+                delay = utils::rational(num->integerValue->contents, den->integerValue->contents);
                 break;
             }
             default:
                 return;
             }
         else
-            delay = semitone::rational(1);
+            delay = utils::rational::ONE;
 
-        exec->dont_start_yet({std::pair<const ratio::core::atom *, semitone::rational>(atm, delay)});
+        exec->dont_start_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
 
     void extend_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -186,8 +186,8 @@ namespace coco
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         auto exec = &coco_exec->get_executor();
 
-        auto atm = reinterpret_cast<ratio::core::atom *>(task_id.integerValue->contents);
-        semitone::rational delay;
+        auto atm = reinterpret_cast<ratio::atom *>(task_id.integerValue->contents);
+        utils::rational delay;
         UDFValue delay_val;
         if (UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
             switch (delay_val.multifieldValue->length)
@@ -197,7 +197,7 @@ namespace coco
                 auto &num = delay_val.multifieldValue[0].contents;
                 if (num->header->type != INTEGER_TYPE)
                     return;
-                delay = semitone::rational(num->integerValue->contents);
+                delay = utils::rational(num->integerValue->contents);
                 break;
             }
             case 2:
@@ -208,16 +208,16 @@ namespace coco
                 auto &den = delay_val.multifieldValue[1].contents;
                 if (den->header->type != INTEGER_TYPE)
                     return;
-                delay = semitone::rational(num->integerValue->contents, den->integerValue->contents);
+                delay = utils::rational(num->integerValue->contents, den->integerValue->contents);
                 break;
             }
             default:
                 return;
             }
         else
-            delay = semitone::rational(1);
+            delay = utils::rational::ONE;
 
-        exec->dont_end_yet({std::pair<const ratio::core::atom *, semitone::rational>(atm, delay)});
+        exec->dont_end_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
 
     void failure([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -232,13 +232,13 @@ namespace coco
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &task_ids))
             return;
 
-        std::unordered_set<const ratio::core::atom *> atms;
+        std::unordered_set<const ratio::atom *> atms;
         for (size_t i = 0; i < task_ids.multifieldValue->length; ++i)
         {
             auto &atm_id = task_ids.multifieldValue->contents[i];
             if (atm_id.header->type != INTEGER_TYPE)
                 return;
-            atms.insert(reinterpret_cast<ratio::core::atom *>(atm_id.integerValue->contents));
+            atms.insert(reinterpret_cast<ratio::atom *>(atm_id.integerValue->contents));
         }
 
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
@@ -310,7 +310,7 @@ namespace coco
         auto slv = &exec->get_solver();
 
         auto coco_exec_it = std::find_if(e.executors.cbegin(), e.executors.cend(), [coco_exec](auto &slv_ptr)
-                                         { return slv_ptr.get() == coco_exec; });
+                                         { return &*slv_ptr == coco_exec; });
         e.executors.erase(coco_exec_it);
         delete exec;
         delete slv;
@@ -481,7 +481,7 @@ namespace coco
 #endif
     }
 
-    COCO_EXPORT void coco_core::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
+    COCO_EXPORT void coco_core::create_sensor(const std::string &name, const sensor_type &type, location_ptr l)
     {
         LOG_DEBUG("Creating new sensor..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -515,7 +515,7 @@ namespace coco
 #endif
         fire_updated_sensor(s);
     }
-    COCO_EXPORT void coco_core::set_sensor_location(sensor &s, std::unique_ptr<location> l)
+    COCO_EXPORT void coco_core::set_sensor_location(sensor &s, location_ptr l)
     {
         LOG_DEBUG("Setting sensor location..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -583,54 +583,16 @@ namespace coco
     {
         LOG_DEBUG("Setting sensor value..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
-        json::object &j_val = value;
 
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         fire_new_sensor_value(s, time, value);
 
         std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time) + ") (data";
-        for (const auto &[id, val] : j_val)
+        for (const auto &[id, val] : value.get_object())
             if (s.get_type().has_parameter(id))
-            {
-                fact_str += ' ';
-                switch (s.get_type().get_parameter_type(id))
-                {
-                case parameter_type::Integer:
-                {
-                    json::number_val &j_v = val;
-                    fact_str += std::to_string(j_v.operator long());
-                    break;
-                }
-                case parameter_type::Float:
-                {
-                    json::number_val &j_v = val;
-                    fact_str += std::to_string(j_v.operator double());
-                    break;
-                }
-                case parameter_type::Boolean:
-                {
-                    json::bool_val &j_v = val;
-                    fact_str += j_v ? "true" : "false";
-                    break;
-                }
-                case parameter_type::Symbol:
-                {
-                    json::string_val &j_v = val;
-                    fact_str += j_v;
-                    break;
-                }
-                case parameter_type::String:
-                {
-                    json::string_val &j_v = val;
-                    fact_str += '\"' + j_v.operator std::string() + '\"';
-                    break;
-                }
-                }
-            }
+                fact_str += ' ' + val.to_string();
             else
-            {
                 LOG_ERR("Sensor " << s.id << " does not have parameter " << id);
-            }
         fact_str += "))";
         LOG_DEBUG("Asserting fact: " << fact_str);
 
@@ -741,49 +703,49 @@ namespace coco
             l->inconsistent_problem(exec);
     }
 
-    void coco_core::fire_flaw_created(const coco_executor &exec, const ratio::solver::flaw &f)
+    void coco_core::fire_flaw_created(const coco_executor &exec, const ratio::flaw &f)
     {
         for (const auto &l : listeners)
             l->flaw_created(exec, f);
     }
-    void coco_core::fire_flaw_state_changed(const coco_executor &exec, const ratio::solver::flaw &f)
+    void coco_core::fire_flaw_state_changed(const coco_executor &exec, const ratio::flaw &f)
     {
         for (const auto &l : listeners)
             l->flaw_state_changed(exec, f);
     }
-    void coco_core::fire_flaw_cost_changed(const coco_executor &exec, const ratio::solver::flaw &f)
+    void coco_core::fire_flaw_cost_changed(const coco_executor &exec, const ratio::flaw &f)
     {
         for (const auto &l : listeners)
             l->flaw_cost_changed(exec, f);
     }
-    void coco_core::fire_flaw_position_changed(const coco_executor &exec, const ratio::solver::flaw &f)
+    void coco_core::fire_flaw_position_changed(const coco_executor &exec, const ratio::flaw &f)
     {
         for (const auto &l : listeners)
             l->flaw_position_changed(exec, f);
     }
-    void coco_core::fire_current_flaw(const coco_executor &exec, const ratio::solver::flaw &f)
+    void coco_core::fire_current_flaw(const coco_executor &exec, const ratio::flaw &f)
     {
         for (const auto &l : listeners)
             l->current_flaw(exec, f);
     }
 
-    void coco_core::fire_resolver_created(const coco_executor &exec, const ratio::solver::resolver &r)
+    void coco_core::fire_resolver_created(const coco_executor &exec, const ratio::resolver &r)
     {
         for (const auto &l : listeners)
             l->resolver_created(exec, r);
     }
-    void coco_core::fire_resolver_state_changed(const coco_executor &exec, const ratio::solver::resolver &r)
+    void coco_core::fire_resolver_state_changed(const coco_executor &exec, const ratio::resolver &r)
     {
         for (const auto &l : listeners)
             l->resolver_state_changed(exec, r);
     }
-    void coco_core::fire_current_resolver(const coco_executor &exec, const ratio::solver::resolver &r)
+    void coco_core::fire_current_resolver(const coco_executor &exec, const ratio::resolver &r)
     {
         for (const auto &l : listeners)
             l->current_resolver(exec, r);
     }
 
-    void coco_core::fire_causal_link_added(const coco_executor &exec, const ratio::solver::flaw &f, const ratio::solver::resolver &r)
+    void coco_core::fire_causal_link_added(const coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r)
     {
         for (const auto &l : listeners)
             l->causal_link_added(exec, f, r);
@@ -806,18 +768,18 @@ namespace coco
             l->message_arrived(topic, msg);
     }
 
-    void coco_core::fire_tick(const coco_executor &exec, const semitone::rational &time)
+    void coco_core::fire_tick(const coco_executor &exec, const utils::rational &time)
     {
         for (const auto &l : listeners)
             l->tick(exec, time);
     }
 
-    void coco_core::fire_start(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms)
+    void coco_core::fire_start(const coco_executor &exec, const std::unordered_set<ratio::atom *> &atoms)
     {
         for (const auto &l : listeners)
             l->start(exec, atoms);
     }
-    void coco_core::fire_end(const coco_executor &exec, const std::unordered_set<ratio::core::atom *> &atoms)
+    void coco_core::fire_end(const coco_executor &exec, const std::unordered_set<ratio::atom *> &atoms)
     {
         for (const auto &l : listeners)
             l->end(exec, atoms);

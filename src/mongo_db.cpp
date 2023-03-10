@@ -41,15 +41,11 @@ namespace coco
             auto type_id = doc["type_id"].get_oid().value.to_string();
 
             auto loc = doc.find("location");
-            std::unique_ptr<location> l;
+            location_ptr l;
             if (loc != doc.end())
             {
                 auto loc_doc = loc->get_document().value;
-                auto x = loc_doc["x"].get_double().value;
-                auto y = loc_doc["y"].get_double().value;
-                l = std::make_unique<location>();
-                l->x = x;
-                l->y = y;
+                l = new location{loc_doc["x"].get_double().value, loc_doc["y"].get_double().value};
             }
             coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
         }
@@ -100,7 +96,7 @@ namespace coco
             coco_db::delete_sensor_type(st);
     }
 
-    std::string mongo_db::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
+    std::string mongo_db::create_sensor(const std::string &name, const sensor_type &type, location_ptr l)
     {
         auto s_doc = bsoncxx::builder::basic::document{};
         s_doc.append(bsoncxx::builder::basic::kvp("name", name));
@@ -126,7 +122,7 @@ namespace coco
         if (result)
             coco_db::set_sensor_name(s, name);
     }
-    void mongo_db::set_sensor_location(sensor &s, std::unique_ptr<location> l)
+    void mongo_db::set_sensor_location(sensor &s, location_ptr l)
     {
         if (l)
         {
@@ -145,17 +141,17 @@ namespace coco
         }
     }
 
-    json::array mongo_db::get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end)
+    json::json mongo_db::get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end)
     {
         auto cursor = sensor_data_collection.find(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::builder::stream::open_document << "$gte" << bsoncxx::types::b_date{std::chrono::milliseconds{start}} << "$lte" << bsoncxx::types::b_date{std::chrono::milliseconds{end}} << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
-        json::array data;
+        json::json data(json::json_type::array);
         for (auto &&doc : cursor)
             data.push_back(json::load(bsoncxx::to_json(doc["value"].get_document().view())));
         return data;
     }
     void mongo_db::set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val)
     {
-        auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::types::b_date{std::chrono::milliseconds{time}} << "value" << bsoncxx::from_json(val.dump()) << bsoncxx::builder::stream::finalize);
+        auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::types::b_date{std::chrono::milliseconds{time}} << "value" << bsoncxx::from_json(val.to_string()) << bsoncxx::builder::stream::finalize);
         if (result)
             coco_db::set_sensor_value(s, time, val);
     }

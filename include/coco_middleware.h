@@ -1,6 +1,7 @@
 #pragma once
 
 #include "json.h"
+#include "memory.h"
 
 namespace coco
 {
@@ -52,4 +53,6 @@ namespace coco
   protected:
     coco_core &cc;
   };
+
+  using coco_middleware_ptr = utils::u_ptr<coco_middleware>;
 } // namespace coco

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "json.h"
+#include "memory.h"
 #include "clips.h"
 
 namespace coco
@@ -86,4 +87,6 @@ namespace coco
     std::map<std::string, parameter_type> parameter_types;
     Fact *fact = nullptr;
   };
+
+  using sensor_type_ptr = utils::u_ptr<sensor_type>;
 } // namespace coco

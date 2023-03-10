@@ -11,14 +11,10 @@ int main(int argc, char const *argv[])
 
     db.drop(); // Warning!! We are deleting all the current data!!
     auto temp_type_id = db.create_sensor_type("temperature", "A type of sensor for measuring temperature", {{"temp", coco::parameter_type::Float}});
-    auto temp0_loc = std::make_unique<coco::location>();
-    temp0_loc->x = 37.5078;
-    temp0_loc->y = 15.083;
-    auto temp0_id = db.create_sensor("Temp0", db.get_sensor_type(temp_type_id), std::move(temp0_loc));
+    auto temp0_id = db.create_sensor("Temp0", db.get_sensor_type(temp_type_id), new coco::location{37.5078, 15.083});
 
     coco::coco_core cc(db);
-    auto mqtt = std::make_unique<coco::mqtt_middleware>(cc);
-    cc.add_middleware(std::move(mqtt));
+    cc.add_middleware(new coco::mqtt_middleware(cc));
     cc.load_rules({"rules/rules.clp"});
     cc.connect();
 

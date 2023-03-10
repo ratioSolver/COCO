@@ -43,7 +43,7 @@ namespace coco
         LOG_DEBUG("Subscribing to '" + topic + "' topic..");
         mqtt_client.subscribe(topic, qos);
     }
-    void mqtt_middleware::publish(const std::string &topic, const json::json &msg, int qos, bool retained) { mqtt_client.publish(mqtt::make_message(topic, msg.dump(), qos, retained)); }
+    void mqtt_middleware::publish(const std::string &topic, const json::json &msg, int qos, bool retained) { mqtt_client.publish(mqtt::make_message(topic, msg.to_string(), qos, retained)); }
 
     void mqtt_middleware::connected([[maybe_unused]] const std::string &cause) { LOG("MQTT client connected!"); }
 

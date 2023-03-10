@@ -1,4 +1,5 @@
 #include "coco_db.h"
+#include <functional>
 
 namespace coco
 {
@@ -18,7 +19,7 @@ namespace coco
         create_sensor_type(std::to_string(c_id), name, description, parameter_types);
         return std::to_string(c_id);
     }
-    void coco_db::create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) { sensor_types[id] = std::make_unique<sensor_type>(id, name, description, parameter_types); }
+    void coco_db::create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) { sensor_types[id] = new sensor_type(id, name, description, parameter_types); }
     std::vector<std::reference_wrapper<sensor_type>> coco_db::get_all_sensor_types()
     {
         std::vector<std::reference_wrapper<sensor_type>> sts;
@@ -31,7 +32,7 @@ namespace coco
     void coco_db::set_sensor_type_description(sensor_type &st, const std::string &description) { st.description = description; }
     void coco_db::delete_sensor_type(sensor_type &st) { sensor_types.erase(st.id); }
 
-    std::string coco_db::create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l)
+    std::string coco_db::create_sensor(const std::string &name, const sensor_type &type, location_ptr l)
     {
         size_t c_id = sensors.size();
         while (sensors.count(std::to_string(c_id)))
@@ -39,7 +40,7 @@ namespace coco
         create_sensor(std::to_string(c_id), name, type, std::move(l));
         return std::to_string(c_id);
     }
-    void coco_db::create_sensor(const std::string &id, const std::string &name, const sensor_type &type, std::unique_ptr<location> l) { sensors[id] = std::make_unique<sensor>(id, name, type, std::move(l)); }
+    void coco_db::create_sensor(const std::string &id, const std::string &name, const sensor_type &type, location_ptr l) { sensors[id] = new sensor(id, name, type, std::move(l)); }
     std::vector<std::reference_wrapper<sensor>> coco_db::get_all_sensors()
     {
         std::vector<std::reference_wrapper<sensor>> sts;
@@ -48,7 +49,7 @@ namespace coco
             sts.push_back(*st);
         return sts;
     }
-    json::array coco_db::get_sensor_values([[maybe_unused]] sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &from, [[maybe_unused]] const std::chrono::milliseconds::rep &to) { return json::array(); }
+    json::json coco_db::get_sensor_values([[maybe_unused]] sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &from, [[maybe_unused]] const std::chrono::milliseconds::rep &to) { return json::json(json::json_type::array); }
     void coco_db::delete_sensor(sensor &s) { sensors.erase(s.id); }
 
     void coco_db::drop()

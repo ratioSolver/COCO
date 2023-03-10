@@ -25,7 +25,7 @@ namespace coco
      * @param type the type of the sensor.
      * @param l the location of the sensor.
      */
-    sensor(const std::string &id, const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
+    sensor(const std::string &id, const std::string &name, const sensor_type &type, location_ptr l) : id(id), name(name), type(type), loc(std::move(l)) {}
     virtual ~sensor() = default;
 
     /**
@@ -77,7 +77,7 @@ namespace coco
      *
      * @return const json::json& the value of the sensor.
      */
-    const json::json &get_value() const { return *value; }
+    const json::json &get_value() const { return value; }
     /**
      * @brief Get the fact of the sensor.
      *
@@ -87,17 +87,23 @@ namespace coco
 
   private:
     void set_name(const std::string &name) { this->name = name; }
-    void set_location(std::unique_ptr<location> l) { loc.swap(l); }
+    void set_location(location_ptr l) { loc.swap(l); }
 
-    void set_value(const std::chrono::milliseconds::rep &time, const json::json &val);
+    void set_value(const std::chrono::milliseconds::rep &time, const json::json &val)
+    {
+      last_update = time;
+      value = val; // we copy the value..
+    }
 
   private:
     const std::string id;
     std::string name;
     const sensor_type &type;
-    std::unique_ptr<location> loc;
+    location_ptr loc;
     std::chrono::milliseconds::rep last_update = 0;
-    std::unique_ptr<json::json> value;
+    json::json value;
     Fact *fact = nullptr;
   };
+
+  using sensor_ptr = utils::u_ptr<sensor>;
 } // namespace coco

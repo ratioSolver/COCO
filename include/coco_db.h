@@ -78,7 +78,7 @@ namespace coco
      * @param l the location of the sensor.
      * @return std::string the id of the created sensor.
      */
-    virtual std::string create_sensor(const std::string &name, const sensor_type &type, std::unique_ptr<location> l = nullptr);
+    virtual std::string create_sensor(const std::string &name, const sensor_type &type, location_ptr l = nullptr);
     /**
      * @brief Get all the sensors object.
      *
@@ -113,16 +113,16 @@ namespace coco
      * @param s the sensor.
      * @param type the new type of the sensor.
      */
-    virtual void set_sensor_location(sensor &s, std::unique_ptr<location> l) { s.set_location(std::move(l)); }
+    virtual void set_sensor_location(sensor &s, location_ptr l) { s.set_location(std::move(l)); }
     /**
      * @brief Get the sensor values object with the given id.
      *
      * @param s the sensor.
      * @param from the start time of the sensor values.
      * @param to the end time of the sensor values.
-     * @return json::array the sensor values with the given id.
+     * @return json::json the sensor values with the given id.
      */
-    virtual json::array get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
+    virtual json::json get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
     /**
      * @brief Set the value of the sensor object with the given id.
      *
@@ -146,11 +146,11 @@ namespace coco
 
   protected:
     void create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
-    void create_sensor(const std::string &id, const std::string &name, const sensor_type &type, std::unique_ptr<location> l);
+    void create_sensor(const std::string &id, const std::string &name, const sensor_type &type, location_ptr l);
 
   private:
     const std::string root;
-    std::unordered_map<std::string, std::unique_ptr<sensor_type>> sensor_types;
-    std::unordered_map<std::string, std::unique_ptr<sensor>> sensors;
+    std::unordered_map<std::string, sensor_type_ptr> sensor_types;
+    std::unordered_map<std::string, sensor_ptr> sensors;
   };
 } // namespace coco

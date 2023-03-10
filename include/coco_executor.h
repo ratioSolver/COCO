@@ -9,7 +9,7 @@ namespace coco
 {
   class coco_core;
 
-  class coco_executor : public ratio::core::core_listener, public ratio::solver::solver_listener, public ratio::executor::executor_listener
+  class coco_executor : public riddle::core_listener, public ratio::solver_listener, public ratio::executor::executor_listener
   {
     friend class coco_core;
 
@@ -48,29 +48,29 @@ namespace coco
     void inconsistent_problem() override;
 
   private:
-    void flaw_created(const ratio::solver::flaw &f) override;
-    void flaw_state_changed(const ratio::solver::flaw &f) override;
-    void flaw_cost_changed(const ratio::solver::flaw &f) override;
-    void flaw_position_changed(const ratio::solver::flaw &f) override;
-    void current_flaw(const ratio::solver::flaw &f) override;
+    void flaw_created(const ratio::flaw &f) override;
+    void flaw_state_changed(const ratio::flaw &f) override;
+    void flaw_cost_changed(const ratio::flaw &f) override;
+    void flaw_position_changed(const ratio::flaw &f) override;
+    void current_flaw(const ratio::flaw &f) override;
 
-    void resolver_created(const ratio::solver::resolver &r) override;
-    void resolver_state_changed(const ratio::solver::resolver &r) override;
-    void current_resolver(const ratio::solver::resolver &r) override;
+    void resolver_created(const ratio::resolver &r) override;
+    void resolver_state_changed(const ratio::resolver &r) override;
+    void current_resolver(const ratio::resolver &r) override;
 
-    void causal_link_added(const ratio::solver::flaw &f, const ratio::solver::resolver &r) override;
+    void causal_link_added(const ratio::flaw &f, const ratio::resolver &r) override;
 
   private:
     void tick();
-    void tick(const semitone::rational &time) override;
+    void tick(const utils::rational &time) override;
 
-    void starting(const std::unordered_set<ratio::core::atom *> &atoms) override;
-    void start(const std::unordered_set<ratio::core::atom *> &atoms) override;
+    void starting(const std::unordered_set<ratio::atom *> &atoms) override;
+    void start(const std::unordered_set<ratio::atom *> &atoms) override;
 
-    void ending(const std::unordered_set<ratio::core::atom *> &atoms) override;
-    void end(const std::unordered_set<ratio::core::atom *> &atoms) override;
+    void ending(const std::unordered_set<ratio::atom *> &atoms) override;
+    void end(const std::unordered_set<ratio::atom *> &atoms) override;
 
-    std::string to_task(const ratio::core::atom &atm, const std::string &command);
+    std::string to_task(const ratio::atom &atm, const std::string &command);
 
     friend COCO_EXPORT json::json to_state(const coco_executor &rhs) noexcept;
     friend COCO_EXPORT json::json to_graph(const coco_executor &rhs) noexcept;
@@ -79,13 +79,15 @@ namespace coco
     coco_core &cc;
     ratio::executor::executor &exec;
     const std::string type;
-    std::unordered_set<const ratio::solver::flaw *> flaws;
-    const ratio::solver::flaw *c_flaw = nullptr;
-    std::unordered_set<const ratio::solver::resolver *> resolvers;
-    const ratio::solver::resolver *c_resolver = nullptr;
-    semitone::rational current_time;
-    std::unordered_set<ratio::core::atom *> executing_atoms;
+    std::unordered_set<const ratio::flaw *> flaws;
+    const ratio::flaw *c_flaw = nullptr;
+    std::unordered_set<const ratio::resolver *> resolvers;
+    const ratio::resolver *c_resolver = nullptr;
+    utils::rational current_time;
+    std::unordered_set<ratio::atom *> executing_atoms;
   };
+
+  using coco_executor_ptr = utils::u_ptr<coco_executor>;
 
   inline uintptr_t get_id(const coco_executor &exec) noexcept { return reinterpret_cast<uintptr_t>(&exec); }
 } // namespace coco

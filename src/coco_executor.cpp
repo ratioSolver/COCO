@@ -1,6 +1,4 @@
 #include "coco_executor.h"
-#include "item.h"
-#include "predicate.h"
 #include "coco_core.h"
 #include "coco_db.h"
 
@@ -49,7 +47,7 @@ namespace coco
         cc.fire_inconsistent_problem(*this);
     }
 
-    void coco_executor::flaw_created(const ratio::solver::flaw &f)
+    void coco_executor::flaw_created(const ratio::flaw &f)
     {
         flaws.insert(&f);
 
@@ -57,25 +55,25 @@ namespace coco
         cc.fire_flaw_created(*this, f);
 #endif
     }
-    void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::solver::flaw &f)
+    void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::flaw &f)
     {
 #ifdef SOLVING_MONITORING
         cc.fire_flaw_state_changed(*this, f);
 #endif
     }
-    void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::solver::flaw &f)
+    void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::flaw &f)
     {
 #ifdef SOLVING_MONITORING
         cc.fire_flaw_cost_changed(*this, f);
 #endif
     }
-    void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::solver::flaw &f)
+    void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::flaw &f)
     {
 #ifdef SOLVING_MONITORING
         cc.fire_flaw_position_changed(*this, f);
 #endif
     }
-    void coco_executor::current_flaw(const ratio::solver::flaw &f)
+    void coco_executor::current_flaw(const ratio::flaw &f)
     {
         c_flaw = &f;
         c_resolver = nullptr;
@@ -85,7 +83,7 @@ namespace coco
 #endif
     }
 
-    void coco_executor::resolver_created(const ratio::solver::resolver &r)
+    void coco_executor::resolver_created(const ratio::resolver &r)
     {
         resolvers.insert(&r);
 
@@ -93,13 +91,13 @@ namespace coco
         cc.fire_resolver_created(*this, r);
 #endif
     }
-    void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::solver::resolver &r)
+    void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::resolver &r)
     {
 #ifdef SOLVING_MONITORING
         cc.fire_resolver_state_changed(*this, r);
 #endif
     }
-    void coco_executor::current_resolver(const ratio::solver::resolver &r)
+    void coco_executor::current_resolver(const ratio::resolver &r)
     {
         c_resolver = &r;
 
@@ -108,7 +106,7 @@ namespace coco
 #endif
     }
 
-    void coco_executor::causal_link_added([[maybe_unused]] const ratio::solver::flaw &f, [[maybe_unused]] const ratio::solver::resolver &r)
+    void coco_executor::causal_link_added([[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r)
     {
 #ifdef SOLVING_MONITORING
         cc.fire_causal_link_added(*this, f, r);
@@ -117,7 +115,7 @@ namespace coco
 
     void coco_executor::tick() { exec.tick(); }
 
-    void coco_executor::tick(const semitone::rational &time)
+    void coco_executor::tick(const utils::rational &time)
     {
         LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Current time " << to_string(time));
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
@@ -134,7 +132,7 @@ namespace coco
 #endif
         }
     }
-    void coco_executor::starting(const std::unordered_set<ratio::core::atom *> &atoms)
+    void coco_executor::starting(const std::unordered_set<ratio::atom *> &atoms)
     {
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
         std::vector<Fact *> facts;
@@ -149,23 +147,23 @@ namespace coco
         Eval(cc.env, "(find-all-facts ((?f dont_start_yet)) TRUE)", &res);
         if (res.header->type == MULTIFIELD_TYPE && res.multifieldValue->length)
         {
-            std::unordered_map<const ratio::core::atom *, semitone::rational> dsy;
+            std::unordered_map<const ratio::atom *, utils::rational> dsy;
             std::vector<Fact *> dsy_facts;
             for (size_t i = 0; i < res.multifieldValue->length; ++i)
             {
                 auto f = res.multifieldValue->contents[i].factValue;
-                auto atm = reinterpret_cast<ratio::core::atom *>(f->basisSlots[0].contents->integerValue->contents);
-                semitone::rational delay;
+                auto atm = reinterpret_cast<ratio::atom *>(f->basisSlots[0].contents->integerValue->contents);
+                utils::rational delay;
                 switch (f->basisSlots->length)
                 {
                 case 0:
-                    delay = semitone::rational(1);
+                    delay = utils::rational::ONE;
                     break;
                 case 1:
-                    delay = semitone::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents);
+                    delay = utils::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents);
                     break;
                 case 2:
-                    delay = semitone::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents, f->basisSlots[1].contents->multifieldValue[1].contents->integerValue->contents);
+                    delay = utils::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents, f->basisSlots[1].contents->multifieldValue[1].contents->integerValue->contents);
                     break;
                 }
                 dsy[atm] = delay;
@@ -191,7 +189,7 @@ namespace coco
         //         Eval(env, "(facts)", NULL);
         // #endif
     }
-    void coco_executor::start(const std::unordered_set<ratio::core::atom *> &atoms)
+    void coco_executor::start(const std::unordered_set<ratio::atom *> &atoms)
     {
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
         executing_atoms.insert(atoms.cbegin(), atoms.cend());
@@ -215,7 +213,7 @@ namespace coco
         // #endif
     }
 
-    void coco_executor::ending(const std::unordered_set<ratio::core::atom *> &atoms)
+    void coco_executor::ending(const std::unordered_set<ratio::atom *> &atoms)
     {
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
         std::vector<Fact *> facts;
@@ -230,23 +228,23 @@ namespace coco
         Eval(cc.env, "(find-all-facts ((?f dont_end_yet)) TRUE)", &res);
         if (res.multifieldValue->length)
         {
-            std::unordered_map<const ratio::core::atom *, semitone::rational> dey;
+            std::unordered_map<const ratio::atom *, utils::rational> dey;
             std::vector<Fact *> dey_facts;
             for (size_t i = 0; i < res.multifieldValue->length; ++i)
             {
                 auto f = res.multifieldValue->contents[i].factValue;
-                auto atm = reinterpret_cast<ratio::core::atom *>(f->basisSlots[0].contents->integerValue->contents);
-                semitone::rational delay;
+                auto atm = reinterpret_cast<ratio::atom *>(f->basisSlots[0].contents->integerValue->contents);
+                utils::rational delay;
                 switch (f->basisSlots->length)
                 {
                 case 0:
-                    delay = semitone::rational(1);
+                    delay = utils::rational(1);
                     break;
                 case 1:
-                    delay = semitone::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents);
+                    delay = utils::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents);
                     break;
                 case 2:
-                    delay = semitone::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents, f->basisSlots[1].contents->multifieldValue[1].contents->integerValue->contents);
+                    delay = utils::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents, f->basisSlots[1].contents->multifieldValue[1].contents->integerValue->contents);
                     break;
                 }
                 dey[atm] = delay;
@@ -272,7 +270,7 @@ namespace coco
         //         Eval(env, "(facts)", NULL);
         // #endif
     }
-    void coco_executor::end(const std::unordered_set<ratio::core::atom *> &atoms)
+    void coco_executor::end(const std::unordered_set<ratio::atom *> &atoms)
     {
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
         for (const auto &a : atoms)
@@ -297,7 +295,7 @@ namespace coco
         // #endif
     }
 
-    std::string coco_executor::to_task(const ratio::core::atom &atm, const std::string &command)
+    std::string coco_executor::to_task(const ratio::atom &atm, const std::string &command)
     {
         std::string task_str = "(task (solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (task_type " + atm.get_type().get_name() + ") (id " + std::to_string(get_id(atm)) + ") (command " + command + ")";
         std::string pars_str = "(pars";
@@ -307,13 +305,13 @@ namespace coco
         {
             if (&var->get_type() == &slv.get_bool_type())
             {
-                switch (slv.get_sat_core().value(static_cast<const ratio::core::bool_item &>(*var).get_value()))
+                switch (slv.get_sat_core().value(static_cast<const ratio::bool_item &>(*var).get_lit()))
                 {
-                case semitone::True:
+                case utils::True:
                     pars_str += " " + var_name;
                     vals_str += " TRUE";
                     break;
-                case semitone::False:
+                case utils::False:
                     pars_str += " " + var_name;
                     vals_str += " FALSE";
                     break;
@@ -322,26 +320,26 @@ namespace coco
             else if (&var->get_type() == &slv.get_real_type())
             {
                 pars_str += " " + var_name;
-                vals_str += " " + to_string(slv.get_lra_theory().value(static_cast<const ratio::core::arith_item &>(*var).get_value()));
+                vals_str += " " + to_string(slv.get_lra_theory().value(static_cast<const ratio::arith_item &>(*var).get_lin()));
             }
             else if (&var->get_type() == &slv.get_time_type())
             {
                 pars_str += " " + var_name;
-                const auto [lb, ub] = slv.get_rdl_theory().bounds(static_cast<const ratio::core::arith_item &>(*var).get_value());
+                const auto [lb, ub] = slv.get_rdl_theory().bounds(static_cast<const ratio::arith_item &>(*var).get_lin());
                 vals_str += " " + to_string(lb);
             }
             else if (&var->get_type() == &slv.get_string_type())
             {
                 pars_str += " " + var_name;
-                vals_str += " " + static_cast<const ratio::core::string_item &>(*var).get_value();
+                vals_str += " " + static_cast<const ratio::string_item &>(*var).get_string();
             }
-            else if (auto ev = dynamic_cast<const ratio::core::enum_item *>(&*var))
+            else if (auto ev = dynamic_cast<const ratio::enum_item *>(&*var))
             {
                 const auto vals = slv.get_ov_theory().value(ev->get_var());
                 if (vals.size() == 1)
                 {
                     pars_str += " " + var_name;
-                    vals_str += " " + slv.guess_name(static_cast<ratio::core::item &>(**vals.begin()));
+                    vals_str += " " + slv.guess_name(dynamic_cast<riddle::item &>(**vals.begin()));
                 }
             }
             else
@@ -362,23 +360,23 @@ namespace coco
         json::json j_state;
         j_state["state"] = to_json(rhs.slv);
         j_state["timelines"] = to_timelines(rhs.slv);
-        json::array j_executing;
+        json::json j_executing(json::json_type::array);
         for (const auto &atm : rhs.executing_atoms)
             j_executing.push_back(get_id(*atm));
         j_state["executing"] = std::move(j_executing);
-        j_state["time"] = to_json(rhs.current_time);
+        j_state["time"] = ratio::to_json(rhs.current_time);
         return j_state;
     }
     COCO_EXPORT json::json to_graph(const coco_executor &rhs) noexcept
     {
         json::json j_graph;
-        json::array j_flaws;
+        json::json j_flaws(json::json_type::array);
         for (const auto &f : rhs.flaws)
             j_flaws.push_back(to_json(*f));
         j_graph["flaws"] = std::move(j_flaws);
         if (rhs.c_flaw)
             j_graph["current_flaw"] = get_id(*rhs.c_flaw);
-        json::array j_resolvers;
+        json::json j_resolvers(json::json_type::array);
         for (const auto &r : rhs.resolvers)
             j_resolvers.push_back(to_json(*r));
         j_graph["resolvers"] = std::move(j_resolvers);

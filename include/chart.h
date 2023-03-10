@@ -112,4 +112,37 @@ namespace coco
 
     virtual void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value) override;
   };
+
+  class heat_map_data
+  {
+  public:
+    heat_map_data(const double &x, const double &y, double value);
+
+    const double &get_x() const { return x; }
+    const double &get_y() const { return y; }
+    double get_value() const { return value; }
+
+  private:
+    double x;
+    double y;
+    double value;
+  };
+
+  class heat_map_chart : public chart
+  {
+  public:
+    heat_map_chart(const std::string &title, const std::string &x_label, const std::string &y_label, const std::vector<heat_map_data> &data = {});
+
+    virtual std::string get_type() const override { return "heat_map_chart"; }
+
+    const std::vector<heat_map_data> &get_data() const { return data; }
+
+    void add_data(const heat_map_data &d) { data.push_back(d); }
+
+  private:
+    virtual json::json to_json() const override;
+
+  private:
+    std::vector<heat_map_data> data;
+  };
 } // namespace coco

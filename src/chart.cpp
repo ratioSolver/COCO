@@ -141,4 +141,24 @@ namespace coco
             set_value(s.get_name(), name, get_value(s.get_name(), name) + v);
         }
     }
+
+    heat_map_chart::heat_map_chart(const std::string &title, const std::string &x_label, const std::string &y_label, const std::vector<heat_map_data> &data) : chart(title, x_label, y_label), data(data) {}
+
+    json::json heat_map_chart::to_json() const
+    {
+        json::json j = chart::to_json();
+
+        json::json j_data(json::json_type::array);
+        for (const auto &d : data)
+        {
+            json::json j_d;
+            j_d["x"] = d.get_x();
+            j_d["y"] = d.get_y();
+            j_d["value"] = d.get_value();
+            j_data.push_back(std::move(j_d));
+        }
+        j["data"] = std::move(j_data);
+
+        return j;
+    }
 } // namespace coco

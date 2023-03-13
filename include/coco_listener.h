@@ -28,6 +28,7 @@ namespace coco
     virtual void removed_sensor([[maybe_unused]] const sensor &s) {}
 
     virtual void new_sensor_value([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &value) {}
+    virtual void new_sensor_state([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &state) {}
 
     virtual void new_solver([[maybe_unused]] const coco_executor &exec) {}
     virtual void removed_solver([[maybe_unused]] const coco_executor &exec) {}

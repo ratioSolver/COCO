@@ -499,6 +499,10 @@ namespace coco
         Eval(env, "(facts)", NULL);
 #endif
         fire_new_sensor(db.get_sensor(id));
+
+        // we subscribe to the sensor topic..
+        for (auto &mw : middlewares)
+            mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + id, 1);
     }
     COCO_EXPORT void coco_core::set_sensor_name(sensor &s, const std::string &name)
     {
@@ -579,7 +583,7 @@ namespace coco
         publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
-    COCO_EXPORT void coco_core::set_sensor_value(sensor &s, const json::json &value)
+    void coco_core::set_sensor_value(sensor &s, const json::json &value)
     {
         LOG_DEBUG("Setting sensor value..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -608,6 +612,26 @@ namespace coco
         Run(env, -1);
     }
 
+    void coco_core::set_sensor_state(sensor &s, const json::json &state)
+    {
+        LOG_DEBUG("Setting sensor state..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+
+        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        fire_new_sensor_state(s, time, state);
+
+        std::string fact_str = "(sensor_state (sensor_id " + s.id + ") (state" + state.to_string() + "))";
+        LOG_DEBUG("Asserting fact: " << fact_str);
+
+        Fact *ss_f = AssertString(env, fact_str.c_str());
+        // we run the rules engine to update the policy..
+        Run(env, -1);
+        // we retract the sensor state fact..
+        Retract(ss_f);
+        // we run the rules engine to update the policy..
+        Run(env, -1);
+    }
+
     void coco_core::tick()
     {
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -627,6 +651,12 @@ namespace coco
             std::string sensor_id = topic;
             sensor_id.erase(0, (db.get_root() + SENSOR_TOPIC + '/').length());
             set_sensor_value(db.get_sensor(sensor_id), msg);
+        }
+        else if (topic.rfind(db.get_root() + SENSOR_STATE + '/', 0) == 0)
+        { // we have a new sensor state..
+            std::string sensor_id = topic;
+            sensor_id.erase(0, (db.get_root() + SENSOR_TOPIC + '/').length());
+            set_sensor_state(db.get_sensor(sensor_id), msg);
         }
         else // we notify the listeners that a message has arrived..
             fire_message_arrived(topic, msg);
@@ -668,6 +698,11 @@ namespace coco
     {
         for (const auto &l : listeners)
             l->new_sensor_value(s, time, value);
+    }
+    void coco_core::fire_new_sensor_state(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &state)
+    {
+        for (const auto &l : listeners)
+            l->new_sensor_state(s, time, state);
     }
 
     void coco_core::fire_new_solver(const coco_executor &exec)

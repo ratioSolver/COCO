@@ -10,6 +10,7 @@
 #include <mutex>
 
 #define SENSOR_TOPIC "/sensor"
+#define SENSOR_STATE "/sensor_state"
 
 namespace coco
 {
@@ -96,7 +97,8 @@ namespace coco
     COCO_EXPORT void publish_random_value(const sensor &s);
 
   private:
-    COCO_EXPORT void set_sensor_value(sensor &s, const json::json &value);
+    void set_sensor_value(sensor &s, const json::json &value);
+    void set_sensor_state(sensor &s, const json::json &state);
 
   protected:
     /**
@@ -136,6 +138,7 @@ namespace coco
     void fire_removed_sensor(const sensor &s);
 
     void fire_new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value);
+    void fire_new_sensor_state(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &state);
 
     void fire_new_solver(const coco_executor &exec);
     void fire_removed_solver(const coco_executor &exec);

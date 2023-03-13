@@ -95,6 +95,12 @@ namespace coco
       value = val; // we copy the value..
     }
 
+    void set_state(const std::chrono::milliseconds::rep &time, const json::json &st)
+    {
+      last_update = time;
+      state = st; // we copy the state..
+    }
+
   private:
     const std::string id;
     std::string name;
@@ -102,6 +108,7 @@ namespace coco
     location_ptr loc;
     std::chrono::milliseconds::rep last_update = 0;
     json::json value;
+    json::json state;
     Fact *fact = nullptr;
   };
 

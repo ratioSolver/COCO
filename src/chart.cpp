@@ -7,16 +7,7 @@ namespace coco
 {
     chart::chart(const std::string &title, const std::string &x_label, const std::string &y_label) : title(title), x_label(x_label), y_label(y_label) {}
 
-    json::json chart::to_json() const
-    {
-        json::json j;
-        j["chart_type"] = get_type();
-        j["title"] = title;
-        j["x_label"] = x_label;
-        j["y_label"] = y_label;
-        j["last_update"] = last_update;
-        return j;
-    }
+    json::json chart::to_json() const { return {{"chart_type", get_type()}, {"title", title}, {"x_label", x_label}, {"y_label", y_label}, {"last_update", last_update}}; }
 
     sensor_aggregator::sensor_aggregator(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss) : db(db), type(type), sensors(ss)
     {
@@ -150,13 +141,7 @@ namespace coco
 
         json::json j_data(json::json_type::array);
         for (const auto &d : data)
-        {
-            json::json j_d;
-            j_d["x"] = d.get_x();
-            j_d["y"] = d.get_y();
-            j_d["value"] = d.get_value();
-            j_data.push_back(std::move(j_d));
-        }
+            j_data.push_back({{"x", d.get_x()}, {"y", d.get_y()}, {"value", d.get_value()}});
         j["data"] = std::move(j_data);
 
         return j;

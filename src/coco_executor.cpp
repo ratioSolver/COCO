@@ -357,14 +357,11 @@ namespace coco
 
     COCO_EXPORT json::json to_state(const coco_executor &rhs) noexcept
     {
-        json::json j_state;
-        j_state["state"] = to_json(rhs.slv);
-        j_state["timelines"] = to_timelines(rhs.slv);
+        json::json j_state{{"state", to_json(rhs.slv)}, {"timelines", to_timelines(rhs.slv)}, {"time", ratio::to_json(rhs.current_time)}};
         json::json j_executing(json::json_type::array);
         for (const auto &atm : rhs.executing_atoms)
             j_executing.push_back(get_id(*atm));
         j_state["executing"] = std::move(j_executing);
-        j_state["time"] = ratio::to_json(rhs.current_time);
         return j_state;
     }
     COCO_EXPORT json::json to_graph(const coco_executor &rhs) noexcept

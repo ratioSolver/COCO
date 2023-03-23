@@ -52,25 +52,6 @@ namespace coco
     json::json coco_db::get_sensor_values([[maybe_unused]] sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &from, [[maybe_unused]] const std::chrono::milliseconds::rep &to) { return json::json(json::json_type::array); }
     void coco_db::delete_sensor(sensor &s) { sensors.erase(s.id); }
 
-    std::string coco_db::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
-    {
-        size_t c_id = users.size();
-        while (users.count(std::to_string(c_id)))
-            c_id++;
-        create_user(std::to_string(c_id), first_name, last_name, email, password, data);
-        return std::to_string(c_id);
-    }
-    void coco_db::create_user(const std::string &id, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data) { users[id] = new user(id, first_name, last_name, email, password, data); }
-    std::vector<std::reference_wrapper<user>> coco_db::get_all_users()
-    {
-        std::vector<std::reference_wrapper<user>> sts;
-        sts.reserve(users.size());
-        for (auto &[id, st] : users)
-            sts.push_back(*st);
-        return sts;
-    }
-    void coco_db::delete_user(user &u) { users.erase(u.id); }
-
     void coco_db::drop()
     {
         sensors.clear();

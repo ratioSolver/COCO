@@ -6,7 +6,7 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(const std::string &root, const std::string &mongodb_uri) : coco_db(root), conn{mongocxx::uri{mongodb_uri}}, db(conn[root]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["coco"]), sensor_data_collection(db["sensor_data"]), users_collection(db["users"]) { LOG("Connecting to `" + root + "` MongoDB database.."); }
+    mongo_db::mongo_db(const std::string &root, const std::string &mongodb_uri) : coco_db(root), conn{mongocxx::uri{mongodb_uri}}, db(conn["coco"]), root_db(conn[root]), users_collection(db["users"]), sensor_types_collection(db["sensor_types"]), sensors_collection(root_db["coco"]), sensor_data_collection(root_db["sensor_data"]) { LOG("Connecting to `" + mongodb_uri + "` MongoDB database.."); }
 
     void mongo_db::init()
     {
@@ -31,7 +31,7 @@ namespace coco
         }
         LOG("Retrieved " << get_all_sensor_types().size() << " sensor types..");
 
-        LOG("Retrieving all sensors..");
+        LOG("Retrieving all " << root << " sensors..");
         for (auto &doc : sensors_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
@@ -49,6 +49,95 @@ namespace coco
         }
         LOG("Retrieved " << get_all_sensors().size() << " sensors..");
     }
+
+    std::string mongo_db::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
+    {
+        auto u_doc = bsoncxx::builder::basic::document{};
+        u_doc.append(bsoncxx::builder::basic::kvp("first_name", first_name));
+        u_doc.append(bsoncxx::builder::basic::kvp("last_name", last_name));
+        u_doc.append(bsoncxx::builder::basic::kvp("email", email));
+        u_doc.append(bsoncxx::builder::basic::kvp("password", password));
+        u_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.to_string())));
+
+        auto result = users_collection.insert_one(u_doc.view());
+        if (result)
+            return result->inserted_id().get_oid().value.to_string();
+        else
+            return {};
+    }
+    bool mongo_db::has_user(const std::string &id)
+    {
+        return users_collection.count_documents(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize) > 0;
+    }
+    user_ptr mongo_db::get_user(const std::string &id)
+    {
+        auto doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize);
+        if (doc)
+        {
+            auto first_name = doc->view()["first_name"].get_string().value.to_string();
+            auto last_name = doc->view()["last_name"].get_string().value.to_string();
+            auto email = doc->view()["email"].get_string().value.to_string();
+            auto password = doc->view()["password"].get_string().value.to_string();
+            auto data = json::load(bsoncxx::to_json(doc->view()["data"].get_document().value));
+            return new user(id, first_name, last_name, email, password, data);
+        }
+        else
+            return nullptr;
+    }
+    user_ptr mongo_db::get_user(const std::string &email, const std::string &password)
+    {
+        auto doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "email" << email << "password" << password << bsoncxx::builder::stream::finalize);
+        if (doc)
+        {
+            auto id = doc->view()["_id"].get_oid().value.to_string();
+            auto first_name = doc->view()["first_name"].get_string().value.to_string();
+            auto last_name = doc->view()["last_name"].get_string().value.to_string();
+            auto data = json::load(bsoncxx::to_json(doc->view()["data"].get_document().value));
+            return new user(id, first_name, last_name, email, password, data);
+        }
+        else
+            return nullptr;
+    }
+    void mongo_db::set_user_first_name(user &u, const std::string &first_name)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "first_name" << first_name << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_first_name(u, first_name);
+    }
+    void mongo_db::set_user_last_name(user &u, const std::string &last_name)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "last_name" << last_name << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_last_name(u, last_name);
+    }
+    void mongo_db::set_user_email(user &u, const std::string &email)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "email" << email << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_email(u, email);
+    }
+    void mongo_db::set_user_password(user &u, const std::string &password)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "password" << password << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_password(u, password);
+    }
+    void mongo_db::set_user_data(user &u, const json::json &data)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "data" << bsoncxx::from_json(data.to_string()) << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_data(u, data);
+    }
+    void mongo_db::delete_user(user &u)
+    {
+        users_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize);
+    }
+
     std::string mongo_db::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameters)
     {
         auto s_doc = bsoncxx::builder::basic::document{};
@@ -160,72 +249,12 @@ namespace coco
             coco_db::delete_sensor(s);
     }
 
-    std::string mongo_db::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
-    {
-        auto u_doc = bsoncxx::builder::basic::document{};
-        u_doc.append(bsoncxx::builder::basic::kvp("first_name", first_name));
-        u_doc.append(bsoncxx::builder::basic::kvp("last_name", last_name));
-        u_doc.append(bsoncxx::builder::basic::kvp("email", email));
-        u_doc.append(bsoncxx::builder::basic::kvp("password", password));
-        u_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.to_string())));
-
-        auto result = users_collection.insert_one(u_doc.view());
-        if (result)
-        {
-            auto id = result->inserted_id().get_oid().value.to_string();
-            coco_db::create_user(id, first_name, last_name, email, password, data);
-            return id;
-        }
-        else
-            return {};
-    }
-    void mongo_db::set_user_first_name(user &u, const std::string &first_name)
-    {
-        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
-                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "first_name" << first_name << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
-        if (result)
-            coco_db::set_user_first_name(u, first_name);
-    }
-    void mongo_db::set_user_last_name(user &u, const std::string &last_name)
-    {
-        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
-                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "last_name" << last_name << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
-        if (result)
-            coco_db::set_user_last_name(u, last_name);
-    }
-    void mongo_db::set_user_email(user &u, const std::string &email)
-    {
-        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
-                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "email" << email << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
-        if (result)
-            coco_db::set_user_email(u, email);
-    }
-    void mongo_db::set_user_password(user &u, const std::string &password)
-    {
-        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
-                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "password" << password << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
-        if (result)
-            coco_db::set_user_password(u, password);
-    }
-    void mongo_db::set_user_data(user &u, const json::json &data)
-    {
-        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
-                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "data" << bsoncxx::from_json(data.to_string()) << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
-        if (result)
-            coco_db::set_user_data(u, data);
-    }
-    void mongo_db::delete_user(user &u)
-    {
-        auto result = users_collection.delete_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize);
-        if (result)
-            coco_db::delete_user(u);
-    }
-
     void mongo_db::drop()
     {
         LOG_WARN("Dropping database..");
-        db.drop();
+        root_db.drop();
         coco_db::drop();
+        users_collection.create_index(bsoncxx::builder::stream::document{} << "email" << 1 << "password" << 1 << bsoncxx::builder::stream::finalize);
         sensor_data_collection.create_index(bsoncxx::builder::stream::document{} << "sensor_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize);
     }
 } // namespace coco

@@ -378,6 +378,7 @@ namespace coco
 
     COCO_EXPORT void coco_core::connect()
     {
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         for (auto &mdlw : middlewares)
             mdlw->connect();
         coco_timer.start();
@@ -387,13 +388,14 @@ namespace coco
 
     COCO_EXPORT void coco_core::init()
     {
-        LOG_DEBUG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
+        LOG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
 
         for (const auto &st : db.get_sensor_types())
             st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
 
         for (const auto &s : db.get_sensors())
         {
+            LOG_DEBUG("Adding sensor (" << s.get().id << ") '" << s.get().name << "' of type '" << s.get().type.name << "' to the knowledge base..");
             std::string f_str = "(sensor (id " + s.get().id + ") (sensor_type " + s.get().type.id + ") (name \"" + s.get().name + "\")";
             if (s.get().loc)
                 f_str += " (location " + std::to_string(s.get().loc->x) + " " + std::to_string(s.get().loc->y) + ")";
@@ -408,8 +410,11 @@ namespace coco
 #endif
 
         for (const auto &s : db.get_sensors())
+        {
+            LOG_DEBUG("Managing sensor (" << s.get().id << ") '" << s.get().name << "' of type '" << s.get().type.name << "' subscriptions..");
             for (auto &mw : middlewares)
                 mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + s.get().id, 1);
+        }
     }
 
     COCO_EXPORT void coco_core::disconnect()
@@ -483,7 +488,7 @@ namespace coco
 
     COCO_EXPORT void coco_core::create_sensor(const std::string &name, sensor_type &type, location_ptr l)
     {
-        LOG_DEBUG("Creating new sensor..");
+        LOG_DEBUG("Creating new sensor " << name << " of type " << type.id << "..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we store the sensor in the database..
         auto id = db.create_sensor(name, type, std::move(l));
@@ -501,6 +506,7 @@ namespace coco
         fire_new_sensor(db.get_sensor(id));
 
         // we subscribe to the sensor topic..
+        LOG_DEBUG("Managing sensor (" << id << ") " << name << " of type " << type.id << " subscriptions..");
         for (auto &mw : middlewares)
             mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + id, 1);
     }
@@ -646,6 +652,7 @@ namespace coco
     }
     void coco_core::message_arrived(const std::string &topic, const json::json &msg)
     {
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
         if (topic.rfind(db.get_root() + SENSOR_TOPIC + '/', 0) == 0)
         { // we have a new sensor value..
             std::string sensor_id = topic;

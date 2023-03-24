@@ -88,7 +88,7 @@ namespace coco
     COCO_EXPORT void set_sensor_type_description(sensor_type &type, const std::string &description);
     COCO_EXPORT void delete_sensor_type(sensor_type &type);
 
-    COCO_EXPORT void create_sensor(const std::string &name, const sensor_type &type, location_ptr l);
+    COCO_EXPORT void create_sensor(const std::string &name, sensor_type &type, location_ptr l);
     COCO_EXPORT void set_sensor_name(sensor &s, const std::string &name);
     COCO_EXPORT void set_sensor_location(sensor &s, location_ptr l);
     COCO_EXPORT void delete_sensor(sensor &s);

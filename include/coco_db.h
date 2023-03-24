@@ -4,6 +4,7 @@
 #include "sensor.h"
 #include "user.h"
 #include <unordered_map>
+#include <functional>
 
 namespace coco
 {
@@ -39,7 +40,7 @@ namespace coco
     virtual bool has_user(const std::string &id) = 0;
     /**
      * @brief Get the user object with the given id.
-     * 
+     *
      * @param id the id of the user.
      * @return user_ptr the user with the given id.
      */
@@ -55,11 +56,11 @@ namespace coco
 
     /**
      * @brief Get the all the users.
-     * 
+     *
      * @return std::vector<user_ptr> the users.
      */
     virtual std::vector<user_ptr> get_users() = 0;
-    
+
     /**
      * @brief Set the user's first name.
      *
@@ -134,6 +135,13 @@ namespace coco
      */
     sensor_type &get_sensor_type(const std::string &id) { return *sensor_types.at(id); }
     /**
+     * @brief Get the sensor type object with the given name.
+     *
+     * @param name the name of the sensor type.
+     * @return sensor_type& the sensor type with the given name.
+     */
+    sensor_type &get_sensor_type_by_name(const std::string &name) { return sensor_types_by_name.at(name).get(); }
+    /**
      * @brief Set the name to the sensor type object with the given id.
      *
      * @param st the sensor type.
@@ -162,7 +170,7 @@ namespace coco
      * @param l the location of the sensor.
      * @return std::string the id of the created sensor.
      */
-    virtual std::string create_sensor(const std::string &name, const sensor_type &type, location_ptr l = nullptr);
+    virtual std::string create_sensor(const std::string &name, sensor_type &type, location_ptr l = nullptr);
     /**
      * @brief Get all the sensors object.
      *
@@ -229,12 +237,13 @@ namespace coco
     virtual void drop();
 
   protected:
-    void create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
-    void create_sensor(const std::string &id, const std::string &name, const sensor_type &type, location_ptr l);
+    sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
+    sensor &create_sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l);
 
   private:
     const std::string root;
     std::unordered_map<std::string, sensor_type_ptr> sensor_types;
+    std::unordered_map<std::string, std::reference_wrapper<sensor_type>> sensor_types_by_name;
     std::unordered_map<std::string, sensor_ptr> sensors;
   };
 } // namespace coco

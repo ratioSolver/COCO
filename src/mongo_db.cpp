@@ -31,7 +31,7 @@ namespace coco
         }
         LOG("Retrieved " << get_sensor_types().size() << " sensor types..");
 
-        LOG("Retrieving all " << root << " sensors..");
+        LOG("Retrieving all " << get_root() << " sensors..");
         for (auto &doc : sensors_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
@@ -198,7 +198,7 @@ namespace coco
             coco_db::delete_sensor_type(st);
     }
 
-    std::string mongo_db::create_sensor(const std::string &name, const sensor_type &type, location_ptr l)
+    std::string mongo_db::create_sensor(const std::string &name, sensor_type &type, location_ptr l)
     {
         auto s_doc = bsoncxx::builder::basic::document{};
         s_doc.append(bsoncxx::builder::basic::kvp("name", name));
@@ -267,6 +267,7 @@ namespace coco
     void mongo_db::drop()
     {
         LOG_WARN("Dropping database..");
+        db.drop();
         root_db.drop();
         coco_db::drop();
         users_collection.create_index(bsoncxx::builder::stream::document{} << "email" << 1 << "password" << 1 << bsoncxx::builder::stream::finalize);

@@ -8,6 +8,7 @@ namespace coco
 {
   class coco_core;
   class coco_db;
+  class sensor;
 
   enum parameter_type
   {
@@ -74,6 +75,12 @@ namespace coco
      */
     bool has_parameter(const std::string &name) const { return parameter_types.find(name) != parameter_types.end(); }
     /**
+     * @brief Get the sensors of the sensor type.
+     *
+     * @return const std::vector<std::reference_wrapper<sensor>>& the sensors of the sensor type.
+     */
+    const std::vector<std::reference_wrapper<sensor>> &get_sensors() const { return sensors; }
+    /**
      * @brief Get the fact of the sensor type.
      *
      * @return Fact* the fact of the sensor type.
@@ -85,6 +92,7 @@ namespace coco
     std::string name;
     std::string description;
     std::map<std::string, parameter_type> parameter_types;
+    std::vector<std::reference_wrapper<sensor>> sensors;
     Fact *fact = nullptr;
   };
 

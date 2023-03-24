@@ -481,7 +481,7 @@ namespace coco
 #endif
     }
 
-    COCO_EXPORT void coco_core::create_sensor(const std::string &name, const sensor_type &type, location_ptr l)
+    COCO_EXPORT void coco_core::create_sensor(const std::string &name, sensor_type &type, location_ptr l)
     {
         LOG_DEBUG("Creating new sensor..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "coco_export.h"
+#include "user.h"
 #include "sensor_type.h"
 #include "sensor.h"
 #include "timer.h"
@@ -83,6 +84,15 @@ namespace coco
      */
     COCO_EXPORT void disconnect();
 
+    COCO_EXPORT void create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data);
+    COCO_EXPORT void set_user_first_name(user &u, const std::string &first_name);
+    COCO_EXPORT void set_user_last_name(user &u, const std::string &last_name);
+    COCO_EXPORT void set_user_email(user &u, const std::string &email);
+    COCO_EXPORT void set_user_password(user &u, const std::string &password);
+    COCO_EXPORT void set_user_roots(user &u, const std::vector<std::string> &roots);
+    COCO_EXPORT void set_user_data(user &u, const json::json &data);
+    COCO_EXPORT void delete_user(user &u);
+
     COCO_EXPORT void create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     COCO_EXPORT void set_sensor_type_name(sensor_type &type, const std::string &name);
     COCO_EXPORT void set_sensor_type_description(sensor_type &type, const std::string &description);
@@ -129,6 +139,10 @@ namespace coco
     friend void publish_message(Environment *env, UDFContext *udfc, UDFValue *out);
 
   private:
+    void fire_new_user(const user &u);
+    void fire_updated_user(const user &u);
+    void fire_removed_user(const user &u);
+
     void fire_new_sensor_type(const sensor_type &type);
     void fire_updated_sensor_type(const sensor_type &type);
     void fire_removed_sensor_type(const sensor_type &type);

@@ -86,7 +86,6 @@ namespace coco
     Fact *get_fact() const { return fact; }
 
   private:
-    void set_name(const std::string &name) { this->name = name; }
     void set_location(location_ptr l) { loc.swap(l); }
 
     void set_value(const std::chrono::milliseconds::rep &time, const json::json &val)

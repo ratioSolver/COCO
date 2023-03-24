@@ -8,6 +8,7 @@ namespace coco
   class coco_executor;
   class sensor_type;
   class sensor;
+  class user;
 
   class coco_listener
   {
@@ -19,6 +20,10 @@ namespace coco
     virtual ~coco_listener() { cc.listeners.erase(std::find(cc.listeners.cbegin(), cc.listeners.cend(), this)); }
 
   private:
+    virtual void new_user([[maybe_unused]] const user &u) {}
+    virtual void updated_user([[maybe_unused]] const user &u) {}
+    virtual void removed_user([[maybe_unused]] const user &u) {}
+
     virtual void new_sensor_type([[maybe_unused]] const sensor_type &s) {}
     virtual void updated_sensor_type([[maybe_unused]] const sensor_type &s) {}
     virtual void removed_sensor_type([[maybe_unused]] const sensor_type &s) {}

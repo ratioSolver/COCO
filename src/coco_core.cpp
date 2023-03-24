@@ -424,6 +424,112 @@ namespace coco
         coco_timer.stop();
     }
 
+    COCO_EXPORT void coco_core::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data)
+    {
+        LOG_DEBUG("Creating new user..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        // we store the user in the database..
+        auto id = db.create_user(first_name, last_name, email, password, roots, data);
+        if (db.has_user(id))
+        {
+            // we create a new fact for the new user..
+            db.get_user(id).fact = AssertString(env, ("(user (id " + id + ") (first_name \"" + first_name + "\") (last_name \"" + last_name + "\") (last_name \"" + email + "\"))").c_str());
+            // we run the rules engine to update the policy..
+            Run(env, -1);
+#ifdef VERBOSE_LOG
+            Eval(env, "(facts)", NULL);
+#endif
+            fire_new_user(db.get_user(id));
+        }
+    }
+    COCO_EXPORT void coco_core::set_user_first_name(user &u, const std::string &first_name)
+    {
+        LOG_DEBUG("Setting user first name..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        // we update the user in the database..
+        db.set_user_first_name(u, first_name);
+        // we update the user fact..
+        Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (first_name \"" + first_name + "\")))").c_str(), NULL);
+        // we run the rules engine to update the policy..
+        Run(env, -1);
+#ifdef VERBOSE_LOG
+        Eval(env, "(facts)", NULL);
+#endif
+        fire_updated_user(u);
+    }
+    COCO_EXPORT void coco_core::set_user_last_name(user &u, const std::string &last_name)
+    {
+        LOG_DEBUG("Setting user last name..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        // we update the user in the database..
+        db.set_user_last_name(u, last_name);
+        // we update the user fact..
+        Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (last_name \"" + last_name + "\")))").c_str(), NULL);
+        // we run the rules engine to update the policy..
+        Run(env, -1);
+#ifdef VERBOSE_LOG
+        Eval(env, "(facts)", NULL);
+#endif
+        fire_updated_user(u);
+    }
+    COCO_EXPORT void coco_core::set_user_email(user &u, const std::string &email)
+    {
+        LOG_DEBUG("Setting user email..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        // we update the user in the database..
+        db.set_user_email(u, email);
+        // we update the user fact..
+        Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (email \"" + email + "\")))").c_str(), NULL);
+        // we run the rules engine to update the policy..
+        Run(env, -1);
+#ifdef VERBOSE_LOG
+        Eval(env, "(facts)", NULL);
+#endif
+        fire_updated_user(u);
+    }
+    COCO_EXPORT void coco_core::set_user_password(user &u, const std::string &password)
+    {
+        LOG_DEBUG("Setting user password..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        // we update the user in the database..
+        db.set_user_password(u, password);
+        fire_updated_user(u);
+    }
+    COCO_EXPORT void coco_core::set_user_roots(user &u, const std::vector<std::string> &roots)
+    {
+        LOG_DEBUG("Setting user roots..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        // we update the user in the database..
+        db.set_user_roots(u, roots);
+        fire_updated_user(u);
+    }
+    COCO_EXPORT void coco_core::set_user_data(user &u, const json::json &data)
+    {
+        LOG_DEBUG("Setting user data..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        // we update the user in the database..
+        db.set_user_data(u, data);
+        fire_updated_user(u);
+    }
+    COCO_EXPORT void coco_core::delete_user(user &u)
+    {
+        LOG_DEBUG("Deleting user..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        fire_removed_user(u);
+        if (db.has_user(u.id))
+        {
+            // we retract the user fact..
+            Retract(u.fact);
+            // we run the rules engine to update the policy..
+            Run(env, -1);
+#ifdef VERBOSE_LOG
+            Eval(env, "(facts)", NULL);
+#endif
+        }
+        // we delete the user from the database..
+        db.delete_user(u);
+    }
+
     COCO_EXPORT void coco_core::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
     {
         LOG_DEBUG("Creating new sensor type..");
@@ -667,6 +773,22 @@ namespace coco
         }
         else // we notify the listeners that a message has arrived..
             fire_message_arrived(topic, msg);
+    }
+
+    void coco_core::fire_new_user(const user &u)
+    {
+        for (const auto &l : listeners)
+            l->new_user(u);
+    }
+    void coco_core::fire_updated_user(const user &u)
+    {
+        for (const auto &l : listeners)
+            l->updated_user(u);
+    }
+    void coco_core::fire_removed_user(const user &u)
+    {
+        for (const auto &l : listeners)
+            l->removed_user(u);
     }
 
     void coco_core::fire_new_sensor_type(const sensor_type &st)

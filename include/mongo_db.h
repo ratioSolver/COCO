@@ -15,17 +15,23 @@ namespace coco
 
     virtual void init() override;
 
-    std::string create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data) override;
-    bool has_user(const std::string &id) override;
-    user_ptr get_user(const std::string &id) override;
+    std::string create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data) override;
     user_ptr get_user(const std::string &email, const std::string &password) override;
     std::vector<user_ptr> get_users() override;
     void set_user_first_name(user &u, const std::string &first_name) override;
+    void set_user_first_name(const std::string &id, const std::string &first_name) override;
     void set_user_last_name(user &u, const std::string &last_name) override;
+    void set_user_last_name(const std::string &id, const std::string &last_name) override;
     void set_user_email(user &u, const std::string &email) override;
+    void set_user_email(const std::string &id, const std::string &email) override;
     void set_user_password(user &u, const std::string &password) override;
+    void set_user_password(const std::string &id, const std::string &password) override;
+    void set_user_roots(user &u, const std::vector<std::string> &roots) override;
+    void set_user_roots(const std::string &id, const std::vector<std::string> &roots) override;
     void set_user_data(user &u, const json::json &data) override;
+    void set_user_data(const std::string &id, const json::json &data) override;
     void delete_user(user &u) override;
+    void delete_user(const std::string &id) override;
 
     std::string create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) override;
     void set_sensor_type_name(sensor_type &st, const std::string &name) override;

@@ -28,7 +28,7 @@ namespace coco
      * @param type The type of the user.
      * @return std::string The id of the created user.
      */
-    virtual std::string create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data) = 0;
+    virtual std::string create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data);
 
     /**
      * @brief Check if the user object with the given id exists.
@@ -37,14 +37,14 @@ namespace coco
      * @return true if the user exists.
      * @return false if the user does not exist.
      */
-    virtual bool has_user(const std::string &id) = 0;
+    virtual bool has_user(const std::string &id) const { return users.find(id) != users.end(); }
     /**
      * @brief Get the user object with the given id.
      *
      * @param id the id of the user.
      * @return user_ptr the user with the given id.
      */
-    virtual user_ptr get_user(const std::string &id) = 0;
+    virtual user &get_user(const std::string &id) const { return *users.at(id); }
     /**
      * @brief Get the user object with the given email and password.
      *
@@ -68,6 +68,7 @@ namespace coco
      * @param first_name the new first name of the user.
      */
     virtual void set_user_first_name(user &u, const std::string &first_name) { u.first_name = first_name; }
+    virtual void set_user_first_name(const std::string &id, const std::string &first_name) { set_user_first_name(*users.at(id), first_name); }
     /**
      * @brief Set the user's last name.
      *
@@ -75,6 +76,7 @@ namespace coco
      * @param last_name the new last name of the user.
      */
     virtual void set_user_last_name(user &u, const std::string &last_name) { u.last_name = last_name; }
+    virtual void set_user_last_name(const std::string &id, const std::string &last_name) { set_user_last_name(*users.at(id), last_name); }
     /**
      * @brief Set the user's email.
      *
@@ -82,6 +84,7 @@ namespace coco
      * @param email the new email of the user.
      */
     virtual void set_user_email(user &u, const std::string &email) { u.email = email; }
+    virtual void set_user_email(const std::string &id, const std::string &email) { set_user_email(*users.at(id), email); }
     /**
      * @brief Set the user's password.
      *
@@ -89,6 +92,15 @@ namespace coco
      * @param password the new password of the user.
      */
     virtual void set_user_password(user &u, const std::string &password) { u.password = password; }
+    virtual void set_user_password(const std::string &id, const std::string &password) { set_user_password(*users.at(id), password); }
+    /**
+     * @brief Set the user roots object
+     *
+     * @param u the user to update.
+     * @param roots the new roots of the user.
+     */
+    virtual void set_user_roots(user &u, const std::vector<std::string> &roots);
+    virtual void set_user_roots(const std::string &id, const std::vector<std::string> &roots) { set_user_roots(*users.at(id), roots); }
     /**
      * @brief Set the user's data.
      *
@@ -96,13 +108,15 @@ namespace coco
      * @param data the new data of the user.
      */
     virtual void set_user_data(user &u, const json::json &data) { u.data = data; }
+    virtual void set_user_data(const std::string &id, const json::json &data) { set_user_data(*users.at(id), data); }
 
     /**
      * @brief Delete the user object with the given id.
      *
      * @param u the user to delete.
      */
-    virtual void delete_user(user &u) = 0;
+    virtual void delete_user(user &u) { users.erase(u.id); }
+    virtual void delete_user(const std::string &id) { delete_user(*users.at(id)); }
 
     /**
      * @brief Create a sensor type object with the given name and description and returns its id.
@@ -147,20 +161,20 @@ namespace coco
      * @param st the sensor type.
      * @param name the new name of the sensor type.
      */
-    virtual void set_sensor_type_name(sensor_type &st, const std::string &name);
+    virtual void set_sensor_type_name(sensor_type &st, const std::string &name) { st.name = name; }
     /**
      * @brief Set the description to the sensor type object with the given id.
      *
      * @param st the sensor type.
      * @param description the new description of the sensor type.
      */
-    virtual void set_sensor_type_description(sensor_type &st, const std::string &description);
+    virtual void set_sensor_type_description(sensor_type &st, const std::string &description) { st.description = description; }
     /**
      * @brief Delete the sensor type object with the given id.
      *
      * @param st the sensor type.
      */
-    virtual void delete_sensor_type(sensor_type &st);
+    virtual void delete_sensor_type(sensor_type &st) { sensor_types.erase(st.id); }
 
     /**
      * @brief Create a sensor object with the given name, type and location and returns its id.
@@ -198,7 +212,7 @@ namespace coco
      * @param s the sensor.
      * @param name the new name of the sensor.
      */
-    virtual void set_sensor_name(sensor &s, const std::string &name) { s.set_name(name); }
+    virtual void set_sensor_name(sensor &s, const std::string &name) { s.name = name; }
     /**
      * @brief Set the type to the sensor object with the given id.
      *
@@ -237,11 +251,13 @@ namespace coco
     virtual void drop();
 
   protected:
+    user &create_user(const std::string &id, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data);
     sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     sensor &create_sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l);
 
   private:
     const std::string root;
+    std::unordered_map<std::string, user_ptr> users;
     std::unordered_map<std::string, sensor_type_ptr> sensor_types;
     std::unordered_map<std::string, std::reference_wrapper<sensor_type>> sensor_types_by_name;
     std::unordered_map<std::string, sensor_ptr> sensors;

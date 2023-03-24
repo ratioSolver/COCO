@@ -62,4 +62,14 @@ namespace coco
   };
 
   using user_ptr = utils::u_ptr<user>;
+
+  inline json::json to_json(const user &u)
+  {
+    return {{"id", u.get_id()},
+            {"first_name", u.get_first_name()},
+            {"last_name", u.get_last_name()},
+            {"email", u.get_email()},
+            {"password", u.get_password()},
+            {"data", u.get_data()}};
+  }
 } // namespace coco

@@ -389,10 +389,10 @@ namespace coco
     {
         LOG_DEBUG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
 
-        for (const auto &st : db.get_all_sensor_types())
+        for (const auto &st : db.get_sensor_types())
             st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
 
-        for (const auto &s : db.get_all_sensors())
+        for (const auto &s : db.get_sensors())
         {
             std::string f_str = "(sensor (id " + s.get().id + ") (sensor_type " + s.get().type.id + ") (name \"" + s.get().name + "\")";
             if (s.get().loc)
@@ -407,7 +407,7 @@ namespace coco
         Eval(env, "(facts)", NULL);
 #endif
 
-        for (const auto &s : db.get_all_sensors())
+        for (const auto &s : db.get_sensors())
             for (auto &mw : middlewares)
                 mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + s.get().id, 1);
     }

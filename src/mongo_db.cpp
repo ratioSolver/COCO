@@ -29,7 +29,7 @@ namespace coco
             }
             coco_db::create_sensor_type(id, name, description, parameters);
         }
-        LOG("Retrieved " << get_all_sensor_types().size() << " sensor types..");
+        LOG("Retrieved " << get_sensor_types().size() << " sensor types..");
 
         LOG("Retrieving all " << root << " sensors..");
         for (auto &doc : sensors_collection.find({}))
@@ -47,7 +47,7 @@ namespace coco
             }
             coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
         }
-        LOG("Retrieved " << get_all_sensors().size() << " sensors..");
+        LOG("Retrieved " << get_sensors().size() << " sensors..");
     }
 
     std::string mongo_db::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
@@ -97,6 +97,21 @@ namespace coco
         }
         else
             return nullptr;
+    }
+    std::vector<user_ptr> mongo_db::get_users()
+    {
+        std::vector<user_ptr> users;
+        for (auto doc : users_collection.find({}))
+        {
+            auto id = doc["_id"].get_oid().value.to_string();
+            auto first_name = doc["first_name"].get_string().value.to_string();
+            auto last_name = doc["last_name"].get_string().value.to_string();
+            auto email = doc["email"].get_string().value.to_string();
+            auto password = doc["password"].get_string().value.to_string();
+            auto data = json::load(bsoncxx::to_json(doc["data"].get_document().value));
+            users.emplace_back(new user(id, first_name, last_name, email, password, data));
+        }
+        return users;
     }
     void mongo_db::set_user_first_name(user &u, const std::string &first_name)
     {

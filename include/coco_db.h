@@ -52,6 +52,13 @@ namespace coco
      * @return user_ptr the user with the given email and password.
      */
     virtual user_ptr get_user(const std::string &email, const std::string &password) = 0;
+
+    /**
+     * @brief Get the all the users.
+     * 
+     * @return std::vector<user_ptr> the users.
+     */
+    virtual std::vector<user_ptr> get_users() = 0;
     
     /**
      * @brief Set the user's first name.
@@ -110,7 +117,7 @@ namespace coco
      *
      * @return std::vector<std::reference_wrapper<sensor_type>>
      */
-    std::vector<std::reference_wrapper<sensor_type>> get_all_sensor_types();
+    std::vector<std::reference_wrapper<sensor_type>> get_sensor_types();
     /**
      * @brief Check if the sensor type object with the given id exists.
      *
@@ -161,7 +168,7 @@ namespace coco
      *
      * @return std::vector<std::reference_wrapper<sensor>> all the sensors.
      */
-    std::vector<std::reference_wrapper<sensor>> get_all_sensors();
+    std::vector<std::reference_wrapper<sensor>> get_sensors();
     /**
      * @brief Check if the sensor object with the given id exists.
      *

@@ -19,6 +19,7 @@ namespace coco
   {
   public:
     chart(const std::string &title, const std::string &x_label, const std::string &y_label);
+    virtual ~chart() = default;
 
     virtual std::string get_type() const = 0;
 
@@ -38,6 +39,7 @@ namespace coco
     std::string y_label;
     std::chrono::milliseconds::rep last_update = 0;
   };
+  using chart_ptr = utils::u_ptr<chart>;
 
   class sensor_aggregator
   {

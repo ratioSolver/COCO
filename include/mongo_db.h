@@ -19,6 +19,7 @@ namespace coco
     bool has_user(const std::string &id) override;
     user_ptr get_user(const std::string &id) override;
     user_ptr get_user(const std::string &email, const std::string &password) override;
+    std::vector<user_ptr> get_users() override;
     void set_user_first_name(user &u, const std::string &first_name) override;
     void set_user_last_name(user &u, const std::string &last_name) override;
     void set_user_email(user &u, const std::string &email) override;

@@ -20,7 +20,7 @@ namespace coco
         return std::to_string(c_id);
     }
     void coco_db::create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) { sensor_types[id] = new sensor_type(id, name, description, parameter_types); }
-    std::vector<std::reference_wrapper<sensor_type>> coco_db::get_all_sensor_types()
+    std::vector<std::reference_wrapper<sensor_type>> coco_db::get_sensor_types()
     {
         std::vector<std::reference_wrapper<sensor_type>> sts;
         sts.reserve(sensor_types.size());
@@ -41,7 +41,7 @@ namespace coco
         return std::to_string(c_id);
     }
     void coco_db::create_sensor(const std::string &id, const std::string &name, const sensor_type &type, location_ptr l) { sensors[id] = new sensor(id, name, type, std::move(l)); }
-    std::vector<std::reference_wrapper<sensor>> coco_db::get_all_sensors()
+    std::vector<std::reference_wrapper<sensor>> coco_db::get_sensors()
     {
         std::vector<std::reference_wrapper<sensor>> sts;
         sts.reserve(sensors.size());

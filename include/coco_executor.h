@@ -14,7 +14,7 @@ namespace coco
     friend class coco_core;
 
   public:
-    COCO_EXPORT coco_executor(coco_core &cc, ratio::executor::executor &exec, const std::string &type);
+    COCO_EXPORT coco_executor(coco_core &cc, ratio::executor::executor &exec);
 
     /**
      * @brief Get the executor object associated to this executor.
@@ -28,13 +28,6 @@ namespace coco
      * @return const ratio::executor::executor&
      */
     const ratio::executor::executor &get_executor() const { return exec; }
-
-    /**
-     * @brief Get the type of the executor.
-     *
-     * @return const std::string&
-     */
-    const std::string &get_type() const { return type; }
 
   private:
     void log(const std::string &msg) override;
@@ -78,7 +71,6 @@ namespace coco
   private:
     coco_core &cc;
     ratio::executor::executor &exec;
-    const std::string type;
     std::unordered_set<const ratio::flaw *> flaws;
     const ratio::flaw *c_flaw = nullptr;
     std::unordered_set<const ratio::resolver *> resolvers;

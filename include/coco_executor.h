@@ -55,6 +55,8 @@ namespace coco
 
   private:
     void tick();
+
+    void executor_state_changed(ratio::executor::executor_state state) override;
     void tick(const utils::rational &time) override;
 
     void starting(const std::unordered_set<ratio::atom *> &atoms) override;

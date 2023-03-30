@@ -25,11 +25,6 @@ namespace coco
         c_flaw = nullptr;
         c_resolver = nullptr;
 
-        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state " + (exec.is_finished() ? "finished" : (exec.is_executing() ? "executing" : "idle")) + ")))").c_str(), NULL);
-        Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-        Eval(cc.env, "(facts)", NULL);
-#endif
         cc.fire_solution_found(*this);
     }
     void coco_executor::inconsistent_problem()
@@ -115,22 +110,23 @@ namespace coco
 
     void coco_executor::tick() { exec.tick(); }
 
+    void coco_executor::executor_state_changed(ratio::executor::executor_state state)
+    {
+        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Executor state: " << ratio::executor::to_string(state));
+        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state " + ratio::executor::to_string(state) + ")))").c_str(), NULL);
+        Run(cc.env, -1);
+#ifdef VERBOSE_LOG
+        Eval(cc.env, "(facts)", NULL);
+#endif
+    }
+
     void coco_executor::tick(const utils::rational &time)
     {
-        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Current time " << to_string(time));
+        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Current time: " << to_string(time));
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
         current_time = time;
 
         cc.fire_tick(*this, time);
-
-        if (exec.is_finished())
-        {
-            Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state finished)))").c_str(), NULL);
-            Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-            Eval(cc.env, "(facts)", NULL);
-#endif
-        }
     }
     void coco_executor::starting(const std::unordered_set<ratio::atom *> &atoms)
     {

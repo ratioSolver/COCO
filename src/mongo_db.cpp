@@ -49,20 +49,41 @@ namespace coco
             coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
         }
         LOG("Retrieved " << get_sensors().size() << " sensors..");
+
+        LOG("Retrieving all " << get_root() << " users..");
+        using bsoncxx::builder::basic::kvp;
+        using bsoncxx::builder::basic::make_array;
+        using bsoncxx::builder::basic::make_document;
+        for (auto &doc : users_collection.find({make_document(kvp("$or", make_array(
+                                                                             make_document(kvp("data", make_document(kvp("type", "admin")))),
+                                                                             make_document(kvp("roots", make_document(kvp("$elemMatch", make_document(kvp("$eq", get_root())))))))))}))
+        {
+            auto id = doc["_id"].get_oid().value.to_string();
+            auto first_name = doc["first_name"].get_string().value.to_string();
+            auto last_name = doc["last_name"].get_string().value.to_string();
+            auto email = doc["email"].get_string().value.to_string();
+            auto password = doc["password"].get_string().value.to_string();
+            std::vector<std::string> roots;
+            for (auto root : doc["roots"].get_array().value)
+                roots.push_back(root.get_string().value.to_string());
+            auto data = json::load(bsoncxx::to_json(doc["data"].get_document().value));
+            coco_db::create_user(id, first_name, last_name, email, password, roots, data);
+        }
     }
 
     std::string mongo_db::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data)
     {
+        using bsoncxx::builder::basic::kvp;
         auto u_doc = bsoncxx::builder::basic::document{};
-        u_doc.append(bsoncxx::builder::basic::kvp("first_name", first_name));
-        u_doc.append(bsoncxx::builder::basic::kvp("last_name", last_name));
-        u_doc.append(bsoncxx::builder::basic::kvp("email", email));
-        u_doc.append(bsoncxx::builder::basic::kvp("password", password));
+        u_doc.append(kvp("first_name", first_name));
+        u_doc.append(kvp("last_name", last_name));
+        u_doc.append(kvp("email", email));
+        u_doc.append(kvp("password", password));
         auto roots_doc = bsoncxx::builder::basic::array{};
         for (const auto &root : roots)
             roots_doc.append(root);
-        u_doc.append(bsoncxx::builder::basic::kvp("roots", roots_doc));
-        u_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.to_string())));
+        u_doc.append(kvp("roots", roots_doc));
+        u_doc.append(kvp("data", bsoncxx::from_json(data.to_string())));
 
         auto result = users_collection.insert_one(u_doc.view());
         if (result)
@@ -92,7 +113,7 @@ namespace coco
         else
             return nullptr;
     }
-    std::vector<user_ptr> mongo_db::get_users()
+    std::vector<user_ptr> mongo_db::get_all_users()
     {
         std::vector<user_ptr> users;
         for (auto doc : users_collection.find({}))

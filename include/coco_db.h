@@ -46,6 +46,12 @@ namespace coco
      */
     virtual user &get_user(const std::string &id) const { return *users.at(id); }
     /**
+     * @brief Get the users object.
+     * 
+     * @return std::vector<std::reference_wrapper<user>> the users.
+     */
+    std::vector<std::reference_wrapper<user>> get_users();
+    /**
      * @brief Get the user object with the given email and password.
      *
      * @param email the email of the user.
@@ -59,7 +65,7 @@ namespace coco
      *
      * @return std::vector<user_ptr> the users.
      */
-    virtual std::vector<user_ptr> get_users() = 0;
+    virtual std::vector<user_ptr> get_all_users() = 0;
 
     /**
      * @brief Set the user's first name.

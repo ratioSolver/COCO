@@ -28,6 +28,14 @@ namespace coco
             users[id] = u;
         return *u;
     }
+    std::vector<std::reference_wrapper<user>> coco_db::get_users()
+    {
+        std::vector<std::reference_wrapper<user>> us;
+        us.reserve(users.size());
+        for (auto &[id, u] : users)
+            us.push_back(*u);
+        return us;
+    }
     void coco_db::set_user_roots(user &u, const std::vector<std::string> &roots)
     {
         u.roots = roots;

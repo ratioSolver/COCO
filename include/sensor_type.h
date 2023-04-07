@@ -97,4 +97,14 @@ namespace coco
   };
 
   using sensor_type_ptr = utils::u_ptr<sensor_type>;
+
+  inline json::json to_json(const sensor_type &st)
+  {
+    json::json j_st{{"id", st.get_id()}, {"name", st.get_name()}, {"description", st.get_description()}};
+    json::json j_pars(json::json_type::array);
+    for (const auto &[name, type] : st.get_parameters())
+      j_pars.push_back({{"name", name}, {"type", static_cast<long>(type)}});
+    j_st["parameters"] = j_pars;
+    return j_st;
+  }
 } // namespace coco

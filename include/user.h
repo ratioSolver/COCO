@@ -85,7 +85,6 @@ namespace coco
                           {"first_name", u.get_first_name()},
                           {"last_name", u.get_last_name()},
                           {"email", u.get_email()},
-                          {"password", u.get_password()},
                           {"data", u.get_data()}};
     auto roots = json::json(json::json_type::array);
     for (const auto &root : u.get_roots())

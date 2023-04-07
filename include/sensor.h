@@ -1,16 +1,11 @@
 #pragma once
 
-#include "json.h"
+#include "sensor_type.h"
 #include "location.h"
-#include "clips.h"
 #include <chrono>
 
 namespace coco
 {
-  class coco_core;
-  class coco_db;
-  class sensor_type;
-
   class sensor
   {
     friend class coco_core;
@@ -79,6 +74,19 @@ namespace coco
      */
     const json::json &get_value() const { return value; }
     /**
+     * @brief Check whether the sensor has a state.
+     *
+     * @return true if the sensor has a state.
+     * @return false if the sensor has no state.
+     */
+    bool has_state() const { return state.operator bool(); }
+    /**
+     * @brief Get the state of the sensor.
+     *
+     * @return const json::json& the state of the sensor.
+     */
+    const json::json &get_state() const { return state; }
+    /**
      * @brief Get the fact of the sensor.
      *
      * @return Fact* the fact of the sensor.
@@ -112,4 +120,22 @@ namespace coco
   };
 
   using sensor_ptr = utils::u_ptr<sensor>;
+
+  inline json::json to_json(const sensor &s)
+  {
+    json::json j_s{{"id", s.get_id()}, {"name", s.get_name()}, {"type", s.get_type().get_id()}};
+    if (s.has_location())
+      j_s["location"] = {{"y", s.get_location().y}, {"x", s.get_location().x}};
+    if (s.has_value())
+    {
+      j_s["value"] = json::load(s.get_value().to_string());
+      j_s["value"]["timestamp"] = s.get_last_update();
+    }
+    if (s.has_state())
+    {
+      j_s["state"] = json::load(s.get_state().to_string());
+      j_s["state"]["timestamp"] = s.get_last_update();
+    }
+    return j_s;
+  }
 } // namespace coco

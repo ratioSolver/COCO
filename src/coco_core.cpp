@@ -30,7 +30,7 @@ namespace coco
         e.fire_new_solver(*coco_exec);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec);
 
-        AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + ") (state reasoning))").c_str());
+        AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + "))").c_str());
 
         e.executors.push_back(coco_exec);
 
@@ -72,7 +72,7 @@ namespace coco
         e.fire_new_solver(*coco_exec);
         uintptr_t exec_ptr = reinterpret_cast<uintptr_t>(coco_exec);
 
-        AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + ") (state reasoning))").c_str());
+        AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + "))").c_str());
 
         e.executors.push_back(coco_exec);
 
@@ -82,7 +82,7 @@ namespace coco
         out->integerValue = CreateInteger(env, exec_ptr);
     }
 
-    void start_execution(Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    void start_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
     {
         LOG_DEBUG("Starting plan execution..");
 
@@ -97,12 +97,10 @@ namespace coco
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         coco_exec->get_executor().start_execution();
 
-        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state executing)))").c_str(), NULL);
-
         e.fire_start_execution(*coco_exec);
     }
 
-    void pause_execution(Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
+    void pause_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
     {
         LOG_DEBUG("Pausing plan execution..");
 
@@ -116,8 +114,6 @@ namespace coco
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         coco_exec->get_executor().pause_execution();
-
-        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state paused)))").c_str(), NULL);
 
         e.fire_pause_execution(*coco_exec);
     }
@@ -255,8 +251,6 @@ namespace coco
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         auto exec = &coco_exec->get_executor();
 
-        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state adapting)))").c_str(), NULL);
-
         UDFValue riddle;
         if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
             return;
@@ -287,8 +281,6 @@ namespace coco
             fs.push_back(file.lexemeValue->contents);
         }
 
-        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state adapting)))").c_str(), NULL);
-
         // we adapt to some riddle files..
         exec->adapt(fs);
     }
@@ -315,7 +307,7 @@ namespace coco
         delete exec;
         delete slv;
 
-        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (modify ?slv (state destroyed)))").c_str(), NULL);
+        Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (retract ?slv))").c_str(), NULL);
 
         e.fire_removed_solver(*coco_exec);
     }

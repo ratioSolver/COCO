@@ -86,36 +86,22 @@ namespace coco
     {
         LOG_DEBUG("Starting plan execution..");
 
-        UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
-            return;
-        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
-
         UDFValue exec_ptr;
-        if (!UDFNextArgument(udfc, INTEGER_BIT, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         coco_exec->get_executor().start_execution();
-
-        e.fire_start_execution(*coco_exec);
     }
 
     void pause_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
     {
         LOG_DEBUG("Pausing plan execution..");
 
-        UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
-            return;
-        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
-
         UDFValue exec_ptr;
-        if (!UDFNextArgument(udfc, INTEGER_BIT, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
         coco_exec->get_executor().pause_execution();
-
-        e.fire_pause_execution(*coco_exec);
     }
 
     void delay_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -337,8 +323,8 @@ namespace coco
     {
         AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
         AddUDF(env, "new_solver_files", "l", 3, 3, "lym", new_solver_files, "new_solver_files", NULL);
-        AddUDF(env, "start_execution", "v", 2, 2, "ll", start_execution, "start_execution", NULL);
-        AddUDF(env, "pause_execution", "v", 2, 2, "ll", pause_execution, "pause_execution", NULL);
+        AddUDF(env, "start_execution", "v", 1, 1, "l", start_execution, "start_execution", NULL);
+        AddUDF(env, "pause_execution", "v", 1, 1, "l", pause_execution, "pause_execution", NULL);
         AddUDF(env, "delay_task", "v", 2, 3, "llm", delay_task, "delay_task", NULL);
         AddUDF(env, "extend_task", "v", 2, 3, "llm", extend_task, "extend_task", NULL);
         AddUDF(env, "failure", "v", 2, 2, "lm", failure, "failure", NULL);
@@ -907,21 +893,16 @@ namespace coco
             l->causal_link_added(exec, f, r);
     }
 
-    void coco_core::fire_start_execution(const coco_executor &exec)
-    {
-        for (const auto &l : listeners)
-            l->start_execution(exec);
-    }
-    void coco_core::fire_pause_execution(const coco_executor &exec)
-    {
-        for (const auto &l : listeners)
-            l->pause_execution(exec);
-    }
-
     void coco_core::fire_message_arrived(const std::string &topic, const json::json &msg)
     {
         for (const auto &l : listeners)
             l->message_arrived(topic, msg);
+    }
+
+    void coco_core::fire_executor_state_changed(const coco_executor &exec, ratio::executor::executor_state state)
+    {
+        for (const auto &l : listeners)
+            l->executor_state_changed(exec, state);
     }
 
     void coco_core::fire_tick(const coco_executor &exec, const utils::rational &time)

@@ -6,6 +6,7 @@
 #include "sensor.h"
 #include "timer.h"
 #include "solver.h"
+#include "executor.h"
 #include <unordered_set>
 #include <list>
 #include <mutex>
@@ -154,6 +155,8 @@ namespace coco
     void fire_new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value);
     void fire_new_sensor_state(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &state);
 
+    void fire_message_arrived(const std::string &topic, const json::json &msg);
+
     void fire_new_solver(const coco_executor &exec);
     void fire_removed_solver(const coco_executor &exec);
 
@@ -175,10 +178,7 @@ namespace coco
 
     void fire_causal_link_added(const coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r);
 
-    void fire_message_arrived(const std::string &topic, const json::json &msg);
-
-    void fire_start_execution(const coco_executor &exec);
-    void fire_pause_execution(const coco_executor &exec);
+    void fire_executor_state_changed(const coco_executor &exec, ratio::executor::executor_state state);
 
     void fire_tick(const coco_executor &exec, const utils::rational &time);
 

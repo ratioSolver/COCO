@@ -1,7 +1,7 @@
 (deftemplate configuration (slot coco_ptr (type INTEGER)))
 (deftemplate solver (slot solver_ptr (type INTEGER)) (slot solver_type (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))
 
-(deftemplate task (slot solver_ptr (type INTEGER)) (slot command (allowed-values starting start ending end)) (slot id (type INTEGER)) (slot task_type (type STRING)) (multislot pars) (multislot vals))
+(deftemplate task (slot solver_ptr (type INTEGER)) (slot command (allowed-values starting start ending end)) (slot id (type INTEGER)) (slot task_type (type SYMBOL)) (multislot pars) (multislot vals))
 (deftemplate dont_start_yet (slot task_id (type INTEGER)) (multislot delay_time))
 (deftemplate dont_end_yet (slot task_id (type INTEGER)) (multislot delay_time))
 

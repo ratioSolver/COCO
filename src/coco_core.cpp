@@ -24,6 +24,7 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
             return;
 
+        const std::lock_guard<std::recursive_mutex> lock(e.mtx);
         auto slv = new ratio::solver();
         auto exec = new ratio::executor::executor(*slv, solver_type.lexemeValue->contents);
         auto coco_exec = new coco_executor(e, *exec);
@@ -66,6 +67,7 @@ namespace coco
             fs.push_back(file.lexemeValue->contents);
         }
 
+        const std::lock_guard<std::recursive_mutex> lock(e.mtx);
         auto slv = new ratio::solver();
         auto exec = new ratio::executor::executor(*slv, solver_type.lexemeValue->contents);
         auto coco_exec = new coco_executor(e, *exec);
@@ -90,6 +92,7 @@ namespace coco
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         coco_exec->get_executor().start_execution();
     }
 
@@ -101,6 +104,7 @@ namespace coco
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         coco_exec->get_executor().pause_execution();
     }
 
@@ -150,6 +154,7 @@ namespace coco
         else
             delay = utils::rational::ONE;
 
+        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         exec->dont_start_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
 
@@ -199,6 +204,7 @@ namespace coco
         else
             delay = utils::rational::ONE;
 
+        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         exec->dont_end_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
 
@@ -224,6 +230,7 @@ namespace coco
         }
 
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         coco_exec->get_executor().failure(atms);
     }
 
@@ -242,6 +249,7 @@ namespace coco
             return;
 
         // we adapt to a riddle script..
+        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         exec->adapt(riddle.lexemeValue->contents);
     }
 
@@ -268,6 +276,7 @@ namespace coco
         }
 
         // we adapt to some riddle files..
+        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         exec->adapt(fs);
     }
 
@@ -275,18 +284,15 @@ namespace coco
     {
         LOG_DEBUG("Deleting solver..");
 
-        UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
-            return;
-        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
-
         UDFValue exec_ptr;
-        if (!UDFNextArgument(udfc, INTEGER_BIT, &exec_ptr))
+        if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        auto &e = coco_exec->get_core();
         auto exec = &coco_exec->get_executor();
         auto slv = &exec->get_solver();
 
+        const std::lock_guard<std::recursive_mutex> lock(e.mtx);
         auto coco_exec_it = std::find_if(e.executors.cbegin(), e.executors.cend(), [coco_exec](auto &slv_ptr)
                                          { return &*slv_ptr == coco_exec; });
         e.executors.erase(coco_exec_it);
@@ -316,6 +322,7 @@ namespace coco
             return;
 
         auto msg = json::load(message.lexemeValue->contents);
+        const std::lock_guard<std::recursive_mutex> lock(e.mtx);
         e.publish(e.db.get_root() + '/' + topic.lexemeValue->contents, msg);
     }
 
@@ -330,7 +337,7 @@ namespace coco
         AddUDF(env, "failure", "v", 2, 2, "lm", failure, "failure", NULL);
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", NULL);
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", NULL);
-        AddUDF(env, "delete_solver", "v", 2, 2, "ll", delete_solver, "delete_solver", NULL);
+        AddUDF(env, "delete_solver", "v", 1, 1, "l", delete_solver, "delete_solver", NULL);
         AddUDF(env, "publish_message", "v", 3, 3, "lss", publish_message, "publish_message", NULL);
     }
     COCO_EXPORT coco_core::~coco_core()

@@ -17,6 +17,13 @@ namespace coco
     COCO_EXPORT coco_executor(coco_core &cc, ratio::executor::executor &exec);
 
     /**
+     * @brief Get the core object associated to this executor.
+     *
+     * @return coco_core& the core object
+     */
+    coco_core &get_core() { return cc; }
+
+    /**
      * @brief Get the executor object associated to this executor.
      *
      * @return ratio::executor::executor&

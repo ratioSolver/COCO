@@ -12,9 +12,7 @@ namespace coco
 
     void coco_executor::state_changed()
     {
-#ifdef SOLVING_MONITORING
         cc.fire_state_changed(*this);
-#endif
     }
 
     void coco_executor::started_solving() { cc.fire_started_solving(*this); }
@@ -34,11 +32,6 @@ namespace coco
         c_flaw = nullptr;
         c_resolver = nullptr;
 
-        Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state inconsistent)))").c_str(), NULL);
-        Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-        Eval(cc.env, "(facts)", NULL);
-#endif
         cc.fire_inconsistent_problem(*this);
     }
 
@@ -46,66 +39,48 @@ namespace coco
     {
         flaws.insert(&f);
 
-#ifdef SOLVING_MONITORING
         cc.fire_flaw_created(*this, f);
-#endif
     }
     void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::flaw &f)
     {
-#ifdef SOLVING_MONITORING
         cc.fire_flaw_state_changed(*this, f);
-#endif
     }
     void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::flaw &f)
     {
-#ifdef SOLVING_MONITORING
         cc.fire_flaw_cost_changed(*this, f);
-#endif
     }
     void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::flaw &f)
     {
-#ifdef SOLVING_MONITORING
         cc.fire_flaw_position_changed(*this, f);
-#endif
     }
     void coco_executor::current_flaw(const ratio::flaw &f)
     {
         c_flaw = &f;
         c_resolver = nullptr;
 
-#ifdef SOLVING_MONITORING
         cc.fire_current_flaw(*this, f);
-#endif
     }
 
     void coco_executor::resolver_created(const ratio::resolver &r)
     {
         resolvers.insert(&r);
 
-#ifdef SOLVING_MONITORING
         cc.fire_resolver_created(*this, r);
-#endif
     }
     void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::resolver &r)
     {
-#ifdef SOLVING_MONITORING
         cc.fire_resolver_state_changed(*this, r);
-#endif
     }
     void coco_executor::current_resolver(const ratio::resolver &r)
     {
         c_resolver = &r;
 
-#ifdef SOLVING_MONITORING
         cc.fire_current_resolver(*this, r);
-#endif
     }
 
     void coco_executor::causal_link_added([[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r)
     {
-#ifdef SOLVING_MONITORING
         cc.fire_causal_link_added(*this, f, r);
-#endif
     }
 
     void coco_executor::tick() { exec.tick(); }
@@ -148,18 +123,21 @@ namespace coco
             for (size_t i = 0; i < res.multifieldValue->length; ++i)
             {
                 auto f = res.multifieldValue->contents[i].factValue;
-                auto atm = reinterpret_cast<ratio::atom *>(f->basisSlots[0].contents->integerValue->contents);
+                CLIPSValue atm_ptr, delay_time;
+                GetFactSlot(f, "task_id", &atm_ptr);
+                GetFactSlot(f, "delay_time", &delay_time);
+                auto atm = reinterpret_cast<ratio::atom *>(atm_ptr.integerValue->contents);
                 utils::rational delay;
-                switch (f->basisSlots->length)
+                switch (delay_time.multifieldValue->length)
                 {
                 case 0:
                     delay = utils::rational::ONE;
                     break;
                 case 1:
-                    delay = utils::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents);
+                    delay = utils::rational(delay_time.multifieldValue[0].contents->integerValue->contents);
                     break;
                 case 2:
-                    delay = utils::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents, f->basisSlots[1].contents->multifieldValue[1].contents->integerValue->contents);
+                    delay = utils::rational(delay_time.multifieldValue[0].contents->integerValue->contents, delay_time.multifieldValue[1].contents->integerValue->contents);
                     break;
                 }
                 dsy[atm] = delay;
@@ -212,6 +190,9 @@ namespace coco
     void coco_executor::ending(const std::unordered_set<ratio::atom *> &atoms)
     {
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
+#ifdef VERBOSE_LOG
+        Eval(cc.env, "(facts)", NULL);
+#endif
         std::vector<Fact *> facts;
         for (const auto &atm : atoms)
             facts.push_back(AssertString(cc.env, to_task(*atm, "ending").c_str()));
@@ -229,18 +210,21 @@ namespace coco
             for (size_t i = 0; i < res.multifieldValue->length; ++i)
             {
                 auto f = res.multifieldValue->contents[i].factValue;
-                auto atm = reinterpret_cast<ratio::atom *>(f->basisSlots[0].contents->integerValue->contents);
+                CLIPSValue atm_ptr, delay_time;
+                GetFactSlot(f, "task_id", &atm_ptr);
+                GetFactSlot(f, "delay_time", &delay_time);
+                auto atm = reinterpret_cast<ratio::atom *>(atm_ptr.integerValue->contents);
                 utils::rational delay;
-                switch (f->basisSlots->length)
+                switch (delay_time.multifieldValue->length)
                 {
                 case 0:
                     delay = utils::rational(1);
                     break;
                 case 1:
-                    delay = utils::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents);
+                    delay = utils::rational(delay_time.multifieldValue[0].contents->integerValue->contents);
                     break;
                 case 2:
-                    delay = utils::rational(f->basisSlots[1].contents->multifieldValue[0].contents->integerValue->contents, f->basisSlots[1].contents->multifieldValue[1].contents->integerValue->contents);
+                    delay = utils::rational(delay_time.multifieldValue[0].contents->integerValue->contents, delay_time.multifieldValue[1].contents->integerValue->contents);
                     break;
                 }
                 dey[atm] = delay;

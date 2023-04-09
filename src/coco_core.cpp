@@ -24,7 +24,6 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
             return;
 
-        const std::lock_guard<std::recursive_mutex> lock(e.mtx);
         auto slv = new ratio::solver();
         auto exec = new ratio::executor::executor(*slv, solver_type.lexemeValue->contents);
         auto coco_exec = new coco_executor(e, *exec);
@@ -67,7 +66,6 @@ namespace coco
             fs.push_back(file.lexemeValue->contents);
         }
 
-        const std::lock_guard<std::recursive_mutex> lock(e.mtx);
         auto slv = new ratio::solver();
         auto exec = new ratio::executor::executor(*slv, solver_type.lexemeValue->contents);
         auto coco_exec = new coco_executor(e, *exec);
@@ -92,7 +90,6 @@ namespace coco
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         coco_exec->get_executor().start_execution();
     }
 
@@ -104,7 +101,6 @@ namespace coco
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         coco_exec->get_executor().pause_execution();
     }
 
@@ -154,7 +150,6 @@ namespace coco
         else
             delay = utils::rational::ONE;
 
-        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         exec->dont_start_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
 
@@ -204,7 +199,6 @@ namespace coco
         else
             delay = utils::rational::ONE;
 
-        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         exec->dont_end_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
 
@@ -230,7 +224,6 @@ namespace coco
         }
 
         auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         coco_exec->get_executor().failure(atms);
     }
 
@@ -249,7 +242,6 @@ namespace coco
             return;
 
         // we adapt to a riddle script..
-        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         exec->adapt(riddle.lexemeValue->contents);
     }
 
@@ -276,7 +268,6 @@ namespace coco
         }
 
         // we adapt to some riddle files..
-        const std::lock_guard<std::recursive_mutex> lock(coco_exec->get_core().mtx);
         exec->adapt(fs);
     }
 
@@ -292,7 +283,6 @@ namespace coco
         auto exec = &coco_exec->get_executor();
         auto slv = &exec->get_solver();
 
-        const std::lock_guard<std::recursive_mutex> lock(e.mtx);
         auto coco_exec_it = std::find_if(e.executors.cbegin(), e.executors.cend(), [coco_exec](auto &slv_ptr)
                                          { return &*slv_ptr == coco_exec; });
         e.executors.erase(coco_exec_it);
@@ -322,7 +312,6 @@ namespace coco
             return;
 
         auto msg = json::load(message.lexemeValue->contents);
-        const std::lock_guard<std::recursive_mutex> lock(e.mtx);
         e.publish(e.db.get_root() + '/' + topic.lexemeValue->contents, msg);
     }
 
@@ -732,7 +721,11 @@ namespace coco
     void coco_core::tick()
     {
         const std::lock_guard<std::recursive_mutex> lock(mtx);
+        std::vector<coco_executor *> c_executors;
+        c_executors.reserve(executors.size());
         for (auto &exec : executors)
+            c_executors.push_back(exec.operator->());
+        for (auto &exec : c_executors)
             exec->tick();
     }
 

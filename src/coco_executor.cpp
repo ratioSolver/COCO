@@ -93,6 +93,7 @@ namespace coco
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
 #endif
+        cc.fire_executor_state_changed(*this, state);
     }
 
     void coco_executor::tick(const utils::rational &time)

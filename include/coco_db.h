@@ -227,12 +227,19 @@ namespace coco
      */
     virtual void set_sensor_location(sensor &s, location_ptr l) { s.set_location(std::move(l)); }
     /**
-     * @brief Get the sensor values object with the given id.
+     * @brief Get the last sensor value of the sensor object with the given id.
+     * 
+     * @param s the sensor.
+     * @return json::json the last sensor value of the sensor with the given id.
+     */
+    virtual json::json get_last_sensor_value(sensor &s);
+    /**
+     * @brief Get the sensor values of the sensor object from the given start time to the given end time.
      *
      * @param s the sensor.
      * @param from the start time of the sensor values.
      * @param to the end time of the sensor values.
-     * @return json::json the sensor values with the given id.
+     * @return json::json the sensor values of the sensor with the given id.
      */
     virtual json::json get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
     /**

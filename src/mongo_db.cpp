@@ -46,7 +46,9 @@ namespace coco
                 auto loc_doc = loc->get_document().value;
                 l = new location{loc_doc["x"].get_double().value, loc_doc["y"].get_double().value};
             }
-            coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
+            auto &s = coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
+            auto last_value = get_last_sensor_value(s);
+            coco_db::set_sensor_value(s, last_value["timestamp"], last_value["value"]);
         }
         LOG("Retrieved " << get_sensors().size() << " sensors..");
 
@@ -332,9 +334,29 @@ namespace coco
         }
     }
 
+    json::json mongo_db::get_last_sensor_value(sensor &s)
+    {
+        if (s.has_value())
+        {
+            json::json data;
+            data["timestamp"] = s.get_last_update();
+            data["value"] = s.get_value();
+            return data;
+        }
+        auto cursor = sensor_data_collection.find(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  mongocxx::options::find{}.sort(bsoncxx::builder::stream::document{} << "timestamp" << -1 << bsoncxx::builder::stream::finalize).limit(1));
+        json::json data;
+        for (auto &&doc : cursor)
+        {
+            data["timestamp"] = doc["timestamp"].get_date().value.count();
+            data["value"] = json::load(bsoncxx::to_json(doc["value"].get_document().value));
+        }
+        return data;
+    }
     json::json mongo_db::get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end)
     {
-        auto cursor = sensor_data_collection.find(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::builder::stream::open_document << "$gte" << bsoncxx::types::b_date{std::chrono::milliseconds{start}} << "$lte" << bsoncxx::types::b_date{std::chrono::milliseconds{end}} << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        auto cursor = sensor_data_collection.find(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::builder::stream::open_document << "$gte" << bsoncxx::types::b_date{std::chrono::milliseconds{start}} << "$lte" << bsoncxx::types::b_date{std::chrono::milliseconds{end}} << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize,
+                                                  mongocxx::options::find{}.sort(bsoncxx::builder::stream::document{} << "timestamp" << 1 << bsoncxx::builder::stream::finalize));
         json::json data(json::json_type::array);
         for (auto &&doc : cursor)
         {

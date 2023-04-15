@@ -2,24 +2,38 @@
 
 (defrule update_temp
     (solver (solver_type thermostat))
-    (sensor_data (sensor_id ?id) (local_time ?t) (data ?b ?d))
+    (sensor_data (sensor_id ?id) (data ?batt ?temp))
     (sensor (id ?id) (sensor_type ?tp))
     (sensor_type (id ?tp) (name "temperature"))
-    ?temp <- (temperature)
+    ?temp_fact <- (temperature)
     =>
-    (modify ?temp (battery ?b) (temp ?d))
+    (modify ?temp_fact (battery ?batt) (temp ?temp))
 )
 
 (defrule cold_temp
     (configuration (coco_ptr ?cc))
     (not (solver (solver_type thermostat)))
-    (sensor_data (sensor_id ?id) (local_time ?t) (data ?b ?d))
+    (sensor_data (sensor_id ?id) (data ?batt ?temp))
     (sensor (id ?id) (sensor_type ?tp))
     (sensor_type (id ?tp) (name "temperature"))
-    (test (<= ?d 23))
+    (test (<= ?temp 23))
     =>
-    (assert (temperature (battery ?b) (temp ?d)))
-    (new_solver_script ?cc thermostat "class Thermostat : StateVariable { predicate TurningOff() { duration >= 10.0; } predicate Heating() { duration >= 10.0; goal off = new TurningOff(); off.start >= end; } predicate Cooling() { duration >= 10.0; goal off = new TurningOff(); off.start >= end; } } Thermostat thermostat = new Thermostat(); goal heat = new thermostat.Heating(); heat.start >= 10.0;")
+    (printout t "cold temp" crlf)
+    (assert (temperature (battery ?batt) (temp ?temp)))
+    (new_solver_script ?cc thermostat (str-cat "class Thermostat : StateVariable { predicate Temperature(real temp) { false; } predicate Heating() { duration >= 10.0; goal temp = new Temperature(end: start); temp.temp <= 23.0; } predicate Cooling() { duration >= 10.0; goal temp = new Temperature(end: start); temp.temp >= 27.0; } predicate Comfort() { duration >= 10.0; { goal heat = new Heating(end: start); } or { goal cool = new Cooling(end: start); } } } Thermostat thermostat = new Thermostat(); fact temp = new thermostat.Temperature(start: 0.0, end: 10.0, temp: " (float ?temp) "); goal heat = new thermostat.Comfort();"))
+)
+
+(defrule hot_temp
+    (configuration (coco_ptr ?cc))
+    (not (solver (solver_type thermostat)))
+    (sensor_data (sensor_id ?id) (data ?b ?temp))
+    (sensor (id ?id) (sensor_type ?tp))
+    (sensor_type (id ?tp) (name "temperature"))
+    (test (>= ?temp 27))
+    =>
+    (printout t "hot temp" crlf)
+    (assert (temperature (battery ?b) (temp ?temp)))
+    (new_solver_script ?cc thermostat (str-cat "class Thermostat : StateVariable { predicate Temperature(real temp) { false; } predicate Heating() { duration >= 10.0; goal temp = new Temperature(end: start); temp.temp <= 23.0; } predicate Cooling() { duration >= 10.0; goal temp = new Temperature(end: start); temp.temp >= 27.0; } predicate Comfort() { duration >= 10.0; { goal heat = new Heating(end: start); } or { goal cool = new Cooling(end: start); } } } Thermostat thermostat = new Thermostat(); fact temp = new thermostat.Temperature(start: 0.0, end: 10.0, temp: " (float ?temp) "); goal heat = new thermostat.Comfort();"))
 )
 
 (defrule start_thermostat
@@ -30,16 +44,24 @@
 
 (defrule delete_thermostat
     (solver (solver_type thermostat) (solver_ptr ?sp) (state finished))
-    ?temp <- (temperature)
+    ?temp_fact <- (temperature)
     =>
     (delete_solver ?sp)
-    (retract ?temp)
+    (retract ?temp_fact)
 )
 
 (defrule continue_heating
     (task (command ending) (id ?task_id) (task_type Heating))
-    (temperature (temp ?d))
-    (test (<= ?d 23))
+    (temperature (temp ?temp))
+    (test (<= ?temp 23))
+    =>
+    (assert (dont_end_yet (task_id ?task_id)))
+)
+
+(defrule continue_cooling
+    (task (command ending) (id ?task_id) (task_type Cooling))
+    (temperature (temp ?temp))
+    (test (>= ?temp 27))
     =>
     (assert (dont_end_yet (task_id ?task_id)))
 )

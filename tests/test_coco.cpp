@@ -11,7 +11,7 @@ int main(int argc, char const *argv[])
 
     db.drop(); // Warning!! We are deleting all the current data!!
     auto user0_id = db.create_user("Admin", "Admin", "admin", "admin", {COCO_ROOT}, {"type", "admin"});
-    auto temp_type_id = db.create_sensor_type("temperature", "A type of sensor for measuring temperature", {{"temp", coco::parameter_type::Float}});
+    auto temp_type_id = db.create_sensor_type("temperature", "A type of sensor for measuring temperature", {{"battery", coco::parameter_type::Float}, {"temp", coco::parameter_type::Float}});
     auto temp0_id = db.create_sensor("Temp0", db.get_sensor_type(temp_type_id), new coco::location{37.5078, 15.083});
 
     coco::coco_core cc(db);

@@ -337,7 +337,12 @@ namespace coco
         auto cursor = sensor_data_collection.find(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::builder::stream::open_document << "$gte" << bsoncxx::types::b_date{std::chrono::milliseconds{start}} << "$lte" << bsoncxx::types::b_date{std::chrono::milliseconds{end}} << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
         json::json data(json::json_type::array);
         for (auto &&doc : cursor)
-            data.push_back(json::load(bsoncxx::to_json(doc["value"].get_document().view())));
+        {
+            json::json j;
+            j["timestamp"] = doc["timestamp"].get_date().value.count();
+            j["value"] = json::load(bsoncxx::to_json(doc["value"].get_document().value));
+            data.push_back(std::move(j));
+        }
         return data;
     }
     void mongo_db::set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val)

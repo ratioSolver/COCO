@@ -89,11 +89,11 @@ namespace coco
     {
         LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Executor state: " << ratio::executor::to_string(state));
         Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state " + ratio::executor::to_string(state) + ")))").c_str(), NULL);
+        cc.fire_executor_state_changed(*this, state);
         Run(cc.env, -1);
 #ifdef VERBOSE_LOG
         Eval(cc.env, "(facts)", NULL);
 #endif
-        cc.fire_executor_state_changed(*this, state);
     }
 
     void coco_executor::tick(const utils::rational &time)

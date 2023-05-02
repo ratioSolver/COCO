@@ -32,8 +32,8 @@ namespace coco
     virtual void updated_sensor([[maybe_unused]] const sensor &s) {}
     virtual void removed_sensor([[maybe_unused]] const sensor &s) {}
 
-    virtual void new_sensor_value([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &value) {}
-    virtual void new_sensor_state([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &state) {}
+    virtual void new_sensor_value([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::system_clock::time_point &time, [[maybe_unused]] const json::json &value) {}
+    virtual void new_sensor_state([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::system_clock::time_point &time, [[maybe_unused]] const json::json &state) {}
 
     virtual void message_arrived([[maybe_unused]] const std::string &topic, [[maybe_unused]] const json::json &msg) {}
 

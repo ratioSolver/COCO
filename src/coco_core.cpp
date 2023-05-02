@@ -4,6 +4,7 @@
 #include "coco_executor.h"
 #include "coco_db.h"
 #include "coco_listener.h"
+#include <iomanip>
 
 namespace coco
 {
@@ -674,10 +675,13 @@ namespace coco
         LOG_DEBUG("Setting sensor value..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
 
-        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        auto time = std::chrono::system_clock::now();
+        std::time_t time_t = std::chrono::system_clock::to_time_t(time);
+        LOG_DEBUG("Time: " << std::put_time(std::localtime(&time_t), "%c %Z"));
+        LOG_DEBUG("Value: " << value.to_string());
         fire_new_sensor_value(s, time, value);
 
-        std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time) + ") (data";
+        std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time_t) + ") (data";
         for (const auto &[id, val] : value.get_object())
             if (s.get_type().has_parameter(id))
                 fact_str += ' ' + val.to_string();
@@ -703,7 +707,10 @@ namespace coco
         LOG_DEBUG("Setting sensor state..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
 
-        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        auto time = std::chrono::system_clock::now();
+        std::time_t time_t = std::chrono::system_clock::to_time_t(time);
+        LOG_DEBUG("Time: " << std::put_time(std::localtime(&time_t), "%c %Z"));
+        LOG_DEBUG("State: " << state.to_string());
         fire_new_sensor_state(s, time, state);
 
         std::string fact_str = "(sensor_state (sensor_id " + s.id + ") (state" + state.to_string() + "))";
@@ -801,12 +808,12 @@ namespace coco
             l->removed_sensor(s);
     }
 
-    void coco_core::fire_new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value)
+    void coco_core::fire_new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
     {
         for (const auto &l : listeners)
             l->new_sensor_value(s, time, value);
     }
-    void coco_core::fire_new_sensor_state(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &state)
+    void coco_core::fire_new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &state)
     {
         for (const auto &l : listeners)
             l->new_sensor_state(s, time, state);

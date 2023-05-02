@@ -57,9 +57,9 @@ namespace coco
     /**
      * @brief Get the last update of the sensor.
      *
-     * @return const std::chrono::milliseconds::rep& the last update of the sensor.
+     * @return const std::chrono::system_clock& the last update of the sensor.
      */
-    const std::chrono::milliseconds::rep &get_last_update() const { return last_update; }
+    const std::chrono::system_clock::time_point &get_last_update() const { return last_update; }
     /**
      * @brief Check whether the sensor has a value.
      *
@@ -96,13 +96,13 @@ namespace coco
   private:
     void set_location(location_ptr l) { loc.swap(l); }
 
-    void set_value(const std::chrono::milliseconds::rep &time, const json::json &val)
+    void set_value(const std::chrono::system_clock::time_point &time, const json::json &val)
     {
       last_update = time;
       value = val; // we copy the value..
     }
 
-    void set_state(const std::chrono::milliseconds::rep &time, const json::json &st)
+    void set_state(const std::chrono::system_clock::time_point &time, const json::json &st)
     {
       last_update = time;
       state = st; // we copy the state..
@@ -113,7 +113,7 @@ namespace coco
     std::string name;
     sensor_type &type;
     location_ptr loc;
-    std::chrono::milliseconds::rep last_update = 0;
+    std::chrono::system_clock::time_point last_update = std::chrono::system_clock::from_time_t(0);
     json::json value;
     json::json state;
     Fact *fact = nullptr;
@@ -129,12 +129,12 @@ namespace coco
     if (s.has_value())
     {
       j_s["value"] = json::load(s.get_value().to_string());
-      j_s["value"]["timestamp"] = s.get_last_update();
+      j_s["value"]["timestamp"] = std::chrono::system_clock::to_time_t(s.get_last_update());
     }
     if (s.has_state())
     {
       j_s["state"] = json::load(s.get_state().to_string());
-      j_s["state"]["timestamp"] = s.get_last_update();
+      j_s["state"]["timestamp"] = std::chrono::system_clock::to_time_t(s.get_last_update());
     }
     return j_s;
   }

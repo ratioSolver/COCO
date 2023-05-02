@@ -28,7 +28,7 @@ namespace coco
     const std::string &get_y_label() const { return y_label; }
 
   protected:
-    void set_last_update(const std::chrono::milliseconds::rep &time) { last_update = time; }
+    void set_last_update(const std::chrono::system_clock::time_point &time) { last_update = time; }
 
     virtual json::json to_json() const;
     friend json::json to_json(const chart &c) { return c.to_json(); }
@@ -37,7 +37,7 @@ namespace coco
     std::string title;
     std::string x_label;
     std::string y_label;
-    std::chrono::milliseconds::rep last_update = 0;
+    std::chrono::system_clock::time_point last_update = std::chrono::system_clock::from_time_t(0);
   };
   using chart_ptr = utils::u_ptr<chart>;
 
@@ -46,7 +46,7 @@ namespace coco
   public:
     sensor_aggregator(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss);
 
-    virtual void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value) = 0;
+    virtual void new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) = 0;
 
   protected:
     coco_db &db;
@@ -91,28 +91,28 @@ namespace coco
   class sensor_aggregator_chart : public sensor_aggregator, public sc_chart
   {
   public:
-    sensor_aggregator_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
+    sensor_aggregator_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to);
 
     virtual std::string get_type() const override { return "aggregator_chart"; }
 
-    virtual void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value) override;
+    virtual void new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) override;
 
   private:
     json::json to_json() const override;
 
   private:
-    std::chrono::milliseconds::rep from;
-    std::chrono::milliseconds::rep to;
+    std::chrono::system_clock::time_point from;
+    std::chrono::system_clock::time_point to;
   };
 
   class sensor_adder_chart : public sensor_aggregator_chart
   {
   public:
-    sensor_adder_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to);
+    sensor_adder_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to);
 
     virtual std::string get_type() const override { return "adder_chart"; }
 
-    virtual void new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value) override;
+    virtual void new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) override;
   };
 
   class heat_map_data

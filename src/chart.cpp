@@ -7,7 +7,7 @@ namespace coco
 {
     chart::chart(const std::string &title, const std::string &x_label, const std::string &y_label) : title(title), x_label(x_label), y_label(y_label) {}
 
-    json::json chart::to_json() const { return {{"chart_type", get_type()}, {"title", title}, {"x_label", x_label}, {"y_label", y_label}, {"last_update", last_update}}; }
+    json::json chart::to_json() const { return {{"chart_type", get_type()}, {"title", title}, {"x_label", x_label}, {"y_label", y_label}, {"last_update", std::chrono::system_clock::to_time_t(last_update)}}; }
 
     sensor_aggregator::sensor_aggregator(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss) : db(db), type(type), sensors(ss)
     {
@@ -83,15 +83,15 @@ namespace coco
         return j;
     }
 
-    sensor_aggregator_chart::sensor_aggregator_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to) : sensor_aggregator(db, type, ss), sc_chart(title, x_label, y_label), from(from), to(to)
+    sensor_aggregator_chart::sensor_aggregator_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to) : sensor_aggregator(db, type, ss), sc_chart(title, x_label, y_label), from(from), to(to)
     {
         for (auto &[name, type] : type.get_parameters())
             add_series(name, {});
 
-        set_last_update(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+        set_last_update(std::chrono::system_clock::now());
     }
 
-    void sensor_aggregator_chart::new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, [[maybe_unused]] const json::json &value)
+    void sensor_aggregator_chart::new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, [[maybe_unused]] const json::json &value)
     {
         assert(&s.get_type() == &type);
 
@@ -102,12 +102,12 @@ namespace coco
     {
         json::json j = sc_chart::to_json();
         j["sensor_type"] = type.get_name();
-        j["from"] = from;
-        j["to"] = to;
+        j["from"] = std::chrono::system_clock::to_time_t(from);
+        j["to"] = std::chrono::system_clock::to_time_t(to);
         return j;
     }
 
-    sensor_adder_chart::sensor_adder_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::milliseconds::rep &from, const std::chrono::milliseconds::rep &to) : sensor_aggregator_chart(db, type, ss, title, x_label, y_label, from, to)
+    sensor_adder_chart::sensor_adder_chart(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss, const std::string &title, const std::string &x_label, const std::string &y_label, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to) : sensor_aggregator_chart(db, type, ss, title, x_label, y_label, from, to)
     {
         for (size_t i = 0; i < sensors.size(); i++)
         {
@@ -122,7 +122,7 @@ namespace coco
         }
     }
 
-    void sensor_adder_chart::new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value)
+    void sensor_adder_chart::new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
     {
         sensor_aggregator_chart::new_sensor_value(s, time, value);
 

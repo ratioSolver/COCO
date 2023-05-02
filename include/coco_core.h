@@ -152,8 +152,8 @@ namespace coco
     void fire_updated_sensor(const sensor &s);
     void fire_removed_sensor(const sensor &s);
 
-    void fire_new_sensor_value(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &value);
-    void fire_new_sensor_state(const sensor &s, const std::chrono::milliseconds::rep &time, const json::json &state);
+    void fire_new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value);
+    void fire_new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &state);
 
     void fire_message_arrived(const std::string &topic, const json::json &msg);
 

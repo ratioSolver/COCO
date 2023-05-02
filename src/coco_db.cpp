@@ -96,7 +96,7 @@ namespace coco
         return sts;
     }
     json::json coco_db::get_last_sensor_value([[maybe_unused]] sensor &s) { return s.has_value() ? s.get_value() : json::json(); }
-    json::json coco_db::get_sensor_values([[maybe_unused]] sensor &s, [[maybe_unused]] const std::chrono::milliseconds::rep &from, [[maybe_unused]] const std::chrono::milliseconds::rep &to) { return json::json(json::json_type::array); }
+    json::json coco_db::get_sensor_values([[maybe_unused]] sensor &s, [[maybe_unused]] const std::chrono::system_clock::time_point &from, [[maybe_unused]] const std::chrono::system_clock::time_point &to) { return json::json(json::json_type::array); }
     void coco_db::delete_sensor(sensor &s)
     {
         s.type.sensors.erase(std::find_if(s.type.sensors.begin(), s.type.sensors.end(), [&](auto &s2)

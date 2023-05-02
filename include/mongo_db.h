@@ -42,8 +42,8 @@ namespace coco
     void set_sensor_name(sensor &s, const std::string &name) override;
     void set_sensor_location(sensor &s, location_ptr l) override;
     json::json get_last_sensor_value(sensor &s) override;
-    json::json get_sensor_values(sensor &s, const std::chrono::milliseconds::rep &start, const std::chrono::milliseconds::rep &end) override;
-    void set_sensor_value(sensor &s, const std::chrono::milliseconds::rep &time, const json::json &val) override;
+    json::json get_sensor_values(sensor &s, const std::chrono::system_clock::time_point &start, const std::chrono::system_clock::time_point &end) override;
+    void set_sensor_value(sensor &s, const std::chrono::system_clock::time_point &time, const json::json &val) override;
     void delete_sensor(sensor &s) override;
 
     void drop() override;

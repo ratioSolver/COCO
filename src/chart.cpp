@@ -116,7 +116,7 @@ namespace coco
             json::json s_vals = db.get_sensor_values(sensors[i].get(), from, to);
             for (const auto &j_vals : s_vals.get_array())
                 for (auto &[name, j] : p_idx)
-                    vs[j] += static_cast<double>(j_vals[name.c_str()]);
+                    vs[j] += static_cast<double>(j_vals["value"][name.c_str()]);
 
             add_category(sensors[i].get().get_name(), vs);
         }

@@ -51,6 +51,7 @@ namespace coco
     {
         LOG_WARN("MQTT connection lost! trying to reconnect..");
         mqtt_client.reconnect()->wait();
+        LOG("MQTT client reconnected!");
     }
 
     void mqtt_middleware::message_arrived(mqtt::const_message_ptr msg)

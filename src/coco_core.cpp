@@ -333,13 +333,6 @@ namespace coco
             Load(env, f.c_str());
 
         Reset(env);
-
-        AssertString(env, ("(configuration (coco_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + "))").c_str());
-
-        Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
     }
 
     COCO_EXPORT void coco_core::connect()

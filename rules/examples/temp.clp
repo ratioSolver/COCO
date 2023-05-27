@@ -11,7 +11,6 @@
 )
 
 (defrule uncomf_temp
-    (configuration (coco_ptr ?cc))
     (not (solver (solver_type thermostat)))
     (sensor_data (sensor_id ?id) (data ?batt ?temp))
     (sensor (id ?id) (sensor_type ?tp))
@@ -19,7 +18,7 @@
     (or (test (<= ?temp 18)) (test (>= ?temp 33)))
     =>
     (assert (temperature (battery ?batt) (temp ?temp)))
-    (new_solver_script ?cc thermostat (str-cat "class Thermostat : StateVariable { predicate Temperature(real temp) { false; } predicate Heating() { duration >= 10.0; goal temp = new Temperature(end: start); temp.temp <= 18.0; fact consumption = new watt.Use(start: start, end: end, amount: 1500.0); } predicate Cooling() { duration >= 10.0; goal temp = new Temperature(end: start); temp.temp >= 33.0; fact consumption = new watt.Use(start: start, end: end, amount: 2000.0); } predicate Comfort() { duration >= 10.0; { goal heat = new Heating(end: start); } or { goal cool = new Cooling(end: start); } } } ReusableResource watt = new ReusableResource(3000.0); Thermostat thermostat = new Thermostat(); fact temp = new thermostat.Temperature(start: 0.0, end: 10.0, temp: " (float ?temp) "); goal heat = new thermostat.Comfort();"))
+    (new_solver_script thermostat (str-cat "class Thermostat : StateVariable { predicate Temperature(real temp) { false; } predicate Heating() { duration >= 10.0; goal temp = new Temperature(end: start); temp.temp <= 18.0; fact consumption = new watt.Use(start: start, end: end, amount: 1500.0); } predicate Cooling() { duration >= 10.0; goal temp = new Temperature(end: start); temp.temp >= 33.0; fact consumption = new watt.Use(start: start, end: end, amount: 2000.0); } predicate Comfort() { duration >= 10.0; { goal heat = new Heating(end: start); } or { goal cool = new Cooling(end: start); } } } ReusableResource watt = new ReusableResource(3000.0); Thermostat thermostat = new Thermostat(); fact temp = new thermostat.Temperature(start: 0.0, end: 10.0, temp: " (float ?temp) "); goal heat = new thermostat.Comfort();"))
 )
 
 (defrule start_thermostat

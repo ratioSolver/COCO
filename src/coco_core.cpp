@@ -12,13 +12,10 @@ namespace coco
     {
         LOG_DEBUG("Creating new solver..");
 
-        UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
-            return;
-        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(udfc->context);
 
         UDFValue solver_type;
-        if (!UDFNextArgument(udfc, SYMBOL_BIT, &solver_type))
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &solver_type))
             return;
 
         UDFValue riddle;
@@ -45,13 +42,10 @@ namespace coco
     {
         LOG_DEBUG("Creating new solver..");
 
-        UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
-            return;
-        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(udfc->context);
 
         UDFValue solver_type;
-        if (!UDFNextArgument(udfc, SYMBOL_BIT, &solver_type))
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &solver_type))
             return;
 
         UDFValue riddle;
@@ -299,13 +293,10 @@ namespace coco
     {
         LOG_DEBUG("Sending message..");
 
-        UDFValue coco_ptr;
-        if (!UDFFirstArgument(udfc, INTEGER_BIT, &coco_ptr))
-            return;
-        auto &e = *reinterpret_cast<coco_core *>(coco_ptr.integerValue->contents);
+        auto &e = *reinterpret_cast<coco_core *>(udfc->context);
 
         UDFValue topic;
-        if (!UDFNextArgument(udfc, STRING_BIT, &topic))
+        if (!UDFFirstArgument(udfc, STRING_BIT, &topic))
             return;
 
         UDFValue message;
@@ -318,17 +309,17 @@ namespace coco
 
     COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())
     {
-        AddUDF(env, "new_solver_script", "l", 3, 3, "lys", new_solver_script, "new_solver_script", NULL);
-        AddUDF(env, "new_solver_files", "l", 3, 3, "lym", new_solver_files, "new_solver_files", NULL);
-        AddUDF(env, "start_execution", "v", 1, 1, "l", start_execution, "start_execution", NULL);
-        AddUDF(env, "pause_execution", "v", 1, 1, "l", pause_execution, "pause_execution", NULL);
-        AddUDF(env, "delay_task", "v", 2, 3, "llm", delay_task, "delay_task", NULL);
-        AddUDF(env, "extend_task", "v", 2, 3, "llm", extend_task, "extend_task", NULL);
-        AddUDF(env, "failure", "v", 2, 2, "lm", failure, "failure", NULL);
-        AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", NULL);
-        AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", NULL);
-        AddUDF(env, "delete_solver", "v", 1, 1, "l", delete_solver, "delete_solver", NULL);
-        AddUDF(env, "publish_message", "v", 3, 3, "lss", publish_message, "publish_message", NULL);
+        AddUDF(env, "new_solver_script", "l", 2, 2, "ys", new_solver_script, "new_solver_script", this);
+        AddUDF(env, "new_solver_files", "l", 2, 2, "lym", new_solver_files, "new_solver_files", this);
+        AddUDF(env, "start_execution", "v", 1, 1, "l", start_execution, "start_execution", this);
+        AddUDF(env, "pause_execution", "v", 1, 1, "l", pause_execution, "pause_execution", this);
+        AddUDF(env, "delay_task", "v", 2, 3, "llm", delay_task, "delay_task", this);
+        AddUDF(env, "extend_task", "v", 2, 3, "llm", extend_task, "extend_task", this);
+        AddUDF(env, "failure", "v", 2, 2, "lm", failure, "failure", this);
+        AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", this);
+        AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", this);
+        AddUDF(env, "delete_solver", "v", 1, 1, "l", delete_solver, "delete_solver", this);
+        AddUDF(env, "publish_message", "v", 2, 2, "lss", publish_message, "publish_message", this);
     }
     COCO_EXPORT coco_core::~coco_core()
     {

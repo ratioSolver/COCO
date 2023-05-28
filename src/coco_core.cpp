@@ -692,7 +692,7 @@ namespace coco
         const std::lock_guard<std::recursive_mutex> lock(mtx);
 
         auto time = std::chrono::system_clock::now();
-        std::time_t time_t = std::chrono::system_clock::to_time_t(time);
+        [[maybe_unused]] std::time_t time_t = std::chrono::system_clock::to_time_t(time);
         LOG_DEBUG("Time: " << std::put_time(std::localtime(&time_t), "%c %Z"));
         LOG_DEBUG("State: " << state.to_string());
         fire_new_sensor_state(s, time, state);

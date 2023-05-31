@@ -281,12 +281,12 @@ namespace coco
         auto coco_exec_it = std::find_if(e.executors.cbegin(), e.executors.cend(), [coco_exec](auto &slv_ptr)
                                          { return &*slv_ptr == coco_exec; });
         e.executors.erase(coco_exec_it);
-        delete exec;
-        delete slv;
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (retract ?slv))").c_str(), NULL);
 
         e.fire_removed_solver(*coco_exec);
+        delete exec;
+        delete slv;
     }
 
     void publish_message([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)

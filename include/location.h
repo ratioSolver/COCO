@@ -1,6 +1,7 @@
 #pragma once
 
 #include "memory.h"
+#include "json.h"
 
 namespace coco
 {
@@ -10,4 +11,6 @@ namespace coco
   };
 
   using location_ptr = utils::u_ptr<location>;
+
+  inline json::json to_json(const location &l) { return {{"x", l.x}, {"y", l.y}}; }
 } // namespace coco

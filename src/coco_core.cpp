@@ -665,13 +665,7 @@ namespace coco
         LOG_DEBUG("Value: " << value.to_string());
         fire_new_sensor_value(s, time, value);
 
-        std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time_t) + ") (data";
-        for (const auto &[id, val] : value.get_object())
-            if (s.get_type().has_parameter(id))
-                fact_str += ' ' + val.to_string();
-            else
-                LOG_ERR("Sensor " << s.id << " does not have parameter " << id);
-        fact_str += "))";
+        std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time_t) + ") (data" + value_to_string(value) + "))";
         LOG_DEBUG("Asserting fact: " << fact_str);
 
         Fact *sv_f = AssertString(env, fact_str.c_str());

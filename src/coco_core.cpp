@@ -5,6 +5,7 @@
 #include "coco_db.h"
 #include "coco_listener.h"
 #include <iomanip>
+#include <cassert>
 
 namespace coco
 {
@@ -280,11 +281,13 @@ namespace coco
 
         auto coco_exec_it = std::find_if(e.executors.cbegin(), e.executors.cend(), [coco_exec](auto &slv_ptr)
                                          { return &*slv_ptr == coco_exec; });
-        e.executors.erase(coco_exec_it);
+        assert(*coco_exec_it);
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (retract ?slv))").c_str(), NULL);
-
         e.fire_removed_solver(*coco_exec);
+        Run(env, -1);
+
+        e.executors.erase(coco_exec_it);
         delete exec;
         delete slv;
     }

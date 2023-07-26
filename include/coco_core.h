@@ -139,14 +139,14 @@ namespace coco
     friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void publish_message(Environment *env, UDFContext *udfc, UDFValue *out);
 
-    COCO_EXPORT static std::string value_to_string(const json::json &value, const std::string &prefix = "")
+    COCO_EXPORT static std::string value_to_string(const json::json &value)
     {
       std::string str;
       for (const auto &[id, val] : value.get_object())
         if (val.get_type() == json::json_type ::object)
-          str += ' ' + value_to_string(val, prefix + id + '.');
+          str += value_to_string(val);
         else
-          str += ' ' + prefix + id + ' ' + val.to_string();
+          str += ' ' + val.to_string();
       return str;
     }
 

@@ -5,6 +5,7 @@
 #include "coco_db.h"
 #include "coco_listener.h"
 #include <iomanip>
+#include <cassert>
 
 namespace coco
 {
@@ -280,11 +281,13 @@ namespace coco
 
         auto coco_exec_it = std::find_if(e.executors.cbegin(), e.executors.cend(), [coco_exec](auto &slv_ptr)
                                          { return &*slv_ptr == coco_exec; });
-        e.executors.erase(coco_exec_it);
+        assert(*coco_exec_it);
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (retract ?slv))").c_str(), NULL);
-
         e.fire_removed_solver(*coco_exec);
+        Run(env, -1);
+
+        e.executors.erase(coco_exec_it);
         delete exec;
         delete slv;
     }
@@ -665,13 +668,7 @@ namespace coco
         LOG_DEBUG("Value: " << value.to_string());
         fire_new_sensor_value(s, time, value);
 
-        std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time_t) + ") (data";
-        for (const auto &[id, val] : value.get_object())
-            if (s.get_type().has_parameter(id))
-                fact_str += ' ' + val.to_string();
-            else
-                LOG_ERR("Sensor " << s.id << " does not have parameter " << id);
-        fact_str += "))";
+        std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time_t) + ") (data" + value_to_string(value) + "))";
         LOG_DEBUG("Asserting fact: " << fact_str);
 
         Fact *sv_f = AssertString(env, fact_str.c_str());

@@ -10,7 +10,7 @@ namespace coco
         options.set_clean_session(true);
         options.set_keep_alive_interval(20);
 
-#ifdef MQTT_AUTHENTICATION
+#ifdef MQTT_AUTH
         options.set_user_name(MQTT_USERNAME);
         options.set_password(MQTT_PASSWORD);
 #endif

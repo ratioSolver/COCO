@@ -11,11 +11,11 @@ namespace coco
   class mongo_db : public coco_db
   {
   public:
-    mongo_db(const std::string &root = COCO_ROOT, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
+    mongo_db(const std::string &instance = COCO_INSTANCE, const std::string &mongodb_instance_uri = MONGODB_URI(MONGODB_INSTANCE_HOST, MONGODB_INSTANCE_PORT), const std::string &app = COCO_APP, const std::string &mongodb_app_uri = MONGODB_URI(MONGODB_APP_HOST, MONGODB_APP_PORT));
 
     virtual void init() override;
 
-    std::string create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data) override;
+    std::string create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data = {}) override;
     user_ptr get_user(const std::string &email, const std::string &password) override;
     std::vector<user_ptr> get_all_users() override;
     void set_user_first_name(user &u, const std::string &first_name) override;
@@ -26,8 +26,6 @@ namespace coco
     void set_user_email(const std::string &id, const std::string &email) override;
     void set_user_password(user &u, const std::string &password) override;
     void set_user_password(const std::string &id, const std::string &password) override;
-    void set_user_roots(user &u, const std::vector<std::string> &roots) override;
-    void set_user_roots(const std::string &id, const std::vector<std::string> &roots) override;
     void set_user_data(user &u, const json::json &data) override;
     void set_user_data(const std::string &id, const json::json &data) override;
     void delete_user(user &u) override;
@@ -49,11 +47,12 @@ namespace coco
     void drop() override;
 
   private:
-    mongocxx::client conn;
+    mongocxx::client app_conn;
+    mongocxx::client instance_conn;
 
   protected:
-    mongocxx::v_noabi::database db;
-    mongocxx::v_noabi::database root_db;
+    mongocxx::v_noabi::database app_db;
+    mongocxx::v_noabi::database instance_db;
 
   private:
     mongocxx::v_noabi::collection users_collection;

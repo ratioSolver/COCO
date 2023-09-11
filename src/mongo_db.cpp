@@ -7,12 +7,12 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(const std::string &root, const std::string &mongodb_uri) : coco_db(root), conn{mongocxx::uri{mongodb_uri}}, db(conn["coco"]), root_db(conn[root]), users_collection(db["users"]), sensor_types_collection(db["sensor_types"]), sensors_collection(root_db["coco"]), sensor_data_collection(root_db["sensor_data"]) { LOG("Connecting to `" + mongodb_uri + "` MongoDB database.."); }
+    mongo_db::mongo_db(const std::string &instance, const std::string &mongodb_instance_uri, const std::string &app, const std::string &mongodb_app_uri) : coco_db(instance, app), app_conn{mongocxx::uri{mongodb_app_uri}}, instance_conn{mongocxx::uri{mongodb_instance_uri}}, app_db(app_conn[app]), instance_db(instance_conn[instance]), users_collection(app_db["users"]), sensor_types_collection(app_db["sensor_types"]), sensors_collection(instance_db["sensors"]), sensor_data_collection(instance_db["sensor_data"]) { LOG("Connecting to `" + mongodb_instance_uri + "` and `" + mongodb_app_uri + "` MongoDB databases.."); }
 
     void mongo_db::init()
     {
         coco_db::init();
-        for ([[maybe_unused]] const auto &c : conn.uri().hosts())
+        for ([[maybe_unused]] const auto &c : app_conn.uri().hosts())
             LOG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
         LOG("Retrieving all sensor types..");
         for (auto doc : sensor_types_collection.find({}))
@@ -32,7 +32,7 @@ namespace coco
         }
         LOG("Retrieved " << get_sensor_types().size() << " sensor types..");
 
-        LOG("Retrieving all " << get_root() << " sensors..");
+        LOG("Retrieving all " << get_instance() << " sensors..");
         for (auto &doc : sensors_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
@@ -52,28 +52,26 @@ namespace coco
         }
         LOG("Retrieved " << get_sensors().size() << " sensors..");
 
-        LOG("Retrieving all " << get_root() << " users..");
+        LOG("Retrieving all " << get_instance() << " users..");
         using bsoncxx::builder::basic::kvp;
         using bsoncxx::builder::basic::make_array;
         using bsoncxx::builder::basic::make_document;
         for (auto &doc : users_collection.find({make_document(kvp("$or", make_array(
                                                                              make_document(kvp("data", make_document(kvp("type", "admin")))),
-                                                                             make_document(kvp("roots", make_document(kvp("$elemMatch", make_document(kvp("$eq", get_root())))))))))}))
+                                                                             make_document(kvp("instances", make_document(kvp("$elemMatch", make_document(kvp("$eq", get_instance())))))))))}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
+            auto admin = doc["admin"].get_bool().value;
             auto first_name = doc["first_name"].get_string().value.to_string();
             auto last_name = doc["last_name"].get_string().value.to_string();
             auto email = doc["email"].get_string().value.to_string();
             auto password = doc["password"].get_string().value.to_string();
-            std::vector<std::string> roots;
-            for (auto root : doc["roots"].get_array().value)
-                roots.push_back(root.get_string().value.to_string());
             auto data = json::load(bsoncxx::to_json(doc["data"].get_document().value));
-            coco_db::create_user(id, first_name, last_name, email, password, roots, data);
+            coco_db::create_user(id, admin, first_name, last_name, email, password, data);
         }
     }
 
-    std::string mongo_db::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data)
+    std::string mongo_db::create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
     {
         using bsoncxx::builder::basic::kvp;
         auto u_doc = bsoncxx::builder::basic::document{};
@@ -81,17 +79,13 @@ namespace coco
         u_doc.append(kvp("last_name", last_name));
         u_doc.append(kvp("email", email));
         u_doc.append(kvp("password", password));
-        auto roots_doc = bsoncxx::builder::basic::array{};
-        for (const auto &root : roots)
-            roots_doc.append(root);
-        u_doc.append(kvp("roots", roots_doc));
         u_doc.append(kvp("data", bsoncxx::from_json(data.to_string())));
 
         auto result = users_collection.insert_one(u_doc.view());
         if (result)
         {
             auto id = result->inserted_id().get_oid().value.to_string();
-            coco_db::create_user(id, first_name, last_name, email, password, roots, data);
+            coco_db::create_user(id, admin, first_name, last_name, email, password, data);
             return id;
         }
         else
@@ -103,14 +97,11 @@ namespace coco
         if (doc)
         {
             auto id = doc->view()["_id"].get_oid().value.to_string();
+            auto admin = doc->view()["admin"].get_bool().value;
             auto first_name = doc->view()["first_name"].get_string().value.to_string();
             auto last_name = doc->view()["last_name"].get_string().value.to_string();
-            auto roots_doc = doc->view()["roots"].get_array().value;
-            std::vector<std::string> roots;
-            for (auto root : roots_doc)
-                roots.push_back(root.get_string().value.to_string());
             auto data = json::load(bsoncxx::to_json(doc->view()["data"].get_document().value));
-            return new user(id, first_name, last_name, email, password, roots, data);
+            return new user(id, admin, first_name, last_name, email, password, data);
         }
         else
             return nullptr;
@@ -121,16 +112,13 @@ namespace coco
         for (auto doc : users_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
+            auto admin = doc["admin"].get_bool().value;
             auto first_name = doc["first_name"].get_string().value.to_string();
             auto last_name = doc["last_name"].get_string().value.to_string();
             auto email = doc["email"].get_string().value.to_string();
             auto password = doc["password"].get_string().value.to_string();
-            auto roots_doc = doc["roots"].get_array().value;
-            std::vector<std::string> roots;
-            for (auto root : roots_doc)
-                roots.push_back(root.get_string().value.to_string());
             auto data = json::load(bsoncxx::to_json(doc["data"].get_document().value));
-            users.emplace_back(new user(id, first_name, last_name, email, password, roots, data));
+            users.emplace_back(new user(id, admin, first_name, last_name, email, password, data));
         }
         return users;
     }
@@ -193,27 +181,6 @@ namespace coco
                                                   bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "password" << password << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
         if (result && has_user(id))
             coco_db::set_user_password(coco_db::get_user(id), password);
-    }
-    void mongo_db::set_user_roots(user &u, const std::vector<std::string> &roots)
-    {
-        assert(has_user(u.get_id()));
-        auto roots_doc = bsoncxx::builder::basic::array{};
-        for (const auto &root : roots)
-            roots_doc.append(root);
-        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
-                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "roots" << roots_doc << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
-        if (result)
-            coco_db::set_user_roots(u, roots);
-    }
-    void mongo_db::set_user_roots(const std::string &id, const std::vector<std::string> &roots)
-    {
-        auto roots_doc = bsoncxx::builder::basic::array{};
-        for (const auto &root : roots)
-            roots_doc.append(root);
-        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize,
-                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "roots" << roots_doc << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
-        if (result && has_user(id))
-            coco_db::set_user_roots(coco_db::get_user(id), roots);
     }
     void mongo_db::set_user_data(user &u, const json::json &data)
     {
@@ -383,8 +350,8 @@ namespace coco
     void mongo_db::drop()
     {
         LOG_WARN("Dropping database..");
-        db.drop();
-        root_db.drop();
+        app_db.drop();
+        instance_db.drop();
         coco_db::drop();
         users_collection.create_index(bsoncxx::builder::stream::document{} << "email" << 1 << "password" << 1 << bsoncxx::builder::stream::finalize);
         sensor_data_collection.create_index(bsoncxx::builder::stream::document{} << "sensor_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize);

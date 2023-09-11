@@ -4,7 +4,7 @@
 
 namespace coco
 {
-    coco_db::coco_db(const std::string &root) : root(root) {}
+    coco_db::coco_db(const std::string &instance, const std::string &app) : app(app), instance(instance) {}
 
     void coco_db::init()
     {
@@ -12,20 +12,18 @@ namespace coco
         sensors.clear();
     }
 
-    std::string coco_db::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data)
+    std::string coco_db::create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
     {
         size_t c_id = users.size();
         while (users.count(std::to_string(c_id)))
             c_id++;
-        create_user(std::to_string(c_id), first_name, last_name, email, password, roots, data);
+        create_user(std::to_string(c_id), admin, first_name, last_name, email, password, data);
         return std::to_string(c_id);
     }
-    user &coco_db::create_user(const std::string &id, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data)
+    user &coco_db::create_user(const std::string &id, bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
     {
-        auto u = new user(id, first_name, last_name, email, password, roots, data);
-        if (std::find_if(roots.begin(), roots.end(), [&](const std::string &r)
-                         { return r == root; }) != roots.end())
-            users[id] = u;
+        auto u = new user(id, admin, first_name, last_name, email, password, data);
+        users[id] = u;
         return *u;
     }
     std::vector<std::reference_wrapper<user>> coco_db::get_users()
@@ -35,16 +33,6 @@ namespace coco
         for (auto &[id, u] : users)
             us.push_back(*u);
         return us;
-    }
-    void coco_db::set_user_roots(user &u, const std::vector<std::string> &roots)
-    {
-        u.roots = roots;
-        auto it = std::find_if(roots.begin(), roots.end(), [&](const std::string &r)
-                               { return r == root; });
-        if (it != roots.end())
-            users[u.id] = &u;
-        else
-            users.erase(u.id);
     }
 
     std::string coco_db::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)

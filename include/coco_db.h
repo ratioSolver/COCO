@@ -11,10 +11,11 @@ namespace coco
   class coco_db
   {
   public:
-    coco_db(const std::string &root = COCO_ROOT);
+    coco_db(const std::string &instance = COCO_INSTANCE, const std::string &app = COCO_APP);
     virtual ~coco_db() = default;
 
-    const std::string &get_root() const { return root; }
+    const std::string &get_app() const { return app; }
+    const std::string &get_instance() const { return instance; }
 
     virtual void init();
 
@@ -28,7 +29,7 @@ namespace coco
      * @param type The type of the user.
      * @return std::string The id of the created user.
      */
-    virtual std::string create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data);
+    virtual std::string create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data = {});
 
     /**
      * @brief Check if the user object with the given id exists.
@@ -47,7 +48,7 @@ namespace coco
     virtual user &get_user(const std::string &id) const { return *users.at(id); }
     /**
      * @brief Get the users object.
-     * 
+     *
      * @return std::vector<std::reference_wrapper<user>> the users.
      */
     std::vector<std::reference_wrapper<user>> get_users();
@@ -99,14 +100,6 @@ namespace coco
      */
     virtual void set_user_password(user &u, const std::string &password) { u.password = password; }
     virtual void set_user_password(const std::string &id, const std::string &password) { set_user_password(*users.at(id), password); }
-    /**
-     * @brief Set the user roots object
-     *
-     * @param u the user to update.
-     * @param roots the new roots of the user.
-     */
-    virtual void set_user_roots(user &u, const std::vector<std::string> &roots);
-    virtual void set_user_roots(const std::string &id, const std::vector<std::string> &roots) { set_user_roots(*users.at(id), roots); }
     /**
      * @brief Set the user's data.
      *
@@ -228,7 +221,7 @@ namespace coco
     virtual void set_sensor_location(sensor &s, location_ptr l) { s.set_location(std::move(l)); }
     /**
      * @brief Get the last sensor value of the sensor object with the given id.
-     * 
+     *
      * @param s the sensor.
      * @return json::json the last sensor value of the sensor with the given id.
      */
@@ -264,12 +257,13 @@ namespace coco
     virtual void drop();
 
   protected:
-    user &create_user(const std::string &id, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data);
+    user &create_user(const std::string &id, bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data = {});
     sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     sensor &create_sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l);
 
   private:
-    const std::string root;
+    const std::string app;
+    const std::string instance;
     std::unordered_map<std::string, user_ptr> users;
     std::unordered_map<std::string, sensor_type_ptr> sensor_types;
     std::unordered_map<std::string, std::reference_wrapper<sensor_type>> sensor_types_by_name;

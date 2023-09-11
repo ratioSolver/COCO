@@ -15,7 +15,7 @@ namespace coco
     friend class coco_db;
 
   public:
-    user(const std::string &id, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data) : id(id), first_name(first_name), last_name(last_name), email(email), password(password), roots(roots), data(data) {}
+    user(const std::string &id, bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data) : id(id), admin(admin), first_name(first_name), last_name(last_name), email(email), password(password), data(data) {}
 
     /**
      * @brief Get the id of user.
@@ -23,6 +23,12 @@ namespace coco
      * @return const std::string& the id of the user.
      */
     const std::string &get_id() const { return id; }
+    /**
+     * @brief Get the admin flag of the user.
+     *
+     * @return bool the admin flag of the user.
+     */
+    bool is_admin() const { return admin; }
     /**
      * @brief Get the first name of the user.
      *
@@ -49,13 +55,6 @@ namespace coco
     const std::string &get_password() const { return password; }
 
     /**
-     * @brief Get the roots of the user.
-     *
-     * @return const std::vector<std::string>& The roots of the user.
-     */
-    const std::vector<std::string> &get_roots() const { return roots; }
-
-    /**
      * @brief Get the data object of the user.
      *
      * @return const json::json& The data object of the user.
@@ -71,25 +70,13 @@ namespace coco
 
   private:
     const std::string id;
+    bool admin;
     std::string first_name, last_name, email, password;
-    std::vector<std::string> roots;
     json::json data;
     Fact *fact = nullptr;
   };
 
   using user_ptr = utils::u_ptr<user>;
 
-  inline json::json to_json(const user &u)
-  {
-    auto res = json::json{{"id", u.get_id()},
-                          {"first_name", u.get_first_name()},
-                          {"last_name", u.get_last_name()},
-                          {"email", u.get_email()},
-                          {"data", u.get_data()}};
-    auto roots = json::json(json::json_type::array);
-    for (const auto &root : u.get_roots())
-      roots.push_back(root);
-    res["roots"] = roots;
-    return res;
-  }
+  inline json::json to_json(const user &u) { return json::json{{"id", u.get_id()}, {"admin", u.is_admin()}, {"first_name", u.get_first_name()}, {"last_name", u.get_last_name()}, {"email", u.get_email()}, {"data", u.get_data()}}; }
 } // namespace coco

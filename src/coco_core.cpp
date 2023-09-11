@@ -306,8 +306,19 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &message))
             return;
 
+        bool local = !UDFHasNextArgument(udfc);
+        if (!local)
+        {
+            UDFValue local_arg;
+            if (!UDFNextArgument(udfc, SYMBOL_BIT, &local_arg))
+                return;
+            if (strcmp(local_arg.lexemeValue->contents, "true") != 0 || strcmp(local_arg.lexemeValue->contents, "false") != 0)
+                return;
+            local = strcmp(local_arg.lexemeValue->contents, "true") == 0;
+        }
+
         auto msg = json::load(message.lexemeValue->contents);
-        e.publish(e.db.get_root() + '/' + topic.lexemeValue->contents, msg);
+        e.publish(e.db.get_app() + '/' + e.db.get_instance() + '/' + topic.lexemeValue->contents, msg, local);
     }
 
     COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())
@@ -322,7 +333,7 @@ namespace coco
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", this);
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", this);
         AddUDF(env, "delete_solver", "v", 1, 1, "l", delete_solver, "delete_solver", this);
-        AddUDF(env, "publish_message", "v", 2, 2, "lss", publish_message, "publish_message", this);
+        AddUDF(env, "publish_message", "v", 3, 4, "lssy", publish_message, "publish_message", this);
     }
     COCO_EXPORT coco_core::~coco_core()
     {
@@ -375,7 +386,7 @@ namespace coco
         {
             LOG_DEBUG("Managing sensor (" << s.get().id << ") '" << s.get().name << "' of type '" << s.get().type.name << "' subscriptions..");
             for (auto &mw : middlewares)
-                mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + s.get().id, 1);
+                mw->subscribe(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + s.get().id, 1);
         }
     }
 
@@ -386,12 +397,12 @@ namespace coco
         coco_timer.stop();
     }
 
-    COCO_EXPORT void coco_core::create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data)
+    COCO_EXPORT void coco_core::create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
     {
         LOG_DEBUG("Creating new user..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we store the user in the database..
-        auto id = db.create_user(first_name, last_name, email, password, roots, data);
+        auto id = db.create_user(admin, first_name, last_name, email, password, data);
         if (db.has_user(id))
         {
             // we create a new fact for the new user..
@@ -455,14 +466,6 @@ namespace coco
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the user in the database..
         db.set_user_password(u, password);
-        fire_updated_user(u);
-    }
-    COCO_EXPORT void coco_core::set_user_roots(user &u, const std::vector<std::string> &roots)
-    {
-        LOG_DEBUG("Setting user roots..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        // we update the user in the database..
-        db.set_user_roots(u, roots);
         fire_updated_user(u);
     }
     COCO_EXPORT void coco_core::set_user_data(user &u, const json::json &data)
@@ -576,7 +579,7 @@ namespace coco
         // we subscribe to the sensor topic..
         LOG_DEBUG("Managing sensor (" << id << ") " << name << " of type " << type.id << " subscriptions..");
         for (auto &mw : middlewares)
-            mw->subscribe(db.get_root() + SENSOR_TOPIC + '/' + id, 1);
+            mw->subscribe(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + id, 1);
     }
     COCO_EXPORT void coco_core::set_sensor_name(sensor &s, const std::string &name)
     {
@@ -627,7 +630,7 @@ namespace coco
     COCO_EXPORT void coco_core::publish_sensor_value(const sensor &s, const json::json &value)
     {
         LOG_DEBUG("Publishing sensor value..");
-        publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
+        publish(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
     COCO_EXPORT void coco_core::publish_random_value(const sensor &s)
@@ -654,7 +657,7 @@ namespace coco
                 break;
             }
 
-        publish(db.get_root() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
+        publish(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
     void coco_core::set_sensor_value(sensor &s, const json::json &value)
@@ -725,16 +728,16 @@ namespace coco
     void coco_core::message_arrived(const std::string &topic, const json::json &msg)
     {
         const std::lock_guard<std::recursive_mutex> lock(mtx);
-        if (topic.rfind(db.get_root() + SENSOR_TOPIC + '/', 0) == 0)
+        if (topic.rfind(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/', 0) == 0)
         { // we have a new sensor value..
             std::string sensor_id = topic;
-            sensor_id.erase(0, (db.get_root() + SENSOR_TOPIC + '/').length());
+            sensor_id.erase(0, (db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/').length());
             set_sensor_value(db.get_sensor(sensor_id), msg);
         }
-        else if (topic.rfind(db.get_root() + SENSOR_STATE + '/', 0) == 0)
+        else if (topic.rfind(db.get_app() + "/" + db.get_instance() + SENSOR_STATE + '/', 0) == 0)
         { // we have a new sensor state..
             std::string sensor_id = topic;
-            sensor_id.erase(0, (db.get_root() + SENSOR_TOPIC + '/').length());
+            sensor_id.erase(0, (db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/').length());
             set_sensor_state(db.get_sensor(sensor_id), msg);
         }
         else // we notify the listeners that a message has arrived..

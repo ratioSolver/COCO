@@ -30,7 +30,7 @@ namespace coco
      * @param topic the topic to subscribe to.
      * @param qos the quality of service.
      */
-    virtual void subscribe(const std::string &topic, int qos = 0) = 0;
+    virtual void subscribe(const std::string &topic, bool local = true, int qos = 0) = 0;
     /**
      * @brief Unsubscribes from the given topic.
      *
@@ -39,7 +39,7 @@ namespace coco
      * @param qos the quality of service.
      * @param retained whether the message is retained.
      */
-    virtual void publish(const std::string &topic, const json::json &msg, int qos = 0, bool retained = false) = 0;
+    virtual void publish(const std::string &topic, const json::json &msg, bool local = true, int qos = 0, bool retained = false) = 0;
 
   protected:
     /**

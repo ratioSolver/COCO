@@ -75,8 +75,8 @@ if(MQTT_INSTANCE_AUTH)
     message(STATUS "MQTT instance username: ${MQTT_INSTANCE_USERNAME}")
     message(STATUS "MQTT instance password: ${MQTT_INSTANCE_PASSWORD}")
 endif()
-message(STATUS "MongoDB instance host: ${MONGODB_INSTANCE_HOST}")
-message(STATUS "MongoDB instance port: ${MONGODB_INSTANCE_PORT}")
+message(STATUS "MongoDB instance host:  ${MONGODB_INSTANCE_HOST}")
+message(STATUS "MongoDB instance port:  ${MONGODB_INSTANCE_PORT}")
 
 add_subdirectory(extern/plexa)
 

@@ -85,12 +85,11 @@ namespace coco
      */
     COCO_EXPORT void disconnect();
 
-    COCO_EXPORT void create_user(const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &roots, const json::json &data);
+    COCO_EXPORT void create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data = {});
     COCO_EXPORT void set_user_first_name(user &u, const std::string &first_name);
     COCO_EXPORT void set_user_last_name(user &u, const std::string &last_name);
     COCO_EXPORT void set_user_email(user &u, const std::string &email);
     COCO_EXPORT void set_user_password(user &u, const std::string &password);
-    COCO_EXPORT void set_user_roots(user &u, const std::vector<std::string> &roots);
     COCO_EXPORT void set_user_data(user &u, const json::json &data);
     COCO_EXPORT void delete_user(user &u);
 

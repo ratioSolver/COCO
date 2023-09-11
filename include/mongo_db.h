@@ -15,7 +15,9 @@ namespace coco
 
     virtual void init() override;
 
-    std::string create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data = {}) override;
+    std::string create_instance(const std::string &name, const json::json &data = {}) override;
+    std::vector<instance_ptr> get_instances() override;
+    std::string create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances = {}, const json::json &data = {}) override;
     user_ptr get_user(const std::string &email, const std::string &password) override;
     std::vector<user_ptr> get_all_users() override;
     void set_user_first_name(user &u, const std::string &first_name) override;
@@ -26,6 +28,8 @@ namespace coco
     void set_user_email(const std::string &id, const std::string &email) override;
     void set_user_password(user &u, const std::string &password) override;
     void set_user_password(const std::string &id, const std::string &password) override;
+    void set_user_instances(user &u, const std::vector<std::string> &instances) override;
+    void set_user_instances(const std::string &id, const std::vector<std::string> &instances) override;
     void set_user_data(user &u, const json::json &data) override;
     void set_user_data(const std::string &id, const json::json &data) override;
     void delete_user(user &u) override;
@@ -55,6 +59,7 @@ namespace coco
     mongocxx::v_noabi::database instance_db;
 
   private:
+    mongocxx::v_noabi::collection instances_collection;
     mongocxx::v_noabi::collection users_collection;
     mongocxx::v_noabi::collection sensor_types_collection;
     mongocxx::v_noabi::collection sensors_collection;

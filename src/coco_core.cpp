@@ -397,12 +397,18 @@ namespace coco
         coco_timer.stop();
     }
 
-    COCO_EXPORT void coco_core::create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data)
+    COCO_EXPORT void coco_core::create_instance(const std::string &name, const json::json &data)
+    {
+        LOG_DEBUG("Creating new instance..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        db.create_instance(name, data);
+    }
+    COCO_EXPORT void coco_core::create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances, const json::json &data)
     {
         LOG_DEBUG("Creating new user..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we store the user in the database..
-        auto id = db.create_user(admin, first_name, last_name, email, password, data);
+        auto id = db.create_user(admin, first_name, last_name, email, password, instances, data);
         if (db.has_user(id))
         {
             // we create a new fact for the new user..

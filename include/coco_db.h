@@ -1,5 +1,6 @@
 #pragma once
 
+#include "instance.h"
 #include "sensor_type.h"
 #include "sensor.h"
 #include "user.h"
@@ -15,21 +16,31 @@ namespace coco
     virtual ~coco_db() = default;
 
     const std::string &get_app() const { return app; }
-    const std::string &get_instance() const { return instance; }
+    const std::string &get_instance() const { return inst; }
 
     virtual void init();
+
+    virtual std::string create_instance(const std::string &name, const json::json &data = {}) = 0;
+
+    /**
+     * @brief Returns all the instances of the app.
+     *
+     * @return std::vector<instance> the instances of the app.
+     */
+    virtual std::vector<instance_ptr> get_instances() = 0;
 
     /**
      * @brief Create a user object with the given first name, last name, email, password and type and returns its id.
      *
+     * @param admin The admin flag of the user.
      * @param first_name The first name of the user.
      * @param last_name The last name of the user.
      * @param email The email of the user.
      * @param password The password of the user.
-     * @param type The type of the user.
+     * @param data The data of the user.
      * @return std::string The id of the created user.
      */
-    virtual std::string create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data = {});
+    virtual std::string create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances = {}, const json::json &data = {});
 
     /**
      * @brief Check if the user object with the given id exists.
@@ -100,6 +111,14 @@ namespace coco
      */
     virtual void set_user_password(user &u, const std::string &password) { u.password = password; }
     virtual void set_user_password(const std::string &id, const std::string &password) { set_user_password(*users.at(id), password); }
+    /**
+     * @brief Set the user's instances.
+     *
+     * @param u the user to update.
+     * @param instances the new instances of the user.
+     */
+    virtual void set_user_instances(user &u, const std::vector<std::string> &instances) { u.instances = instances; }
+    virtual void set_user_instances(const std::string &id, const std::vector<std::string> &instances) { set_user_instances(*users.at(id), instances); }
     /**
      * @brief Set the user's data.
      *
@@ -257,16 +276,16 @@ namespace coco
     virtual void drop();
 
   protected:
-    user &create_user(const std::string &id, bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data = {});
+    user &create_user(const std::string &id, bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances = {}, const json::json &data = {});
     sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     sensor &create_sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l);
 
   private:
-    const std::string app;
-    const std::string instance;
-    std::unordered_map<std::string, user_ptr> users;
-    std::unordered_map<std::string, sensor_type_ptr> sensor_types;
-    std::unordered_map<std::string, std::reference_wrapper<sensor_type>> sensor_types_by_name;
-    std::unordered_map<std::string, sensor_ptr> sensors;
+    const std::string app;                                                                     // The app name.
+    const std::string inst;                                                                    // The instance name.
+    std::unordered_map<std::string, user_ptr> users;                                           // The users of the current instance.
+    std::unordered_map<std::string, sensor_type_ptr> sensor_types;                             // The sensor types of the app.
+    std::unordered_map<std::string, std::reference_wrapper<sensor_type>> sensor_types_by_name; // The sensor types of the app indexed by name.
+    std::unordered_map<std::string, sensor_ptr> sensors;                                       // The sensors of the current instance.
   };
 } // namespace coco

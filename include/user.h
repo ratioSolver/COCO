@@ -15,7 +15,7 @@ namespace coco
     friend class coco_db;
 
   public:
-    user(const std::string &id, bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const json::json &data) : id(id), admin(admin), first_name(first_name), last_name(last_name), email(email), password(password), data(data) {}
+    user(const std::string &id, bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances = {}, const json::json &data = {}) : id(id), admin(admin), first_name(first_name), last_name(last_name), email(email), password(password), instances(instances), data(data) {}
 
     /**
      * @brief Get the id of user.
@@ -53,6 +53,12 @@ namespace coco
      * @return const std::string& The password of the user.
      */
     const std::string &get_password() const { return password; }
+    /**
+     * @brief Get the instances of the user.
+     *
+     * @return const std::vector<std::string>& The instances of the user.
+     */
+    const std::vector<std::string> &get_instances() const { return instances; }
 
     /**
      * @brief Get the data object of the user.
@@ -72,11 +78,26 @@ namespace coco
     const std::string id;
     bool admin;
     std::string first_name, last_name, email, password;
+    std::vector<std::string> instances;
     json::json data;
     Fact *fact = nullptr;
   };
 
   using user_ptr = utils::u_ptr<user>;
 
-  inline json::json to_json(const user &u) { return json::json{{"id", u.get_id()}, {"admin", u.is_admin()}, {"first_name", u.get_first_name()}, {"last_name", u.get_last_name()}, {"email", u.get_email()}, {"data", u.get_data()}}; }
+  inline json::json to_json(const user &u)
+  {
+    json::json j;
+    j["id"] = u.get_id();
+    j["admin"] = u.is_admin();
+    j["first_name"] = u.get_first_name();
+    j["last_name"] = u.get_last_name();
+    j["email"] = u.get_email();
+    auto instances = json::json(json::json_type::array);
+    for (const auto &instance : u.get_instances())
+      instances.push_back(instance);
+    j["instances"] = std::move(instances);
+    j["data"] = u.get_data();
+    return j;
+  }
 } // namespace coco

@@ -117,10 +117,15 @@ namespace coco
     {
         using bsoncxx::builder::basic::kvp;
         auto u_doc = bsoncxx::builder::basic::document{};
+        u_doc.append(kvp("admin", admin));
         u_doc.append(kvp("first_name", first_name));
         u_doc.append(kvp("last_name", last_name));
         u_doc.append(kvp("email", email));
         u_doc.append(kvp("password", password));
+        auto instances_doc = bsoncxx::builder::basic::array{};
+        for (const auto &instance : instances)
+            instances_doc.append(instance);
+        u_doc.append(kvp("instances", instances_doc));
         u_doc.append(kvp("data", bsoncxx::from_json(data.to_string())));
 
         auto result = users_collection.insert_one(u_doc.view());
@@ -176,6 +181,21 @@ namespace coco
             users.emplace_back(new user(id, admin, first_name, last_name, email, password, instances, data));
         }
         return users;
+    }
+    void mongo_db::set_user_admin(user &u, bool admin)
+    {
+        assert(has_user(u.get_id()));
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{u.get_id()}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "admin" << admin << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result)
+            coco_db::set_user_admin(u, admin);
+    }
+    void mongo_db::set_user_admin(const std::string &id, bool admin)
+    {
+        auto result = users_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{id}} << bsoncxx::builder::stream::finalize,
+                                                  bsoncxx::builder::stream::document{} << "$set" << bsoncxx::builder::stream::open_document << "admin" << admin << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize);
+        if (result && has_user(id))
+            coco_db::set_user_admin(coco_db::get_user(id), admin);
     }
     void mongo_db::set_user_first_name(user &u, const std::string &first_name)
     {

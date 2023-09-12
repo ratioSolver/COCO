@@ -80,6 +80,15 @@ namespace coco
     virtual std::vector<user_ptr> get_all_users() = 0;
 
     /**
+     * @brief Set the user's admin flag.
+     *
+     * @param u the user to update.
+     * @param admin the new admin flag of the user.
+     */
+    virtual void set_user_admin(user &u, bool admin) { u.admin = admin; }
+    virtual void set_user_admin(const std::string &id, bool admin) { set_user_admin(*users.at(id), admin); }
+
+    /**
      * @brief Set the user's first name.
      *
      * @param u the user to update.

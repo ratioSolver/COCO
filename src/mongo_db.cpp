@@ -90,6 +90,7 @@ namespace coco
     {
         auto i_doc = bsoncxx::builder::basic::document{};
         i_doc.append(bsoncxx::builder::basic::kvp("name", name));
+        i_doc.append(bsoncxx::builder::basic::kvp("users", bsoncxx::builder::basic::array{}));
         i_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.to_string())));
         auto result = instances_collection.insert_one(i_doc.view());
         if (result)

@@ -55,13 +55,14 @@ namespace coco
         }
         LOG("Retrieved " << get_sensors().size() << " sensors..");
 
-        LOG("Retrieving " << get_instance() << " instance..");
+        LOG("Retrieving `" << get_instance() << "` instance..");
         auto instance_doc = instances_collection.find_one(bsoncxx::builder::stream::document{} << "name" << get_instance() << bsoncxx::builder::stream::finalize);
         if (instance_doc)
         {
+            LOG_DEBUG("Retrieved instance: " << bsoncxx::to_json(instance_doc->view()));
             for (auto user_id : instance_doc->view()["users"].get_array().value)
             {
-                auto user_doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "_id" << user_id.get_string() << bsoncxx::builder::stream::finalize);
+                auto user_doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{user_id.get_string()}} << bsoncxx::builder::stream::finalize);
                 if (user_doc)
                 {
                     auto id = user_doc->view()["_id"].get_oid().value.to_string();
@@ -81,8 +82,13 @@ namespace coco
         }
         else
         {
-            LOG("Creating new " << get_instance() << " instance..");
-            create_instance(get_instance());
+            LOG("Creating new `" << get_instance() << "` instance..");
+            auto instance_id = create_instance(get_instance());
+            if (!users_collection.find_one(bsoncxx::builder::stream::document{} << "admin" << true << bsoncxx::builder::stream::finalize))
+            {
+                LOG("Creating new admin user..");
+                create_user(true, "Admin", "Admin", "admin@" + get_instance() + ".ai", "admin", {get_instance()});
+            }
         }
     }
 

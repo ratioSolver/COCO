@@ -1,6 +1,7 @@
 #include "coco_executor.h"
 #include "coco_core.h"
 #include "coco_db.h"
+#include <cstring>
 
 namespace coco
 {
@@ -10,10 +11,7 @@ namespace coco
     void coco_executor::read([[maybe_unused]] const std::string &script) {}
     void coco_executor::read([[maybe_unused]] const std::vector<std::string> &files) {}
 
-    void coco_executor::state_changed()
-    {
-        cc.fire_state_changed(*this);
-    }
+    void coco_executor::state_changed() { cc.fire_state_changed(*this); }
 
     void coco_executor::started_solving() { cc.fire_started_solving(*this); }
     void coco_executor::solution_found()
@@ -41,18 +39,9 @@ namespace coco
 
         cc.fire_flaw_created(*this, f);
     }
-    void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::flaw &f)
-    {
-        cc.fire_flaw_state_changed(*this, f);
-    }
-    void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::flaw &f)
-    {
-        cc.fire_flaw_cost_changed(*this, f);
-    }
-    void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::flaw &f)
-    {
-        cc.fire_flaw_position_changed(*this, f);
-    }
+    void coco_executor::flaw_state_changed([[maybe_unused]] const ratio::flaw &f) { cc.fire_flaw_state_changed(*this, f); }
+    void coco_executor::flaw_cost_changed([[maybe_unused]] const ratio::flaw &f) { cc.fire_flaw_cost_changed(*this, f); }
+    void coco_executor::flaw_position_changed([[maybe_unused]] const ratio::flaw &f) { cc.fire_flaw_position_changed(*this, f); }
     void coco_executor::current_flaw(const ratio::flaw &f)
     {
         c_flaw = &f;
@@ -67,10 +56,7 @@ namespace coco
 
         cc.fire_resolver_created(*this, r);
     }
-    void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::resolver &r)
-    {
-        cc.fire_resolver_state_changed(*this, r);
-    }
+    void coco_executor::resolver_state_changed([[maybe_unused]] const ratio::resolver &r) { cc.fire_resolver_state_changed(*this, r); }
     void coco_executor::current_resolver(const ratio::resolver &r)
     {
         c_resolver = &r;
@@ -78,10 +64,7 @@ namespace coco
         cc.fire_current_resolver(*this, r);
     }
 
-    void coco_executor::causal_link_added([[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r)
-    {
-        cc.fire_causal_link_added(*this, f, r);
-    }
+    void coco_executor::causal_link_added([[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r) { cc.fire_causal_link_added(*this, f, r); }
 
     void coco_executor::tick() { exec.tick(); }
 
@@ -103,181 +86,89 @@ namespace coco
     }
     void coco_executor::starting(const std::unordered_set<ratio::atom *> &atoms)
     {
-        const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
-        std::vector<Fact *> facts;
+        std::unordered_map<const ratio::atom *, utils::rational> dsy;
         for (const auto &atm : atoms)
-            facts.push_back(AssertString(cc.env, to_task(*atm, "starting").c_str()));
-        Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-        Eval(cc.env, "(facts)", NULL);
-#endif
-
-        CLIPSValue res;
-        Eval(cc.env, "(find-all-facts ((?f dont_start_yet)) TRUE)", &res);
-        if (res.header->type == MULTIFIELD_TYPE && res.multifieldValue->length)
         {
-            std::unordered_map<const ratio::atom *, utils::rational> dsy;
-            std::vector<Fact *> dsy_facts;
-            for (size_t i = 0; i < res.multifieldValue->length; ++i)
+            CLIPSValue res;
+            Eval(cc.env, ("(starting (" + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + atm->get_type().get_name() + " " + to_task(*atm) + "))").c_str(), &res);
+            if (res.lexemeValue && std::strcmp(res.lexemeValue->contents, "FALSE"))
+                dsy[atm] = utils::rational::ONE;
+            else if (res.multifieldValue)
             {
-                auto f = res.multifieldValue->contents[i].factValue;
-                CLIPSValue atm_ptr, delay_time;
-                GetFactSlot(f, "task_id", &atm_ptr);
-                GetFactSlot(f, "delay_time", &delay_time);
-                auto atm = reinterpret_cast<ratio::atom *>(atm_ptr.integerValue->contents);
-                utils::rational delay;
-                switch (delay_time.multifieldValue->length)
+                switch (res.multifieldValue->length)
                 {
-                case 0:
-                    delay = utils::rational::ONE;
-                    break;
                 case 1:
-                    delay = utils::rational(delay_time.multifieldValue[0].contents->integerValue->contents);
+                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                        dsy[atm] = utils::rational::ONE;
+                    else if (res.multifieldValue[0].contents->integerValue)
+                        dsy[atm] = utils::rational(res.multifieldValue[0].contents->integerValue->contents);
                     break;
                 case 2:
-                    delay = utils::rational(delay_time.multifieldValue[0].contents->integerValue->contents, delay_time.multifieldValue[1].contents->integerValue->contents);
+                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                        dsy[atm] = utils::rational(res.multifieldValue[1].contents->integerValue->contents);
+                    else if (res.multifieldValue[0].contents->integerValue && res.multifieldValue[1].contents->integerValue)
+                        dsy[atm] = utils::rational(res.multifieldValue[0].contents->integerValue->contents, res.multifieldValue[1].contents->integerValue->contents);
+                    break;
+                case 3:
+                    if (std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                        dsy[atm] = utils::rational(res.multifieldValue[1].contents->integerValue->contents, res.multifieldValue[2].contents->integerValue->contents);
                     break;
                 }
-                dsy[atm] = delay;
-                dsy_facts.push_back(f);
             }
-            exec.dont_start_yet(dsy);
-
-            for (const auto &f : dsy_facts)
-                Retract(f);
-
-            Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-            Eval(cc.env, "(facts)", NULL);
-#endif
         }
-
-        // we retract the facts..
-        for (const auto &f : facts)
-            Retract(f);
-        // we run the rules engine to update the policy..
-        Run(cc.env, -1);
-        // #ifdef VERBOSE_LOG
-        //         Eval(env, "(facts)", NULL);
-        // #endif
+        exec.dont_start_yet(dsy);
     }
     void coco_executor::start(const std::unordered_set<ratio::atom *> &atoms)
     {
-        const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
-        executing_atoms.insert(atoms.cbegin(), atoms.cend());
-
-        std::vector<Fact *> facts;
         for (const auto &atm : atoms)
-            facts.push_back(AssertString(cc.env, to_task(*atm, "start").c_str()));
-        Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-        Eval(cc.env, "(facts)", NULL);
-#endif
-        cc.fire_start(*this, atoms);
-
-        // we retract the facts..
-        for (const auto &f : facts)
-            Retract(f);
-        // we run the rules engine to update the policy..
-        Run(cc.env, -1);
-        // #ifdef VERBOSE_LOG
-        //         Eval(env, "(facts)", NULL);
-        // #endif
+            Eval(cc.env, ("(start (" + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + " " + atm->get_type().get_name() + " " + to_task(*atm) + "))").c_str(), NULL);
     }
 
     void coco_executor::ending(const std::unordered_set<ratio::atom *> &atoms)
     {
-        const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
-#ifdef VERBOSE_LOG
-        Eval(cc.env, "(facts)", NULL);
-#endif
-        std::vector<Fact *> facts;
+        std::unordered_map<const ratio::atom *, utils::rational> dey;
         for (const auto &atm : atoms)
-            facts.push_back(AssertString(cc.env, to_task(*atm, "ending").c_str()));
-        Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-        Eval(cc.env, "(facts)", NULL);
-#endif
-
-        CLIPSValue res;
-        Eval(cc.env, "(find-all-facts ((?f dont_end_yet)) TRUE)", &res);
-        if (res.multifieldValue->length)
         {
-            std::unordered_map<const ratio::atom *, utils::rational> dey;
-            std::vector<Fact *> dey_facts;
-            for (size_t i = 0; i < res.multifieldValue->length; ++i)
+            CLIPSValue res;
+            Eval(cc.env, ("(ending (" + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + "))").c_str(), &res);
+            if (res.lexemeValue && std::strcmp(res.lexemeValue->contents, "FALSE"))
+                dey[atm] = utils::rational::ONE;
+            else if (res.multifieldValue)
             {
-                auto f = res.multifieldValue->contents[i].factValue;
-                CLIPSValue atm_ptr, delay_time;
-                GetFactSlot(f, "task_id", &atm_ptr);
-                GetFactSlot(f, "delay_time", &delay_time);
-                auto atm = reinterpret_cast<ratio::atom *>(atm_ptr.integerValue->contents);
-                utils::rational delay;
-                switch (delay_time.multifieldValue->length)
+                switch (res.multifieldValue->length)
                 {
-                case 0:
-                    delay = utils::rational(1);
-                    break;
                 case 1:
-                    delay = utils::rational(delay_time.multifieldValue[0].contents->integerValue->contents);
+                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                        dey[atm] = utils::rational::ONE;
+                    else if (res.multifieldValue[0].contents->integerValue)
+                        dey[atm] = utils::rational(res.multifieldValue[0].contents->integerValue->contents);
                     break;
                 case 2:
-                    delay = utils::rational(delay_time.multifieldValue[0].contents->integerValue->contents, delay_time.multifieldValue[1].contents->integerValue->contents);
+                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                        dey[atm] = utils::rational(res.multifieldValue[1].contents->integerValue->contents);
+                    else if (res.multifieldValue[0].contents->integerValue && res.multifieldValue[1].contents->integerValue)
+                        dey[atm] = utils::rational(res.multifieldValue[0].contents->integerValue->contents, res.multifieldValue[1].contents->integerValue->contents);
+                    break;
+                case 3:
+                    if (std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                        dey[atm] = utils::rational(res.multifieldValue[1].contents->integerValue->contents, res.multifieldValue[2].contents->integerValue->contents);
                     break;
                 }
-                dey[atm] = delay;
-                dey_facts.push_back(f);
             }
-            exec.dont_end_yet(dey);
-
-            for (const auto &f : dey_facts)
-                Retract(f);
-
-            Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-            Eval(cc.env, "(facts)", NULL);
-#endif
         }
-
-        // we retract the facts..
-        for (const auto &f : facts)
-            Retract(f);
-        // we run the rules engine to update the policy..
-        Run(cc.env, -1);
-        // #ifdef VERBOSE_LOG
-        //         Eval(env, "(facts)", NULL);
-        // #endif
+        exec.dont_end_yet(dey);
     }
     void coco_executor::end(const std::unordered_set<ratio::atom *> &atoms)
     {
-        const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
-        for (const auto &a : atoms)
-            executing_atoms.erase(a);
-
-        std::vector<Fact *> facts;
         for (const auto &atm : atoms)
-            facts.push_back(AssertString(cc.env, to_task(*atm, "end").c_str()));
-        Run(cc.env, -1);
-#ifdef VERBOSE_LOG
-        Eval(cc.env, "(facts)", NULL);
-#endif
-        cc.fire_end(*this, atoms);
-
-        // we retract the facts..
-        for (const auto &f : facts)
-            Retract(f);
-        // we run the rules engine to update the policy..
-        Run(cc.env, -1);
-        // #ifdef VERBOSE_LOG
-        //         Eval(env, "(facts)", NULL);
-        // #endif
+            Eval(cc.env, ("(end (" + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + "))").c_str(), NULL);
     }
 
-    std::string coco_executor::to_task(const ratio::atom &atm, const std::string &command)
+    std::string coco_executor::to_task(const ratio::atom &atm) const noexcept
     {
-        std::string task_str = "(task (solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (task_type " + atm.get_type().get_name() + ") (id " + std::to_string(get_id(atm)) + ") (command " + command + ")";
-        std::string pars_str = "(pars";
-        std::string vals_str = "(vals";
+        std::string task_str = atm.get_type().get_name();
+        std::string pars_str = " (create$ ";
+        std::string vals_str = " (create$ ";
 
         for (const auto &[var_name, var] : atm.get_vars())
         {
@@ -328,9 +219,8 @@ namespace coco
         }
         pars_str += ")";
         vals_str += ")";
-        task_str += " " + pars_str + " " + vals_str + ")";
 
-        return task_str;
+        return task_str + " " + pars_str + " " + vals_str;
     }
 
     COCO_EXPORT json::json to_state(const coco_executor &rhs) noexcept

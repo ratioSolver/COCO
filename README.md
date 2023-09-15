@@ -4,6 +4,8 @@ deduCtiOn and abduCtiOn (COCO) reasoner.
 
 ## How to use
 
+### The Application
+
 Create your application class that inherits from `coco::coco_core` and pass the database to the base class constructor.
 
 ```cpp
@@ -16,6 +18,10 @@ class my_app : public coco::coco_core
 };
 ```
 
+The application can be used to extend the COCO reasoner with your own functionality, defining your own User Defined Functions (UDFs) and User Defined Types (UDTs).
+
+### The Listener
+
 Create a listener class that inherits from `coco::coco_listener` and pass the application to the base class constructor.
 
 ```cpp
@@ -27,6 +33,8 @@ class my_listener : public coco::coco_listener
     my_listener(my_app& app) : coco_listener(app) {}
 };
 ```
+
+### The Database
 
 Create a database class that inherits from a `coco::coco_db` implementation.
 

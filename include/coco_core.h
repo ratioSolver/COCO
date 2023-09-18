@@ -118,10 +118,11 @@ namespace coco
      *
      * @param topic The topic to publish to.
      * @param msg The message to publish.
+     * @param local Whether the message is local or not.
      * @param qos The quality of service.
      * @param retained Whether the message is retained.
      */
-    void publish(const std::string &topic, const json::json &msg, int qos = 0, bool retained = false);
+    void publish(const std::string &topic, const json::json &msg, bool local = true, int qos = 0, bool retained = false);
 
   private:
     void tick();

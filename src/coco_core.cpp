@@ -726,10 +726,10 @@ namespace coco
             exec->tick();
     }
 
-    void coco_core::publish(const std::string &topic, const json::json &msg, int qos, bool retained)
+    void coco_core::publish(const std::string &topic, const json::json &msg, bool local, int qos, bool retained)
     {
         for (auto &mdlw : middlewares)
-            mdlw->publish(topic, msg, qos, retained);
+            mdlw->publish(topic, msg, local, qos, retained);
     }
     void coco_core::message_arrived(const std::string &topic, const json::json &msg)
     {

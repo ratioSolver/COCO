@@ -7,5 +7,5 @@
 
 (deffunction starting (?solver_ptr ?task_type ?pars ?vals) (return TRUE))
 (deffunction ending (?solver_ptr ?id) (return TRUE))
-(deffunction start (?solver_ptr ?id ?task_type ?pars ?vals) (println "Starting task" ?id "of type" ?task_type "with parameters" ?pars "and values" ?vals))
-(deffunction end (?solver_ptr ?id) (println "Ending task of type" ?task_type "with parameters" ?pars "and values" ?vals))
+(deffunction start (?solver_ptr ?id ?task_type ?pars ?vals) (println "Starting task " ?task_type " with " ?pars " at " ?vals))
+(deffunction end (?solver_ptr ?id) (println "Ending task " ?id))

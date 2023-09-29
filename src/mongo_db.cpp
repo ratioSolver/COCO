@@ -81,12 +81,12 @@ namespace coco
         }
         else
         {
-            LOG("Creating new `" << get_instance() << "` instance..");
+            LOG_WARN("Creating new `" << get_instance() << "` instance..");
             auto instance_id = create_instance(get_instance());
             if (!users_collection.find_one(bsoncxx::builder::stream::document{} << "admin" << true << bsoncxx::builder::stream::finalize))
             {
-                LOG("Creating new admin user..");
-                create_user(true, "Admin", "Admin", "admin@" + get_instance() + ".ai", "admin", {get_instance()});
+                LOG_WARN("Creating new admin user..");
+                create_user(true, "Admin", "Admin", "admin@" + get_instance() + ".ai", "admin", {instance_id});
             }
         }
     }

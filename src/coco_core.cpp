@@ -675,7 +675,7 @@ namespace coco
         std::time_t time_t = std::chrono::system_clock::to_time_t(time);
         LOG_DEBUG("Time: " << std::put_time(std::localtime(&time_t), "%c %Z"));
         LOG_DEBUG("Value: " << value.to_string());
-        fire_new_sensor_value(s, time, value);
+        fire_new_sensor_data(s, time, value);
 
         std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time_t) + ") (data" + value_to_string(value) + "))";
         LOG_DEBUG("Asserting fact: " << fact_str);
@@ -798,10 +798,10 @@ namespace coco
             l->removed_sensor(s);
     }
 
-    void coco_core::fire_new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
+    void coco_core::fire_new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
     {
         for (const auto &l : listeners)
-            l->new_sensor_value(s, time, value);
+            l->new_sensor_data(s, time, value);
     }
     void coco_core::fire_new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &state)
     {

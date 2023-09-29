@@ -91,7 +91,7 @@ namespace coco
         set_last_update(std::chrono::system_clock::now());
     }
 
-    void sensor_aggregator_chart::new_sensor_value([[maybe_unused]] const sensor &s, const std::chrono::system_clock::time_point &time, [[maybe_unused]] const json::json &value)
+    void sensor_aggregator_chart::new_sensor_data([[maybe_unused]] const sensor &s, const std::chrono::system_clock::time_point &time, [[maybe_unused]] const json::json &value)
     {
         assert(&s.get_type() == &type);
 
@@ -122,9 +122,9 @@ namespace coco
         }
     }
 
-    void sensor_adder_chart::new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
+    void sensor_adder_chart::new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
     {
-        sensor_aggregator_chart::new_sensor_value(s, time, value);
+        sensor_aggregator_chart::new_sensor_data(s, time, value);
 
         for (auto &[name, j] : p_idx)
         {

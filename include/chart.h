@@ -46,7 +46,7 @@ namespace coco
   public:
     sensor_aggregator(coco_db &db, const sensor_type &type, const std::vector<std::reference_wrapper<sensor>> &ss);
 
-    virtual void new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) = 0;
+    virtual void new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) = 0;
 
   protected:
     coco_db &db;
@@ -95,7 +95,7 @@ namespace coco
 
     virtual std::string get_type() const override { return "aggregator_chart"; }
 
-    virtual void new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) override;
+    virtual void new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) override;
 
   private:
     json::json to_json() const override;
@@ -112,7 +112,7 @@ namespace coco
 
     virtual std::string get_type() const override { return "adder_chart"; }
 
-    virtual void new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) override;
+    virtual void new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) override;
   };
 
   class heat_map_data

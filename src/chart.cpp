@@ -113,7 +113,7 @@ namespace coco
         {
             std::vector<double> vs(type.get_parameters().size(), 0);
 
-            json::json s_vals = db.get_sensor_values(sensors[i].get(), from, to);
+            json::json s_vals = db.get_sensor_data(sensors[i].get(), from, to);
             for (const auto &j_vals : s_vals.get_array())
                 for (auto &[name, j] : p_idx)
                     vs[j] += static_cast<double>(j_vals["value"][name.c_str()]);

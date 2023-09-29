@@ -262,7 +262,7 @@ namespace coco
      * @param to the end time of the sensor values.
      * @return json::json the sensor values of the sensor with the given id.
      */
-    virtual json::json get_sensor_values(sensor &s, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to);
+    virtual json::json get_sensor_data(sensor &s, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to);
     /**
      * @brief Set the value of the sensor object with the given id.
      *

@@ -450,7 +450,7 @@ namespace coco
         }
         return data;
     }
-    json::json mongo_db::get_sensor_values(sensor &s, const std::chrono::system_clock::time_point &start, const std::chrono::system_clock::time_point &end)
+    json::json mongo_db::get_sensor_data(sensor &s, const std::chrono::system_clock::time_point &start, const std::chrono::system_clock::time_point &end)
     {
         auto cursor = sensor_data_collection.find(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::builder::stream::open_document << "$gte" << bsoncxx::types::b_date{start} << "$lte" << bsoncxx::types::b_date{end} << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize,
                                                   mongocxx::options::find{}.sort(bsoncxx::builder::stream::document{} << "timestamp" << 1 << bsoncxx::builder::stream::finalize));

@@ -633,13 +633,13 @@ namespace coco
 #endif
     }
 
-    COCO_EXPORT void coco_core::publish_sensor_value(const sensor &s, const json::json &value)
+    COCO_EXPORT void coco_core::publish_sensor_data(const sensor &s, const json::json &value)
     {
         LOG_DEBUG("Publishing sensor value..");
         publish(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
-    COCO_EXPORT void coco_core::publish_random_value(const sensor &s)
+    COCO_EXPORT void coco_core::publish_random_data(const sensor &s)
     {
         LOG_DEBUG("Publishing random value..");
         json::json value;

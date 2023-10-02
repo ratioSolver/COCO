@@ -109,7 +109,7 @@ namespace coco
     COCO_EXPORT void publish_random_data(const sensor &s);
 
   private:
-    void set_sensor_value(sensor &s, const json::json &value);
+    void set_sensor_data(sensor &s, const json::json &value);
     void set_sensor_state(sensor &s, const json::json &state);
 
   protected:

@@ -666,7 +666,7 @@ namespace coco
         publish(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
-    void coco_core::set_sensor_value(sensor &s, const json::json &value)
+    void coco_core::set_sensor_data(sensor &s, const json::json &value)
     {
         LOG_DEBUG("Setting sensor value..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -677,19 +677,14 @@ namespace coco
         LOG_DEBUG("Value: " << value.to_string());
         fire_new_sensor_data(s, time, value);
 
-        std::string fact_str = "(sensor_data (sensor_id " + s.id + ") (local_time " + std::to_string(time_t) + ") (data" + value_to_string(value) + "))";
-        LOG_DEBUG("Asserting fact: " << fact_str);
-
-        Fact *sv_f = AssertString(env, fact_str.c_str());
-        // we run the rules engine to update the policy..
+        FunctionCallBuilder *sensor_data = CreateFunctionCallBuilder(env, 3);
+        FCBAppendFact(sensor_data, s.fact);
+        FCBAppendFact(sensor_data, s.type.fact);
+        FCBAppendInteger(sensor_data, time_t);
+        FCBAppendMultifield(sensor_data, StringToMultifield(env, value_to_string(value).c_str()));
+        FCBCall(sensor_data, "sensor_data", NULL);
         Run(env, -1);
-
-        db.set_sensor_value(s, time, value);
-
-        // we retract the sensor value fact..
-        Retract(sv_f);
-        // we run the rules engine to update the policy..
-        Run(env, -1);
+        FCBDispose(sensor_data);
     }
 
     void coco_core::set_sensor_state(sensor &s, const json::json &state)
@@ -703,16 +698,14 @@ namespace coco
         LOG_DEBUG("State: " << state.to_string());
         fire_new_sensor_state(s, time, state);
 
-        std::string fact_str = "(sensor_state (sensor_id " + s.id + ") (state" + state.to_string() + "))";
-        LOG_DEBUG("Asserting fact: " << fact_str);
-
-        Fact *ss_f = AssertString(env, fact_str.c_str());
-        // we run the rules engine to update the policy..
+        FunctionCallBuilder *sensor_state = CreateFunctionCallBuilder(env, 3);
+        FCBAppendFact(sensor_state, s.fact);
+        FCBAppendFact(sensor_state, s.type.fact);
+        FCBAppendInteger(sensor_state, time_t);
+        FCBAppendMultifield(sensor_state, StringToMultifield(env, value_to_string(state).c_str()));
+        FCBCall(sensor_state, "sensor_state", NULL);
         Run(env, -1);
-        // we retract the sensor state fact..
-        Retract(ss_f);
-        // we run the rules engine to update the policy..
-        Run(env, -1);
+        FCBDispose(sensor_state);
     }
 
     void coco_core::tick()
@@ -738,7 +731,7 @@ namespace coco
         { // we have a new sensor value..
             std::string sensor_id = topic;
             sensor_id.erase(0, (db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/').length());
-            set_sensor_value(db.get_sensor(sensor_id), msg);
+            set_sensor_data(db.get_sensor(sensor_id), msg);
         }
         else if (topic.rfind(db.get_app() + "/" + db.get_instance() + SENSOR_STATE + '/', 0) == 0)
         { // we have a new sensor state..

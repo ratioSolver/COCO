@@ -51,7 +51,7 @@ namespace coco
             }
             auto &s = coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
             auto last_value = get_last_sensor_value(s);
-            coco_db::set_sensor_value(s, std::chrono::system_clock::from_time_t(last_value["timestamp"]), last_value["value"]);
+            coco_db::set_sensor_data(s, std::chrono::system_clock::from_time_t(last_value["timestamp"]), last_value["value"]);
         }
         LOG("Retrieved " << get_sensors().size() << " sensors..");
 
@@ -464,11 +464,11 @@ namespace coco
         }
         return data;
     }
-    void mongo_db::set_sensor_value(sensor &s, const std::chrono::system_clock::time_point &time, const json::json &val)
+    void mongo_db::set_sensor_data(sensor &s, const std::chrono::system_clock::time_point &time, const json::json &val)
     {
         auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::types::b_date{time} << "value" << bsoncxx::from_json(val.to_string()) << bsoncxx::builder::stream::finalize);
         if (result)
-            coco_db::set_sensor_value(s, time, val);
+            coco_db::set_sensor_data(s, time, val);
     }
     void mongo_db::delete_sensor(sensor &s)
     {

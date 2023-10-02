@@ -90,38 +90,38 @@ namespace coco
         for (const auto &atm : atoms)
         {
             CLIPSValue res;
-            Eval(cc.env, ("(starting (" + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + atm->get_type().get_name() + " " + to_task(*atm) + "))").c_str(), &res);
-            if (res.lexemeValue && std::strcmp(res.lexemeValue->contents, "FALSE"))
+            Eval(cc.env, ("(starting " + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + to_task(*atm) + ")").c_str(), &res);
+            if (res.lexemeValue && std::strcmp(res.lexemeValue->contents, "FALSE") == 0)
                 dsy[atm] = utils::rational::ONE;
             else if (res.multifieldValue)
-            {
                 switch (res.multifieldValue->length)
                 {
                 case 1:
-                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE") == 0)
                         dsy[atm] = utils::rational::ONE;
                     else if (res.multifieldValue[0].contents->integerValue)
                         dsy[atm] = utils::rational(res.multifieldValue[0].contents->integerValue->contents);
                     break;
                 case 2:
-                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE") == 0)
                         dsy[atm] = utils::rational(res.multifieldValue[1].contents->integerValue->contents);
                     else if (res.multifieldValue[0].contents->integerValue && res.multifieldValue[1].contents->integerValue)
                         dsy[atm] = utils::rational(res.multifieldValue[0].contents->integerValue->contents, res.multifieldValue[1].contents->integerValue->contents);
                     break;
                 case 3:
-                    if (std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                    if (std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE") == 0)
                         dsy[atm] = utils::rational(res.multifieldValue[1].contents->integerValue->contents, res.multifieldValue[2].contents->integerValue->contents);
                     break;
                 }
-            }
         }
+        Run(cc.env, -1);
         exec.dont_start_yet(dsy);
     }
     void coco_executor::start(const std::unordered_set<ratio::atom *> &atoms)
     {
         for (const auto &atm : atoms)
-            Eval(cc.env, ("(start (" + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + " " + atm->get_type().get_name() + " " + to_task(*atm) + "))").c_str(), NULL);
+            Eval(cc.env, ("(start " + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + " " + to_task(*atm) + ")").c_str(), NULL);
+        Run(cc.env, -1);
     }
 
     void coco_executor::ending(const std::unordered_set<ratio::atom *> &atoms)
@@ -130,38 +130,38 @@ namespace coco
         for (const auto &atm : atoms)
         {
             CLIPSValue res;
-            Eval(cc.env, ("(ending (" + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + "))").c_str(), &res);
-            if (res.lexemeValue && std::strcmp(res.lexemeValue->contents, "FALSE"))
+            Eval(cc.env, ("(ending " + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + ")").c_str(), &res);
+            if (res.lexemeValue && std::strcmp(res.lexemeValue->contents, "FALSE") == 0)
                 dey[atm] = utils::rational::ONE;
             else if (res.multifieldValue)
-            {
                 switch (res.multifieldValue->length)
                 {
                 case 1:
-                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE") == 0)
                         dey[atm] = utils::rational::ONE;
                     else if (res.multifieldValue[0].contents->integerValue)
                         dey[atm] = utils::rational(res.multifieldValue[0].contents->integerValue->contents);
                     break;
                 case 2:
-                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                    if (res.multifieldValue[0].contents->lexemeValue && std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE") == 0)
                         dey[atm] = utils::rational(res.multifieldValue[1].contents->integerValue->contents);
                     else if (res.multifieldValue[0].contents->integerValue && res.multifieldValue[1].contents->integerValue)
                         dey[atm] = utils::rational(res.multifieldValue[0].contents->integerValue->contents, res.multifieldValue[1].contents->integerValue->contents);
                     break;
                 case 3:
-                    if (std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE"))
+                    if (std::strcmp(res.multifieldValue[0].contents->lexemeValue->contents, "FALSE") == 0)
                         dey[atm] = utils::rational(res.multifieldValue[1].contents->integerValue->contents, res.multifieldValue[2].contents->integerValue->contents);
                     break;
                 }
-            }
         }
+        Run(cc.env, -1);
         exec.dont_end_yet(dey);
     }
     void coco_executor::end(const std::unordered_set<ratio::atom *> &atoms)
     {
         for (const auto &atm : atoms)
-            Eval(cc.env, ("(end (" + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + "))").c_str(), NULL);
+            Eval(cc.env, ("(end " + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + ")").c_str(), NULL);
+        Run(cc.env, -1);
     }
 
     std::string coco_executor::to_task(const ratio::atom &atm) const noexcept

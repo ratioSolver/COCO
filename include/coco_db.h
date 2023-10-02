@@ -270,7 +270,7 @@ namespace coco
      * @param time the time of the sensor value.
      * @param val the value of the sensor.
      */
-    virtual void set_sensor_value(sensor &s, const std::chrono::system_clock::time_point &time, const json::json &val) { s.set_value(time, val); }
+    virtual void set_sensor_data(sensor &s, const std::chrono::system_clock::time_point &time, const json::json &val) { s.set_value(time, val); }
     /**
      * @brief Delete the sensor object with the given id.
      *

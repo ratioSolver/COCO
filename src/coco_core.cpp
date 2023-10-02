@@ -378,9 +378,6 @@ namespace coco
         }
 
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
 
         for (const auto &s : db.get_sensors())
         {
@@ -431,9 +428,7 @@ namespace coco
         Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (first_name \"" + first_name + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_updated_user(u);
     }
     COCO_EXPORT void coco_core::set_user_last_name(user &u, const std::string &last_name)
@@ -446,9 +441,7 @@ namespace coco
         Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (last_name \"" + last_name + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_updated_user(u);
     }
     COCO_EXPORT void coco_core::set_user_email(user &u, const std::string &email)
@@ -461,9 +454,7 @@ namespace coco
         Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (email \"" + email + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_updated_user(u);
     }
     COCO_EXPORT void coco_core::set_user_password(user &u, const std::string &password)
@@ -472,6 +463,7 @@ namespace coco
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the user in the database..
         db.set_user_password(u, password);
+
         fire_updated_user(u);
     }
     COCO_EXPORT void coco_core::set_user_data(user &u, const json::json &data)
@@ -480,6 +472,7 @@ namespace coco
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we update the user in the database..
         db.set_user_data(u, data);
+
         fire_updated_user(u);
     }
     COCO_EXPORT void coco_core::delete_user(user &u)
@@ -511,9 +504,7 @@ namespace coco
         db.get_sensor_type(id).fact = AssertString(env, ("(sensor_type (id " + id + ") (name \"" + name + "\") (description \"" + description + "\"))").c_str());
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_new_sensor_type(db.get_sensor_type(id));
     }
     COCO_EXPORT void coco_core::set_sensor_type_name(sensor_type &type, const std::string &name)
@@ -526,9 +517,7 @@ namespace coco
         Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + type.id + ") (modify ?st (name \"" + name + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_updated_sensor_type(type);
     }
     COCO_EXPORT void coco_core::set_sensor_type_description(sensor_type &type, const std::string &description)
@@ -541,9 +530,7 @@ namespace coco
         Eval(env, ("(do-for-fact ((?st sensor_type)) (= ?st:id " + type.id + ") (modify ?st (description \"" + description + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_updated_sensor_type(type);
     }
     COCO_EXPORT void coco_core::delete_sensor_type(sensor_type &type)
@@ -558,9 +545,6 @@ namespace coco
         Retract(f);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
     }
 
     COCO_EXPORT void coco_core::create_sensor(const std::string &name, sensor_type &type, location_ptr l)
@@ -577,9 +561,7 @@ namespace coco
         db.get_sensor(id).fact = AssertString(env, f_str.c_str());
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_new_sensor(db.get_sensor(id));
 
         // we subscribe to the sensor topic..
@@ -597,9 +579,7 @@ namespace coco
         Eval(env, ("(do-for-fact ((?s sensor)) (= ?s:id " + s.id + ") (modify ?s (name \"" + name + "\")))").c_str(), NULL);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_updated_sensor(s);
     }
     COCO_EXPORT void coco_core::set_sensor_location(sensor &s, location_ptr l)
@@ -611,9 +591,7 @@ namespace coco
         db.set_sensor_location(s, std::move(l));
         // we update the sensor fact..
         Eval(env, ("(do-for-fact ((?s sensor_type)) (= ?s:id " + s.id + ") (modify ?s (location " + std::to_string(s_x) + " " + std::to_string(s_y) + ")))").c_str(), NULL);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
+
         fire_updated_sensor(s);
     }
     COCO_EXPORT void coco_core::delete_sensor(sensor &s)
@@ -628,9 +606,6 @@ namespace coco
         Retract(f);
         // we run the rules engine to update the policy..
         Run(env, -1);
-#ifdef VERBOSE_LOG
-        Eval(env, "(facts)", NULL);
-#endif
     }
 
     COCO_EXPORT void coco_core::publish_sensor_data(const sensor &s, const json::json &value)

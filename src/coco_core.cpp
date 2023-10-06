@@ -33,8 +33,14 @@ namespace coco
 
         e.executors.push_back(coco_exec);
 
-        // we adapt to a riddle script..
-        exec->adapt(riddle.lexemeValue->contents);
+        try
+        { // we adapt to a riddle script..
+            exec->adapt(riddle.lexemeValue->contents);
+        }
+        catch (const std::invalid_argument &e)
+        {
+            LOG_ERR("Invalid RiDDLe script: " + std::string(e.what()));
+        }
 
         out->integerValue = CreateInteger(env, exec_ptr);
     }
@@ -72,8 +78,14 @@ namespace coco
 
         e.executors.push_back(coco_exec);
 
-        // we adapt to some riddle files..
-        exec->adapt(fs);
+        try
+        { // we adapt to some riddle files..
+            exec->adapt(fs);
+        }
+        catch (const std::invalid_argument &e)
+        {
+            LOG_ERR("Invalid RiDDLe files: " + std::string(e.what()));
+        }
 
         out->integerValue = CreateInteger(env, exec_ptr);
     }
@@ -237,8 +249,14 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
             return;
 
-        // we adapt to a riddle script..
-        exec->adapt(riddle.lexemeValue->contents);
+        try
+        { // we adapt to a riddle script..
+            exec->adapt(riddle.lexemeValue->contents);
+        }
+        catch (const std::invalid_argument &e)
+        {
+            LOG_ERR("Invalid RiDDLe script: " + std::string(e.what()));
+        }
     }
 
     void adapt_files([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -263,8 +281,14 @@ namespace coco
             fs.push_back(file.lexemeValue->contents);
         }
 
-        // we adapt to some riddle files..
-        exec->adapt(fs);
+        try
+        { // we adapt to some riddle files..
+            exec->adapt(fs);
+        }
+        catch (const std::invalid_argument &e)
+        {
+            LOG_ERR("Invalid RiDDLe files: " + std::string(e.what()));
+        }
     }
 
     void delete_solver([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -324,7 +348,7 @@ namespace coco
     COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())
     {
         AddUDF(env, "new_solver_script", "l", 2, 2, "ys", new_solver_script, "new_solver_script", this);
-        AddUDF(env, "new_solver_files", "l", 2, 2, "lym", new_solver_files, "new_solver_files", this);
+        AddUDF(env, "new_solver_files", "l", 2, 2, "ym", new_solver_files, "new_solver_files", this);
         AddUDF(env, "start_execution", "v", 1, 1, "l", start_execution, "start_execution", this);
         AddUDF(env, "pause_execution", "v", 1, 1, "l", pause_execution, "pause_execution", this);
         AddUDF(env, "delay_task", "v", 2, 3, "llm", delay_task, "delay_task", this);

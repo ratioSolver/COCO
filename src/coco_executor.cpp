@@ -122,6 +122,7 @@ namespace coco
         for (const auto &atm : atoms)
             Eval(cc.env, ("(start " + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + " " + to_task(*atm) + ")").c_str(), NULL);
         Run(cc.env, -1);
+        cc.fire_start(*this, atoms);
     }
 
     void coco_executor::ending(const std::unordered_set<ratio::atom *> &atoms)
@@ -162,6 +163,7 @@ namespace coco
         for (const auto &atm : atoms)
             Eval(cc.env, ("(end " + std::to_string(reinterpret_cast<uintptr_t>(this)) + " " + std::to_string(get_id(*atm)) + ")").c_str(), NULL);
         Run(cc.env, -1);
+        cc.fire_end(*this, atoms);
     }
 
     std::string coco_executor::to_task(const ratio::atom &atm) const noexcept

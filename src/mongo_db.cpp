@@ -138,7 +138,7 @@ namespace coco
         {
             auto id = result->inserted_id().get_oid().value.to_string();
             for (const auto &instance : instances)
-                if (!instances_collection.update_one(bsoncxx::builder::stream::document{} << "name" << instance << bsoncxx::builder::stream::finalize, bsoncxx::builder::stream::document{} << "$push" << bsoncxx::builder::stream::open_document << "users" << id << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize))
+                if (!instances_collection.update_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{bsoncxx::stdx::string_view{instance}} << bsoncxx::builder::stream::finalize, bsoncxx::builder::stream::document{} << "$push" << bsoncxx::builder::stream::open_document << "users" << id << bsoncxx::builder::stream::close_document << bsoncxx::builder::stream::finalize))
                 {
                     LOG_ERR("Failed to add user to instance `" << instance << "`");
                     return {};

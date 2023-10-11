@@ -674,7 +674,7 @@ namespace coco
         std::time_t time_t = std::chrono::system_clock::to_time_t(time);
         LOG_DEBUG("Time: " << std::put_time(std::localtime(&time_t), "%c %Z"));
         LOG_DEBUG("Value: " << value.to_string());
-        fire_new_sensor_data(s, time, value);
+        db.set_sensor_data(s, time, value);
 
         FunctionCallBuilder *sensor_data = CreateFunctionCallBuilder(env, 3);
         FCBAppendFact(sensor_data, s.fact);
@@ -684,6 +684,8 @@ namespace coco
         FCBCall(sensor_data, "sensor_data", NULL);
         Run(env, -1);
         FCBDispose(sensor_data);
+
+        fire_new_sensor_data(s, time, value);
     }
 
     void coco_core::set_sensor_state(sensor &s, const json::json &state)

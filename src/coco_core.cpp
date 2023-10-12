@@ -360,7 +360,7 @@ namespace coco
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", this);
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", this);
         AddUDF(env, "delete_solver", "v", 1, 1, "l", delete_solver, "delete_solver", this);
-        AddUDF(env, "publish_message", "v", 3, 4, "lssy", publish_message, "publish_message", this);
+        AddUDF(env, "publish_message", "v", 2, 3, "ssy", publish_message, "publish_message", this);
     }
     COCO_EXPORT coco_core::~coco_core()
     {

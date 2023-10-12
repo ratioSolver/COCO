@@ -342,7 +342,10 @@ namespace coco
         }
 
         auto msg = json::load(message.lexemeValue->contents);
-        e.publish(e.db.get_app() + '/' + e.db.get_instance() + '/' + topic.lexemeValue->contents, msg, local);
+        if (local)
+            e.publish(e.db.get_app() + '/' + e.db.get_instance() + '/' + topic.lexemeValue->contents, msg, local);
+        else
+            e.publish(topic.lexemeValue->contents, msg);
     }
 
     COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())

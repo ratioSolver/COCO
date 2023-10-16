@@ -336,9 +336,9 @@ namespace coco
             UDFValue local_arg;
             if (!UDFNextArgument(udfc, SYMBOL_BIT, &local_arg))
                 return;
-            if (strcmp(local_arg.lexemeValue->contents, "true") != 0 || strcmp(local_arg.lexemeValue->contents, "false") != 0)
+            if (strcmp(local_arg.lexemeValue->contents, "TRUE") != 0 && strcmp(local_arg.lexemeValue->contents, "FALSE") != 0)
                 return;
-            local = strcmp(local_arg.lexemeValue->contents, "true") == 0;
+            local = strcmp(local_arg.lexemeValue->contents, "TRUE") == 0;
         }
 
         auto msg = json::load(message.lexemeValue->contents);

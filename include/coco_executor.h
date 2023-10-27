@@ -4,6 +4,7 @@
 #include "core_listener.h"
 #include "solver_listener.h"
 #include "executor_listener.h"
+#include <memory>
 
 namespace coco
 {
@@ -88,7 +89,7 @@ namespace coco
     std::unordered_set<ratio::atom *> executing_atoms;
   };
 
-  using coco_executor_ptr = utils::u_ptr<coco_executor>;
+  using coco_executor_ptr = std::unique_ptr<coco_executor>;
 
   inline uintptr_t get_id(const coco_executor &exec) noexcept { return reinterpret_cast<uintptr_t>(&exec); }
 } // namespace coco

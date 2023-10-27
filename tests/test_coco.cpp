@@ -14,7 +14,7 @@ int main(int argc, char const *argv[])
     auto temp0_id = db.create_sensor("Temp0", db.get_sensor_type(temp_type_id), new coco::location{37.5078, 15.083});
 
     coco::coco_core cc(db);
-    cc.add_middleware(new coco::mqtt_middleware(cc));
+    cc.add_middleware(std::make_unique<coco::mqtt_middleware>(cc));
     cc.load_rules({"rules/rules.clp"});
     cc.connect();
 

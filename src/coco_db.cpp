@@ -23,7 +23,7 @@ namespace coco
     sensor_type &coco_db::create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
     {
         auto st = new sensor_type(id, name, description, parameter_types);
-        sensor_types[id] = st;
+        sensor_types.emplace(id, st);
         sensor_types_by_name.emplace(name, *st);
         return *st;
     }
@@ -48,7 +48,7 @@ namespace coco
     {
         auto s = new sensor(id, name, type, std::move(l));
         type.sensors.push_back(*s);
-        sensors[id] = s;
+        sensors.emplace(id, s);
         assert(&s->type == &type);
         return *s;
     }

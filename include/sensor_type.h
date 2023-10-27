@@ -1,8 +1,8 @@
 #pragma once
 
 #include "json.h"
-#include "memory.h"
 #include "clips.h"
+#include <memory>
 
 namespace coco
 {
@@ -96,7 +96,7 @@ namespace coco
     Fact *fact = nullptr;
   };
 
-  using sensor_type_ptr = utils::u_ptr<sensor_type>;
+  using sensor_type_ptr = std::unique_ptr<sensor_type>;
 
   inline json::json to_json(const sensor_type &st)
   {

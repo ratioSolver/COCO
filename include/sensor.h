@@ -119,7 +119,7 @@ namespace coco
     Fact *fact = nullptr;
   };
 
-  using sensor_ptr = utils::u_ptr<sensor>;
+  using sensor_ptr = std::unique_ptr<sensor>;
 
   inline json::json to_json(const sensor &s)
   {

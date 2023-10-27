@@ -31,7 +31,7 @@ namespace coco
 
         AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + "))").c_str());
 
-        e.executors.push_back(coco_exec);
+        e.executors.emplace_back(coco_exec);
 
         try
         { // we adapt to a riddle script..
@@ -76,7 +76,7 @@ namespace coco
 
         AssertString(env, std::string("(solver (solver_ptr " + std::to_string(exec_ptr) + ") (solver_type " + solver_type.lexemeValue->contents + "))").c_str());
 
-        e.executors.push_back(coco_exec);
+        e.executors.emplace_back(coco_exec);
 
         try
         { // we adapt to some riddle files..

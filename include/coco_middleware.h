@@ -1,7 +1,7 @@
 #pragma once
 
 #include "json.h"
-#include "memory.h"
+#include <memory>
 
 namespace coco
 {
@@ -54,5 +54,5 @@ namespace coco
     coco_core &cc;
   };
 
-  using coco_middleware_ptr = utils::u_ptr<coco_middleware>;
+  using coco_middleware_ptr = std::unique_ptr<coco_middleware>;
 } // namespace coco

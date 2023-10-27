@@ -17,10 +17,10 @@ namespace coco
 {
   class coco_core;
   class coco_middleware;
-  using coco_middleware_ptr = utils::u_ptr<coco_middleware>;
+  using coco_middleware_ptr = std::unique_ptr<coco_middleware>;
   class coco_db;
   class coco_executor;
-  using coco_executor_ptr = utils::u_ptr<coco_executor>;
+  using coco_executor_ptr = std::unique_ptr<coco_executor>;
   class coco_listener;
 
   class coco_core

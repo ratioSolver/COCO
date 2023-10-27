@@ -44,6 +44,7 @@ if(MQTT)
     endif()
 
     list(APPEND COCO_SOURCES src/mqtt/mqtt_middleware.cpp)
+    list(APPEND COCO_HEADERS include/mqtt/mqtt_middleware.h)
 endif()
 
 if(MONGO_DB)
@@ -57,6 +58,7 @@ if(MONGO_DB)
     message(STATUS "MongoDB port:           ${MONGODB_PORT}")
 
     list(APPEND COCO_SOURCES src/mongo/mongo_db.cpp)
+    list(APPEND COCO_HEADERS include/mongo/mongo_db.h)
 endif()
 
 option(SOLVING_MONITORING "Publishes any changes during the resolution process" OFF)
@@ -70,12 +72,13 @@ add_subdirectory(extern/plexa)
 
 add_library(${PROJECT_NAME} STATIC ${COCO_SOURCES})
 GENERATE_EXPORT_HEADER(${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> $<INSTALL_INTERFACE:> ${CLIPS_INCLUDE_DIR} ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> $<INSTALL_INTERFACE:> ${CLIPS_INCLUDE_DIR})
 target_link_directories(${PROJECT_NAME} PUBLIC ${CLIPS_LIB_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC PlExA clips)
 target_compile_definitions(${PROJECT_NAME} PUBLIC COCO_NAME="${COCO_NAME}")
 
 if(MQTT)
+    target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/mqtt $<INSTALL_INTERFACE:> ${PAHO_MQTT_CPP_INCLUDE_DIRS})
     target_link_libraries(${PROJECT_NAME} PUBLIC PahoMqttCpp::paho-mqttpp3-static)
     target_compile_definitions(${PROJECT_NAME} PUBLIC MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
     if(MQTT_AUTH)
@@ -84,6 +87,7 @@ if(MQTT)
 endif()
 
 if(MONGO_DB)
+    target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/mongo $<INSTALL_INTERFACE:> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})
     target_link_libraries(${PROJECT_NAME} PUBLIC mongo::bsoncxx_shared mongo::mongocxx_shared)
     target_compile_definitions(${PROJECT_NAME} PUBLIC MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 endif()

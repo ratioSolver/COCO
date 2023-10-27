@@ -1,7 +1,6 @@
 #pragma once
 
 #include "coco_export.h"
-#include "user.h"
 #include "sensor_type.h"
 #include "sensor.h"
 #include "timer.h"
@@ -87,14 +86,6 @@ namespace coco
 
     COCO_EXPORT void create_instance(const std::string &name, const json::json &data = {});
 
-    COCO_EXPORT void create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances = {}, const json::json &data = {});
-    COCO_EXPORT void set_user_first_name(user &u, const std::string &first_name);
-    COCO_EXPORT void set_user_last_name(user &u, const std::string &last_name);
-    COCO_EXPORT void set_user_email(user &u, const std::string &email);
-    COCO_EXPORT void set_user_password(user &u, const std::string &password);
-    COCO_EXPORT void set_user_data(user &u, const json::json &data);
-    COCO_EXPORT void delete_user(user &u);
-
     COCO_EXPORT void create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameters);
     COCO_EXPORT void set_sensor_type_name(sensor_type &type, const std::string &name);
     COCO_EXPORT void set_sensor_type_description(sensor_type &type, const std::string &description);
@@ -153,10 +144,6 @@ namespace coco
     }
 
   private:
-    void fire_new_user(const user &u);
-    void fire_updated_user(const user &u);
-    void fire_removed_user(const user &u);
-
     void fire_new_sensor_type(const sensor_type &type);
     void fire_updated_sensor_type(const sensor_type &type);
     void fire_removed_sensor_type(const sensor_type &type);

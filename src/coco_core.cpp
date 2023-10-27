@@ -330,22 +330,7 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &message))
             return;
 
-        bool local = !UDFHasNextArgument(udfc);
-        if (!local)
-        {
-            UDFValue local_arg;
-            if (!UDFNextArgument(udfc, SYMBOL_BIT, &local_arg))
-                return;
-            if (strcmp(local_arg.lexemeValue->contents, "TRUE") != 0 && strcmp(local_arg.lexemeValue->contents, "FALSE") != 0)
-                return;
-            local = strcmp(local_arg.lexemeValue->contents, "TRUE") == 0;
-        }
-
-        auto msg = json::load(message.lexemeValue->contents);
-        if (local)
-            e.publish(e.db.get_app() + '/' + e.db.get_instance() + '/' + topic.lexemeValue->contents, msg, local);
-        else
-            e.publish(topic.lexemeValue->contents, msg);
+        e.publish(topic.lexemeValue->contents, json::load(message.lexemeValue->contents));
     }
 
     COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())
@@ -360,7 +345,7 @@ namespace coco
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", this);
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", this);
         AddUDF(env, "delete_solver", "v", 1, 1, "l", delete_solver, "delete_solver", this);
-        AddUDF(env, "publish_message", "v", 2, 3, "ssy", publish_message, "publish_message", this);
+        AddUDF(env, "publish_message", "v", 2, 2, "ss", publish_message, "publish_message", this);
     }
     COCO_EXPORT coco_core::~coco_core()
     {
@@ -410,7 +395,7 @@ namespace coco
         {
             LOG_DEBUG("Managing sensor (" << s.get().id << ") '" << s.get().name << "' of type '" << s.get().type.name << "' subscriptions..");
             for (auto &mw : middlewares)
-                mw->subscribe(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + s.get().id, 1);
+                mw->subscribe(db.get_name() + SENSOR_TOPIC + '/' + s.get().id, 1);
         }
     }
 
@@ -426,99 +411,6 @@ namespace coco
         LOG_DEBUG("Creating new instance..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         db.create_instance(name, data);
-    }
-    COCO_EXPORT void coco_core::create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances, const json::json &data)
-    {
-        LOG_DEBUG("Creating new user..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        // we store the user in the database..
-        auto id = db.create_user(admin, first_name, last_name, email, password, instances, data);
-        if (db.has_user(id))
-        {
-            // we create a new fact for the new user..
-            db.get_user(id).fact = AssertString(env, ("(user (id " + id + ") (first_name \"" + first_name + "\") (last_name \"" + last_name + "\") (last_name \"" + email + "\"))").c_str());
-            // we run the rules engine to update the policy..
-            Run(env, -1);
-#ifdef VERBOSE_LOG
-            Eval(env, "(facts)", NULL);
-#endif
-            fire_new_user(db.get_user(id));
-        }
-    }
-    COCO_EXPORT void coco_core::set_user_first_name(user &u, const std::string &first_name)
-    {
-        LOG_DEBUG("Setting user first name..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        // we update the user in the database..
-        db.set_user_first_name(u, first_name);
-        // we update the user fact..
-        Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (first_name \"" + first_name + "\")))").c_str(), NULL);
-        // we run the rules engine to update the policy..
-        Run(env, -1);
-
-        fire_updated_user(u);
-    }
-    COCO_EXPORT void coco_core::set_user_last_name(user &u, const std::string &last_name)
-    {
-        LOG_DEBUG("Setting user last name..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        // we update the user in the database..
-        db.set_user_last_name(u, last_name);
-        // we update the user fact..
-        Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (last_name \"" + last_name + "\")))").c_str(), NULL);
-        // we run the rules engine to update the policy..
-        Run(env, -1);
-
-        fire_updated_user(u);
-    }
-    COCO_EXPORT void coco_core::set_user_email(user &u, const std::string &email)
-    {
-        LOG_DEBUG("Setting user email..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        // we update the user in the database..
-        db.set_user_email(u, email);
-        // we update the user fact..
-        Eval(env, ("(do-for-fact ((?u user)) ((eq ?u:id \"" + u.id + "\")) (modify ?u (email \"" + email + "\")))").c_str(), NULL);
-        // we run the rules engine to update the policy..
-        Run(env, -1);
-
-        fire_updated_user(u);
-    }
-    COCO_EXPORT void coco_core::set_user_password(user &u, const std::string &password)
-    {
-        LOG_DEBUG("Setting user password..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        // we update the user in the database..
-        db.set_user_password(u, password);
-
-        fire_updated_user(u);
-    }
-    COCO_EXPORT void coco_core::set_user_data(user &u, const json::json &data)
-    {
-        LOG_DEBUG("Setting user data..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        // we update the user in the database..
-        db.set_user_data(u, data);
-
-        fire_updated_user(u);
-    }
-    COCO_EXPORT void coco_core::delete_user(user &u)
-    {
-        LOG_DEBUG("Deleting user..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        fire_removed_user(u);
-        if (db.has_user(u.id))
-        {
-            // we retract the user fact..
-            Retract(u.fact);
-            // we run the rules engine to update the policy..
-            Run(env, -1);
-#ifdef VERBOSE_LOG
-            Eval(env, "(facts)", NULL);
-#endif
-        }
-        // we delete the user from the database..
-        db.delete_user(u);
     }
 
     COCO_EXPORT void coco_core::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameters)
@@ -594,7 +486,7 @@ namespace coco
         // we subscribe to the sensor topic..
         LOG_DEBUG("Managing sensor (" << id << ") " << name << " of type " << type.id << " subscriptions..");
         for (auto &mw : middlewares)
-            mw->subscribe(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + id, 1);
+            mw->subscribe(db.get_name() + SENSOR_TOPIC + '/' + id, 1);
     }
     COCO_EXPORT void coco_core::set_sensor_name(sensor &s, const std::string &name)
     {
@@ -638,7 +530,7 @@ namespace coco
     COCO_EXPORT void coco_core::publish_sensor_data(const sensor &s, const json::json &value)
     {
         LOG_DEBUG("Publishing sensor value..");
-        publish(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
+        publish(db.get_name() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
     COCO_EXPORT void coco_core::publish_random_data(const sensor &s)
@@ -665,7 +557,7 @@ namespace coco
                 break;
             }
 
-        publish(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
+        publish(db.get_name() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
     void coco_core::set_sensor_data(sensor &s, const json::json &value)
@@ -731,36 +623,20 @@ namespace coco
     void coco_core::message_arrived(const std::string &topic, const json::json &msg)
     {
         const std::lock_guard<std::recursive_mutex> lock(mtx);
-        if (topic.rfind(db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/', 0) == 0)
+        if (topic.rfind(db.get_name() + SENSOR_TOPIC + '/', 0) == 0)
         { // we have a new sensor value..
             std::string sensor_id = topic;
-            sensor_id.erase(0, (db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/').length());
+            sensor_id.erase(0, (db.get_name() + SENSOR_TOPIC + '/').length());
             set_sensor_data(db.get_sensor(sensor_id), msg);
         }
-        else if (topic.rfind(db.get_app() + "/" + db.get_instance() + SENSOR_STATE + '/', 0) == 0)
+        else if (topic.rfind(db.get_name() + SENSOR_STATE + '/', 0) == 0)
         { // we have a new sensor state..
             std::string sensor_id = topic;
-            sensor_id.erase(0, (db.get_app() + "/" + db.get_instance() + SENSOR_TOPIC + '/').length());
+            sensor_id.erase(0, (db.get_name() + SENSOR_TOPIC + '/').length());
             set_sensor_state(db.get_sensor(sensor_id), msg);
         }
         else // we notify the listeners that a message has arrived..
             fire_message_arrived(topic, msg);
-    }
-
-    void coco_core::fire_new_user(const user &u)
-    {
-        for (const auto &l : listeners)
-            l->new_user(u);
-    }
-    void coco_core::fire_updated_user(const user &u)
-    {
-        for (const auto &l : listeners)
-            l->updated_user(u);
-    }
-    void coco_core::fire_removed_user(const user &u)
-    {
-        for (const auto &l : listeners)
-            l->removed_user(u);
     }
 
     void coco_core::fire_new_sensor_type(const sensor_type &st)

@@ -1,9 +1,7 @@
 #pragma once
 
-#include "instance.h"
 #include "sensor_type.h"
 #include "sensor.h"
-#include "user.h"
 #include <unordered_map>
 #include <functional>
 
@@ -12,138 +10,14 @@ namespace coco
   class coco_db
   {
   public:
-    coco_db(const std::string &instance = COCO_INSTANCE, const std::string &app = COCO_APP);
+    coco_db(const std::string &name = COCO_NAME);
     virtual ~coco_db() = default;
 
-    const std::string &get_app() const { return app; }
-    const std::string &get_instance() const { return inst; }
+    const std::string &get_name() const { return name; }
 
     virtual void init();
 
     virtual std::string create_instance(const std::string &name, const json::json &data = {}) = 0;
-
-    /**
-     * @brief Returns all the instances of the app.
-     *
-     * @return std::vector<instance> the instances of the app.
-     */
-    virtual std::vector<instance_ptr> get_instances() = 0;
-
-    /**
-     * @brief Create a user object with the given first name, last name, email, password and type and returns its id.
-     *
-     * @param admin The admin flag of the user.
-     * @param first_name The first name of the user.
-     * @param last_name The last name of the user.
-     * @param email The email of the user.
-     * @param password The password of the user.
-     * @param data The data of the user.
-     * @return std::string The id of the created user.
-     */
-    virtual std::string create_user(bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances = {}, const json::json &data = {});
-
-    /**
-     * @brief Check if the user object with the given id exists.
-     *
-     * @param id the id of the user.
-     * @return true if the user exists.
-     * @return false if the user does not exist.
-     */
-    virtual bool has_user(const std::string &id) const { return users.find(id) != users.end(); }
-    /**
-     * @brief Get the user object with the given id.
-     *
-     * @param id the id of the user.
-     * @return user_ptr the user with the given id.
-     */
-    virtual user &get_user(const std::string &id) const { return *users.at(id); }
-    /**
-     * @brief Get the users object.
-     *
-     * @return std::vector<std::reference_wrapper<user>> the users.
-     */
-    std::vector<std::reference_wrapper<user>> get_users();
-    /**
-     * @brief Get the user object with the given email and password.
-     *
-     * @param email the email of the user.
-     * @param password the password of the user.
-     * @return user_ptr the user with the given email and password.
-     */
-    virtual user_ptr get_user(const std::string &email, const std::string &password) = 0;
-
-    /**
-     * @brief Get the all the users.
-     *
-     * @return std::vector<user_ptr> the users.
-     */
-    virtual std::vector<user_ptr> get_all_users() = 0;
-
-    /**
-     * @brief Set the user's admin flag.
-     *
-     * @param u the user to update.
-     * @param admin the new admin flag of the user.
-     */
-    virtual void set_user_admin(user &u, bool admin) { u.admin = admin; }
-    virtual void set_user_admin(const std::string &id, bool admin) { set_user_admin(*users.at(id), admin); }
-
-    /**
-     * @brief Set the user's first name.
-     *
-     * @param u the user to update.
-     * @param first_name the new first name of the user.
-     */
-    virtual void set_user_first_name(user &u, const std::string &first_name) { u.first_name = first_name; }
-    virtual void set_user_first_name(const std::string &id, const std::string &first_name) { set_user_first_name(*users.at(id), first_name); }
-    /**
-     * @brief Set the user's last name.
-     *
-     * @param u the user to update.
-     * @param last_name the new last name of the user.
-     */
-    virtual void set_user_last_name(user &u, const std::string &last_name) { u.last_name = last_name; }
-    virtual void set_user_last_name(const std::string &id, const std::string &last_name) { set_user_last_name(*users.at(id), last_name); }
-    /**
-     * @brief Set the user's email.
-     *
-     * @param u the user to update.
-     * @param email the new email of the user.
-     */
-    virtual void set_user_email(user &u, const std::string &email) { u.email = email; }
-    virtual void set_user_email(const std::string &id, const std::string &email) { set_user_email(*users.at(id), email); }
-    /**
-     * @brief Set the user's password.
-     *
-     * @param u the user to update.
-     * @param password the new password of the user.
-     */
-    virtual void set_user_password(user &u, const std::string &password) { u.password = password; }
-    virtual void set_user_password(const std::string &id, const std::string &password) { set_user_password(*users.at(id), password); }
-    /**
-     * @brief Set the user's instances.
-     *
-     * @param u the user to update.
-     * @param instances the new instances of the user.
-     */
-    virtual void set_user_instances(user &u, const std::vector<std::string> &instances) { u.instances = instances; }
-    virtual void set_user_instances(const std::string &id, const std::vector<std::string> &instances) { set_user_instances(*users.at(id), instances); }
-    /**
-     * @brief Set the user's data.
-     *
-     * @param u the user to update.
-     * @param data the new data of the user.
-     */
-    virtual void set_user_data(user &u, const json::json &data) { u.data = data; }
-    virtual void set_user_data(const std::string &id, const json::json &data) { set_user_data(*users.at(id), data); }
-
-    /**
-     * @brief Delete the user object with the given id.
-     *
-     * @param u the user to delete.
-     */
-    virtual void delete_user(user &u) { users.erase(u.id); }
-    virtual void delete_user(const std::string &id) { delete_user(*users.at(id)); }
 
     /**
      * @brief Create a sensor type object with the given name and description and returns its id.
@@ -285,16 +159,13 @@ namespace coco
     virtual void drop();
 
   protected:
-    user &create_user(const std::string &id, bool admin, const std::string &first_name, const std::string &last_name, const std::string &email, const std::string &password, const std::vector<std::string> &instances = {}, const json::json &data = {});
     sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
     sensor &create_sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l);
 
   private:
-    const std::string app;                                                                     // The app name.
-    const std::string inst;                                                                    // The instance name.
-    std::unordered_map<std::string, user_ptr> users;                                           // The users of the current instance.
+    const std::string name;                                                                    // The app name.
     std::unordered_map<std::string, sensor_type_ptr> sensor_types;                             // The sensor types of the app.
     std::unordered_map<std::string, std::reference_wrapper<sensor_type>> sensor_types_by_name; // The sensor types of the app indexed by name.
-    std::unordered_map<std::string, sensor_ptr> sensors;                                       // The sensors of the current instance.
+    std::unordered_map<std::string, sensor_ptr> sensors;                                       // The sensors of the app.
   };
 } // namespace coco

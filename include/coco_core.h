@@ -77,7 +77,7 @@ namespace coco
      * @brief Initializes the knowledge base.
      *
      */
-    COCO_EXPORT void init();
+    COCO_EXPORT virtual void init();
     /**
      * @brief Disconnects all the middlewares.
      *

@@ -17,7 +17,7 @@ namespace coco
 
     virtual void init();
 
-    virtual std::string create_instance(const std::string &name, const json::json &data = {}) = 0;
+    virtual std::string create_instance(const std::string &name = COCO_NAME, const json::json &data = {}) = 0;
 
     /**
      * @brief Create a sensor type object with the given name and description and returns its id.

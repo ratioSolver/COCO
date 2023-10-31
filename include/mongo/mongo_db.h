@@ -15,7 +15,7 @@ namespace coco
 
     virtual void init() override;
 
-    std::string create_instance(const std::string &name, const json::json &data = {}) override;
+    std::string create_instance(const std::string &name = COCO_NAME, const json::json &data = {}) override;
 
     std::string create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) override;
     void set_sensor_type_name(sensor_type &st, const std::string &name) override;

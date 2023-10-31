@@ -45,7 +45,7 @@ namespace coco
             if (loc != doc.end())
             {
                 auto loc_doc = loc->get_document().value;
-                l = new location{loc_doc["x"].get_double().value, loc_doc["y"].get_double().value};
+                l = std::make_unique<location>(loc_doc["x"].get_double().value, loc_doc["y"].get_double().value);
             }
             auto &s = coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
             auto last_value = get_last_sensor_value(s);

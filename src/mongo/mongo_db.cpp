@@ -33,7 +33,7 @@ namespace coco
         }
         LOG("Retrieved " << get_sensor_types().size() << " sensor types..");
 
-        LOG("Retrieving all " << get_instance() << " sensors..");
+        LOG("Retrieving all " << get_name() << " sensors..");
         for (auto &doc : sensors_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
@@ -53,11 +53,11 @@ namespace coco
         }
         LOG("Retrieved " << get_sensors().size() << " sensors..");
 
-        LOG("Retrieving `" << get_instance() << "` instance..");
+        LOG("Retrieving `" << get_name() << "` instance..");
         auto instance_doc = instances_collection.find_one(bsoncxx::builder::stream::document{} << "name" << get_name() << bsoncxx::builder::stream::finalize);
         if (!instance_doc)
         {
-            LOG_WARN("Creating new `" << get_instance() << "` instance..");
+            LOG_WARN("Creating new `" << get_name() << "` instance..");
             auto instance_id = create_instance(get_name());
         }
     }

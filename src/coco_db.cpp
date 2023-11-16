@@ -12,17 +12,17 @@ namespace coco
         sensors.clear();
     }
 
-    std::string coco_db::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
+    std::string coco_db::create_sensor_type(const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters)
     {
         size_t c_id = sensor_types.size();
         while (sensor_types.count(std::to_string(c_id)))
             c_id++;
-        create_sensor_type(std::to_string(c_id), name, description, parameter_types);
+        create_sensor_type(std::to_string(c_id), name, description, std::move(parameters));
         return std::to_string(c_id);
     }
-    sensor_type &coco_db::create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types)
+    sensor_type &coco_db::create_sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters)
     {
-        auto st = new sensor_type(id, name, description, parameter_types);
+        auto st = new sensor_type(id, name, description, std::move(parameters));
         sensor_types.emplace(id, st);
         sensor_types_by_name.emplace(name, *st);
         return *st;

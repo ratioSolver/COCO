@@ -413,12 +413,12 @@ namespace coco
         db.create_instance(name, data);
     }
 
-    COCO_EXPORT void coco_core::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameters)
+    COCO_EXPORT void coco_core::create_sensor_type(const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters)
     {
         LOG_DEBUG("Creating new sensor type..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
         // we store the sensor type in the database..
-        auto id = db.create_sensor_type(name, description, parameters);
+        auto id = db.create_sensor_type(name, description, std::move(parameters));
         // we create a new fact for the new sensor type..
         db.get_sensor_type(id).fact = AssertString(env, ("(sensor_type (id " + id + ") (name \"" + name + "\") (description \"" + description + "\"))").c_str());
         // we run the rules engine to update the policy..
@@ -537,23 +537,32 @@ namespace coco
     {
         LOG_DEBUG("Publishing random value..");
         json::json value;
-        for (const auto &[name, type] : s.get_type().get_parameters())
-            switch (type)
+        for (const auto &[name, parameter_ptr] : s.get_type().get_parameters())
+            switch (parameter_ptr->get_type())
             {
             case parameter_type::Integer:
-                value[name] = (long)rand() % 100;
+            {
+                auto &p = static_cast<const integer_parameter &>(*parameter_ptr);
+                value[name] = (long)rand() % (p.get_max() - p.get_min() + 1) + p.get_min();
                 break;
+            }
             case parameter_type::Float:
-                value[name] = (float)rand() / (float)RAND_MAX;
+            {
+                auto &p = static_cast<const float_parameter &>(*parameter_ptr);
+                value[name] = (double)rand() / RAND_MAX * (p.get_max() - p.get_min()) + p.get_min();
                 break;
+            }
             case parameter_type::Boolean:
-                value[name] = rand() % 2 == 0;
+                value[name] = (bool)(rand() % 2);
                 break;
             case parameter_type::Symbol:
-                value[name] = "test";
+            {
+                auto &p = static_cast<const symbol_parameter &>(*parameter_ptr);
+                value[name] = p.get_values()[rand() % p.get_values().size()];
                 break;
+            }
             case parameter_type::String:
-                value[name] = "test";
+                value[name] = "random string";
                 break;
             }
 

@@ -27,7 +27,7 @@ namespace coco
      * @param parameter_types the parameter types of the sensors of the sensor type
      * @return std::string the id of the created sensor type
      */
-    virtual std::string create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
+    virtual std::string create_sensor_type(const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters);
     /**
      * @brief Get the all sensor types object.
      *
@@ -49,6 +49,14 @@ namespace coco
      * @return sensor_type& the sensor type with the given id.
      */
     sensor_type &get_sensor_type(const std::string &id) { return *sensor_types.at(id); }
+    /**
+     * @brief Check if the sensor type object with the given name exists.
+     *
+     * @param name the name of the sensor type.
+     * @return true if the sensor type exists.
+     * @return false if the sensor type does not exist.
+     */
+    bool has_sensor_type_by_name(const std::string &name) const { return sensor_types_by_name.find(name) != sensor_types_by_name.end(); }
     /**
      * @brief Get the sensor type object with the given name.
      *
@@ -159,7 +167,7 @@ namespace coco
     virtual void drop();
 
   protected:
-    sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types);
+    sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters);
     sensor &create_sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l);
 
   private:

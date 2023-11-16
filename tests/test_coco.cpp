@@ -10,7 +10,11 @@ int main(int argc, char const *argv[])
     coco::mongo_db db;
 
     db.drop(); // Warning!! We are deleting all the current data!!
-    auto temp_type_id = db.create_sensor_type("temperature", "A type of sensor for measuring temperature", {{"battery", coco::parameter_type::Float}, {"temp", coco::parameter_type::Float}});
+    std::vector<coco::parameter_ptr> parameters;
+    parameters.push_back(std::make_unique<coco::float_parameter>("battery", 0, 5));
+    parameters.push_back(std::make_unique<coco::float_parameter>("temp", -100, 100));
+    auto temp_type_id = db.create_sensor_type("temperature", "A type of sensor for measuring temperature", std::move(parameters));
+
     auto temp0_id = db.create_sensor("Temp0", db.get_sensor_type(temp_type_id), std::make_unique<coco::location>(37.5078, 15.083));
 
     coco::coco_core cc(db);

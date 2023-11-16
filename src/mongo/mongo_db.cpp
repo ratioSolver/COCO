@@ -21,15 +21,37 @@ namespace coco
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
-            std::map<std::string, parameter_type> parameters;
+            std::vector<parameter_ptr> parameters;
             for (auto param : doc["parameters"].get_array().value)
             {
                 auto param_doc = param.get_document().value;
                 auto param_name = param_doc["name"].get_string().value.to_string();
                 auto param_type = param_doc["type"].get_int32().value;
-                parameters.emplace(param_name, static_cast<parameter_type>(param_type));
+                switch (static_cast<parameter_type>(param_type))
+                {
+                case parameter_type::Integer:
+                    parameters.emplace_back(std::make_unique<integer_parameter>(param_name, param_doc["min"].get_int32().value, param_doc["max"].get_int32().value));
+                    break;
+                case parameter_type::Float:
+                    parameters.emplace_back(std::make_unique<float_parameter>(param_name, param_doc["min"].get_double().value, param_doc["max"].get_double().value));
+                    break;
+                case parameter_type::Boolean:
+                    parameters.emplace_back(std::make_unique<boolean_parameter>(param_name));
+                    break;
+                case parameter_type::Symbol:
+                {
+                    std::vector<std::string> values;
+                    for (auto value : param_doc["values"].get_array().value)
+                        values.emplace_back(value.get_string().value.to_string());
+                    parameters.emplace_back(std::make_unique<symbol_parameter>(param_name, std::move(values)));
+                    break;
+                }
+                case parameter_type::String:
+                    parameters.emplace_back(std::make_unique<string_parameter>(param_name));
+                    break;
+                }
             }
-            coco_db::create_sensor_type(id, name, description, parameters);
+            coco_db::create_sensor_type(id, name, description, std::move(parameters));
         }
         LOG("Retrieved " << get_sensor_types().size() << " sensor types..");
 
@@ -74,7 +96,7 @@ namespace coco
             return {};
     }
 
-    std::string mongo_db::create_sensor_type(const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameters)
+    std::string mongo_db::create_sensor_type(const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters)
     {
         auto s_doc = bsoncxx::builder::basic::document{};
         s_doc.append(bsoncxx::builder::basic::kvp("name", name));
@@ -83,8 +105,31 @@ namespace coco
         for (const auto &param : parameters)
         {
             auto param_doc = bsoncxx::builder::basic::document{};
-            param_doc.append(bsoncxx::builder::basic::kvp("name", param.first));
-            param_doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(param.second)));
+            param_doc.append(bsoncxx::builder::basic::kvp("name", param->get_name()));
+            param_doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(param->get_type())));
+            switch (param->get_type())
+            {
+            case parameter_type::Integer:
+                param_doc.append(bsoncxx::builder::basic::kvp("min", static_cast<integer_parameter &>(*param).get_min()));
+                param_doc.append(bsoncxx::builder::basic::kvp("max", static_cast<integer_parameter &>(*param).get_max()));
+                break;
+            case parameter_type::Float:
+                param_doc.append(bsoncxx::builder::basic::kvp("min", static_cast<float_parameter &>(*param).get_min()));
+                param_doc.append(bsoncxx::builder::basic::kvp("max", static_cast<float_parameter &>(*param).get_max()));
+                break;
+            case parameter_type::Boolean:
+                break;
+            case parameter_type::Symbol:
+            {
+                auto values = bsoncxx::builder::basic::array{};
+                for (const auto &value : static_cast<symbol_parameter &>(*param).get_values())
+                    values.append(value);
+                param_doc.append(bsoncxx::builder::basic::kvp("values", values));
+                break;
+            }
+            case parameter_type::String:
+                break;
+            }
             param_types.append(param_doc);
         }
         s_doc.append(bsoncxx::builder::basic::kvp("parameters", param_types));
@@ -92,7 +137,7 @@ namespace coco
         if (result)
         {
             auto id = result->inserted_id().get_oid().value.to_string();
-            coco_db::create_sensor_type(id, name, description, parameters);
+            coco_db::create_sensor_type(id, name, description, std::move(parameters));
             return id;
         }
         else

@@ -19,6 +19,68 @@ namespace coco
     String
   };
 
+  class parameter
+  {
+  public:
+    parameter(const std::string &name, parameter_type type) : name(name), type(type) {}
+    virtual ~parameter() = default;
+
+    const std::string &get_name() const { return name; }
+    parameter_type get_type() const { return type; }
+
+  private:
+    const std::string name;
+    const parameter_type type;
+  };
+  using parameter_ptr = std::unique_ptr<parameter>;
+
+  class integer_parameter : public parameter
+  {
+  public:
+    integer_parameter(const std::string &name, long min, long max) : parameter(name, parameter_type::Integer), min(min), max(max) {}
+
+    long get_min() const { return min; }
+    long get_max() const { return max; }
+
+  private:
+    const long min, max;
+  };
+
+  class float_parameter : public parameter
+  {
+  public:
+    float_parameter(const std::string &name, double min, double max) : parameter(name, parameter_type::Float), min(min), max(max) {}
+
+    double get_min() const { return min; }
+    double get_max() const { return max; }
+
+  private:
+    const double min, max;
+  };
+
+  class boolean_parameter : public parameter
+  {
+  public:
+    boolean_parameter(const std::string &name) : parameter(name, parameter_type::Boolean) {}
+  };
+
+  class symbol_parameter : public parameter
+  {
+  public:
+    symbol_parameter(const std::string &name, const std::vector<std::string> &values) : parameter(name, parameter_type::Symbol), values(values) {}
+
+    const std::vector<std::string> &get_values() const { return values; }
+
+  private:
+    const std::vector<std::string> values;
+  };
+
+  class string_parameter : public parameter
+  {
+  public:
+    string_parameter(const std::string &name) : parameter(name, parameter_type::String) {}
+  };
+
   class sensor_type
   {
     friend class coco_core;
@@ -32,7 +94,15 @@ namespace coco
      * @param name the name of the sensor type.
      * @param description the description of the sensor type.
      */
-    sensor_type(const std::string &id, const std::string &name, const std::string &description, const std::map<std::string, parameter_type> &parameter_types) : id(id), name(name), description(description), parameter_types(parameter_types) {}
+    sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<parameter_ptr> &&pars) : id(id), name(name), description(description)
+    {
+      for (auto &p : pars)
+      {
+        if (parameters.find(p->get_name()) != parameters.end())
+          throw std::runtime_error("Duplicate parameter name: " + p->get_name());
+        parameters.emplace(p->get_name(), std::move(p));
+      }
+    }
     ~sensor_type() = default;
 
     /**
@@ -54,18 +124,18 @@ namespace coco
      */
     const std::string &get_description() const { return description; }
     /**
-     * @brief Get the parameter types of the sensor type.
+     * @brief Get the parameters of the sensor type.
      *
-     * @return const std::map<std::string, parameter_type>& the parameter types of the sensor type.
+     * @return const std::map<std::string, parameter_ptr>& the parameter types of the sensor type.
      */
-    const std::map<std::string, parameter_type> &get_parameters() const { return parameter_types; }
+    const std::map<std::string, parameter_ptr> &get_parameters() const { return parameters; }
     /**
      * @brief Get the parameter type of the sensor type having the given name.
      *
      * @param name the name of the parameter.
-     * @return const parameter_type& the parameter type of the sensor type having the given name.
+     * @return const parameter& the parameter of the sensor type having the given name.
      */
-    const parameter_type &get_parameter_type(const std::string &name) const { return parameter_types.at(name); }
+    const parameter &get_parameter(const std::string &name) const { return *parameters.at(name); }
     /**
      * @brief Check if the sensor type has a parameter having the given name.
      *
@@ -73,7 +143,7 @@ namespace coco
      * @return true if the sensor type has a parameter having the given name.
      * @return false if the sensor type has no parameter having the given name.
      */
-    bool has_parameter(const std::string &name) const { return parameter_types.find(name) != parameter_types.end(); }
+    bool has_parameter(const std::string &name) const { return parameters.find(name) != parameters.end(); }
     /**
      * @brief Get the sensors of the sensor type.
      *
@@ -91,19 +161,67 @@ namespace coco
     const std::string id;
     std::string name;
     std::string description;
-    std::map<std::string, parameter_type> parameter_types;
+    std::map<std::string, parameter_ptr> parameters;
     std::vector<std::reference_wrapper<sensor>> sensors;
     Fact *fact = nullptr;
   };
 
   using sensor_type_ptr = std::unique_ptr<sensor_type>;
 
+  inline json::json to_json(const parameter &p)
+  {
+    json::json j_p{{"name", p.get_name()}};
+    switch (p.get_type())
+    {
+    case parameter_type::Integer:
+    {
+      const auto &ip = static_cast<const integer_parameter &>(p);
+      j_p["type"] = "integer";
+      j_p["min"] = ip.get_min();
+      j_p["max"] = ip.get_max();
+      break;
+    }
+    case parameter_type::Float:
+    {
+      const auto &fp = static_cast<const float_parameter &>(p);
+      j_p["type"] = "float";
+      j_p["min"] = fp.get_min();
+      j_p["max"] = fp.get_max();
+      break;
+    }
+    case parameter_type::Boolean:
+    {
+      j_p["type"] = "boolean";
+      break;
+    }
+    case parameter_type::Symbol:
+    {
+      const auto &sp = static_cast<const symbol_parameter &>(p);
+      j_p["type"] = "symbol";
+      if (!sp.get_values().empty())
+      {
+        json::json j_values(json::json_type::array);
+        for (const auto &value : sp.get_values())
+          j_values.push_back(value);
+        j_p["values"] = j_values;
+      }
+      break;
+    }
+    case parameter_type::String:
+    {
+      j_p["type"] = "string";
+      break;
+    }
+    }
+    return j_p;
+  }
+
   inline json::json to_json(const sensor_type &st)
   {
     json::json j_st{{"id", st.get_id()}, {"name", st.get_name()}, {"description", st.get_description()}};
     json::json j_pars(json::json_type::array);
     for (const auto &[name, type] : st.get_parameters())
-      j_pars.push_back({{"name", name}, {"type", static_cast<long>(type)}});
+      j_pars.push_back(to_json(*type));
     j_st["parameters"] = j_pars;
     return j_st;
   }

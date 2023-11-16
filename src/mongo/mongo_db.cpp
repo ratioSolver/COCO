@@ -30,7 +30,7 @@ namespace coco
                 switch (static_cast<parameter_type>(param_type))
                 {
                 case parameter_type::Integer:
-                    parameters.emplace_back(std::make_unique<integer_parameter>(param_name, param_doc["min"].get_int32().value, param_doc["max"].get_int32().value));
+                    parameters.emplace_back(std::make_unique<integer_parameter>(param_name, param_doc["min"].get_int64().value, param_doc["max"].get_int64().value));
                     break;
                 case parameter_type::Float:
                     parameters.emplace_back(std::make_unique<float_parameter>(param_name, param_doc["min"].get_double().value, param_doc["max"].get_double().value));

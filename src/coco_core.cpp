@@ -376,7 +376,10 @@ namespace coco
         LOG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
 
         for (const auto &st : db.get_sensor_types())
+        {
+            LOG_DEBUG("Adding sensor type (" << st.get().id << ") '" << st.get().name << "' to the knowledge base..");
             st.get().fact = AssertString(env, ("(sensor_type (id " + st.get().id + ") (name \"" + st.get().name + "\") (description \"" + st.get().description + "\"))").c_str());
+        }
 
         for (const auto &s : db.get_sensors())
         {

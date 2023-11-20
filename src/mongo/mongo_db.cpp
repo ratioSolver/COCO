@@ -30,8 +30,9 @@ namespace coco
         case parameter_type::Symbol:
         {
             std::vector<std::string> values;
-            for (auto value : doc["values"].get_array().value)
-                values.emplace_back(value.get_string().value.to_string());
+            if (doc.find("values") != doc.end())
+                for (auto value : doc["values"].get_array().value)
+                    values.emplace_back(value.get_string().value.to_string());
             return std::make_unique<symbol_parameter>(param_name, std::move(values));
         }
         case parameter_type::String:

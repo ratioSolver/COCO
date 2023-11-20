@@ -3,6 +3,7 @@
 #include "json.h"
 #include "clips.h"
 #include <memory>
+#include <limits>
 
 namespace coco
 {
@@ -16,7 +17,8 @@ namespace coco
     Float,
     Boolean,
     Symbol,
-    String
+    String,
+    Array
   };
 
   class parameter
@@ -79,6 +81,19 @@ namespace coco
   {
   public:
     string_parameter(const std::string &name) : parameter(name, parameter_type::String) {}
+  };
+
+  class array_parameter : public parameter
+  {
+  public:
+    array_parameter(const std::string &name, parameter_ptr array_type, std::vector<int> dimensions) : parameter(name, parameter_type::Array), array_type(std::move(array_type)), dimensions(std::move(dimensions)) {}
+
+    const parameter_ptr &get_array_type() const { return array_type; }
+    const std::vector<int> &get_dimensions() const { return dimensions; }
+
+  private:
+    const parameter_ptr array_type;
+    const std::vector<int> dimensions;
   };
 
   class sensor_type
@@ -177,16 +192,20 @@ namespace coco
     {
       const auto &ip = static_cast<const integer_parameter &>(p);
       j_p["type"] = "integer";
-      j_p["min"] = ip.get_min();
-      j_p["max"] = ip.get_max();
+      if (ip.get_min() != std::numeric_limits<long>::min())
+        j_p["min"] = ip.get_min();
+      if (ip.get_max() != std::numeric_limits<long>::max())
+        j_p["max"] = ip.get_max();
       break;
     }
     case parameter_type::Float:
     {
       const auto &fp = static_cast<const float_parameter &>(p);
       j_p["type"] = "float";
-      j_p["min"] = fp.get_min();
-      j_p["max"] = fp.get_max();
+      if (fp.get_min() != std::numeric_limits<double>::min())
+        j_p["min"] = fp.get_min();
+      if (fp.get_max() != std::numeric_limits<double>::max())
+        j_p["max"] = fp.get_max();
       break;
     }
     case parameter_type::Boolean:
@@ -210,6 +229,17 @@ namespace coco
     case parameter_type::String:
     {
       j_p["type"] = "string";
+      break;
+    }
+    case parameter_type::Array:
+    {
+      const auto &ap = static_cast<const array_parameter &>(p);
+      j_p["type"] = "array";
+      j_p["array_type"] = to_json(*ap.get_array_type());
+      json::json j_dims(json::json_type::array);
+      for (const auto &dim : ap.get_dimensions())
+        j_dims.push_back(dim);
+      j_p["dimensions"] = j_dims;
       break;
     }
     }

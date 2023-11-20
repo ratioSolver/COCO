@@ -536,6 +536,53 @@ namespace coco
         publish(db.get_name() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
     }
 
+    json::json random_long(long min, long max) { return (long)rand() % (max - min + 1) + min; }
+    json::json random_double(double min, double max) { return (double)rand() / RAND_MAX * (max - min) + min; }
+    json::json random_bool() { return (bool)(rand() % 2); }
+    json::json random_symbol(const std::vector<std::string> &values)
+    {
+        if (values.empty())
+            return "random symbol";
+        return values[rand() % values.size()];
+    }
+    json::json random_string() { return "random string"; }
+    json::json random_array(parameter_type pt, std::vector<int> dimensions)
+    {
+        if (dimensions.size() == 1)
+        {
+            json::json j(json::json_type::array);
+            for (int i = 0; i < dimensions[0]; ++i)
+                switch (pt)
+                {
+                case parameter_type::Integer:
+                    j.push_back(random_long(0, 100));
+                    break;
+                case parameter_type::Float:
+                    j.push_back(random_double(0, 100));
+                    break;
+                case parameter_type::Boolean:
+                    j.push_back(random_bool());
+                    break;
+                case parameter_type::Symbol:
+                    j.push_back(random_symbol({}));
+                    break;
+                case parameter_type::String:
+                    j.push_back(random_string());
+                    break;
+                default:
+                    break;
+                }
+            return j;
+        }
+        else
+        {
+            json::json j(json::json_type::array);
+            for (int i = 0; i < dimensions[0]; ++i)
+                j.push_back(random_array(pt, std::vector<int>(dimensions.begin() + 1, dimensions.end())));
+            return j;
+        }
+    }
+
     COCO_EXPORT void coco_core::publish_random_data(const sensor &s)
     {
         LOG_DEBUG("Publishing random value..");
@@ -546,27 +593,33 @@ namespace coco
             case parameter_type::Integer:
             {
                 auto &p = static_cast<const integer_parameter &>(*parameter_ptr);
-                value[name] = (long)rand() % (p.get_max() - p.get_min() + 1) + p.get_min();
+                value[name] = random_long(p.get_min(), p.get_max());
                 break;
             }
             case parameter_type::Float:
             {
                 auto &p = static_cast<const float_parameter &>(*parameter_ptr);
-                value[name] = (double)rand() / RAND_MAX * (p.get_max() - p.get_min()) + p.get_min();
+                value[name] = random_double(p.get_min(), p.get_max());
                 break;
             }
             case parameter_type::Boolean:
-                value[name] = (bool)(rand() % 2);
+                value[name] = random_bool();
                 break;
             case parameter_type::Symbol:
             {
                 auto &p = static_cast<const symbol_parameter &>(*parameter_ptr);
-                value[name] = p.get_values()[rand() % p.get_values().size()];
+                value[name] = random_symbol(p.get_values());
                 break;
             }
             case parameter_type::String:
-                value[name] = "random string";
+                value[name] = random_string();
                 break;
+            case parameter_type::Array:
+            {
+                auto &p = static_cast<const array_parameter &>(*parameter_ptr);
+                value[name] = random_array(p.get_array_type()->get_type(), p.get_dimensions());
+                break;
+            }
             }
 
         publish(db.get_name() + SENSOR_TOPIC + '/' + s.id, value, 1, true);

@@ -7,6 +7,109 @@
 
 namespace coco
 {
+    parameter_ptr to_par(const bsoncxx::v_noabi::document::view &doc)
+    {
+        auto param_name = doc["name"].get_string().value.to_string();
+        auto param_type = doc["type"].get_int32().value;
+        switch (static_cast<parameter_type>(param_type))
+        {
+        case parameter_type::Integer:
+        {
+            long min = doc.find("min") != doc.end() ? doc["min"].get_int64().value : std::numeric_limits<long>::min();
+            long max = doc.find("max") != doc.end() ? doc["max"].get_int64().value : std::numeric_limits<long>::max();
+            return std::make_unique<integer_parameter>(param_name, min, max);
+        }
+        case parameter_type::Float:
+        {
+            double min = doc.find("min") != doc.end() ? doc["min"].get_double().value : std::numeric_limits<double>::min();
+            double max = doc.find("max") != doc.end() ? doc["max"].get_double().value : std::numeric_limits<double>::max();
+            return std::make_unique<float_parameter>(param_name, min, max);
+        }
+        case parameter_type::Boolean:
+            return std::make_unique<boolean_parameter>(param_name);
+        case parameter_type::Symbol:
+        {
+            std::vector<std::string> values;
+            for (auto value : doc["values"].get_array().value)
+                values.emplace_back(value.get_string().value.to_string());
+            return std::make_unique<symbol_parameter>(param_name, std::move(values));
+        }
+        case parameter_type::String:
+            return std::make_unique<string_parameter>(param_name);
+        case parameter_type::Array:
+        {
+            auto array_type = to_par(doc["array_type"].get_document().value);
+            std::vector<int> dimensions;
+            for (auto dim : doc["dimensions"].get_array().value)
+                dimensions.emplace_back(dim.get_int32().value);
+            return std::make_unique<array_parameter>(param_name, std::move(array_type), std::move(dimensions));
+        }
+        default:
+            assert(false);
+            return {};
+        }
+    }
+
+    bsoncxx::v_noabi::builder::basic::document to_bson(const parameter &p)
+    {
+        bsoncxx::v_noabi::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
+        switch (p.get_type())
+        {
+        case parameter_type::Integer:
+        {
+            const auto &ip = static_cast<const integer_parameter &>(p);
+            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Integer)));
+            if (ip.get_min() != std::numeric_limits<long>::min())
+                doc.append(bsoncxx::builder::basic::kvp("min", ip.get_min()));
+            if (ip.get_max() != std::numeric_limits<long>::max())
+                doc.append(bsoncxx::builder::basic::kvp("max", ip.get_max()));
+            break;
+        }
+        case parameter_type::Float:
+        {
+            const auto &fp = static_cast<const float_parameter &>(p);
+            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Float)));
+            if (fp.get_min() != std::numeric_limits<double>::min())
+                doc.append(bsoncxx::builder::basic::kvp("min", fp.get_min()));
+            if (fp.get_max() != std::numeric_limits<double>::max())
+                doc.append(bsoncxx::builder::basic::kvp("max", fp.get_max()));
+            break;
+        }
+        case parameter_type::Boolean:
+            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Boolean)));
+            break;
+        case parameter_type::Symbol:
+        {
+            const auto &sp = static_cast<const symbol_parameter &>(p);
+            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Symbol)));
+            if (!sp.get_values().empty())
+            {
+                bsoncxx::v_noabi::builder::basic::array values;
+                for (const auto &value : sp.get_values())
+                    values.append(value);
+                doc.append(bsoncxx::builder::basic::kvp("values", values));
+            }
+            break;
+        }
+        case parameter_type::String:
+            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::String)));
+            break;
+        case parameter_type::Array:
+        {
+            const auto &ap = static_cast<const array_parameter &>(p);
+            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Array)));
+            doc.append(bsoncxx::builder::basic::kvp("array_type", to_bson(*ap.get_array_type())));
+            bsoncxx::v_noabi::builder::basic::array dimensions;
+            for (const auto &dim : ap.get_dimensions())
+                dimensions.append(dim);
+            doc.append(bsoncxx::builder::basic::kvp("dimensions", dimensions));
+            break;
+        }
+        }
+        return doc;
+    }
+
     mongo_db::mongo_db(const std::string &name, const std::string &mongodb_uri) : coco_db(name), conn{mongocxx::uri{mongodb_uri}}, db(conn[name]), instances_collection(db["instances"]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["sensors"]), sensor_data_collection(db["sensor_data"]) { LOG("Connecting to `" + mongodb_uri + "` MongoDB databases.."); }
 
     void mongo_db::init()
@@ -23,34 +126,7 @@ namespace coco
             auto description = doc["description"].get_string().value.to_string();
             std::vector<parameter_ptr> parameters;
             for (auto param : doc["parameters"].get_array().value)
-            {
-                auto param_doc = param.get_document().value;
-                auto param_name = param_doc["name"].get_string().value.to_string();
-                auto param_type = param_doc["type"].get_int32().value;
-                switch (static_cast<parameter_type>(param_type))
-                {
-                case parameter_type::Integer:
-                    parameters.emplace_back(std::make_unique<integer_parameter>(param_name, param_doc["min"].get_int64().value, param_doc["max"].get_int64().value));
-                    break;
-                case parameter_type::Float:
-                    parameters.emplace_back(std::make_unique<float_parameter>(param_name, param_doc["min"].get_double().value, param_doc["max"].get_double().value));
-                    break;
-                case parameter_type::Boolean:
-                    parameters.emplace_back(std::make_unique<boolean_parameter>(param_name));
-                    break;
-                case parameter_type::Symbol:
-                {
-                    std::vector<std::string> values;
-                    for (auto value : param_doc["values"].get_array().value)
-                        values.emplace_back(value.get_string().value.to_string());
-                    parameters.emplace_back(std::make_unique<symbol_parameter>(param_name, std::move(values)));
-                    break;
-                }
-                case parameter_type::String:
-                    parameters.emplace_back(std::make_unique<string_parameter>(param_name));
-                    break;
-                }
-            }
+                parameters.emplace_back(to_par(param.get_document().value));
             coco_db::create_sensor_type(id, name, description, std::move(parameters));
         }
         LOG("Retrieved " << get_sensor_types().size() << " sensor types..");
@@ -103,35 +179,7 @@ namespace coco
         s_doc.append(bsoncxx::builder::basic::kvp("description", description));
         auto param_types = bsoncxx::builder::basic::array{};
         for (const auto &param : parameters)
-        {
-            auto param_doc = bsoncxx::builder::basic::document{};
-            param_doc.append(bsoncxx::builder::basic::kvp("name", param->get_name()));
-            param_doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(param->get_type())));
-            switch (param->get_type())
-            {
-            case parameter_type::Integer:
-                param_doc.append(bsoncxx::builder::basic::kvp("min", static_cast<integer_parameter &>(*param).get_min()));
-                param_doc.append(bsoncxx::builder::basic::kvp("max", static_cast<integer_parameter &>(*param).get_max()));
-                break;
-            case parameter_type::Float:
-                param_doc.append(bsoncxx::builder::basic::kvp("min", static_cast<float_parameter &>(*param).get_min()));
-                param_doc.append(bsoncxx::builder::basic::kvp("max", static_cast<float_parameter &>(*param).get_max()));
-                break;
-            case parameter_type::Boolean:
-                break;
-            case parameter_type::Symbol:
-            {
-                auto values = bsoncxx::builder::basic::array{};
-                for (const auto &value : static_cast<symbol_parameter &>(*param).get_values())
-                    values.append(value);
-                param_doc.append(bsoncxx::builder::basic::kvp("values", values));
-                break;
-            }
-            case parameter_type::String:
-                break;
-            }
-            param_types.append(param_doc);
-        }
+            param_types.append(to_bson(*param));
         s_doc.append(bsoncxx::builder::basic::kvp("parameters", param_types));
         auto result = sensor_types_collection.insert_one(s_doc.view());
         if (result)

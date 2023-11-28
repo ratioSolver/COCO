@@ -159,6 +159,12 @@ namespace coco
             LOG_WARN("Creating new `" << get_name() << "` instance..");
             auto instance_id = create_instance(get_name());
         }
+        else
+        {
+            LOG("Retrieved `" << get_name() << "` instance..");
+            LOG_DEBUG("Configuring `" << get_name() << "` instance with: " << bsoncxx::to_json(instance_doc->view()["data"].get_document().value));
+            configure(json::load(bsoncxx::to_json(instance_doc->view()["data"].get_document().value)));
+        }
     }
 
     std::string mongo_db::create_instance(const std::string &name, const json::json &data)

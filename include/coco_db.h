@@ -14,6 +14,7 @@ namespace coco
     virtual ~coco_db() = default;
 
     const std::string &get_name() const { return name; }
+    const json::json &get_config() const { return config; }
 
     virtual void init();
 
@@ -167,11 +168,31 @@ namespace coco
     virtual void drop();
 
   protected:
+    void configure(const json::json &config) { this->config = config; }
+    /**
+     * @brief Create a sensor type object with the given id, name, description and parameter types and returns its id.
+     *
+     * @param id the id of the sensor type
+     * @param name the name of the sensor type
+     * @param description the description of the sensor type
+     * @param parameter_types the parameter types of the sensors of the sensor type
+     * @return std::string the id of the created sensor type
+     */
     sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters);
+    /**
+     * @brief Create a sensor object with the given id, name, type and location and returns its id.
+     *
+     * @param id the id of the sensor.
+     * @param name the name of the sensor.
+     * @param type the type of the sensor.
+     * @param l the location of the sensor.
+     * @return std::string the id of the created sensor.
+     */
     sensor &create_sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l);
 
   private:
     const std::string name;                                                                    // The app name.
+    json::json config;                                                                         // The app config.
     std::unordered_map<std::string, sensor_type_ptr> sensor_types;                             // The sensor types of the app.
     std::unordered_map<std::string, std::reference_wrapper<sensor_type>> sensor_types_by_name; // The sensor types of the app indexed by name.
     std::unordered_map<std::string, sensor_ptr> sensors;                                       // The sensors of the app.

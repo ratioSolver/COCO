@@ -302,18 +302,20 @@ namespace coco
         auto &e = coco_exec->get_core();
         auto exec = &coco_exec->get_executor();
         auto slv = &exec->get_solver();
+        auto id = get_id(coco_exec->get_executor().get_solver());
 
         auto coco_exec_it = std::find_if(e.executors.cbegin(), e.executors.cend(), [coco_exec](auto &slv_ptr)
                                          { return &*slv_ptr == coco_exec; });
         assert(*coco_exec_it);
 
         Eval(env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(exec_ptr.integerValue->contents) + ") (retract ?slv))").c_str(), NULL);
-        e.fire_removed_solver(*coco_exec);
         Run(env, -1);
 
         e.executors.erase(coco_exec_it);
         delete exec;
         delete slv;
+
+        e.fire_removed_solver(id);
     }
 
     void publish_message([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
@@ -459,14 +461,16 @@ namespace coco
     {
         LOG_DEBUG("Deleting sensor type..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
-        fire_removed_sensor_type(type);
-        auto f = db.get_sensor_type(type.id).fact;
+        auto id = type.id;
+        auto f = db.get_sensor_type(id).fact;
         // we delete the sensor type from the database..
         db.delete_sensor_type(type);
         // we retract the sensor type fact..
         Retract(f);
         // we run the rules engine to update the policy..
         Run(env, -1);
+
+        fire_removed_sensor_type(id);
     }
 
     COCO_EXPORT void coco_core::create_sensor(const std::string &name, sensor_type &type, location_ptr l)
@@ -520,14 +524,16 @@ namespace coco
     {
         LOG_DEBUG("Deleting sensor..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
-        fire_removed_sensor(s);
-        auto f = db.get_sensor(s.id).fact;
+        auto id = s.id;
+        auto f = db.get_sensor(id).fact;
         // we delete the sensor from the database..
         db.delete_sensor(s);
         // we retract the sensor fact..
         Retract(f);
         // we run the rules engine to update the policy..
         Run(env, -1);
+
+        fire_removed_sensor(id);
     }
 
     COCO_EXPORT void coco_core::publish_sensor_data(const sensor &s, const json::json &value)
@@ -714,10 +720,10 @@ namespace coco
         for (const auto &l : listeners)
             l->updated_sensor_type(st);
     }
-    void coco_core::fire_removed_sensor_type(const sensor_type &st)
+    void coco_core::fire_removed_sensor_type(const std::string &id)
     {
         for (const auto &l : listeners)
-            l->removed_sensor_type(st);
+            l->removed_sensor_type(id);
     }
 
     void coco_core::fire_new_sensor(const sensor &s)
@@ -730,10 +736,10 @@ namespace coco
         for (const auto &l : listeners)
             l->updated_sensor(s);
     }
-    void coco_core::fire_removed_sensor(const sensor &s)
+    void coco_core::fire_removed_sensor(const std::string &id)
     {
         for (const auto &l : listeners)
-            l->removed_sensor(s);
+            l->removed_sensor(id);
     }
 
     void coco_core::fire_new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
@@ -752,10 +758,10 @@ namespace coco
         for (const auto &l : listeners)
             l->new_solver(exec);
     }
-    void coco_core::fire_removed_solver(const coco_executor &exec)
+    void coco_core::fire_removed_solver(const uintptr_t id)
     {
         for (const auto &l : listeners)
-            l->removed_solver(exec);
+            l->removed_solver(id);
     }
 
     void coco_core::fire_state_changed(const coco_executor &exec)

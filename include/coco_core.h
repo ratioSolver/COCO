@@ -146,11 +146,11 @@ namespace coco
   private:
     void fire_new_sensor_type(const sensor_type &type);
     void fire_updated_sensor_type(const sensor_type &type);
-    void fire_removed_sensor_type(const sensor_type &type);
+    void fire_removed_sensor_type(const std::string &id);
 
     void fire_new_sensor(const sensor &s);
     void fire_updated_sensor(const sensor &s);
-    void fire_removed_sensor(const sensor &s);
+    void fire_removed_sensor(const std::string &id);
 
     void fire_new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value);
     void fire_new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &state);
@@ -158,7 +158,7 @@ namespace coco
     void fire_message_arrived(const std::string &topic, const json::json &msg);
 
     void fire_new_solver(const coco_executor &exec);
-    void fire_removed_solver(const coco_executor &exec);
+    void fire_removed_solver(const uintptr_t id);
 
     void fire_state_changed(const coco_executor &exec);
 

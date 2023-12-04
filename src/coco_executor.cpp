@@ -173,52 +173,53 @@ namespace coco
         std::string vals_str = " (create$ ";
 
         for (const auto &[var_name, var] : atm.get_vars())
-        {
-            if (&var->get_type() == &slv.get_bool_type())
+            if (!static_cast<const riddle::predicate &>(atm.get_type()).get_field(var_name).is_synthetic())
             {
-                switch (slv.get_sat_core().value(static_cast<const ratio::bool_item &>(*var).get_lit()))
+                if (&var->get_type() == &slv.get_bool_type())
                 {
-                case utils::True:
-                    pars_str += " " + var_name;
-                    vals_str += " TRUE";
-                    break;
-                case utils::False:
-                    pars_str += " " + var_name;
-                    vals_str += " FALSE";
-                    break;
+                    switch (slv.get_sat_core().value(static_cast<const ratio::bool_item &>(*var).get_lit()))
+                    {
+                    case utils::True:
+                        pars_str += " " + var_name;
+                        vals_str += " TRUE";
+                        break;
+                    case utils::False:
+                        pars_str += " " + var_name;
+                        vals_str += " FALSE";
+                        break;
+                    }
                 }
-            }
-            else if (&var->get_type() == &slv.get_real_type())
-            {
-                pars_str += " " + var_name;
-                vals_str += " " + to_string(slv.get_lra_theory().value(static_cast<const ratio::arith_item &>(*var).get_lin()));
-            }
-            else if (&var->get_type() == &slv.get_time_type())
-            {
-                pars_str += " " + var_name;
-                const auto [lb, ub] = slv.get_rdl_theory().bounds(static_cast<const ratio::arith_item &>(*var).get_lin());
-                vals_str += " " + to_string(lb);
-            }
-            else if (&var->get_type() == &slv.get_string_type())
-            {
-                pars_str += " " + var_name;
-                vals_str += " " + static_cast<const ratio::string_item &>(*var).get_string();
-            }
-            else if (auto ev = dynamic_cast<const ratio::enum_item *>(&*var))
-            {
-                const auto vals = slv.get_ov_theory().value(ev->get_var());
-                if (vals.size() == 1)
+                else if (&var->get_type() == &slv.get_real_type())
                 {
                     pars_str += " " + var_name;
-                    vals_str += " " + slv.guess_name(dynamic_cast<riddle::item &>(**vals.begin()));
+                    vals_str += " " + to_string(slv.get_lra_theory().value(static_cast<const ratio::arith_item &>(*var).get_lin()));
+                }
+                else if (&var->get_type() == &slv.get_time_type())
+                {
+                    pars_str += " " + var_name;
+                    const auto [lb, ub] = slv.get_rdl_theory().bounds(static_cast<const ratio::arith_item &>(*var).get_lin());
+                    vals_str += " " + to_string(lb);
+                }
+                else if (&var->get_type() == &slv.get_string_type())
+                {
+                    pars_str += " " + var_name;
+                    vals_str += " " + static_cast<const ratio::string_item &>(*var).get_string();
+                }
+                else if (auto ev = dynamic_cast<const ratio::enum_item *>(&*var))
+                {
+                    const auto vals = slv.get_ov_theory().value(ev->get_var());
+                    if (vals.size() == 1)
+                    {
+                        pars_str += " " + var_name;
+                        vals_str += " " + slv.guess_name(dynamic_cast<riddle::item &>(**vals.begin()));
+                    }
+                }
+                else
+                {
+                    pars_str += " " + var_name;
+                    vals_str += " " + slv.guess_name(*var);
                 }
             }
-            else
-            {
-                pars_str += " " + var_name;
-                vals_str += " " + slv.guess_name(*var);
-            }
-        }
         pars_str += ")";
         vals_str += ")";
 

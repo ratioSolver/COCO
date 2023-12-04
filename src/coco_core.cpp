@@ -678,6 +678,9 @@ namespace coco
     void coco_core::tick()
     {
         const std::lock_guard<std::recursive_mutex> lock(mtx);
+
+        Eval(env, "(tick)", NULL);
+
         std::vector<coco_executor *> c_executors;
         c_executors.reserve(executors.size());
         for (auto &exec : executors)

@@ -73,8 +73,6 @@ namespace coco
     void ending(const std::unordered_set<ratio::atom *> &atoms) override;
     void end(const std::unordered_set<ratio::atom *> &atoms) override;
 
-    std::string to_task(const ratio::atom &atm) const noexcept;
-
     friend COCO_EXPORT json::json to_state(const coco_executor &rhs) noexcept;
     friend COCO_EXPORT json::json to_graph(const coco_executor &rhs) noexcept;
 

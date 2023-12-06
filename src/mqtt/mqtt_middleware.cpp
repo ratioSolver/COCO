@@ -79,8 +79,7 @@ namespace coco
     void mqtt_middleware::callback::connection_lost([[maybe_unused]] const std::string &cause)
     {
         LOG_WARN("MQTT connection lost! trying to reconnect..");
-        mm.mqtt_client.reconnect()->wait();
-        LOG("MQTT client reconnected!");
+        mm.mqtt_client.reconnect();
     }
 
     void mqtt_middleware::callback::message_arrived(mqtt::const_message_ptr msg)

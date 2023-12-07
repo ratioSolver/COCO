@@ -32,6 +32,9 @@ namespace coco
 
     void drop() override;
 
+    static parameter_ptr to_par(const bsoncxx::v_noabi::document::view &doc);
+    static bsoncxx::v_noabi::builder::basic::document to_bson(const parameter &p);
+
   private:
     mongocxx::client conn;
 

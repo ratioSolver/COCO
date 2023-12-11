@@ -191,7 +191,7 @@ namespace coco
     case parameter_type::Integer:
     {
       const auto &ip = static_cast<const integer_parameter &>(p);
-      j_p["type"] = "integer";
+      j_p["type"] = "int";
       if (ip.get_min() != std::numeric_limits<long>::min())
         j_p["min"] = ip.get_min();
       if (ip.get_max() != std::numeric_limits<long>::max())
@@ -210,7 +210,7 @@ namespace coco
     }
     case parameter_type::Boolean:
     {
-      j_p["type"] = "boolean";
+      j_p["type"] = "bool";
       break;
     }
     case parameter_type::Symbol:

@@ -1,6 +1,5 @@
 #include "coco_core.h"
 #include "logging.h"
-#include "coco_middleware.h"
 #include "coco_executor.h"
 #include "coco_db.h"
 #include "coco_listener.h"
@@ -318,23 +317,6 @@ namespace coco
         e.fire_removed_solver(id);
     }
 
-    void publish_message([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out)
-    {
-        LOG_DEBUG("Sending message..");
-
-        auto &e = *reinterpret_cast<coco_core *>(udfc->context);
-
-        UDFValue topic;
-        if (!UDFFirstArgument(udfc, STRING_BIT, &topic))
-            return;
-
-        UDFValue message;
-        if (!UDFNextArgument(udfc, STRING_BIT, &message))
-            return;
-
-        e.publish(topic.lexemeValue->contents, json::load(message.lexemeValue->contents));
-    }
-
     COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())
     {
         AddUDF(env, "new_solver_script", "l", 2, 2, "ys", new_solver_script, "new_solver_script", this);
@@ -347,7 +329,6 @@ namespace coco
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", this);
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", this);
         AddUDF(env, "delete_solver", "v", 1, 1, "l", delete_solver, "delete_solver", this);
-        AddUDF(env, "publish_message", "v", 2, 2, "ss", publish_message, "publish_message", this);
     }
     COCO_EXPORT coco_core::~coco_core()
     {
@@ -356,26 +337,15 @@ namespace coco
 
     COCO_EXPORT void coco_core::load_rules(const std::vector<std::string> &files)
     {
+        LOG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
+
         LOG_DEBUG("Loading policy rules..");
         for (const auto &f : files)
             Load(env, f.c_str());
 
         Reset(env);
-    }
-
-    COCO_EXPORT void coco_core::connect()
-    {
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        for (auto &mdlw : middlewares)
-            mdlw->connect();
-        coco_timer.start();
 
         db.init();
-    }
-
-    COCO_EXPORT void coco_core::init()
-    {
-        LOG("Initializing deduCtiOn and abduCtiOn (COCO) reasoner..");
 
         for (const auto &st : db.get_sensor_types())
         {
@@ -395,20 +365,6 @@ namespace coco
         }
 
         Run(env, -1);
-
-        for (const auto &s : db.get_sensors())
-        {
-            LOG_DEBUG("Managing sensor (" << s.get().id << ") '" << s.get().name << "' of type '" << s.get().type.name << "' subscriptions..");
-            for (auto &mw : middlewares)
-                mw->subscribe(db.get_name() + SENSOR_TOPIC + '/' + s.get().id, 1);
-        }
-    }
-
-    COCO_EXPORT void coco_core::disconnect()
-    {
-        for (auto &mdlw : middlewares)
-            mdlw->disconnect();
-        coco_timer.stop();
     }
 
     COCO_EXPORT void coco_core::create_instance(const std::string &name, const json::json &data)
@@ -489,11 +445,6 @@ namespace coco
         Run(env, -1);
 
         fire_new_sensor(db.get_sensor(id));
-
-        // we subscribe to the sensor topic..
-        LOG_DEBUG("Managing sensor (" << id << ") " << name << " of type " << type.id << " subscriptions..");
-        for (auto &mw : middlewares)
-            mw->subscribe(db.get_name() + SENSOR_TOPIC + '/' + id, 1);
     }
     COCO_EXPORT void coco_core::set_sensor_name(sensor &s, const std::string &name)
     {
@@ -520,118 +471,7 @@ namespace coco
 
         fire_updated_sensor(s);
     }
-    COCO_EXPORT void coco_core::delete_sensor(sensor &s)
-    {
-        LOG_DEBUG("Deleting sensor..");
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        auto id = s.id;
-        auto f = db.get_sensor(id).fact;
-        // we delete the sensor from the database..
-        db.delete_sensor(s);
-        // we retract the sensor fact..
-        Retract(f);
-        // we run the rules engine to update the policy..
-        Run(env, -1);
-
-        fire_removed_sensor(id);
-    }
-
-    COCO_EXPORT void coco_core::publish_sensor_data(const sensor &s, const json::json &value)
-    {
-        LOG_DEBUG("Publishing sensor value..");
-        publish(db.get_name() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
-    }
-
-    json::json random_long(long min, long max) { return (long)rand() % (max - min + 1) + min; }
-    json::json random_double(double min, double max) { return (double)rand() / RAND_MAX * (max - min) + min; }
-    json::json random_bool() { return (bool)(rand() % 2); }
-    json::json random_symbol(const std::vector<std::string> &values)
-    {
-        if (values.empty())
-            return "random symbol";
-        return values[rand() % values.size()];
-    }
-    json::json random_string() { return "random string"; }
-    json::json random_array(parameter_type pt, std::vector<int> dimensions)
-    {
-        if (dimensions.size() == 1)
-        {
-            json::json j(json::json_type::array);
-            for (int i = 0; i < dimensions[0]; ++i)
-                switch (pt)
-                {
-                case parameter_type::Integer:
-                    j.push_back(random_long(0, 100));
-                    break;
-                case parameter_type::Float:
-                    j.push_back(random_double(0, 100));
-                    break;
-                case parameter_type::Boolean:
-                    j.push_back(random_bool());
-                    break;
-                case parameter_type::Symbol:
-                    j.push_back(random_symbol({}));
-                    break;
-                case parameter_type::String:
-                    j.push_back(random_string());
-                    break;
-                default:
-                    break;
-                }
-            return j;
-        }
-        else
-        {
-            json::json j(json::json_type::array);
-            for (int i = 0; i < dimensions[0]; ++i)
-                j.push_back(random_array(pt, std::vector<int>(dimensions.begin() + 1, dimensions.end())));
-            return j;
-        }
-    }
-
-    COCO_EXPORT void coco_core::publish_random_data(const sensor &s)
-    {
-        LOG_DEBUG("Publishing random value..");
-        json::json value;
-        for (const auto &[name, parameter_ptr] : s.get_type().get_parameters())
-            switch (parameter_ptr->get_type())
-            {
-            case parameter_type::Integer:
-            {
-                auto &p = static_cast<const integer_parameter &>(*parameter_ptr);
-                value[name] = random_long(p.get_min(), p.get_max());
-                break;
-            }
-            case parameter_type::Float:
-            {
-                auto &p = static_cast<const float_parameter &>(*parameter_ptr);
-                value[name] = random_double(p.get_min(), p.get_max());
-                break;
-            }
-            case parameter_type::Boolean:
-                value[name] = random_bool();
-                break;
-            case parameter_type::Symbol:
-            {
-                auto &p = static_cast<const symbol_parameter &>(*parameter_ptr);
-                value[name] = random_symbol(p.get_values());
-                break;
-            }
-            case parameter_type::String:
-                value[name] = random_string();
-                break;
-            case parameter_type::Array:
-            {
-                auto &p = static_cast<const array_parameter &>(*parameter_ptr);
-                value[name] = random_array(p.get_array_type()->get_type(), p.get_dimensions());
-                break;
-            }
-            }
-
-        publish(db.get_name() + SENSOR_TOPIC + '/' + s.id, value, 1, true);
-    }
-
-    void coco_core::set_sensor_data(sensor &s, const json::json &value)
+    COCO_EXPORT void coco_core::set_sensor_data(sensor &s, const json::json &value)
     {
         LOG_DEBUG("Setting sensor value..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -653,8 +493,7 @@ namespace coco
 
         fire_new_sensor_data(s, time, value);
     }
-
-    void coco_core::set_sensor_state(sensor &s, const json::json &state)
+    COCO_EXPORT void coco_core::set_sensor_state(sensor &s, const json::json &state)
     {
         LOG_DEBUG("Setting sensor state..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -674,6 +513,21 @@ namespace coco
         Run(env, -1);
         FCBDispose(sensor_state);
     }
+    COCO_EXPORT void coco_core::delete_sensor(sensor &s)
+    {
+        LOG_DEBUG("Deleting sensor..");
+        const std::lock_guard<std::recursive_mutex> lock(mtx);
+        auto id = s.id;
+        auto f = db.get_sensor(id).fact;
+        // we delete the sensor from the database..
+        db.delete_sensor(s);
+        // we retract the sensor fact..
+        Retract(f);
+        // we run the rules engine to update the policy..
+        Run(env, -1);
+
+        fire_removed_sensor(id);
+    }
 
     void coco_core::tick()
     {
@@ -687,30 +541,6 @@ namespace coco
             c_executors.push_back(exec.operator->());
         for (auto &exec : c_executors)
             exec->tick();
-    }
-
-    void coco_core::publish(const std::string &topic, const json::json &msg, bool local, int qos, bool retained)
-    {
-        for (auto &mdlw : middlewares)
-            mdlw->publish(topic, msg, local, qos, retained);
-    }
-    void coco_core::message_arrived(const std::string &topic, const json::json &msg)
-    {
-        const std::lock_guard<std::recursive_mutex> lock(mtx);
-        if (topic.rfind(db.get_name() + SENSOR_TOPIC + '/', 0) == 0)
-        { // we have a new sensor value..
-            std::string sensor_id = topic;
-            sensor_id.erase(0, (db.get_name() + SENSOR_TOPIC + '/').length());
-            set_sensor_data(db.get_sensor(sensor_id), msg);
-        }
-        else if (topic.rfind(db.get_name() + SENSOR_STATE + '/', 0) == 0)
-        { // we have a new sensor state..
-            std::string sensor_id = topic;
-            sensor_id.erase(0, (db.get_name() + SENSOR_TOPIC + '/').length());
-            set_sensor_state(db.get_sensor(sensor_id), msg);
-        }
-        else // we notify the listeners that a message has arrived..
-            fire_message_arrived(topic, msg);
     }
 
     void coco_core::fire_new_sensor_type(const sensor_type &st)

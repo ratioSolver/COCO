@@ -22,30 +22,10 @@ set(CLIPS_INCLUDE_DIR /usr/local/include/clips CACHE PATH "CLIPS include directo
 set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 
 set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
-set(MQTT ON CACHE BOOL "Enables MQTT")
 set(MONGO_DB ON CACHE BOOL "Enables MongoDB")
 
 file(GLOB COCO_SOURCES src/*.cpp)
 file(GLOB COCO_HEADERS include/*.h)
-
-if(MQTT)
-    find_package(PahoMqttCpp REQUIRED)
-
-    set(MQTT_HOST "tcp://127.0.0.1" CACHE STRING "The MQTT Host")
-    set(MQTT_PORT "1883" CACHE STRING "The MQTT Port")
-    set(MQTT_AUTH OFF CACHE BOOL "Enables MQTT authentication")
-    set(MQTT_USERNAME "" CACHE STRING "The MQTT Username")
-    set(MQTT_PASSWORD "" CACHE STRING "The MQTT Password")
-
-    message(STATUS "MQTT host:              ${MQTT_HOST}")
-    message(STATUS "MQTT port:              ${MQTT_PORT}")
-    if(NOT MQTT_USERNAME STREQUAL "" OR NOT MQTT_PASSWORD STREQUAL "")
-        set(MQTT_AUTH ON CACHE BOOL "Enables app MQTT authentication" FORCE)
-    endif()
-
-    list(APPEND COCO_SOURCES src/mqtt/mqtt_middleware.cpp)
-    list(APPEND COCO_HEADERS include/mqtt/mqtt_middleware.h)
-endif()
 
 if(MONGO_DB)
     find_package(mongocxx REQUIRED)
@@ -76,15 +56,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURR
 target_link_directories(${PROJECT_NAME} PUBLIC ${CLIPS_LIB_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC PlExA clips)
 target_compile_definitions(${PROJECT_NAME} PUBLIC COCO_NAME="${COCO_NAME}")
-
-if(MQTT)
-    target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/mqtt $<INSTALL_INTERFACE:> ${PAHO_MQTT_CPP_INCLUDE_DIRS})
-    target_link_libraries(${PROJECT_NAME} PUBLIC PahoMqttCpp::paho-mqttpp3-static)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
-    if(MQTT_AUTH)
-        target_compile_definitions(${PROJECT_NAME} PUBLIC MQTT_AUTH MQTT_USERNAME="${MQTT_USERNAME}" MQTT_PASSWORD="${MQTT_PASSWORD}")
-    endif()
-endif()
 
 if(MONGO_DB)
     target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/mongo $<INSTALL_INTERFACE:> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})

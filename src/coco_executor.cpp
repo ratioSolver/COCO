@@ -75,7 +75,7 @@ namespace coco
     void coco_executor::started_solving() { cc.fire_started_solving(*this); }
     void coco_executor::solution_found()
     {
-        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Solution found..");
+        LOG_DEBUG("[" + exec.get_name() + "] Solution found..");
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
         c_flaw = nullptr;
         c_resolver = nullptr;
@@ -84,7 +84,7 @@ namespace coco
     }
     void coco_executor::inconsistent_problem()
     {
-        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Inconsistent problem..");
+        LOG_DEBUG("[" + exec.get_name() + "] Inconsistent problem..");
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
         c_flaw = nullptr;
         c_resolver = nullptr;
@@ -129,7 +129,7 @@ namespace coco
 
     void coco_executor::executor_state_changed(ratio::executor::executor_state state)
     {
-        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Executor state: " << ratio::executor::to_string(state));
+        LOG_DEBUG("[" + exec.get_name() + "] Executor state: " << ratio::executor::to_string(state));
         Eval(cc.env, ("(do-for-fact ((?slv solver)) (= ?slv:solver_ptr " + std::to_string(reinterpret_cast<uintptr_t>(this)) + ") (modify ?slv (state " + ratio::executor::to_string(state) + ")))").c_str(), NULL);
         cc.fire_executor_state_changed(*this, state);
         Run(cc.env, -1);
@@ -137,7 +137,7 @@ namespace coco
 
     void coco_executor::tick(const utils::rational &time)
     {
-        LOG_DEBUG("[" + std::to_string(reinterpret_cast<uintptr_t>(this)) + "] Current time: " << to_string(time));
+        LOG_DEBUG("[" + exec.get_name() + "] Current time: " << to_string(time));
         const std::lock_guard<std::recursive_mutex> lock(cc.mtx);
         current_time = time;
 

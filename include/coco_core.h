@@ -10,14 +10,9 @@
 #include <list>
 #include <mutex>
 
-#define SENSOR_TOPIC "/sensor"
-#define SENSOR_STATE "/sensor_state"
-
 namespace coco
 {
   class coco_core;
-  class coco_middleware;
-  using coco_middleware_ptr = std::unique_ptr<coco_middleware>;
   class coco_db;
   class coco_executor;
   using coco_executor_ptr = std::unique_ptr<coco_executor>;
@@ -55,13 +50,6 @@ namespace coco
     std::list<coco_executor_ptr> &get_executors() { return executors; }
 
     /**
-     * @brief Adds a middleware to the list of middlewares.
-     *
-     * @param mw The middleware to add.
-     */
-    void add_middleware(coco_middleware_ptr mw) { middlewares.push_back(std::move(mw)); }
-
-    /**
      * @brief Loads the rules from the given files.
      *
      * @param files The files to load.
@@ -69,20 +57,13 @@ namespace coco
     COCO_EXPORT void load_rules(const std::vector<std::string> &files);
 
     /**
-     * @brief Connects all the middlewares and initializes the database.
-     *
+     * @brief Starts the coco core.
      */
-    COCO_EXPORT void connect();
+    void start() { coco_timer.start(); }
     /**
-     * @brief Initializes the knowledge base.
-     *
+     * @brief Stops the coco core.
      */
-    COCO_EXPORT virtual void init();
-    /**
-     * @brief Disconnects all the middlewares.
-     *
-     */
-    COCO_EXPORT void disconnect();
+    void stop() { coco_timer.stop(); }
 
     COCO_EXPORT void create_instance(const std::string &name, const json::json &data = {});
 
@@ -94,31 +75,12 @@ namespace coco
     COCO_EXPORT void create_sensor(const std::string &name, sensor_type &type, location_ptr l);
     COCO_EXPORT void set_sensor_name(sensor &s, const std::string &name);
     COCO_EXPORT void set_sensor_location(sensor &s, location_ptr l);
+    COCO_EXPORT void set_sensor_data(sensor &s, const json::json &value);
+    COCO_EXPORT void set_sensor_state(sensor &s, const json::json &state);
     COCO_EXPORT void delete_sensor(sensor &s);
-
-    COCO_EXPORT void publish_sensor_data(const sensor &s, const json::json &value);
-    COCO_EXPORT void publish_random_data(const sensor &s);
-
-  private:
-    void set_sensor_data(sensor &s, const json::json &value);
-    void set_sensor_state(sensor &s, const json::json &state);
-
-  protected:
-    /**
-     * @brief Publish a message to the given topic.
-     *
-     * @param topic The topic to publish to.
-     * @param msg The message to publish.
-     * @param local Whether the message is local or not.
-     * @param qos The quality of service.
-     * @param retained Whether the message is retained.
-     */
-    void publish(const std::string &topic, const json::json &msg, bool local = true, int qos = 0, bool retained = false);
 
   private:
     void tick();
-
-    void message_arrived(const std::string &topic, const json::json &msg);
 
     friend void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);
@@ -132,7 +94,7 @@ namespace coco
     friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void publish_message(Environment *env, UDFContext *udfc, UDFValue *out);
 
-    COCO_EXPORT static std::string value_to_string(const json::json &value)
+    static std::string value_to_string(const json::json &value)
     {
       std::string str;
       for (const auto &[id, val] : value.get_object())
@@ -188,7 +150,6 @@ namespace coco
   private:
     coco_db &db;
     std::recursive_mutex mtx;
-    std::list<coco_middleware_ptr> middlewares;
     ratio::time::timer coco_timer;
     std::list<coco_executor_ptr> executors;
     std::vector<coco_listener *> listeners; // the coco listeners..

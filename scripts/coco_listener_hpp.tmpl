@@ -1,0 +1,15 @@
+#include "coco_listener.h"
+#include "[project_name]_app.h"
+
+namespace [project_name]
+{
+  class [project_name]_listener : public coco_listener
+  {
+  public:
+    [project_name]_listener([project_name]_app &app) : coco_listener(app), app(app) { app.listeners.push_back(this); }
+    virtual ~[project_name]_listener() { app.listeners.erase(std::find(app.listeners.cbegin(), app.listeners.cend(), this)); }
+
+  protected:
+    [project_name]_app &app;
+  };
+} // namespace [project_name]

@@ -4,9 +4,15 @@ deduCtiOn and abduCtiOn (COCO) reasoner.
 
 ## How to use
 
+Use the provided `new_coco_project.py` script to create a new project.
+
+```bash
+python3 scripts/new_coco_project.py <project_name>
+```
+
 ### The Database
 
-Create a database class that inherits from a `coco::coco_db` implementation. The `coco::mongo_db` implementation is provided as an example.
+Implement a database class that inherits from a `coco::coco_db` implementation. The `coco::mongo_db` implementation is provided as an example.
 
 ```cpp
 #include "mongo_db.h"
@@ -20,7 +26,7 @@ class my_db : public coco::mongo_db
 
 ### The Application
 
-Create your application class that inherits from `coco::coco_core` and pass the database to the base class constructor.
+Implement your application class that inherits from `coco::coco_core` and pass the database to the base class constructor.
 
 ```cpp
 #include "coco_core.h"
@@ -36,7 +42,7 @@ The application can be used to extend the COCO reasoner with your own functional
 
 ### The Listener
 
-Create a listener class that inherits from `coco::coco_listener` and pass the application to the base class constructor.
+Implement a listener class that inherits from `coco::coco_listener` and pass the application to the base class constructor.
 
 ```cpp
 #include "coco_listener.h"

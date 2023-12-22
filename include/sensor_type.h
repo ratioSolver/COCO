@@ -1,6 +1,6 @@
 #pragma once
 
-#include "json.h"
+#include "json.hpp"
 #include "clips.h"
 #include <memory>
 #include <limits>

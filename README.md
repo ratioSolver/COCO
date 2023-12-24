@@ -53,3 +53,68 @@ class my_listener : public coco::coco_listener
     my_listener(my_app& app) : coco_listener(app) {}
 };
 ```
+
+## Installation of COCO on a local machine
+
+### CLIPS
+
+COCO relies on [CLIPS](https://www.clipsrules.net) for reacting to the dynamic changes which happen into the urban environment.
+ - Download [CLIPS v6.4.1](https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.1/clips_core_source_641.zip/download) and unzip the zip file into the `clips_core_source_641` folder.
+ - Reach the `clips_core_source_641/core` folder and compile CLIPS through `make release_cpp`.
+ - Copy all the header files into the `/usr/local/include/clips` folder through `sudo cp *.h /usr/local/include/clips/`.
+ - Copy the library into the `/usr/local/lib` folder through `sudo cp libclips.a /usr/local/lib/`.
+
+### MongoDB
+
+COCO relies on [MongoDB](https://www.mongodb.com) for storing the data which is collected from the sensors and the participatory data. It is required, in particular, to install the [cxx drivers](https://www.mongodb.com/docs/drivers/cxx/) for connecting COCO to a MongoDB database.
+
+**Installig OpenSSL**
+
+```shell
+sudo apt-get install libssl-dev
+```
+
+**Installing MongoDB cxx drivers**
+
+Download and configure the mongoc driver.
+
+```shell
+git clone https://github.com/mongodb/mongo-c-driver.git
+cd mongo-c-driver
+python build/calc_release_version.py > VERSION_CURRENT
+mkdir cmake-build
+cd cmake-build
+cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
+```
+
+Compile and install it.
+
+```shell
+cmake --build .
+sudo cmake --build . --target install
+```
+
+Download the mongocxx driver.
+
+```shell
+curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r3.9.0/mongo-cxx-driver-r3.9.0.tar.gz
+tar -xzf mongo-cxx-driver-r3.9.0.tar.gz
+cd mongo-cxx-driver-r3.9.0/build
+```
+
+Configure the driver.
+
+```shell
+cmake .. -DCMAKE_BUILD_TYPE=Release -DMONGOCXX_OVERRIDE_DEFAULT_INSTALL_PREFIX=OFF
+```
+
+Build and install il.
+
+```shell
+cmake --build .
+sudo cmake --build . --target install
+```
+
+**Installing MongoDB (optional)**
+
+For installation of MongoDB refer to the official [documentation](https://www.mongodb.com/docs/manual/installation).

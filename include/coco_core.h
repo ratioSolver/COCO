@@ -75,7 +75,7 @@ namespace coco
     COCO_EXPORT void create_sensor(const std::string &name, sensor_type &type, location_ptr l);
     COCO_EXPORT void set_sensor_name(sensor &s, const std::string &name);
     COCO_EXPORT void set_sensor_location(sensor &s, location_ptr l);
-    COCO_EXPORT void set_sensor_data(sensor &s, const json::json &value);
+    COCO_EXPORT void add_sensor_data(sensor &s, const json::json &value);
     COCO_EXPORT void set_sensor_state(sensor &s, const json::json &state);
     COCO_EXPORT void delete_sensor(sensor &s);
 
@@ -114,13 +114,13 @@ namespace coco
     void fire_updated_sensor(const sensor &s);
     void fire_removed_sensor(const std::string &id);
 
-    void fire_new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value);
-    void fire_new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &state);
+    void fire_new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &value);
+    void fire_new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &state);
 
     void fire_message_arrived(const std::string &topic, const json::json &msg);
 
     void fire_new_solver(const coco_executor &exec);
-    void fire_removed_solver(const uintptr_t id);
+    void fire_deleted_solver(const uintptr_t id);
 
     void fire_state_changed(const coco_executor &exec);
 

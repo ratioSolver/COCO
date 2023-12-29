@@ -96,15 +96,15 @@ namespace coco
   private:
     void set_location(location_ptr l) { loc.swap(l); }
 
-    void set_value(const std::chrono::system_clock::time_point &time, const json::json &val)
+    void set_value(const std::chrono::system_clock::time_point &timestamp, const json::json &val)
     {
-      last_update = time;
+      last_update = timestamp;
       value = val; // we copy the value..
     }
 
-    void set_state(const std::chrono::system_clock::time_point &time, const json::json &st)
+    void set_state(const std::chrono::system_clock::time_point &timestamp, const json::json &st)
     {
-      last_update = time;
+      last_update = timestamp;
       state = st; // we copy the state..
     }
 

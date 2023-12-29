@@ -153,7 +153,7 @@ namespace coco
      * @param time the time of the sensor value.
      * @param val the value of the sensor.
      */
-    virtual void set_sensor_data(sensor &s, const std::chrono::system_clock::time_point &time, const json::json &val) { s.set_value(time, val); }
+    virtual void set_sensor_data(sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &val) { s.set_value(timestamp, val); }
     /**
      * @brief Delete the sensor object with the given id.
      *
@@ -253,19 +253,19 @@ namespace coco
     j_msg["sensor"] = id;
     return j_msg;
   }
-  inline json::json sensor_data_message(const coco::sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) noexcept
+  inline json::json sensor_value_message(const coco::sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &value) noexcept
   {
-    json::json j_msg{{"type", "sensor_data"}};
+    json::json j_msg{{"type", "sensor_value"}};
     j_msg["sensor"] = s.get_id();
-    j_msg["time"] = std::chrono::system_clock::to_time_t(time);
+    j_msg["timestamp"] = std::chrono::system_clock::to_time_t(timestamp);
     j_msg["value"] = value;
     return j_msg;
   }
-  inline json::json sensor_state_message(const coco::sensor &s, const std::chrono::system_clock::time_point &time, const json::json &state) noexcept
+  inline json::json sensor_state_message(const coco::sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &state) noexcept
   {
     json::json j_msg{{"type", "sensor_state"}};
     j_msg["sensor"] = s.get_id();
-    j_msg["time"] = std::chrono::system_clock::to_time_t(time);
+    j_msg["timestamp"] = std::chrono::system_clock::to_time_t(timestamp);
     j_msg["state"] = state;
     return j_msg;
   }

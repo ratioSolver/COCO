@@ -193,12 +193,12 @@ namespace coco
         }
         return data;
     }
-    void mongo_db::set_sensor_data(sensor &s, const std::chrono::system_clock::time_point &time, const json::json &val)
+    void mongo_db::set_sensor_data(sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &val)
     {
-        coco_db::set_sensor_data(s, time, val);
-        auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::types::b_date{time} << "value" << bsoncxx::from_json(val.to_string()) << bsoncxx::builder::stream::finalize);
+        coco_db::set_sensor_data(s, timestamp, val);
+        auto result = sensor_data_collection.insert_one(bsoncxx::builder::stream::document{} << "sensor_id" << bsoncxx::oid{bsoncxx::stdx::string_view{s.get_id()}} << "timestamp" << bsoncxx::types::b_date{timestamp} << "value" << bsoncxx::from_json(val.to_string()) << bsoncxx::builder::stream::finalize);
         if (result)
-            coco_db::set_sensor_data(s, time, val);
+            coco_db::set_sensor_data(s, timestamp, val);
     }
     void mongo_db::delete_sensor(sensor &s)
     {

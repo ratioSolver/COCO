@@ -314,7 +314,7 @@ namespace coco
         delete exec;
         delete slv;
 
-        e.fire_removed_solver(id);
+        e.fire_deleted_solver(id);
     }
 
     COCO_EXPORT coco_core::coco_core(coco_db &db) : db(db), coco_timer(1000, std::bind(&coco_core::tick, this)), env(CreateEnvironment())
@@ -471,7 +471,7 @@ namespace coco
 
         fire_updated_sensor(s);
     }
-    COCO_EXPORT void coco_core::set_sensor_data(sensor &s, const json::json &value)
+    COCO_EXPORT void coco_core::add_sensor_data(sensor &s, const json::json &value)
     {
         LOG_DEBUG("Setting sensor value..");
         const std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -575,15 +575,15 @@ namespace coco
             l->deleted_sensor(id);
     }
 
-    void coco_core::fire_new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
+    void coco_core::fire_new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &value)
     {
         for (const auto &l : listeners)
-            l->new_sensor_data(s, time, value);
+            l->new_sensor_value(s, timestamp, value);
     }
-    void coco_core::fire_new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &state)
+    void coco_core::fire_new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &state)
     {
         for (const auto &l : listeners)
-            l->new_sensor_state(s, time, state);
+            l->new_sensor_state(s, timestamp, state);
     }
 
     void coco_core::fire_new_solver(const coco_executor &exec)
@@ -591,7 +591,7 @@ namespace coco
         for (const auto &l : listeners)
             l->new_solver(exec);
     }
-    void coco_core::fire_removed_solver(const uintptr_t id)
+    void coco_core::fire_deleted_solver(const uintptr_t id)
     {
         for (const auto &l : listeners)
             l->deleted_solver(id);

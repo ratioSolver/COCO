@@ -90,4 +90,12 @@ namespace coco
   using coco_executor_ptr = std::unique_ptr<coco_executor>;
 
   inline uintptr_t get_id(const coco_executor &exec) noexcept { return reinterpret_cast<uintptr_t>(&exec); }
+
+  inline json::json executor_graph_message(const coco_executor &rhs) noexcept
+  {
+    json::json j_msg = to_graph(rhs);
+    j_msg["type"] = "graph";
+    j_msg["id"] = get_id(rhs.get_executor().get_solver());
+    return j_msg;
+  }
 } // namespace coco

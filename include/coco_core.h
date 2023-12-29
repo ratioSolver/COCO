@@ -157,4 +157,6 @@ namespace coco
   protected:
     Environment *env;
   };
+
+  json::json solvers_message(const std::list<coco_executor_ptr> &executors) noexcept;
 } // namespace coco

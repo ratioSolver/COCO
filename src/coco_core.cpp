@@ -695,4 +695,14 @@ namespace coco
         for (const auto &l : listeners)
             l->end(exec, atoms);
     }
+
+    json::json solvers_message(const std::list<coco_executor_ptr> &executors) noexcept
+    {
+        json::json j_msg{{"type", "solvers"}};
+        json::json j_solvers = json::json(json::json_type::array);
+        for (const auto &exec : executors)
+            j_solvers.push_back({{"id", get_id(exec->get_executor().get_solver())}, {"name", exec->get_executor().get_name()}, {"state", to_string(exec->get_executor().get_state())}});
+        j_msg["solvers"] = j_solvers;
+        return j_msg;
+    }
 } // namespace coco

@@ -197,4 +197,23 @@ namespace coco
     std::unordered_map<std::string, std::reference_wrapper<sensor_type>> sensor_types_by_name; // The sensor types of the app indexed by name.
     std::unordered_map<std::string, sensor_ptr> sensors;                                       // The sensors of the app.
   };
+
+  inline json::json sensor_types_message(const std::vector<std::reference_wrapper<sensor_type>> &rhs) noexcept
+  {
+    json::json j_msg{{"type", "sensor_types"}};
+    json::json j_sts(json::json_type::array);
+    for (const auto &st : rhs)
+      j_sts.push_back(to_json(st.get()));
+    j_msg["sensor_types"] = std::move(j_sts);
+    return j_msg;
+  }
+  inline json::json sensors_message(const std::vector<std::reference_wrapper<sensor>> &rhs) noexcept
+  {
+    json::json j_msg{{"type", "sensors"}};
+    json::json j_sensors(json::json_type::array);
+    for (const auto &s : rhs)
+      j_sensors.push_back(to_json(s.get()));
+    j_msg["sensors"] = std::move(j_sensors);
+    return j_msg;
+  }
 } // namespace coco

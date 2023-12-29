@@ -556,7 +556,7 @@ namespace coco
     void coco_core::fire_removed_sensor_type(const std::string &id)
     {
         for (const auto &l : listeners)
-            l->removed_sensor_type(id);
+            l->deleted_sensor_type(id);
     }
 
     void coco_core::fire_new_sensor(const sensor &s)
@@ -572,7 +572,7 @@ namespace coco
     void coco_core::fire_removed_sensor(const std::string &id)
     {
         for (const auto &l : listeners)
-            l->removed_sensor(id);
+            l->deleted_sensor(id);
     }
 
     void coco_core::fire_new_sensor_data(const sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value)
@@ -594,7 +594,7 @@ namespace coco
     void coco_core::fire_removed_solver(const uintptr_t id)
     {
         for (const auto &l : listeners)
-            l->removed_solver(id);
+            l->deleted_solver(id);
     }
 
     void coco_core::fire_state_changed(const coco_executor &exec)

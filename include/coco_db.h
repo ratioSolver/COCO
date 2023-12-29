@@ -207,6 +207,25 @@ namespace coco
     j_msg["sensor_types"] = std::move(j_sts);
     return j_msg;
   }
+  inline json::json new_sensor_type_message(const sensor_type &rhs) noexcept
+  {
+    json::json j_msg{{"type", "new_sensor_type"}};
+    j_msg["sensor_type"] = to_json(rhs);
+    return j_msg;
+  }
+  inline json::json updated_sensor_type_message(const sensor_type &rhs) noexcept
+  {
+    json::json j_msg{{"type", "updated_sensor_type"}};
+    j_msg["sensor_type"] = to_json(rhs);
+    return j_msg;
+  }
+  inline json::json deleted_sensor_type_message(const std::string &id) noexcept
+  {
+    json::json j_msg{{"type", "deleted_sensor_type"}};
+    j_msg["sensor_type"] = id;
+    return j_msg;
+  }
+
   inline json::json sensors_message(const std::vector<std::reference_wrapper<sensor>> &rhs) noexcept
   {
     json::json j_msg{{"type", "sensors"}};
@@ -214,6 +233,40 @@ namespace coco
     for (const auto &s : rhs)
       j_sensors.push_back(to_json(s.get()));
     j_msg["sensors"] = std::move(j_sensors);
+    return j_msg;
+  }
+  inline json::json new_sensor_message(const sensor &rhs) noexcept
+  {
+    json::json j_msg{{"type", "new_sensor"}};
+    j_msg["sensor"] = to_json(rhs);
+    return j_msg;
+  }
+  inline json::json updated_sensor_message(const sensor &rhs) noexcept
+  {
+    json::json j_msg{{"type", "updated_sensor"}};
+    j_msg["sensor"] = to_json(rhs);
+    return j_msg;
+  }
+  inline json::json deleted_sensor_message(const std::string &id) noexcept
+  {
+    json::json j_msg{{"type", "deleted_sensor"}};
+    j_msg["sensor"] = id;
+    return j_msg;
+  }
+  inline json::json sensor_data_message(const coco::sensor &s, const std::chrono::system_clock::time_point &time, const json::json &value) noexcept
+  {
+    json::json j_msg{{"type", "sensor_data"}};
+    j_msg["sensor"] = s.get_id();
+    j_msg["time"] = std::chrono::system_clock::to_time_t(time);
+    j_msg["value"] = value;
+    return j_msg;
+  }
+  inline json::json sensor_state_message(const coco::sensor &s, const std::chrono::system_clock::time_point &time, const json::json &state) noexcept
+  {
+    json::json j_msg{{"type", "sensor_state"}};
+    j_msg["sensor"] = s.get_id();
+    j_msg["time"] = std::chrono::system_clock::to_time_t(time);
+    j_msg["state"] = state;
     return j_msg;
   }
 } // namespace coco

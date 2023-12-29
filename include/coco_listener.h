@@ -21,11 +21,11 @@ namespace coco
   private:
     virtual void new_sensor_type([[maybe_unused]] const sensor_type &s) {}
     virtual void updated_sensor_type([[maybe_unused]] const sensor_type &s) {}
-    virtual void removed_sensor_type([[maybe_unused]] const std::string &id) {}
+    virtual void deleted_sensor_type([[maybe_unused]] const std::string &id) {}
 
     virtual void new_sensor([[maybe_unused]] const sensor &s) {}
     virtual void updated_sensor([[maybe_unused]] const sensor &s) {}
-    virtual void removed_sensor([[maybe_unused]] const std::string &id) {}
+    virtual void deleted_sensor([[maybe_unused]] const std::string &id) {}
 
     virtual void new_sensor_data([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::system_clock::time_point &time, [[maybe_unused]] const json::json &value) {}
     virtual void new_sensor_state([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::system_clock::time_point &time, [[maybe_unused]] const json::json &state) {}
@@ -33,7 +33,7 @@ namespace coco
     virtual void message_arrived([[maybe_unused]] const std::string &topic, [[maybe_unused]] const json::json &msg) {}
 
     virtual void new_solver([[maybe_unused]] const coco_executor &exec) {}
-    virtual void removed_solver([[maybe_unused]] const uintptr_t id) {}
+    virtual void deleted_solver([[maybe_unused]] const uintptr_t id) {}
 
     virtual void state_changed([[maybe_unused]] const coco_executor &exec) {}
 

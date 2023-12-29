@@ -127,15 +127,11 @@ namespace coco
     if (s.has_location())
       j_s["location"] = {{"y", s.get_location().y}, {"x", s.get_location().x}};
     if (s.has_value())
-    {
       j_s["value"] = json::load(s.get_value().to_string());
-      j_s["value"]["timestamp"] = std::chrono::system_clock::to_time_t(s.get_last_update());
-    }
     if (s.has_state())
-    {
       j_s["state"] = json::load(s.get_state().to_string());
-      j_s["state"]["timestamp"] = std::chrono::system_clock::to_time_t(s.get_last_update());
-    }
+    if (s.has_value() || s.has_state())
+      j_s["timestamp"] = std::chrono::system_clock::to_time_t(s.get_last_update());
     return j_s;
   }
 } // namespace coco

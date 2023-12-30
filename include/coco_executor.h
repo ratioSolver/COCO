@@ -95,7 +95,7 @@ namespace coco
   {
     json::json j_msg = to_graph(rhs);
     j_msg["type"] = "graph";
-    j_msg["id"] = get_id(rhs.get_executor().get_solver());
+    j_msg["solver_id"] = get_id(rhs.get_executor().get_solver());
     return j_msg;
   }
 } // namespace coco

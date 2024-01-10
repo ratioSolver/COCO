@@ -71,7 +71,7 @@ namespace coco
   public:
     symbol_parameter(const std::string &name, const std::vector<std::string> &values) : parameter(name, parameter_type::Symbol), values(values) {}
 
-    const std::vector<std::string> &get_values() const { return values; }
+    const std::vector<std::string> &get_symbols() const { return values; }
 
   private:
     const std::vector<std::string> values;
@@ -217,12 +217,12 @@ namespace coco
     {
       const auto &sp = static_cast<const symbol_parameter &>(p);
       j_p["type"] = "symbol";
-      if (!sp.get_values().empty())
+      if (!sp.get_symbols().empty())
       {
-        json::json j_values(json::json_type::array);
-        for (const auto &value : sp.get_values())
-          j_values.push_back(value);
-        j_p["values"] = j_values;
+        json::json j_symbols(json::json_type::array);
+        for (const auto &value : sp.get_symbols())
+          j_symbols.push_back(value);
+        j_p["symbols"] = j_symbols;
       }
       break;
     }

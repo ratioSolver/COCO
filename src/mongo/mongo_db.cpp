@@ -353,10 +353,10 @@ namespace coco
         {
             const auto &sp = static_cast<const symbol_parameter &>(p);
             doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Symbol)));
-            if (!sp.get_values().empty())
+            if (!sp.get_symbols().empty())
             {
                 bsoncxx::v_noabi::builder::basic::array values;
-                for (const auto &value : sp.get_values())
+                for (const auto &value : sp.get_symbols())
                     values.append(value);
                 doc.append(bsoncxx::builder::basic::kvp("values", values));
             }

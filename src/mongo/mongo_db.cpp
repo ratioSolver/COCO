@@ -191,6 +191,7 @@ namespace coco
             j["value"] = json::load(bsoncxx::to_json(doc["value"].get_document().value));
             data.push_back(std::move(j));
         }
+        LOG_DEBUG("Retrieved " << data.size() << " sensor data points for sensor `" << s.get_name() << "`");
         return data;
     }
     void mongo_db::set_sensor_data(sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &val)

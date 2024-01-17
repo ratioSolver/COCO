@@ -20,7 +20,7 @@ namespace coco
      * @param type the type of the sensor.
      * @param l the location of the sensor.
      */
-    sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l) : id(id), name(name), type(type), loc(std::move(l)) {}
+    sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l = nullptr) : id(id), name(name), type(type), loc(std::move(l)) {}
     virtual ~sensor() = default;
 
     /**

@@ -134,21 +134,21 @@ namespace coco
             {
             case 1:
             {
-                auto &num = delay_val.multifieldValue[0].contents;
-                if (num->header->type != INTEGER_TYPE)
+                auto &num = delay_val.multifieldValue->contents[0];
+                if (num.header->type != INTEGER_TYPE)
                     return;
-                delay = utils::rational(num->integerValue->contents);
+                delay = utils::rational(num.integerValue->contents);
                 break;
             }
             case 2:
             {
-                auto &num = delay_val.multifieldValue[0].contents;
-                if (num->header->type != INTEGER_TYPE)
+                auto &num = delay_val.multifieldValue->contents[0];
+                if (num.header->type != INTEGER_TYPE)
                     return;
-                auto &den = delay_val.multifieldValue[1].contents;
-                if (den->header->type != INTEGER_TYPE)
+                auto &den = delay_val.multifieldValue->contents[1];
+                if (den.header->type != INTEGER_TYPE)
                     return;
-                delay = utils::rational(num->integerValue->contents, den->integerValue->contents);
+                delay = utils::rational(num.integerValue->contents, den.integerValue->contents);
                 break;
             }
             default:
@@ -183,21 +183,21 @@ namespace coco
             {
             case 1:
             {
-                auto &num = delay_val.multifieldValue[0].contents;
-                if (num->header->type != INTEGER_TYPE)
+                auto &num = delay_val.multifieldValue->contents[0];
+                if (num.header->type != INTEGER_TYPE)
                     return;
-                delay = utils::rational(num->integerValue->contents);
+                delay = utils::rational(num.integerValue->contents);
                 break;
             }
             case 2:
             {
-                auto &num = delay_val.multifieldValue[0].contents;
-                if (num->header->type != INTEGER_TYPE)
+                auto &num = delay_val.multifieldValue->contents[0];
+                if (num.header->type != INTEGER_TYPE)
                     return;
-                auto &den = delay_val.multifieldValue[1].contents;
-                if (den->header->type != INTEGER_TYPE)
+                auto &den = delay_val.multifieldValue->contents[1];
+                if (den.header->type != INTEGER_TYPE)
                     return;
-                delay = utils::rational(num->integerValue->contents, den->integerValue->contents);
+                delay = utils::rational(num.integerValue->contents, den.integerValue->contents);
                 break;
             }
             default:

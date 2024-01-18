@@ -127,9 +127,12 @@ namespace coco
         auto exec = &coco_exec->get_executor();
 
         auto atm = reinterpret_cast<ratio::atom *>(task_id.integerValue->contents);
-        utils::rational delay;
-        UDFValue delay_val;
-        if (UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
+        utils::rational delay = utils::rational::ONE;
+        if (UDFHasNextArgument(udfc))
+        { // we have a delay..
+            UDFValue delay_val;
+            if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
+                return;
             switch (delay_val.multifieldValue->length)
             {
             case 1:
@@ -154,8 +157,7 @@ namespace coco
             default:
                 return;
             }
-        else
-            delay = utils::rational::ONE;
+        }
 
         exec->dont_start_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
@@ -176,9 +178,12 @@ namespace coco
         auto exec = &coco_exec->get_executor();
 
         auto atm = reinterpret_cast<ratio::atom *>(task_id.integerValue->contents);
-        utils::rational delay;
-        UDFValue delay_val;
-        if (UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
+        utils::rational delay = utils::rational::ONE;
+        if (UDFHasNextArgument(udfc))
+        { // we have a delay..
+            UDFValue delay_val;
+            if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
+                return;
             switch (delay_val.multifieldValue->length)
             {
             case 1:
@@ -203,8 +208,7 @@ namespace coco
             default:
                 return;
             }
-        else
-            delay = utils::rational::ONE;
+        }
 
         exec->dont_end_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }

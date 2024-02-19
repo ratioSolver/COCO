@@ -44,7 +44,7 @@ namespace coco
             }
             auto &s = coco_db::create_sensor(id, name, get_sensor_type(type_id), std::move(l));
             auto last_value = get_last_sensor_value(s);
-            coco_db::set_sensor_data(s, std::chrono::system_clock::from_time_t(last_value["timestamp"]), last_value["value"]);
+            coco_db::set_sensor_data(s, std::chrono::system_clock::time_point(std::chrono::milliseconds(last_value["timestamp"])), last_value["value"]);
         }
         LOG("Retrieved " << get_sensors().size() << " sensors..");
 

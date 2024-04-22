@@ -1,5 +1,10 @@
 #pragma once
 
+#include "json.hpp"
+#include "clips.h"
+#include <memory>
+#include <limits>
+
 namespace coco
 {
   class sensor_type

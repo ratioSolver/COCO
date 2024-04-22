@@ -1,6 +1,6 @@
-#include "sensor_type.hpp"
+#include "sensor.hpp"
 
 namespace coco
 {
-    sensor_type::sensor_type() {}
+    sensor::sensor() {}
 } // namespace coco

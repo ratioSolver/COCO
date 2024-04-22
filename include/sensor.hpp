@@ -1,5 +1,7 @@
 #pragma once
 
+#include "sensor_type.hpp"
+
 namespace coco
 {
   class sensor

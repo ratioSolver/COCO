@@ -1,6 +1,7 @@
 #pragma once
 
 #include "executor.hpp"
+#include "clips.h"
 
 namespace coco
 {

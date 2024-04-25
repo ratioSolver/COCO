@@ -2,5 +2,5 @@
 
 namespace coco
 {
-    sensor::sensor() {}
+    sensor::sensor(const std::string &id) : id(id) {}
 } // namespace coco

@@ -14,10 +14,10 @@ namespace coco
     sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars);
     virtual ~sensor_type() = default;
 
-    const std::string &get_id() const { return id; }
-    const std::string &get_name() const { return name; }
-    const std::string &get_description() const { return description; }
-    const std::vector<std::unique_ptr<parameter>> &get_parameters() const { return parameters; }
+    [[nodiscard]] const std::string &get_id() const { return id; }
+    [[nodiscard]] const std::string &get_name() const { return name; }
+    [[nodiscard]] const std::string &get_description() const { return description; }
+    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_parameters() const { return parameters; }
 
   private:
     const std::string id;

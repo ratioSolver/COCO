@@ -23,12 +23,11 @@ namespace coco
         return s;
     }
 
-    coco_executor &coco_core::create_solver(const std::string &name)
+    coco_executor &coco_core::create_solver(const std::string &name, const utils::rational &units_per_tick)
     {
-        auto slv = std::make_unique<coco_executor>(*this, std::make_shared<ratio::solver>(name));
-        auto &slv_ref = *slv;
-        new_solver(*executors.insert(std::move(slv)).first->get());
-        return slv_ref;
+        auto &exec_ref = *executors.insert(std::make_unique<coco_executor>(*this, name, units_per_tick)).first->get();
+        new_solver(exec_ref);
+        return exec_ref;
     }
 
     void coco_core::new_sensor_type([[maybe_unused]] const sensor_type &s) { LOG_TRACE("New sensor type: " + s.get_id()); }

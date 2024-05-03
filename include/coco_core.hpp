@@ -10,6 +10,8 @@ namespace coco
 
   class coco_core
   {
+    friend class coco_solver;
+
   public:
     coco_core(coco_db &db);
     virtual ~coco_core() = default;
@@ -35,7 +37,16 @@ namespace coco
      */
     sensor &create_sensor(const sensor_type &type, const std::string &name, json::json &&data = {});
 
-    coco_executor &create_solver(const std::string &name);
+    /**
+     * @brief Creates a solver with the specified name and units per tick.
+     *
+     * This function creates a solver with the specified name and units per tick.
+     *
+     * @param name The name of the solver.
+     * @param units_per_tick The number of units per tick. Defaults to `utils::rational::one`.
+     * @return A reference to the created `coco_executor` object.
+     */
+    coco_executor &create_solver(const std::string &name, const utils::rational &units_per_tick = utils::rational::one);
 
   private:
     virtual void new_sensor_type(const sensor_type &s);

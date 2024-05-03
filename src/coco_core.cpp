@@ -64,14 +64,14 @@ namespace coco
 
     void coco_core::executor_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] ratio::executor::executor_state state) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " is now " + to_string(state)); }
 
-    void coco_core::tick([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const utils::rational &time) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " ticked at " + time.to_string()); }
+    void coco_core::tick([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const utils::rational &time) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " ticked at " + to_string(time)); }
 
     void coco_core::start([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::unordered_set<ratio::atom *> &atoms)
     {
 #if LOGGING_LEVEL >= LOG_TRACE_LEVEL
         std::string str = "Solver " + exec.get_solver().get_name() + " started atoms: ";
         for (const auto &a : atoms)
-            str += to_string(get_id(*a)) + " ";
+            str += std::to_string(get_id(*a)) + " ";
         LOG_TRACE(str);
 #endif
     }
@@ -80,7 +80,7 @@ namespace coco
 #if LOGGING_LEVEL >= LOG_TRACE_LEVEL
         std::string str = "Solver " + exec.get_solver().get_name() + " ended atoms: ";
         for (const auto &a : atoms)
-            str += to_string(get_id(*a)) + " ";
+            str += std::to_string(get_id(*a)) + " ";
         LOG_TRACE(str);
 #endif
     }

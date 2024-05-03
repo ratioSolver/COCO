@@ -8,11 +8,10 @@
 
 namespace coco
 {
-  class sensor_type
+  class sensor_type final
   {
   public:
     sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars);
-    virtual ~sensor_type() = default;
 
     [[nodiscard]] const std::string &get_id() const { return id; }
     [[nodiscard]] const std::string &get_name() const { return name; }

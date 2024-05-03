@@ -1,5 +1,6 @@
 #include <bsoncxx/json.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
+#include <cmath>
 #include <cassert>
 #include "mongo_db.hpp"
 
@@ -22,9 +23,21 @@ namespace coco
         throw std::invalid_argument("Failed to insert sensor type: " + name);
     }
 
-    bsoncxx::v_noabi::builder::basic::document mongo_db::to_bson(const parameter &p)
+    sensor &mongo_db::create_sensor(const sensor_type &type, const std::string &name, json::json &&data)
     {
-        bsoncxx::v_noabi::builder::basic::document doc;
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{type.get_id()}));
+        doc.append(bsoncxx::builder::basic::kvp("name", name));
+        doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.to_string())));
+        auto result = sensors_collection.insert_one(doc.view());
+        if (result)
+            return coco_db::create_sensor(result->inserted_id().get_oid().value.to_string(), type, name, std::move(data));
+        throw std::invalid_argument("Failed to insert sensor: " + name);
+    }
+
+    bsoncxx::builder::basic::document mongo_db::to_bson(const parameter &p)
+    {
+        bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
         switch (p.get_type())
         {

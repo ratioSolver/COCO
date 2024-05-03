@@ -15,9 +15,10 @@ namespace coco
     virtual ~mongo_db() = default;
 
     sensor_type &create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) override;
+    sensor &create_sensor(const sensor_type &type, const std::string &name, json::json &&data = {}) override;
 
   private:
-    static bsoncxx::v_noabi::builder::basic::document to_bson(const parameter &p);
+    static bsoncxx::builder::basic::document to_bson(const parameter &p);
 
   private:
     mongocxx::client conn;

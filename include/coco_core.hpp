@@ -7,7 +7,6 @@
 namespace coco
 {
   class coco_db;
-  class coco_executor;
 
   class coco_core
   {
@@ -36,6 +35,8 @@ namespace coco
      */
     sensor &create_sensor(const sensor_type &type, const std::string &name, json::json &&data = {});
 
+    coco_executor &create_solver(const std::string &name);
+
   private:
     virtual void new_sensor_type(const sensor_type &s);
     virtual void updated_sensor_type(const sensor_type &s);
@@ -47,6 +48,34 @@ namespace coco
 
     virtual void new_sensor_value(const sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &value);
     virtual void new_sensor_state(const sensor &s, const std::chrono::system_clock::time_point &timestamp, const json::json &state);
+
+    virtual void new_solver(const coco_executor &exec);
+    virtual void deleted_solver(const uintptr_t id);
+
+    virtual void state_changed(const coco_executor &exec);
+
+    virtual void started_solving(const coco_executor &exec);
+    virtual void solution_found(const coco_executor &exec);
+    virtual void inconsistent_problem(const coco_executor &exec);
+
+    virtual void flaw_created(const coco_executor &exec, const ratio::flaw &f);
+    virtual void flaw_state_changed(const coco_executor &exec, const ratio::flaw &f);
+    virtual void flaw_cost_changed(const coco_executor &exec, const ratio::flaw &f);
+    virtual void flaw_position_changed(const coco_executor &exec, const ratio::flaw &f);
+    virtual void current_flaw(const coco_executor &exec, const ratio::flaw &f);
+
+    virtual void resolver_created(const coco_executor &exec, const ratio::resolver &r);
+    virtual void resolver_state_changed(const coco_executor &exec, const ratio::resolver &r);
+    virtual void current_resolver(const coco_executor &exec, const ratio::resolver &r);
+
+    virtual void causal_link_added(const coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r);
+
+    virtual void executor_state_changed(const coco_executor &exec, ratio::executor::executor_state state);
+
+    virtual void tick(const coco_executor &exec, const utils::rational &time);
+
+    virtual void start(const coco_executor &exec, const std::unordered_set<ratio::atom *> &atoms);
+    virtual void end(const coco_executor &exec, const std::unordered_set<ratio::atom *> &atoms);
 
   private:
     coco_db &db;

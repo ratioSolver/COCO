@@ -14,6 +14,11 @@ namespace coco
     mongo_db(const json::json &config, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     virtual ~mongo_db() = default;
 
+    sensor_type &create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) override;
+
+  private:
+    static bsoncxx::v_noabi::builder::basic::document to_bson(const parameter &p);
+
   private:
     mongocxx::client conn;
 

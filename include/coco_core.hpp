@@ -15,6 +15,8 @@ namespace coco
     coco_core(coco_db &db);
     virtual ~coco_core() = default;
 
+    sensor_type &create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars);
+
   private:
     virtual void new_sensor_type(const sensor_type &s);
     virtual void updated_sensor_type(const sensor_type &s);

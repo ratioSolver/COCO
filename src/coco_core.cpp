@@ -10,6 +10,13 @@ namespace coco
         assert(env != nullptr);
     }
 
+    sensor_type &coco_core::create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
+    {
+        auto &st = db.create_sensor_type(name, description, std::move(pars));
+        new_sensor_type(st);
+        return st;
+    }
+
     void coco_core::new_sensor_type([[maybe_unused]] const sensor_type &s) { LOG_TRACE("New sensor type: " + s.get_id()); }
     void coco_core::updated_sensor_type([[maybe_unused]] const sensor_type &s) { LOG_TRACE("Updated sensor type: " + s.get_id()); }
     void coco_core::deleted_sensor_type([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted sensor type: " + id); }

@@ -11,7 +11,7 @@ namespace coco
   class mongo_db : public coco_db
   {
   public:
-    mongo_db(const json::json &config, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
+    mongo_db(const json::json &config = {}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     virtual ~mongo_db() = default;
 
     sensor_type &create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) override;

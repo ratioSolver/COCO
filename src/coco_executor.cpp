@@ -18,4 +18,13 @@ namespace coco
     void coco_solver::causal_link_added(const ratio::flaw &f, const ratio::resolver &r) { exec.get_core().causal_link_added(exec, f, r); }
 
     coco_executor::coco_executor(coco_core &cc, const std::string &name, const utils::rational &units_per_tick) : executor(std::make_shared<coco_solver>(*this, name), units_per_tick), cc(cc) {}
+
+    void coco_executor::executor_state_changed(ratio::executor::executor_state state) { cc.executor_state_changed(*this, state); }
+    void coco_executor::tick(const utils::rational &time) { cc.tick(*this, time); }
+
+    void coco_executor::starting(const std::vector<std::reference_wrapper<const ratio::atom>> &atms) { cc.starting(*this, atms); }
+    void coco_executor::start(const std::vector<std::reference_wrapper<const ratio::atom>> &atms) { cc.start(*this, atms); }
+
+    void coco_executor::ending(const std::vector<std::reference_wrapper<const ratio::atom>> &atms) { cc.ending(*this, atms); }
+    void coco_executor::end(const std::vector<std::reference_wrapper<const ratio::atom>> &atms) { cc.end(*this, atms); }
 } // namespace coco

@@ -11,9 +11,10 @@ namespace coco
   class coco_core
   {
     friend class coco_solver;
+    friend class coco_executor;
 
   public:
-    coco_core(coco_db &db);
+    coco_core(std::unique_ptr<coco_db> &&db);
     virtual ~coco_core() = default;
 
     /**
@@ -85,11 +86,13 @@ namespace coco
 
     virtual void tick(const coco_executor &exec, const utils::rational &time);
 
-    virtual void start(const coco_executor &exec, const std::unordered_set<ratio::atom *> &atoms);
-    virtual void end(const coco_executor &exec, const std::unordered_set<ratio::atom *> &atoms);
+    void starting(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
+    virtual void start(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
+    void ending(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
+    virtual void end(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
 
   private:
-    coco_db &db;
+    std::unique_ptr<coco_db> db;
     std::set<std::unique_ptr<coco_executor>> executors;
 
   protected:

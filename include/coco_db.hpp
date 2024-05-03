@@ -8,7 +8,7 @@ namespace coco
   class coco_db
   {
   public:
-    coco_db(const json::json &config);
+    coco_db(const json::json &config = {});
     virtual ~coco_db() = default;
 
     const json::json &get_config() const { return config; }

@@ -5,20 +5,20 @@
 
 namespace coco
 {
-    coco_core::coco_core(coco_db &db) : db(db), env(CreateEnvironment())
+    coco_core::coco_core(std::unique_ptr<coco_db> &&db) : db(std::move(db)), env(CreateEnvironment())
     {
         assert(env != nullptr);
     }
 
     sensor_type &coco_core::create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
     {
-        auto &st = db.create_sensor_type(name, description, std::move(pars));
+        auto &st = db->create_sensor_type(name, description, std::move(pars));
         new_sensor_type(st);
         return st;
     }
     sensor &coco_core::create_sensor(const sensor_type &type, const std::string &name, json::json &&data)
     {
-        auto &s = db.create_sensor(type, name, std::move(data));
+        auto &s = db->create_sensor(type, name, std::move(data));
         new_sensor(s);
         return s;
     }
@@ -66,21 +66,42 @@ namespace coco
 
     void coco_core::tick([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const utils::rational &time) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " ticked at " + to_string(time)); }
 
-    void coco_core::start([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::unordered_set<ratio::atom *> &atoms)
+    void coco_core::starting([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms)
+    {
+#if LOGGING_LEVEL >= LOG_TRACE_LEVEL
+        std::string str = "Solver " + exec.get_solver().get_name() + " starting atoms: ";
+        for (const auto &a : atoms)
+            str += std::to_string(get_id(a.get())) + " ";
+        LOG_TRACE(str);
+#endif
+    }
+
+    void coco_core::start([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms)
     {
 #if LOGGING_LEVEL >= LOG_TRACE_LEVEL
         std::string str = "Solver " + exec.get_solver().get_name() + " started atoms: ";
         for (const auto &a : atoms)
-            str += std::to_string(get_id(*a)) + " ";
+            str += std::to_string(get_id(a.get())) + " ";
         LOG_TRACE(str);
 #endif
     }
-    void coco_core::end([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::unordered_set<ratio::atom *> &atoms)
+
+    void coco_core::ending([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms)
+    {
+#if LOGGING_LEVEL >= LOG_TRACE_LEVEL
+        std::string str = "Solver " + exec.get_solver().get_name() + " ending atoms: ";
+        for (const auto &a : atoms)
+            str += std::to_string(get_id(a.get())) + " ";
+        LOG_TRACE(str);
+#endif
+    }
+
+    void coco_core::end([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms)
     {
 #if LOGGING_LEVEL >= LOG_TRACE_LEVEL
         std::string str = "Solver " + exec.get_solver().get_name() + " ended atoms: ";
         for (const auto &a : atoms)
-            str += std::to_string(get_id(*a)) + " ";
+            str += std::to_string(get_id(a.get())) + " ";
         LOG_TRACE(str);
 #endif
     }

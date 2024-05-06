@@ -24,6 +24,22 @@ namespace coco
      * @return A reference to the created sensor type.
      */
     virtual sensor_type &create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) = 0;
+
+    /**
+     * Returns a vector of references to the sensor types.
+     *
+     * This function retrieves all the sensor types stored in the database and returns them as a vector of `sensor_type` objects. The returned vector contains references to the actual sensor types stored in the `sensor_types` map.
+     *
+     * @return A vector of sensor types.
+     */
+    std::vector<std::reference_wrapper<sensor_type>> get_sensor_types() const
+    {
+      std::vector<std::reference_wrapper<sensor_type>> res;
+      for (auto &s : sensor_types)
+        res.push_back(*s.second);
+      return res;
+    }
+
     /**
      * @brief Creates a sensor of the specified type with the given name and optional data.
      *
@@ -33,6 +49,21 @@ namespace coco
      * @return A reference to the created sensor.
      */
     virtual sensor &create_sensor(const sensor_type &type, const std::string &name, json::json &&data = {}) = 0;
+
+    /**
+     * Retrieves a vector of references to the sensors in the database.
+     *
+     * This function retrieves all the sensors stored in the database and returns them as a vector of `sensor` objects. The returned vector contains references to the actual sensors stored in the `sensors` map.
+     *
+     * @return A vector of references to the sensors.
+     */
+    std::vector<std::reference_wrapper<sensor>> get_sensors() const
+    {
+      std::vector<std::reference_wrapper<sensor>> res;
+      for (auto &s : sensors)
+        res.push_back(*s.second);
+      return res;
+    }
 
   protected:
     sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)

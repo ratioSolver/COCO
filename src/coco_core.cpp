@@ -10,12 +10,17 @@ namespace coco
         assert(env != nullptr);
     }
 
+    std::vector<std::reference_wrapper<sensor_type>> coco_core::get_sensor_types() const { return db->get_sensor_types(); }
+
     sensor_type &coco_core::create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
     {
         auto &st = db->create_sensor_type(name, description, std::move(pars));
         new_sensor_type(st);
         return st;
     }
+
+    std::vector<std::reference_wrapper<sensor>> coco_core::get_sensors() const { return db->get_sensors(); }
+
     sensor &coco_core::create_sensor(const sensor_type &type, const std::string &name, json::json &&data)
     {
         auto &s = db->create_sensor(type, name, std::move(data));

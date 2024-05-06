@@ -19,6 +19,15 @@ namespace coco
     virtual ~coco_core() = default;
 
     /**
+     * @brief Returns a vector of references to the sensor types.
+     *
+     * This function retrieves all the sensor types stored in the database and returns them as a vector of `sensor_type` objects. The returned vector contains references to the actual sensor types stored in the `sensor_types` map.
+     *
+     * @return A vector of sensor types.
+     */
+    std::vector<std::reference_wrapper<sensor_type>> get_sensor_types() const;
+
+    /**
      * @brief Creates a new sensor type.
      *
      * This function creates a new sensor type with the specified name, description, and parameters.
@@ -29,6 +38,16 @@ namespace coco
      * @return A reference to the created sensor type.
      */
     sensor_type &create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars);
+
+    /**
+     * Retrieves a vector of references to the sensors in the database.
+     *
+     * This function retrieves all the sensors stored in the database and returns them as a vector of `sensor` objects. The returned vector contains references to the actual sensors stored in the `sensors` map.
+     *
+     * @return A vector of references to the sensors.
+     */
+    std::vector<std::reference_wrapper<sensor>> get_sensors() const;
+
     /**
      * @brief Creates a sensor of the specified type with the given name and optional data.
      *

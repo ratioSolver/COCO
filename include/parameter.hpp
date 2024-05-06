@@ -1,9 +1,11 @@
 #pragma once
 
+#include "json.hpp"
 #include <string>
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <limits>
 
 namespace coco
 {
@@ -38,16 +40,48 @@ namespace coco
     }
   }
 
+  /**
+   * @brief Represents a parameter.
+   *
+   * This class represents a parameter with a name and a type.
+   */
   class parameter
   {
   public:
+    /**
+     * @brief Constructs a parameter with the given name and type.
+     *
+     * @param name The name of the parameter.
+     * @param type The type of the parameter.
+     */
     parameter(const std::string &name, parameter_type type) : name(name), type(type) {}
+
+    /**
+     * @brief Destructor for the parameter.
+     */
     virtual ~parameter() = default;
 
+    /**
+     * @brief Gets the name of the parameter.
+     *
+     * @return The name of the parameter.
+     */
     [[nodiscard]] const std::string &get_name() const { return name; }
+
+    /**
+     * @brief Gets the type of the parameter.
+     *
+     * @return The type of the parameter.
+     */
     [[nodiscard]] parameter_type get_type() const { return type; }
 
   private:
+    /**
+     * @brief Outputs the parameter to the given output stream.
+     *
+     * @param os The output stream.
+     * @return The output stream.
+     */
     std::ostream &operator<<(std::ostream &os) const
     {
       os << "Parameter: " << name << " (" << to_string(type) << ")";
@@ -55,8 +89,8 @@ namespace coco
     }
 
   private:
-    std::string name;
-    parameter_type type;
+    std::string name;    ///< The name of the parameter.
+    parameter_type type; ///< The type of the parameter.
   };
 
   class integer_parameter : public parameter
@@ -118,4 +152,61 @@ namespace coco
     const std::unique_ptr<parameter> type;
     const std::vector<int> shape;
   };
+
+  /**
+   * Converts a parameter object to a JSON object.
+   *
+   * @param par The parameter object to convert.
+   * @return The JSON object representing the parameter.
+   */
+  inline json::json to_json(const parameter &par)
+  {
+    json::json res{{"name", par.get_name()}, {"type", to_string(par.get_type())}};
+    switch (par.get_type())
+    {
+    case Integer:
+    {
+      auto &p = static_cast<const integer_parameter &>(par);
+      if (p.get_min() != std::numeric_limits<long>::min())
+        res["min"] = p.get_min();
+      if (p.get_max() != std::numeric_limits<long>::max())
+        res["max"] = p.get_max();
+      break;
+    }
+    case Real:
+    {
+      auto &p = static_cast<const real_parameter &>(par);
+      if (p.get_min() != -std::numeric_limits<double>::infinity())
+        res["min"] = p.get_min();
+      if (p.get_max() != std::numeric_limits<double>::infinity())
+        res["max"] = p.get_max();
+      break;
+    }
+    case Symbol:
+    {
+      auto &p = static_cast<const symbol_parameter &>(par);
+      if (!p.get_symbols().empty())
+      {
+        json::json symbols;
+        for (const auto &s : p.get_symbols())
+          symbols.push_back(s);
+        res["symbols"] = std::move(symbols);
+      }
+      break;
+    }
+    case Array:
+    {
+      auto &p = static_cast<const array_parameter &>(par);
+      res["array_type"] = to_json(p.get_array_type());
+      json::json shape;
+      for (const auto &s : p.get_shape())
+        shape.push_back(s);
+      res["shape"] = std::move(shape);
+      break;
+    }
+    default:
+      break;
+    }
+    return res;
+  }
 } // namespace coco

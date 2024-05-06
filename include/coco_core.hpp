@@ -3,6 +3,7 @@
 #include "sensor.hpp"
 #include "coco_executor.hpp"
 #include <chrono>
+#include <mutex>
 
 namespace coco
 {
@@ -96,6 +97,7 @@ namespace coco
     std::set<std::unique_ptr<coco_executor>> executors;
 
   protected:
-    Environment *env;
+    Environment *env;         // the CLIPS environment..
+    std::recursive_mutex mtx; // mutex for the core..
   };
 } // namespace coco

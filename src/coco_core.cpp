@@ -26,7 +26,6 @@ namespace coco
     coco_executor &coco_core::create_solver(const std::string &name, const utils::rational &units_per_tick)
     {
         auto &exec_ref = *executors.insert(std::make_unique<coco_executor>(*this, name, units_per_tick)).first->get();
-        exec_ref.get_solver().init();
         new_solver(exec_ref);
         return exec_ref;
     }

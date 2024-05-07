@@ -95,10 +95,6 @@ namespace coco
 
     virtual void state_changed(const coco_executor &exec);
 
-    virtual void started_solving(const coco_executor &exec);
-    virtual void solution_found(const coco_executor &exec);
-    virtual void inconsistent_problem(const coco_executor &exec);
-
     virtual void flaw_created(const coco_executor &exec, const ratio::flaw &f);
     virtual void flaw_state_changed(const coco_executor &exec, const ratio::flaw &f);
     virtual void flaw_cost_changed(const coco_executor &exec, const ratio::flaw &f);

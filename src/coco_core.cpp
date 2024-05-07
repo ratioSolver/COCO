@@ -52,6 +52,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &exec_ref = *executors.insert(std::make_unique<coco_executor>(*this, name, units_per_tick)).first->get();
         new_solver(exec_ref);
+        exec_ref.init();
         return exec_ref;
     }
 
@@ -70,10 +71,6 @@ namespace coco
     void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) { LOG_TRACE("Deleted solver: " + std::to_string(id)); }
 
     void coco_core::state_changed([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " is now " + to_string(exec.get_state())); }
-
-    void coco_core::started_solving([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " started solving"); }
-    void coco_core::solution_found([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " found a solution"); }
-    void coco_core::inconsistent_problem([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " found an inconsistent problem"); }
 
     void coco_core::flaw_created([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " found a flaw: " + to_string(f.get_phi())); }
     void coco_core::flaw_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) { LOG_TRACE("Flaw " + to_string(f.get_phi()) + " is now " + to_state(f)); }

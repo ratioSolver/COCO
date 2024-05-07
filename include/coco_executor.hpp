@@ -14,6 +14,8 @@ namespace coco
     coco_solver(coco_executor &exec, const std::string &name);
 
   private:
+    void state_changed() override;
+
     void flaw_created(const ratio::flaw &f) override;
     void flaw_state_changed(const ratio::flaw &f) override;
     void flaw_cost_changed(const ratio::flaw &f) override;

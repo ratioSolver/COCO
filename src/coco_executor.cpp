@@ -5,6 +5,8 @@ namespace coco
 {
     coco_solver::coco_solver(coco_executor &exec, const std::string &name) : ratio::solver(name), exec(exec) {}
 
+    void coco_solver::state_changed() { exec.get_core().state_changed(exec); }
+
     void coco_solver::flaw_created(const ratio::flaw &f) { exec.get_core().flaw_created(exec, f); }
     void coco_solver::flaw_state_changed(const ratio::flaw &f) { exec.get_core().flaw_state_changed(exec, f); }
     void coco_solver::flaw_cost_changed(const ratio::flaw &f) { exec.get_core().flaw_cost_changed(exec, f); }

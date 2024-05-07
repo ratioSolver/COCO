@@ -8,6 +8,8 @@ enable_testing()
 find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 
+set(MULTIPLE_EXECUTORS ON CACHE BOOL "Enable multiple executors" FORCE)
+
 set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
 
 set(CLIPS_INCLUDE_DIR /usr/local/include/clips CACHE PATH "CLIPS include directory")

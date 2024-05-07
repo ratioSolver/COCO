@@ -25,7 +25,7 @@ namespace coco
      *
      * @return A vector of sensor types.
      */
-    std::vector<std::reference_wrapper<sensor_type>> get_sensor_types() const;
+    std::vector<std::reference_wrapper<sensor_type>> get_sensor_types();
 
     /**
      * @brief Creates a new sensor type.
@@ -46,7 +46,7 @@ namespace coco
      *
      * @return A vector of references to the sensors.
      */
-    std::vector<std::reference_wrapper<sensor>> get_sensors() const;
+    std::vector<std::reference_wrapper<sensor>> get_sensors();
 
     /**
      * @brief Creates a sensor of the specified type with the given name and optional data.
@@ -57,6 +57,15 @@ namespace coco
      * @return A reference to the created sensor.
      */
     sensor &create_sensor(const sensor_type &type, const std::string &name, json::json &&data = {});
+
+    /**
+     * @brief Retrieves a vector of references to the solvers.
+     *
+     * This function retrieves all the solvers as a vector of `coco_executor` objects.
+     *
+     * @return A vector of references to the solvers.
+     */
+    std::vector<std::reference_wrapper<coco_executor>> get_solvers();
 
     /**
      * @brief Creates a solver with the specified name and units per tick.

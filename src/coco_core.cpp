@@ -10,26 +10,46 @@ namespace coco
         assert(env != nullptr);
     }
 
-    std::vector<std::reference_wrapper<sensor_type>> coco_core::get_sensor_types() const { return db->get_sensor_types(); }
+    std::vector<std::reference_wrapper<sensor_type>> coco_core::get_sensor_types()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_sensor_types();
+    }
 
     sensor_type &coco_core::create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
     {
+        std::lock_guard<std::recursive_mutex> _(mtx);
         auto &st = db->create_sensor_type(name, description, std::move(pars));
         new_sensor_type(st);
         return st;
     }
 
-    std::vector<std::reference_wrapper<sensor>> coco_core::get_sensors() const { return db->get_sensors(); }
+    std::vector<std::reference_wrapper<sensor>> coco_core::get_sensors()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_sensors();
+    }
 
     sensor &coco_core::create_sensor(const sensor_type &type, const std::string &name, json::json &&data)
     {
+        std::lock_guard<std::recursive_mutex> _(mtx);
         auto &s = db->create_sensor(type, name, std::move(data));
         new_sensor(s);
         return s;
     }
 
+    std::vector<std::reference_wrapper<coco_executor>> coco_core::get_solvers()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<std::reference_wrapper<coco_executor>> res;
+        for (auto &exec : executors)
+            res.push_back(*exec);
+        return res;
+    }
+
     coco_executor &coco_core::create_solver(const std::string &name, const utils::rational &units_per_tick)
     {
+        std::lock_guard<std::recursive_mutex> _(mtx);
         auto &exec_ref = *executors.insert(std::make_unique<coco_executor>(*this, name, units_per_tick)).first->get();
         new_solver(exec_ref);
         return exec_ref;

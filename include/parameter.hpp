@@ -145,7 +145,7 @@ namespace coco
   public:
     array_parameter(const std::string &name, std::unique_ptr<parameter> &&type, const std::vector<int> &shape) : parameter(name, parameter_type::Array), type(std::move(type)), shape(shape) {}
 
-    [[nodiscard]] const parameter &get_array_type() const { return *type; }
+    [[nodiscard]] const parameter &as_array_type() const { return *type; }
     [[nodiscard]] const std::vector<int> &get_shape() const { return shape; }
 
   private:
@@ -197,7 +197,7 @@ namespace coco
     case Array:
     {
       auto &p = static_cast<const array_parameter &>(par);
-      res["array_type"] = to_json(p.get_array_type());
+      res["array_type"] = to_json(p.as_array_type());
       json::json shape;
       for (const auto &s : p.get_shape())
         shape.push_back(s);

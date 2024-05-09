@@ -28,7 +28,7 @@ namespace coco
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{type.get_id()}));
         doc.append(bsoncxx::builder::basic::kvp("name", name));
-        doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.to_string())));
+        doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
         auto result = sensors_collection.insert_one(doc.view());
         if (result)
             return coco_db::create_sensor(result->inserted_id().get_oid().value.to_string(), type, name, std::move(data));
@@ -84,7 +84,7 @@ namespace coco
         {
             const auto &ap = static_cast<const array_parameter &>(p);
             doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Array)));
-            doc.append(bsoncxx::builder::basic::kvp("array_type", to_bson(ap.get_array_type())));
+            doc.append(bsoncxx::builder::basic::kvp("array_type", to_bson(ap.as_array_type())));
             bsoncxx::v_noabi::builder::basic::array dimensions;
             for (const auto &dim : ap.get_shape())
                 dimensions.append(dim);

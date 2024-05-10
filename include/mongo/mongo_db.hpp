@@ -14,8 +14,8 @@ namespace coco
     mongo_db(const json::json &config = {{"name", COCO_NAME}}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     virtual ~mongo_db() = default;
 
-    sensor_type &create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) override;
-    sensor &create_sensor(const sensor_type &type, const std::string &name, json::json &&data = {}) override;
+    type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) override;
+    item &create_item(const type &tp, const std::string &name, json::json &&data = {}) override;
 
   private:
     static bsoncxx::builder::basic::document to_bson(const parameter &p);
@@ -27,8 +27,8 @@ namespace coco
     mongocxx::database db;
 
   private:
-    mongocxx::collection sensor_types_collection;
-    mongocxx::collection sensors_collection;
+    mongocxx::collection types_collection;
+    mongocxx::collection items_collection;
     mongocxx::collection sensor_data_collection;
   };
 } // namespace coco

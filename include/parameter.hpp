@@ -209,4 +209,57 @@ namespace coco
     }
     return res;
   }
+
+  const json::json parameter_schema{{"parameter",
+                                     {{"oneOf", std::vector<json::json>{
+                                                    {{"$ref", "#/components/schemas/integer_parameter"}},
+                                                    {{"$ref", "#/components/schemas/real_parameter"}},
+                                                    {{"$ref", "#/components/schemas/boolean_parameter"}},
+                                                    {{"$ref", "#/components/schemas/symbol_parameter"}},
+                                                    {{"$ref", "#/components/schemas/string_parameter"}},
+                                                    {{"$ref", "#/components/schemas/array_parameter"}}}},
+                                      {"discriminator", {{"propertyName", "type"}, {"mapping", {{"integer", "#/components/schemas/integer_parameter"}, {"real", "#/components/schemas/real_parameter"}, {"boolean", "#/components/schemas/boolean_parameter"}, {"symbol", "#/components/schemas/symbol_parameter"}, {"string", "#/components/schemas/string_parameter"}, {"array", "#/components/schemas/array_parameter"}}}}}}}};
+  const json::json integer_parameter_schema{{"integer_parameter",
+                                             {{"type", "object"},
+                                              {"properties",
+                                               {{"name", {{"type", "string"}}},
+                                                {"type", {{"type", "string"}, {"enum", {"integer"}}}},
+                                                {"min", {{"type", "integer"}}},
+                                                {"max", {{"type", "integer"}}}}},
+                                              {"required", std::vector<json::json>{"name", "type"}}}}};
+  const json::json real_parameter_schema{{"real_parameter",
+                                          {{"type", "object"},
+                                           {"properties",
+                                            {{"name", {{"type", "string"}}},
+                                             {"type", {{"type", "string"}, {"enum", {"real"}}}},
+                                             {"min", {{"type", "number"}}},
+                                             {"max", {{"type", "number"}}}}},
+                                           {"required", std::vector<json::json>{"name", "type"}}}}};
+  const json::json boolean_parameter_schema{{"boolean_parameter",
+                                             {{"type", "object"},
+                                              {"properties",
+                                               {{"name", {{"type", "string"}}},
+                                                {"type", {{"type", "string"}, {"enum", {"boolean"}}}}}},
+                                              {"required", std::vector<json::json>{"name", "type"}}}}};
+  const json::json symbol_parameter_schema{{"symbol_parameter",
+                                            {{"type", "object"},
+                                             {"properties",
+                                              {{"name", {{"type", "string"}}},
+                                               {"type", {{"type", "string"}, {"enum", {"symbol"}}}},
+                                               {"symbols", {{"type", "array"}, {"items", {{"type", "string"}}}}}}},
+                                             {"required", {"name", "type", "symbols"}}}}};
+  const json::json string_parameter_schema{{"string_parameter",
+                                            {{"type", "object"},
+                                             {"properties",
+                                              {{"name", {{"type", "string"}}},
+                                               {"type", {{"type", "string"}, {"enum", {"string"}}}}}},
+                                             {"required", std::vector<json::json>{"name", "type"}}}}};
+  const json::json array_parameter_schema{{"array_parameter",
+                                           {{"type", "object"},
+                                            {"properties",
+                                             {{"name", {{"type", "string"}}},
+                                              {"type", {{"type", "string"}, {"enum", {"array"}}}},
+                                              {"array_type", {{"type", "string"}, {"enum", {"integer", "real", "boolean", "symbol", "string"}}}},
+                                              {"shape", {{"type", "array"}, {"items", {{"type", "integer"}}}}}}},
+                                            {"required", {"name", "type", "array_type", "shape"}}}}};
 } // namespace coco

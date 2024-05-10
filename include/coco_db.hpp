@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sensor_type.hpp"
-#include "sensor.hpp"
+#include "coco_type.hpp"
+#include "coco_item.hpp"
 
 namespace coco
 {
@@ -14,77 +14,77 @@ namespace coco
     const json::json &get_config() const { return config; }
 
     /**
-     * @brief Creates a new sensor type.
+     * @brief Creates a new type.
      *
-     * This function creates a new sensor type with the specified name, description, and parameters.
+     * This function creates a new type with the specified name, description, and parameters.
      *
-     * @param name The name of the sensor type.
-     * @param description The description of the sensor type.
-     * @param pars The parameters of the sensor type.
-     * @return A reference to the created sensor type.
+     * @param name The name of the type.
+     * @param description The description of the type.
+     * @param pars The parameters of the type.
+     * @return A reference to the created type.
      */
-    virtual sensor_type &create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) = 0;
+    virtual type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) = 0;
 
     /**
-     * Returns a vector of references to the sensor types.
+     * Returns a vector of references to the types.
      *
-     * This function retrieves all the sensor types stored in the database and returns them as a vector of `sensor_type` objects. The returned vector contains references to the actual sensor types stored in the `sensor_types` map.
+     * This function retrieves all the types stored in the database and returns them as a vector of `type` objects. The returned vector contains references to the actual types stored in the `types` map.
      *
-     * @return A vector of sensor types.
+     * @return A vector of types.
      */
-    std::vector<std::reference_wrapper<sensor_type>> get_sensor_types() const
+    std::vector<std::reference_wrapper<type>> get_types() const
     {
-      std::vector<std::reference_wrapper<sensor_type>> res;
-      for (auto &s : sensor_types)
+      std::vector<std::reference_wrapper<type>> res;
+      for (auto &s : types)
         res.push_back(*s.second);
       return res;
     }
 
     /**
-     * @brief Creates a sensor of the specified type with the given name and optional data.
+     * @brief Creates an item of the specified type with the given name and optional data.
      *
-     * @param type The type of the sensor.
-     * @param name The name of the sensor.
-     * @param data Optional data for the sensor (default is an empty JSON object).
-     * @return A reference to the created sensor.
+     * @param type The type of the item.
+     * @param name The name of the item.
+     * @param data Optional data for the item (default is an empty JSON object).
+     * @return A reference to the created item.
      */
-    virtual sensor &create_sensor(const sensor_type &type, const std::string &name, json::json &&data = {}) = 0;
+    virtual item &create_item(const type &type, const std::string &name, json::json &&data = {}) = 0;
 
     /**
-     * Retrieves a vector of references to the sensors in the database.
+     * Retrieves a vector of references to the items in the database.
      *
-     * This function retrieves all the sensors stored in the database and returns them as a vector of `sensor` objects. The returned vector contains references to the actual sensors stored in the `sensors` map.
+     * This function retrieves all the items stored in the database and returns them as a vector of `item` objects. The returned vector contains references to the actual items stored in the `items` map.
      *
-     * @return A vector of references to the sensors.
+     * @return A vector of references to the items.
      */
-    std::vector<std::reference_wrapper<sensor>> get_sensors() const
+    std::vector<std::reference_wrapper<item>> get_items() const
     {
-      std::vector<std::reference_wrapper<sensor>> res;
-      for (auto &s : sensors)
+      std::vector<std::reference_wrapper<item>> res;
+      for (auto &s : items)
         res.push_back(*s.second);
       return res;
     }
 
   protected:
-    sensor_type &create_sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
+    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
     {
-      if (sensor_types.find(id) != sensor_types.end())
-        throw std::invalid_argument("Sensor type already exists: " + id);
-      sensor_types[id] = std::make_unique<sensor_type>(id, name, description, std::move(pars));
-      return *sensor_types[id];
+      if (types.find(id) != types.end())
+        throw std::invalid_argument("Type already exists: " + id);
+      types[id] = std::make_unique<type>(id, name, description, std::move(pars));
+      return *types[id];
     }
-    sensor &create_sensor(const std::string &id, const sensor_type &type, const std::string &name, json::json &&data = {})
+    item &create_item(const std::string &id, const type &type, const std::string &name, json::json &&data = {})
     {
-      if (sensors.find(id) != sensors.end())
-        throw std::invalid_argument("Sensor already exists: " + id);
-      sensors[id] = std::make_unique<sensor>(id, type, name, std::move(data));
-      return *sensors[id];
+      if (items.find(id) != items.end())
+        throw std::invalid_argument("item already exists: " + id);
+      items[id] = std::make_unique<item>(id, type, name, std::move(data));
+      return *items[id];
     }
 
   private:
     const json::json config; // The app name.
 
-    std::map<std::string, std::unique_ptr<sensor_type>> sensor_types;
-    std::map<std::string, std::unique_ptr<sensor>> sensors;
+    std::map<std::string, std::unique_ptr<type>> types;
+    std::map<std::string, std::unique_ptr<item>> items;
   };
 } // namespace coco

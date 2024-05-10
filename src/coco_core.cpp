@@ -10,31 +10,31 @@ namespace coco
         assert(env != nullptr);
     }
 
-    std::vector<std::reference_wrapper<sensor_type>> coco_core::get_sensor_types()
+    std::vector<std::reference_wrapper<type>> coco_core::get_types()
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        return db->get_sensor_types();
+        return db->get_types();
     }
 
-    sensor_type &coco_core::create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
+    type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &st = db->create_sensor_type(name, description, std::move(pars));
-        new_sensor_type(st);
+        auto &st = db->create_type(name, description, std::move(pars));
+        new_type(st);
         return st;
     }
 
-    std::vector<std::reference_wrapper<sensor>> coco_core::get_sensors()
+    std::vector<std::reference_wrapper<item>> coco_core::get_items()
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        return db->get_sensors();
+        return db->get_items();
     }
 
-    sensor &coco_core::create_sensor(const sensor_type &type, const std::string &name, json::json &&data)
+    item &coco_core::create_item(const type &type, const std::string &name, json::json &&data)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &s = db->create_sensor(type, name, std::move(data));
-        new_sensor(s);
+        auto &s = db->create_item(type, name, std::move(data));
+        new_item(s);
         return s;
     }
 
@@ -56,16 +56,16 @@ namespace coco
         return exec_ref;
     }
 
-    void coco_core::new_sensor_type([[maybe_unused]] const sensor_type &s) { LOG_TRACE("New sensor type: " + s.get_id()); }
-    void coco_core::updated_sensor_type([[maybe_unused]] const sensor_type &s) { LOG_TRACE("Updated sensor type: " + s.get_id()); }
-    void coco_core::deleted_sensor_type([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted sensor type: " + id); }
+    void coco_core::new_type([[maybe_unused]] const type &s) { LOG_TRACE("New type: " + s.get_id()); }
+    void coco_core::updated_type([[maybe_unused]] const type &s) { LOG_TRACE("Updated type: " + s.get_id()); }
+    void coco_core::deleted_type([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted type: " + id); }
 
-    void coco_core::new_sensor([[maybe_unused]] const sensor &s) { LOG_TRACE("New sensor: " + s.get_id()); }
-    void coco_core::updated_sensor([[maybe_unused]] const sensor &s) { LOG_TRACE("Updated sensor: " + s.get_id()); }
-    void coco_core::deleted_sensor([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted sensor: " + id); }
+    void coco_core::new_item([[maybe_unused]] const item &s) { LOG_TRACE("New item: " + s.get_id()); }
+    void coco_core::updated_item([[maybe_unused]] const item &s) { LOG_TRACE("Updated item: " + s.get_id()); }
+    void coco_core::deleted_item([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted item: " + id); }
 
-    void coco_core::new_sensor_value([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &value) { LOG_TRACE("Sensor " + s.get_id() + " value: " + value.to_string()); }
-    void coco_core::new_sensor_state([[maybe_unused]] const sensor &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &state) { LOG_TRACE("Sensor " + s.get_id() + " state: " + state.to_string()); }
+    void coco_core::new_item_data([[maybe_unused]] const item &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) { LOG_TRACE("Item " + s.get_id() + " data: " + data.to_string()); }
+    void coco_core::new_item_state([[maybe_unused]] const item &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &state) { LOG_TRACE("Item " + s.get_id() + " state: " + state.to_string()); }
 
     void coco_core::new_solver([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("New solver: " + exec.get_solver().get_name() + " (" + std::to_string(get_id(exec)) + ")"); }
     void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) { LOG_TRACE("Deleted solver: " + std::to_string(id)); }

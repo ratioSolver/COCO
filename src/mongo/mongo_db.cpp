@@ -6,9 +6,9 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), sensor_types_collection(db["sensor_types"]), sensors_collection(db["sensors"]), sensor_data_collection(db["sensor_data"]) {}
+    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), sensor_data_collection(db["sensor_data"]) {}
 
-    sensor_type &mongo_db::create_sensor_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
+    type &mongo_db::create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", name));
@@ -17,22 +17,22 @@ namespace coco
         for (const auto &p : pars)
             parameters.append(to_bson(*p));
         doc.append(bsoncxx::builder::basic::kvp("parameters", parameters));
-        auto result = sensor_types_collection.insert_one(doc.view());
+        auto result = types_collection.insert_one(doc.view());
         if (result)
-            return coco_db::create_sensor_type(result->inserted_id().get_oid().value.to_string(), name, description, std::move(pars));
-        throw std::invalid_argument("Failed to insert sensor type: " + name);
+            return coco_db::create_type(result->inserted_id().get_oid().value.to_string(), name, description, std::move(pars));
+        throw std::invalid_argument("Failed to insert type: " + name);
     }
 
-    sensor &mongo_db::create_sensor(const sensor_type &type, const std::string &name, json::json &&data)
+    item &mongo_db::create_item(const type &tp, const std::string &name, json::json &&data)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{type.get_id()}));
+        doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{tp.get_id()}));
         doc.append(bsoncxx::builder::basic::kvp("name", name));
         doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
-        auto result = sensors_collection.insert_one(doc.view());
+        auto result = items_collection.insert_one(doc.view());
         if (result)
-            return coco_db::create_sensor(result->inserted_id().get_oid().value.to_string(), type, name, std::move(data));
-        throw std::invalid_argument("Failed to insert sensor: " + name);
+            return coco_db::create_item(result->inserted_id().get_oid().value.to_string(), tp, name, std::move(data));
+        throw std::invalid_argument("Failed to insert item: " + name);
     }
 
     bsoncxx::builder::basic::document mongo_db::to_bson(const parameter &p)

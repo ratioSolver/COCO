@@ -217,8 +217,7 @@ namespace coco
                                                     {{"$ref", "#/components/schemas/boolean_parameter"}},
                                                     {{"$ref", "#/components/schemas/symbol_parameter"}},
                                                     {{"$ref", "#/components/schemas/string_parameter"}},
-                                                    {{"$ref", "#/components/schemas/array_parameter"}}}},
-                                      {"discriminator", {{"propertyName", "type"}, {"mapping", {{"integer", "#/components/schemas/integer_parameter"}, {"real", "#/components/schemas/real_parameter"}, {"boolean", "#/components/schemas/boolean_parameter"}, {"symbol", "#/components/schemas/symbol_parameter"}, {"string", "#/components/schemas/string_parameter"}, {"array", "#/components/schemas/array_parameter"}}}}}}}};
+                                                    {{"$ref", "#/components/schemas/array_parameter"}}}}}}};
   const json::json integer_parameter_schema{{"integer_parameter",
                                              {{"type", "object"},
                                               {"properties",

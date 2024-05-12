@@ -18,9 +18,9 @@ namespace coco
      * @param id The ID of the item.
      * @param tp The type of the item.
      * @param name The name of the item.
-     * @param static_pars The static parameters of the item.
+     * @param pars The parameters of the item.
      */
-    item(const std::string &id, const type &tp, const std::string &name, std::vector<std::unique_ptr<parameter>> &&static_pars);
+    item(const std::string &id, const type &tp, const std::string &name, const json::json &pars);
 
     /**
      * @brief Gets the ID of the item.
@@ -44,17 +44,17 @@ namespace coco
     [[nodiscard]] const std::string &get_name() const { return name; }
 
     /**
-     * @brief Gets the static parameters of the item.
+     * @brief Gets the parameters of the item.
      *
-     * @return The static parameters of the item.
+     * @return The parameters of the item.
      */
-    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_parameters() const { return parameters; }
+    [[nodiscard]] const json::json &get_parameters() const { return parameters; }
 
   private:
-    const std::string id;                               // The ID of the item.
-    const type &tp;                                     // The type of the item.
-    const std::string name;                             // The name of the item.
-    std::vector<std::unique_ptr<parameter>> parameters; // The parameters of the item.
+    const std::string id;   // The ID of the item.
+    const type &tp;         // The type of the item.
+    const std::string name; // The name of the item.
+    json::json parameters;  // The parameters of the item.
   };
 
   /**
@@ -63,18 +63,7 @@ namespace coco
    * @param s The item object to convert.
    * @return A JSON object representing the item.
    */
-  inline json::json to_json(const item &s)
-  {
-    json::json j{{"id", s.get_id()}, {"type", s.get_type().get_id()}, {"name", s.get_name()}};
-    if (!s.get_parameters().empty())
-    {
-      json::json parameters;
-      for (const auto &p : s.get_parameters())
-        parameters.push_back(to_json(*p));
-      j["parameters"] = parameters;
-    }
-    return j;
-  }
+  inline json::json to_json(const item &s) { return json::json{{"id", s.get_id()}, {"type", s.get_type().get_id()}, {"name", s.get_name()}, {"parameters", s.get_parameters()}}; }
 
   const json::json coco_item_schema{"coco_item",
                                     {{"type", "object"},
@@ -82,5 +71,5 @@ namespace coco
                                       {{"id", {"type", "integer"}},
                                        {"type", {"type", "integer"}},
                                        {"name", {"type", "string"}},
-                                       {"parameters", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/parameter"}}}}}}}}};
+                                       {"parameters", {"type", "object"}}}}}};
 } // namespace coco

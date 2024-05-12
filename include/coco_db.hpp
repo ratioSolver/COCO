@@ -50,7 +50,7 @@ namespace coco
      * @param pars The parameters of the item.
      * @return A reference to the created item.
      */
-    virtual item &create_item(const type &type, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars) = 0;
+    virtual item &create_item(const type &type, const std::string &name, const json::json &pars) = 0;
 
     /**
      * Retrieves a vector of references to the items in the database.
@@ -86,11 +86,11 @@ namespace coco
       types[id] = std::make_unique<type>(id, name, description, std::move(static_pars), std::move(dynamic_pars));
       return *types[id];
     }
-    item &create_item(const std::string &id, const type &type, const std::string &name, std::vector<std::unique_ptr<parameter>> &&static_pars)
+    item &create_item(const std::string &id, const type &type, const std::string &name, const json::json &pars)
     {
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
-      items[id] = std::make_unique<item>(id, type, name, std::move(static_pars));
+      items[id] = std::make_unique<item>(id, type, name, pars);
       return *items[id];
     }
 

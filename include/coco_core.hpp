@@ -57,7 +57,7 @@ namespace coco
      * @param pars The parameters of the item.
      * @return A reference to the created item.
      */
-    item &create_item(const type &type, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars);
+    item &create_item(const type &type, const std::string &name, const json::json &pars);
 
     /**
      * @brief Adds data to the item.

@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <limits>
+#include <algorithm>
 
 namespace coco
 {
@@ -75,6 +76,8 @@ namespace coco
      */
     [[nodiscard]] parameter_type get_type() const { return type; }
 
+    virtual bool validate(const json::json &value) const = 0;
+
   private:
     /**
      * @brief Outputs the parameter to the given output stream.
@@ -101,6 +104,14 @@ namespace coco
     [[nodiscard]] long get_min() const { return min; }
     [[nodiscard]] long get_max() const { return max; }
 
+    bool validate(const json::json &value) const override
+    {
+      if (value.get_type() != json::json_type::number)
+        return false;
+      long v = value;
+      return v >= min && v <= max;
+    }
+
   private:
     const long min, max;
   };
@@ -113,6 +124,14 @@ namespace coco
     [[nodiscard]] double get_min() const { return min; }
     [[nodiscard]] double get_max() const { return max; }
 
+    bool validate(const json::json &value) const override
+    {
+      if (value.get_type() != json::json_type::number)
+        return false;
+      double v = value;
+      return v >= min && v <= max;
+    }
+
   private:
     const double min, max;
   };
@@ -121,23 +140,52 @@ namespace coco
   {
   public:
     boolean_parameter(const std::string &name) : parameter(name, parameter_type::Boolean) {}
+
+    bool validate(const json::json &value) const override { return value.get_type() == json::json_type::boolean; }
   };
 
   class symbol_parameter : public parameter
   {
   public:
-    symbol_parameter(const std::string &name, const std::vector<std::string> &symbols) : parameter(name, parameter_type::Symbol), symbols(symbols) {}
+    symbol_parameter(const std::string &name, const std::vector<std::string> &symbols, bool multiple = false) : parameter(name, parameter_type::Symbol), symbols(symbols), multiple(multiple) {}
 
     [[nodiscard]] const std::vector<std::string> &get_symbols() const { return symbols; }
+    [[nodiscard]] bool is_multiple() const { return multiple; }
+
+    bool validate(const json::json &value) const override
+    {
+      if (multiple)
+      {
+        if (value.get_type() != json::json_type::array)
+          return false;
+        for (const auto &v : value.as_array())
+        {
+          if (v.get_type() != json::json_type::string)
+            return false;
+          if (std::find(symbols.cbegin(), symbols.cend(), static_cast<std::string>(v)) == symbols.end())
+            return false;
+        }
+        return true;
+      }
+      else
+      {
+        if (value.get_type() != json::json_type::string)
+          return false;
+        return std::find(symbols.begin(), symbols.end(), static_cast<std::string>(value)) != symbols.end();
+      }
+    }
 
   private:
     const std::vector<std::string> symbols;
+    const bool multiple;
   };
 
   class string_parameter : public parameter
   {
   public:
     string_parameter(const std::string &name) : parameter(name, parameter_type::String) {}
+
+    bool validate(const json::json &value) const override { return value.get_type() == json::json_type::string; }
   };
 
   class array_parameter : public parameter
@@ -147,6 +195,25 @@ namespace coco
 
     [[nodiscard]] const parameter &as_array_type() const { return *type; }
     [[nodiscard]] const std::vector<int> &get_shape() const { return shape; }
+
+    bool validate(const json::json &value) const override
+    {
+      if (value.get_type() != json::json_type::array)
+        return false;
+      if (value.size() != static_cast<size_t>(shape[0]))
+        return false;
+      for (const auto &v : value.as_array())
+      {
+        if (v.get_type() != json::json_type::array)
+          return false;
+        if (v.size() != static_cast<size_t>(shape[1]))
+          return false;
+        for (const auto &vv : v.as_array())
+          if (!type->validate(vv))
+            return false;
+      }
+      return true;
+    }
 
   private:
     const std::unique_ptr<parameter> type;
@@ -185,6 +252,7 @@ namespace coco
     case Symbol:
     {
       auto &p = static_cast<const symbol_parameter &>(par);
+      res["multiple"] = p.is_multiple();
       if (!p.get_symbols().empty())
       {
         json::json symbols;
@@ -245,6 +313,7 @@ namespace coco
                                              {"properties",
                                               {{"name", {{"type", "string"}}},
                                                {"type", {{"type", "string"}, {"enum", {"symbol"}}}},
+                                               {"multiple", {{"type", "boolean"}}},
                                                {"symbols", {{"type", "array"}, {"items", {{"type", "string"}}}}}}},
                                              {"required", {"name", "type", "symbols"}}}}};
   const json::json string_parameter_schema{{"string_parameter",

@@ -30,18 +30,40 @@ namespace coco
         return db->get_items();
     }
 
-    item &coco_core::create_item(const type &type, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars)
+    item &coco_core::create_item(const type &type, const std::string &name, const json::json &pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &s = db->create_item(type, name, std::move(pars));
+        for (const auto &p : type.get_static_parameters())
+            if (!pars.contains(p->get_name()))
+            {
+                LOG_WARN("Parameters for item " + name + " do not contain parameter " + p->get_name());
+                return db->get_items().front().get();
+            }
+            else if (!p->validate(pars[p->get_name()]))
+            {
+                LOG_WARN("Parameters for item " + name + " parameter " + p->get_name() + " is invalid");
+                return db->get_items().front().get();
+            }
+        auto &s = db->create_item(type, name, pars);
         new_item(s);
         return s;
     }
 
     void coco_core::add_data(const item &s, const json::json &data)
     {
-        // TODO: validate data against item type
         std::lock_guard<std::recursive_mutex> _(mtx);
+        for (const auto &p : s.get_type().get_dynamic_parameters())
+            if (!data.contains(p->get_name()))
+            {
+                LOG_WARN("Data for item " + s.get_id() + " does not contain parameter " + p->get_name());
+                return;
+            }
+            else if (!p->validate(data[p->get_name()]))
+            {
+                LOG_WARN("Data for item " + s.get_id() + " parameter " + p->get_name() + " is invalid");
+                return;
+            }
+
         db->add_data(s, std::chrono::system_clock::now(), data);
         new_data(s, std::chrono::system_clock::now(), data);
     }

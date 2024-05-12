@@ -52,7 +52,7 @@ namespace coco
      *
      * @return The static parameters of the CoCo type.
      */
-    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_parameters() const { return static_parameters; }
+    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_static_parameters() const { return static_parameters; }
 
     /**
      * @brief Gets the dynamic parameters of the CoCo type.
@@ -77,10 +77,14 @@ namespace coco
   inline json::json to_json(const type &st)
   {
     json::json j{{"id", st.get_id()}, {"name", st.get_name()}, {"description", st.get_description()}};
-    json::json j_pars(json::json_type::array);
-    for (const auto &p : st.get_parameters())
-      j_pars.push_back(to_json(*p));
-    j["parameters"] = std::move(j_pars);
+    json::json j_static_pars(json::json_type::array);
+    for (const auto &p : st.get_static_parameters())
+      j_static_pars.push_back(to_json(*p));
+    j["static_parameters"] = std::move(j_static_pars);
+    json::json j_dyn_pars(json::json_type::array);
+    for (const auto &p : st.get_dynamic_parameters())
+      j_dyn_pars.push_back(to_json(*p));
+    j["dynamic_parameters"] = std::move(j_dyn_pars);
     return j;
   }
 

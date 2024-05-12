@@ -27,18 +27,15 @@ namespace coco
         throw std::invalid_argument("Failed to insert type: " + name);
     }
 
-    item &mongo_db::create_item(const type &tp, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars)
+    item &mongo_db::create_item(const type &tp, const std::string &name, const json::json &pars)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{tp.get_id()}));
         doc.append(bsoncxx::builder::basic::kvp("name", name));
-        auto parameters = bsoncxx::builder::basic::array{};
-        for (const auto &p : pars)
-            parameters.append(to_bson(*p));
-        doc.append(bsoncxx::builder::basic::kvp("parameters", parameters));
+        doc.append(bsoncxx::builder::basic::kvp("parameters", bsoncxx::from_json(pars.dump())));
         auto result = items_collection.insert_one(doc.view());
         if (result)
-            return coco_db::create_item(result->inserted_id().get_oid().value.to_string(), tp, name, std::move(pars));
+            return coco_db::create_item(result->inserted_id().get_oid().value.to_string(), tp, name, pars);
         throw std::invalid_argument("Failed to insert item: " + name);
     }
 

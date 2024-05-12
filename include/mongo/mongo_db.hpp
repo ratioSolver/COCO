@@ -16,7 +16,7 @@ namespace coco
 
     type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars) override;
 
-    item &create_item(const type &tp, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars) override;
+    item &create_item(const type &tp, const std::string &name, const json::json &pars) override;
 
     void add_data(const item &it, const std::chrono::system_clock::time_point &timestamp, const json::json &data) override;
 

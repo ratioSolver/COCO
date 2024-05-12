@@ -258,7 +258,7 @@ namespace coco
                                             {"properties",
                                              {{"name", {{"type", "string"}}},
                                               {"type", {{"type", "string"}, {"enum", {"array"}}}},
-                                              {"array_type", {{"type", "string"}, {"enum", {"integer", "real", "boolean", "symbol", "string"}}}},
+                                              {"array_type", {{"$ref", "#/components/schemas/parameter"}}},
                                               {"shape", {{"type", "array"}, {"items", {{"type", "integer"}}}}}}},
                                             {"required", {"name", "type", "array_type", "shape"}}}}};
 } // namespace coco

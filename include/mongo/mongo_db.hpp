@@ -14,8 +14,11 @@ namespace coco
     mongo_db(const json::json &config = {{"name", COCO_NAME}}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     virtual ~mongo_db() = default;
 
-    type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) override;
-    item &create_item(const type &tp, const std::string &name, json::json &&data = {}) override;
+    type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars) override;
+
+    item &create_item(const type &tp, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars) override;
+
+    void add_data(const item &it, const std::chrono::system_clock::time_point &timestamp, const json::json &data) override;
 
   private:
     static bsoncxx::builder::basic::document to_bson(const parameter &p);

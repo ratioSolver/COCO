@@ -2,6 +2,7 @@
 
 #include "coco_type.hpp"
 #include "coco_item.hpp"
+#include <chrono>
 
 namespace coco
 {
@@ -20,10 +21,11 @@ namespace coco
      *
      * @param name The name of the type.
      * @param description The description of the type.
-     * @param pars The parameters of the type.
+     * @param static_pars The static parameters of the type.
+     * @param dynamic_pars The dynamic parameters of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars) = 0;
+    virtual type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars) = 0;
 
     /**
      * Returns a vector of references to the types.
@@ -45,10 +47,10 @@ namespace coco
      *
      * @param type The type of the item.
      * @param name The name of the item.
-     * @param data Optional data for the item (default is an empty JSON object).
+     * @param pars The parameters of the item.
      * @return A reference to the created item.
      */
-    virtual item &create_item(const type &type, const std::string &name, json::json &&data = {}) = 0;
+    virtual item &create_item(const type &type, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars) = 0;
 
     /**
      * Retrieves a vector of references to the items in the database.
@@ -65,19 +67,30 @@ namespace coco
       return res;
     }
 
+    /**
+     * @brief Adds data to the database for a given item.
+     *
+     * This function adds the provided data to the database for the specified item.
+     *
+     * @param item The item to which the data will be added.
+     * @param timestamp The timestamp of the data.
+     * @param data The data to be added to the database.
+     */
+    virtual void add_data(const item &item, const std::chrono::system_clock::time_point &timestamp, const json::json &data) = 0;
+
   protected:
-    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
+    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars)
     {
       if (types.find(id) != types.end())
         throw std::invalid_argument("Type already exists: " + id);
-      types[id] = std::make_unique<type>(id, name, description, std::move(pars));
+      types[id] = std::make_unique<type>(id, name, description, std::move(static_pars), std::move(dynamic_pars));
       return *types[id];
     }
-    item &create_item(const std::string &id, const type &type, const std::string &name, json::json &&data = {})
+    item &create_item(const std::string &id, const type &type, const std::string &name, std::vector<std::unique_ptr<parameter>> &&static_pars)
     {
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
-      items[id] = std::make_unique<item>(id, type, name, std::move(data));
+      items[id] = std::make_unique<item>(id, type, name, std::move(static_pars));
       return *items[id];
     }
 

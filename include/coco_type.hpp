@@ -21,9 +21,10 @@ namespace coco
      * @param id The ID of the CoCo type.
      * @param name The name of the CoCo type.
      * @param description The description of the CoCo type.
-     * @param pars The parameters of the CoCo type.
+     * @param static_pars The static parameters of the CoCo type.
+     * @param dynamic_pars The dynamic parameters of the CoCo type.
      */
-    type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars);
+    type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars);
 
     /**
      * @brief Gets the ID of the CoCo type.
@@ -47,16 +48,24 @@ namespace coco
     [[nodiscard]] const std::string &get_description() const { return description; }
 
     /**
-     * @brief Gets the parameters of the CoCo type.
+     * @brief Gets the static parameters of the CoCo type.
      *
-     * @return The parameters of the CoCo type.
+     * @return The static parameters of the CoCo type.
      */
-    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_parameters() const { return parameters; }
+    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_parameters() const { return static_parameters; }
+
+    /**
+     * @brief Gets the dynamic parameters of the CoCo type.
+     *
+     * @return The dynamic parameters of the CoCo type.
+     */
+    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_dynamic_parameters() const { return dynamic_parameters; }
 
   private:
-    const std::string id;                               // the ID of the CoCo type
-    std::string name, description;                      // the name and description of the CoCo type
-    std::vector<std::unique_ptr<parameter>> parameters; // the parameters of the CoCo type
+    const std::string id;                                       // the ID of the CoCo type
+    std::string name, description;                              // the name and description of the CoCo type
+    std::vector<std::unique_ptr<parameter>> static_parameters;  // the static parameters of the CoCo type
+    std::vector<std::unique_ptr<parameter>> dynamic_parameters; // the dynamic parameters of the CoCo type
   };
 
   /**
@@ -81,5 +90,6 @@ namespace coco
                                       {{"id", {{"type", "integer"}}},
                                        {"name", {{"type", "string"}}},
                                        {"description", {{"type", "string"}}},
-                                       {"parameters", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/parameter"}}}}}}}}};
+                                       {"static_parameters", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/parameter"}}}}},
+                                       {"dynamic_parameters", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/parameter"}}}}}}}}};
 } // namespace coco

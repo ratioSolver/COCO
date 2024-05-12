@@ -2,5 +2,5 @@
 
 namespace coco
 {
-    item::item(const std::string &id, const type &tp, const std::string &name, json::json &&data) : id(id), tp(tp), name(name), data(std::move(data)) {}
+    item::item(const std::string &id, const type &tp, const std::string &name, std::vector<std::unique_ptr<parameter>> &&static_pars) : id(id), tp(tp), name(name), parameters(std::move(static_pars)) {}
 } // namespace coco

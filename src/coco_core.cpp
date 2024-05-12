@@ -16,10 +16,10 @@ namespace coco
         return db->get_types();
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars)
+    type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &st = db->create_type(name, description, std::move(pars));
+        auto &st = db->create_type(name, description, std::move(static_pars), std::move(dynamic_pars));
         new_type(st);
         return st;
     }
@@ -30,12 +30,20 @@ namespace coco
         return db->get_items();
     }
 
-    item &coco_core::create_item(const type &type, const std::string &name, json::json &&data)
+    item &coco_core::create_item(const type &type, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &s = db->create_item(type, name, std::move(data));
+        auto &s = db->create_item(type, name, std::move(pars));
         new_item(s);
         return s;
+    }
+
+    void coco_core::add_data(const item &s, const json::json &data)
+    {
+        // TODO: validate data against item type
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->add_data(s, std::chrono::system_clock::now(), data);
+        new_data(s, std::chrono::system_clock::now(), data);
     }
 
     std::vector<std::reference_wrapper<coco_executor>> coco_core::get_solvers()
@@ -64,8 +72,7 @@ namespace coco
     void coco_core::updated_item([[maybe_unused]] const item &s) { LOG_TRACE("Updated item: " + s.get_id()); }
     void coco_core::deleted_item([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted item: " + id); }
 
-    void coco_core::new_item_data([[maybe_unused]] const item &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) { LOG_TRACE("Item " + s.get_id() + " data: " + data.to_string()); }
-    void coco_core::new_item_state([[maybe_unused]] const item &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &state) { LOG_TRACE("Item " + s.get_id() + " state: " + state.to_string()); }
+    void coco_core::new_data([[maybe_unused]] const item &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) { LOG_TRACE("Item " + s.get_id() + " data: " + data.to_string()); }
 
     void coco_core::new_solver([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("New solver: " + exec.get_solver().get_name() + " (" + std::to_string(get_id(exec)) + ")"); }
     void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) { LOG_TRACE("Deleted solver: " + std::to_string(id)); }

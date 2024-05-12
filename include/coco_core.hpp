@@ -34,10 +34,11 @@ namespace coco
      *
      * @param name The name of the type.
      * @param description The description of the type.
-     * @param pars The parameters of the type.
+     * @param static_pars The static parameters of the type.
+     * @param dynamic_pars The dynamic parameters of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&pars);
+    type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars);
 
     /**
      * Retrieves a vector of references to the items in the database.
@@ -53,10 +54,20 @@ namespace coco
      *
      * @param type The type of the item.
      * @param name The name of the item.
-     * @param data Optional data for the item (default is an empty JSON object).
+     * @param pars The parameters of the item.
      * @return A reference to the created item.
      */
-    item &create_item(const type &type, const std::string &name, json::json &&data = {});
+    item &create_item(const type &type, const std::string &name, std::vector<std::unique_ptr<parameter>> &&pars);
+
+    /**
+     * @brief Adds data to the item.
+     *
+     * This function adds the provided data to the specified item.
+     *
+     * @param item The item to which the data will be added.
+     * @param data The data to be added.
+     */
+    void add_data(const item &item, const json::json &data);
 
     /**
      * @brief Retrieves a vector of references to the solvers.
@@ -87,8 +98,7 @@ namespace coco
     virtual void updated_item(const item &s);
     virtual void deleted_item(const std::string &id);
 
-    virtual void new_item_data(const item &s, const std::chrono::system_clock::time_point &timestamp, const json::json &data);
-    virtual void new_item_state(const item &s, const std::chrono::system_clock::time_point &timestamp, const json::json &state);
+    virtual void new_data(const item &s, const std::chrono::system_clock::time_point &timestamp, const json::json &data);
 
     virtual void new_solver(const coco_executor &exec);
     virtual void deleted_solver(const uintptr_t id);

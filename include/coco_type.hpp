@@ -91,9 +91,25 @@ namespace coco
   const json::json coco_type_schema{"coco_type",
                                     {{"type", "object"},
                                      {"properties",
-                                      {{"id", {{"type", "integer"}}},
+                                      {{"id", {{"type", "string"}, {"format", "uuid"}}},
                                        {"name", {{"type", "string"}}},
                                        {"description", {{"type", "string"}}},
                                        {"static_parameters", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/parameter"}}}}},
                                        {"dynamic_parameters", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/parameter"}}}}}}}}};
+  const json::json types_path{"/types",
+                              {{"get",
+                                {{"summary", "Retrieve all the CoCo types"},
+                                 {"description", "Endpoint to fetch all the managed types"},
+                                 {"responses",
+                                  {{"200",
+                                    {{"description", "Successful response with the stored types"},
+                                     {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}}}}}}}};
+  const json::json type_path{"/type",
+                             {{"post",
+                               {{"summary", "Create a new type"},
+                                {"description", "Endpoint to create a new type"},
+                                {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+                                {"responses",
+                                 {{"200",
+                                   {{"description", "Successful response"}}}}}}}}};
 } // namespace coco

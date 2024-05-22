@@ -1,6 +1,7 @@
 #pragma once
 
 #include "coco_item.hpp"
+#include "coco_rule.hpp"
 #include "coco_executor.hpp"
 #include <chrono>
 #include <mutex>
@@ -89,6 +90,46 @@ namespace coco
      */
     coco_executor &create_solver(const std::string &name, const utils::rational &units_per_tick = utils::rational::one);
 
+    /**
+     * @brief Retrieves a vector of references to the reactive rules.
+     *
+     * This function retrieves all the reactive rules as a vector of `rule` objects.
+     *
+     * @return A vector of references to the reactive rules.
+     */
+    std::vector<std::reference_wrapper<rule>> get_reactive_rules();
+
+    /**
+     * @brief Creates a reactive rule with the specified name and content.
+     *
+     * This function creates a reactive rule with the specified name and content.
+     *
+     * @param name The name of the rule.
+     * @param content The content of the rule.
+     * @return A reference to the created `rule` object.
+     */
+    rule &create_reactive_rule(const std::string &name, const std::string &content);
+
+    /**
+     * @brief Retrieves a vector of references to the deliberative rules.
+     *
+     * This function retrieves all the deliberative rules as a vector of `rule` objects.
+     *
+     * @return A vector of references to the deliberative rules.
+     */
+    std::vector<std::reference_wrapper<rule>> get_deliberative_rules();
+
+    /**
+     * @brief Creates a deliberative rule with the specified name and content.
+     *
+     * This function creates a deliberative rule with the specified name and content.
+     *
+     * @param name The name of the rule.
+     * @param content The content of the rule.
+     * @return A reference to the created `rule` object.
+     */
+    rule &create_deliberative_rule(const std::string &name, const std::string &content);
+
   private:
     virtual void new_type(const type &s);
     virtual void updated_type(const type &s);
@@ -102,6 +143,9 @@ namespace coco
 
     virtual void new_solver(const coco_executor &exec);
     virtual void deleted_solver(const uintptr_t id);
+
+    virtual void new_reactive_rule(const rule &r);
+    virtual void new_deliberative_rule(const rule &r);
 
     virtual void state_changed(const coco_executor &exec);
 

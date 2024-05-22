@@ -6,7 +6,7 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), sensor_data_collection(db["sensor_data"]) {}
+    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), sensor_data_collection(db["sensor_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"]) { assert(conn); }
 
     type &mongo_db::create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars)
     {
@@ -48,6 +48,28 @@ namespace coco
         auto result = sensor_data_collection.insert_one(doc.view());
         if (!result)
             throw std::invalid_argument("Failed to insert data for item: " + it.get_name());
+    }
+
+    rule &mongo_db::create_reactive_rule(const std::string &name, const std::string &content)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", name));
+        doc.append(bsoncxx::builder::basic::kvp("content", content));
+        auto result = reactive_rules_collection.insert_one(doc.view());
+        if (result)
+            return coco_db::create_reactive_rule(result->inserted_id().get_oid().value.to_string(), name, content);
+        throw std::invalid_argument("Failed to insert reactive rule: " + name);
+    }
+
+    rule &mongo_db::create_deliberative_rule(const std::string &name, const std::string &content)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", name));
+        doc.append(bsoncxx::builder::basic::kvp("content", content));
+        auto result = deliberative_rules_collection.insert_one(doc.view());
+        if (result)
+            return coco_db::create_deliberative_rule(result->inserted_id().get_oid().value.to_string(), name, content);
+        throw std::invalid_argument("Failed to insert deliberative rule: " + name);
     }
 
     bsoncxx::builder::basic::document mongo_db::to_bson(const parameter &p)

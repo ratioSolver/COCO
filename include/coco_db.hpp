@@ -2,6 +2,7 @@
 
 #include "coco_type.hpp"
 #include "coco_item.hpp"
+#include "coco_rule.hpp"
 #include <chrono>
 
 namespace coco
@@ -78,6 +79,50 @@ namespace coco
      */
     virtual void add_data(const item &item, const std::chrono::system_clock::time_point &timestamp, const json::json &data) = 0;
 
+    /**
+     * Returns a vector of references to the reactive rules in the database.
+     *
+     * @return A vector of references to the reactive rules.
+     */
+    std::vector<std::reference_wrapper<rule>> get_reactive_rules() const
+    {
+      std::vector<std::reference_wrapper<rule>> res;
+      for (auto &r : reactive_rules)
+        res.push_back(*r.second);
+      return res;
+    }
+
+    /**
+     * @brief Creates a reactive rule with the given name and content.
+     *
+     * @param name The name of the reactive rule.
+     * @param content The content of the reactive rule.
+     * @return A reference to the created reactive rule.
+     */
+    virtual rule &create_reactive_rule(const std::string &name, const std::string &content) = 0;
+
+    /**
+     * Returns a vector of references to the deliberative rules in the database.
+     *
+     * @return A vector of references to the deliberative rules.
+     */
+    std::vector<std::reference_wrapper<rule>> get_deliberative_rules() const
+    {
+      std::vector<std::reference_wrapper<rule>> res;
+      for (auto &r : deliberative_rules)
+        res.push_back(*r.second);
+      return res;
+    }
+
+    /**
+     * @brief Creates a deliberative rule with the given name and content.
+     *
+     * @param name The name of the deliberative rule.
+     * @param content The content of the deliberative rule.
+     * @return A reference to the created deliberative rule.
+     */
+    virtual rule &create_deliberative_rule(const std::string &name, const std::string &content) = 0;
+
   protected:
     type &create_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars)
     {
@@ -93,11 +138,27 @@ namespace coco
       items[id] = std::make_unique<item>(id, type, name, pars);
       return *items[id];
     }
+    rule &create_reactive_rule(const std::string &id, const std::string &name, const std::string &content)
+    {
+      if (reactive_rules.find(id) != reactive_rules.end())
+        throw std::invalid_argument("Reactive rule already exists: " + id);
+      reactive_rules[id] = std::make_unique<rule>(id, name, content);
+      return *reactive_rules[id];
+    }
+    rule &create_deliberative_rule(const std::string &id, const std::string &name, const std::string &content)
+    {
+      if (deliberative_rules.find(id) != deliberative_rules.end())
+        throw std::invalid_argument("Deliberative rule already exists: " + id);
+      deliberative_rules[id] = std::make_unique<rule>(id, name, content);
+      return *deliberative_rules[id];
+    }
 
   private:
     const json::json config; // The app name.
 
-    std::map<std::string, std::unique_ptr<type>> types;
-    std::map<std::string, std::unique_ptr<item>> items;
+    std::map<std::string, std::unique_ptr<type>> types;              // The types stored in the database by ID.
+    std::map<std::string, std::unique_ptr<item>> items;              // The items stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> reactive_rules;     // The reactive rules stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> deliberative_rules; // The deliberative rules stored in the database by ID.
   };
 } // namespace coco

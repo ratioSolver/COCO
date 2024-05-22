@@ -20,6 +20,10 @@ namespace coco
 
     void add_data(const item &it, const std::chrono::system_clock::time_point &timestamp, const json::json &data) override;
 
+    rule &create_reactive_rule(const std::string &name, const std::string &content) override;
+
+    rule &create_deliberative_rule(const std::string &name, const std::string &content) override;
+
   private:
     static bsoncxx::builder::basic::document to_bson(const parameter &p);
 
@@ -33,5 +37,7 @@ namespace coco
     mongocxx::collection types_collection;
     mongocxx::collection items_collection;
     mongocxx::collection sensor_data_collection;
+    mongocxx::collection reactive_rules_collection;
+    mongocxx::collection deliberative_rules_collection;
   };
 } // namespace coco

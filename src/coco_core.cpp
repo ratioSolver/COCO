@@ -86,6 +86,34 @@ namespace coco
         return exec_ref;
     }
 
+    std::vector<std::reference_wrapper<rule>> coco_core::get_reactive_rules()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_reactive_rules();
+    }
+
+    rule &coco_core::create_reactive_rule(const std::string &name, const std::string &content)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        auto &r = db->create_reactive_rule(name, content);
+        new_reactive_rule(r);
+        return r;
+    }
+
+    std::vector<std::reference_wrapper<rule>> coco_core::get_deliberative_rules()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_deliberative_rules();
+    }
+
+    rule &coco_core::create_deliberative_rule(const std::string &name, const std::string &content)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        auto &r = db->create_deliberative_rule(name, content);
+        new_deliberative_rule(r);
+        return r;
+    }
+
     void coco_core::new_type([[maybe_unused]] const type &s) { LOG_TRACE("New type: " + s.get_id()); }
     void coco_core::updated_type([[maybe_unused]] const type &s) { LOG_TRACE("Updated type: " + s.get_id()); }
     void coco_core::deleted_type([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted type: " + id); }
@@ -98,6 +126,9 @@ namespace coco
 
     void coco_core::new_solver([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("New solver: " + exec.get_solver().get_name() + " (" + std::to_string(get_id(exec)) + ")"); }
     void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) { LOG_TRACE("Deleted solver: " + std::to_string(id)); }
+
+    void coco_core::new_reactive_rule([[maybe_unused]] const rule &r) { LOG_TRACE("New reactive rule: " + r.get_id()); }
+    void coco_core::new_deliberative_rule([[maybe_unused]] const rule &r) { LOG_TRACE("New deliberative rule: " + r.get_id()); }
 
     void coco_core::state_changed([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " is now " + to_string(exec.get_state())); }
 

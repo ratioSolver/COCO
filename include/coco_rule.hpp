@@ -103,4 +103,23 @@ namespace coco
                                       {{"id", {{"type", "string"}, {"format", "uuid"}}},
                                        {"name", {{"type", "string"}}},
                                        {"content", {{"type", "string"}}}}}}};
+
+  const json::json reactive_rules_path{"/reactive_rules",
+                                       {{"get",
+                                         {{"summary", "Retrieve all the CoCo reactive rules"},
+                                          {"description", "Endpoint to fetch all the managed reactive rules"},
+                                          {"responses",
+                                           {{"200",
+                                             {{"description", "Successful response with the stored reactive rules"},
+                                              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}}}};
+
+  const json::json deliberative_rules_path{"/deliberative_rules",
+                                           {{"get",
+                                             {{"summary", "Retrieve all the CoCo deliberative rules"},
+                                              {"description", "Endpoint to fetch all the managed deliberative rules"},
+                                              {"responses",
+                                               {{"200",
+                                                 {{"description", "Successful response with the stored deliberative rules"},
+                                                  {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}}}};
+
 } // namespace coco

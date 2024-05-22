@@ -1,8 +1,6 @@
-(deftemplate sensor_type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))
-(deftemplate sensor (slot id (type SYMBOL)) (slot sensor_type (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)) (multislot location))
-
-(deffunction sensor_data (?sensor ?sensor_type ?time ?data))
-(deffunction sensor_state (?sensor ?sensor_type ?time ?state))
+(deftemplate item_type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)) (multislot static_parameters) (multislot dynamic_parameters))
+(deftemplate item (slot id (type SYMBOL)) (slot item_type (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)) (multislot parameters))
+(deffunction item_data (?item ?item_type ?time ?data))
 
 (deftemplate solver (slot solver_ptr (type INTEGER)) (slot solver_type (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))
 (deftemplate task (slot solver_ptr (type INTEGER)) (slot id (type INTEGER)) (slot task_type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))

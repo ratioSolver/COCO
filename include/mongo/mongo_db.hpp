@@ -37,7 +37,7 @@ namespace coco
   private:
     mongocxx::collection types_collection;
     mongocxx::collection items_collection;
-    mongocxx::collection sensor_data_collection;
+    mongocxx::collection item_data_collection;
     mongocxx::collection reactive_rules_collection;
     mongocxx::collection deliberative_rules_collection;
   };

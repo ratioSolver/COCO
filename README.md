@@ -40,20 +40,6 @@ class my_app : public coco::coco_core
 
 The application can be used to extend the COCO reasoner with your own functionality, defining your own User Defined Functions (UDFs) and User Defined Types (UDTs).
 
-### The Listener
-
-Implement a listener class that inherits from `coco::coco_listener` and pass the application to the base class constructor.
-
-```cpp
-#include "coco_listener.h"
-
-class my_listener : public coco::coco_listener
-{
-  public:
-    my_listener(my_app& app) : coco_listener(app) {}
-};
-```
-
 ## Installation of COCO on a local machine
 
 ### CLIPS
@@ -66,7 +52,7 @@ COCO relies on [CLIPS](https://www.clipsrules.net) for reacting to the dynamic c
 
 ### MongoDB
 
-COCO relies on [MongoDB](https://www.mongodb.com) for storing the data which is collected from the sensors and the participatory data. It is required, in particular, to install the [cxx drivers](https://www.mongodb.com/docs/drivers/cxx/) for connecting COCO to a MongoDB database.
+COCO relies on [MongoDB](https://www.mongodb.com) for storing the data. It is required, in particular, to install the [cxx drivers](https://www.mongodb.com/docs/drivers/cxx/) for connecting COCO to a MongoDB database.
 
 **Installig OpenSSL**
 

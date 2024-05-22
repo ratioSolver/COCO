@@ -10,7 +10,6 @@ script_path = os.path.dirname(os.path.abspath(__file__))
 
 app_header_template_path = os.path.join(script_path, "coco_app_hpp.tmpl")
 db_header_template_path = os.path.join(script_path, "coco_db_hpp.tmpl")
-listener_header_template_path = os.path.join(script_path, "coco_listener_hpp.tmpl")
 
 app_src_template_path = os.path.join(script_path, "coco_app_cpp.tmpl")
 db_src_template_path = os.path.join(script_path, "coco_db_cpp.tmpl")
@@ -32,13 +31,6 @@ with open(db_header_template_path, 'r') as input_file:
 
 with open(f"include/{project_name}_db.hpp", "w") as f:
     f.write(db_header_content)
-
-with open(listener_header_template_path, 'r') as input_file:
-    listener_header_content = input_file.read()
-    listener_header_content = listener_header_content.replace("[project_name]", project_name)
-
-with open(f"include/{project_name}_listener.hpp", "w") as f:
-    f.write(listener_header_content)
 
 # Create the project source directory
 if not os.path.exists("src"):

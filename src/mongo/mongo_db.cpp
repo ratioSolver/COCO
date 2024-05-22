@@ -7,7 +7,7 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), sensor_data_collection(db["sensor_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
     {
         assert(conn);
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
@@ -98,7 +98,7 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{it.get_id()}));
         doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
         doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
-        auto result = sensor_data_collection.insert_one(doc.view());
+        auto result = item_data_collection.insert_one(doc.view());
         if (!result)
             throw std::invalid_argument("Failed to insert data for item: " + it.get_name());
     }

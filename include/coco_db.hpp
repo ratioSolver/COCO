@@ -44,6 +44,20 @@ namespace coco
     }
 
     /**
+     * Retrieves the reference to a type based on its ID.
+     *
+     * @param id The ID of the type to retrieve.
+     * @return A reference to the type with the specified ID.
+     * @throws std::invalid_argument if the type with the specified ID is not found.
+     */
+    type &get_type(const std::string &id) const
+    {
+      if (types.find(id) == types.end())
+        throw std::invalid_argument("Type not found: " + id);
+      return *types.at(id);
+    }
+
+    /**
      * @brief Creates an item of the specified type with the given name and optional data.
      *
      * @param type The type of the item.
@@ -66,6 +80,20 @@ namespace coco
       for (auto &s : items)
         res.push_back(*s.second);
       return res;
+    }
+
+    /**
+     * Retrieves the reference to an item based on its ID.
+     *
+     * @param id The ID of the item to retrieve.
+     * @return A reference to the item with the specified ID.
+     * @throws std::invalid_argument if the item with the specified ID is not found.
+     */
+    item &get_item(const std::string &id) const
+    {
+      if (items.find(id) == items.end())
+        throw std::invalid_argument("Item not found: " + id);
+      return *items.at(id);
     }
 
     /**

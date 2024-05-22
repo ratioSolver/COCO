@@ -26,6 +26,7 @@ namespace coco
 
   private:
     static bsoncxx::builder::basic::document to_bson(const parameter &p);
+    static std::unique_ptr<parameter> from_bson(const bsoncxx::v_noabi::document::view &doc);
 
   private:
     mongocxx::client conn;

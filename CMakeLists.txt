@@ -9,6 +9,7 @@ find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 
 set(MULTIPLE_EXECUTORS ON CACHE BOOL "Enable multiple executors" FORCE)
+set(ENABLE_VISUALIZATION ON CACHE BOOL "Enable oRatio visualization features" FORCE)
 
 set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
 

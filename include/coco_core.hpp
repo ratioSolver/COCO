@@ -184,6 +184,11 @@ namespace coco
                                 {"properties",
                                  {{"timestamp", {{"type", "string"}, {"format", "date-time"}}},
                                   {"data", {{"type", "object"}}}}}}};
+  const json::json error_schema{"error",
+                                {{"type", "object"},
+                                 {"properties",
+                                  {{"code", {{"type", "integer"}}},
+                                   {"message", {{"type", "string"}}}}}}};
   const json::json data_path{"/data/{item_id}",
                              {{"get",
                                {{"summary", "Retrieve the data of the specified item"},

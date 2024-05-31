@@ -111,5 +111,19 @@ namespace coco
                                 {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
                                 {"responses",
                                  {{"200",
-                                   {{"description", "Successful response"}}}}}}}}};
+                                   {{"description", "Successful response"}}}}}}},
+                              {"delete",
+                               {{"summary", "Delete the given type"},
+                                {"description", "Endpoint to delete the given type"},
+                                {"parameters",
+                                 {{"name", "id"},
+                                  {"in", "path"},
+                                  {"required", true},
+                                  {"schema", {{"type", "string"}, {"format", "uuid"}}}}},
+                                {"responses",
+                                 {{"204",
+                                   {{"description", "Successful response"}}},
+                                  {"404",
+                                   {{"description", "Type not found"},
+                                    {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}};
 } // namespace coco

@@ -122,7 +122,7 @@ namespace coco
     void coco_core::updated_item([[maybe_unused]] const item &s) { LOG_TRACE("Updated item: " + s.get_id()); }
     void coco_core::deleted_item([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted item: " + id); }
 
-    void coco_core::new_data([[maybe_unused]] const item &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) { LOG_TRACE("Item " + s.get_id() + " data: " + data.to_string()); }
+    void coco_core::new_data([[maybe_unused]] const item &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) { LOG_TRACE("Item " + s.get_id() + " data: " + data.dump()); }
 
     void coco_core::new_solver([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("New solver: " + exec.get_solver().get_name() + " (" + std::to_string(get_id(exec)) + ")"); }
     void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) { LOG_TRACE("Deleted solver: " + std::to_string(id)); }

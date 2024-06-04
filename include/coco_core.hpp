@@ -171,12 +171,12 @@ namespace coco
     virtual void end(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
 
   private:
-    std::unique_ptr<coco_db> db;
     std::set<std::unique_ptr<coco_executor>> executors;
 
   protected:
-    Environment *env;         // the CLIPS environment..
-    std::recursive_mutex mtx; // mutex for the core..
+    std::unique_ptr<coco_db> db; // the database..
+    Environment *env;            // the CLIPS environment..
+    std::recursive_mutex mtx;    // mutex for the core..
   };
 
   const json::json data_schema{"data",

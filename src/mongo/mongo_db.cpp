@@ -13,6 +13,12 @@ namespace coco
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
             LOG_DEBUG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
 
+        if (types_collection.list_indexes().begin() == types_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for types collection");
+            types_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
+        }
+
         LOG_DEBUG("Retrieving types from MongoDB");
         for (const auto &doc : types_collection.find({}))
         {
@@ -35,6 +41,12 @@ namespace coco
         }
         LOG_DEBUG("Retrieved " << get_types().size() << " types");
 
+        if (items_collection.list_indexes().begin() == items_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for items collection");
+            items_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
+        }
+
         LOG_DEBUG("Retrieving items from MongoDB");
         for (const auto &doc : items_collection.find({}))
         {
@@ -46,6 +58,18 @@ namespace coco
         }
         LOG_DEBUG("Retrieved " << get_items().size() << " items");
 
+        if (item_data_collection.list_indexes().begin() == item_data_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for item data collection");
+            item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize);
+        }
+
+        if (reactive_rules_collection.list_indexes().begin() == reactive_rules_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for reactive rules collection");
+            reactive_rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
+        }
+
         LOG_DEBUG("Retrieving reactive rules from MongoDB");
         for (const auto &doc : reactive_rules_collection.find({}))
         {
@@ -55,6 +79,12 @@ namespace coco
             coco_db::create_reactive_rule(id, name, content);
         }
         LOG_DEBUG("Retrieved " << get_reactive_rules().size() << " reactive rules");
+
+        if (deliberative_rules_collection.list_indexes().begin() == deliberative_rules_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for deliberative rules collection");
+            deliberative_rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
+        }
 
         LOG_DEBUG("Retrieving deliberative rules from MongoDB");
         for (const auto &doc : deliberative_rules_collection.find({}))

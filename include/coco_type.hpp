@@ -7,6 +7,8 @@
 
 namespace coco
 {
+  class coco_db;
+
   /**
    * @brief Represents a CoCo type.
    *
@@ -14,6 +16,8 @@ namespace coco
    */
   class type final
   {
+    friend class coco_db;
+
   public:
     /**
      * @brief Constructs a CoCo type object.
@@ -24,7 +28,7 @@ namespace coco
      * @param static_pars The static parameters of the CoCo type.
      * @param dynamic_pars The dynamic parameters of the CoCo type.
      */
-    type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars);
+    type(const std::string &id, const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars);
 
     /**
      * @brief Gets the ID of the CoCo type.
@@ -52,20 +56,20 @@ namespace coco
      *
      * @return The static parameters of the CoCo type.
      */
-    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_static_parameters() const { return static_parameters; }
+    [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<parameter>> &get_static_parameters() const { return static_parameters; }
 
     /**
      * @brief Gets the dynamic parameters of the CoCo type.
      *
      * @return The dynamic parameters of the CoCo type.
      */
-    [[nodiscard]] const std::vector<std::unique_ptr<parameter>> &get_dynamic_parameters() const { return dynamic_parameters; }
+    [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<parameter>> &get_dynamic_parameters() const { return dynamic_parameters; }
 
   private:
-    const std::string id;                                       // the ID of the CoCo type
-    std::string name, description;                              // the name and description of the CoCo type
-    std::vector<std::unique_ptr<parameter>> static_parameters;  // the static parameters of the CoCo type
-    std::vector<std::unique_ptr<parameter>> dynamic_parameters; // the dynamic parameters of the CoCo type
+    const std::string id;                                                           // the ID of the CoCo type
+    std::string name, description;                                                  // the name and description of the CoCo type
+    std::unordered_map<std::string, std::unique_ptr<parameter>> static_parameters;  // the static parameters of the CoCo type
+    std::unordered_map<std::string, std::unique_ptr<parameter>> dynamic_parameters; // the dynamic parameters of the CoCo type
   };
 
   /**
@@ -79,11 +83,11 @@ namespace coco
     json::json j{{"id", st.get_id()}, {"name", st.get_name()}, {"description", st.get_description()}};
     json::json j_static_pars(json::json_type::array);
     for (const auto &p : st.get_static_parameters())
-      j_static_pars.push_back(to_json(*p));
+      j_static_pars.push_back(to_json(*p.second));
     j["static_parameters"] = std::move(j_static_pars);
     json::json j_dyn_pars(json::json_type::array);
     for (const auto &p : st.get_dynamic_parameters())
-      j_dyn_pars.push_back(to_json(*p));
+      j_dyn_pars.push_back(to_json(*p.second));
     j["dynamic_parameters"] = std::move(j_dyn_pars);
     return j;
   }
@@ -112,7 +116,34 @@ namespace coco
                                   {{"200",
                                     {{"description", "Successful response"}}}}}}}}};
   const json::json types_id_path{"/types/{type_id}",
-                                 {{"delete",
+                                 {{"get",
+                                   {{"summary", "Retrieve the given type"},
+                                    {"description", "Endpoint to fetch the given type"},
+                                    {"parameters",
+                                     {{{"name", "type_id"},
+                                       {"in", "path"},
+                                       {"required", true},
+                                       {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+                                    {"responses",
+                                     {{"200",
+                                       {{"description", "Successful response with the stored type"},
+                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}}}},
+                                  {"put",
+                                   {{"summary", "Update the given type"},
+                                    {"description", "Endpoint to update the given type"},
+                                    {"parameters",
+                                     {{{"name", "type_id"},
+                                       {"in", "path"},
+                                       {"required", true},
+                                       {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+                                    {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+                                    {"responses",
+                                     {{"200",
+                                       {{"description", "Successful response"}}},
+                                      {"404",
+                                       {{"description", "Type not found"},
+                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
+                                  {"delete",
                                    {{"summary", "Delete the given type"},
                                     {"description", "Endpoint to delete the given type"},
                                     {"parameters",

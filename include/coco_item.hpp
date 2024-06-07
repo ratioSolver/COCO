@@ -11,6 +11,8 @@ namespace coco
    */
   class item final
   {
+    friend class coco_db;
+
   public:
     /**
      * @brief Constructs an item object.
@@ -51,10 +53,10 @@ namespace coco
     [[nodiscard]] const json::json &get_parameters() const { return parameters; }
 
   private:
-    const std::string id;   // The ID of the item.
-    const type &tp;         // The type of the item.
-    const std::string name; // The name of the item.
-    json::json parameters;  // The parameters of the item.
+    const std::string id;  // The ID of the item.
+    const type &tp;        // The type of the item.
+    std::string name;      // The name of the item.
+    json::json parameters; // The parameters of the item.
   };
 
   /**
@@ -94,7 +96,37 @@ namespace coco
                                     {{"description", "Type not found"},
                                      {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}};
   const json::json items_id_path{"/items/{item_id}",
-                                 {{"delete",
+                                 {{"get",
+                                   {{"summary", "Retrieve the given item"},
+                                    {"description", "Endpoint to fetch the given item"},
+                                    {"parameters",
+                                     {{{"name", "item_id"},
+                                       {"in", "path"},
+                                       {"required", true},
+                                       {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+                                    {"responses",
+                                     {{"200",
+                                       {{"description", "Successful response with the given item"},
+                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
+                                      {"404",
+                                       {{"description", "Item not found"},
+                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
+                                  {"put",
+                                   {{"summary", "Update the given item"},
+                                    {"description", "Endpoint to update the given item"},
+                                    {"parameters",
+                                     {{{"name", "item_id"},
+                                       {"in", "path"},
+                                       {"required", true},
+                                       {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+                                    {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
+                                    {"responses",
+                                     {{"200",
+                                       {{"description", "Successful response"}}},
+                                      {"404",
+                                       {{"description", "Item not found"},
+                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
+                                  {"delete",
                                    {{"summary", "Delete the given item"},
                                     {"description", "Endpoint to delete the given item"},
                                     {"parameters",

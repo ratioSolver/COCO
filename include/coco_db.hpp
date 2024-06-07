@@ -26,7 +26,65 @@ namespace coco
      * @param dynamic_pars The dynamic parameters of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars) = 0;
+    virtual type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars) = 0;
+
+    /**
+     * Sets the name of the given type.
+     *
+     * @param type The type to set the name for.
+     * @param name The name to set for the type.
+     */
+    virtual void set_type_name(type &type, const std::string &name) { type.name = name; }
+    /**
+     * @brief Sets the description of a type.
+     *
+     * This function sets the description of a given type. The description provides additional information about the type.
+     *
+     * @param type The type to set the description for.
+     * @param description The description to set for the type.
+     */
+    virtual void set_type_description(type &type, const std::string &description) { type.description = description; }
+    /**
+     * Adds a static parameter to the given type.
+     *
+     * @param type The type to which the static parameter will be added.
+     * @param par A unique pointer to the parameter to be added.
+     */
+    virtual void add_static_parameter(type &type, std::unique_ptr<parameter> &&par) { type.static_parameters[par->get_name()] = std::move(par); }
+    /**
+     * @brief Removes a static parameter from a given type.
+     *
+     * This function removes the static parameter with the specified name from the given type.
+     *
+     * @param type The type from which to remove the static parameter.
+     * @param name The name of the static parameter to remove.
+     */
+    virtual void remove_static_parameter(type &type, const std::string &name) { type.static_parameters.erase(name); }
+    /**
+     * Adds a dynamic parameter to the given type.
+     *
+     * @param type The type to which the dynamic parameter will be added.
+     * @param par A unique pointer to the parameter to be added.
+     */
+    virtual void add_dynamic_parameter(type &type, std::unique_ptr<parameter> &&par) { type.dynamic_parameters[par->get_name()] = std::move(par); }
+    /**
+     * @brief Removes a dynamic parameter from the given type.
+     *
+     * This function removes the dynamic parameter with the specified name from the given type.
+     *
+     * @param type The type from which to remove the dynamic parameter.
+     * @param name The name of the dynamic parameter to remove.
+     */
+    virtual void remove_dynamic_parameter(type &type, const std::string &name) { type.dynamic_parameters.erase(name); }
+
+    /**
+     * @brief Removes a type from the database.
+     *
+     * This function removes the specified type from the database.
+     *
+     * @param type The type to remove.
+     */
+    virtual void delete_type(const type &type) { types.erase(type.get_id()); }
 
     /**
      * Returns a vector of references to the types.
@@ -66,6 +124,32 @@ namespace coco
      * @return A reference to the created item.
      */
     virtual item &create_item(const type &type, const std::string &name, const json::json &pars) = 0;
+
+    /**
+     * Sets the name of an item.
+     *
+     * @param item The item to set the name for.
+     * @param name The new name for the item.
+     */
+    virtual void set_item_name(item &item, const std::string &name) { item.name = name; }
+    /**
+     * @brief Sets the parameters of an item.
+     *
+     * This function sets the parameters of the given item using the provided JSON object.
+     *
+     * @param item The item to set the parameters for.
+     * @param pars The JSON object containing the parameters.
+     */
+    virtual void set_item_parameters(item &item, const json::json &pars) { item.parameters = pars; }
+
+    /**
+     * @brief Removes an item from the database.
+     *
+     * This function removes the specified item from the database.
+     *
+     * @param item The item to be removed.
+     */
+    virtual void delete_item(const item &item) { items.erase(item.get_id()); }
 
     /**
      * Retrieves a vector of references to the items in the database.
@@ -152,7 +236,7 @@ namespace coco
     virtual rule &create_deliberative_rule(const std::string &name, const std::string &content) = 0;
 
   protected:
-    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars)
+    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars)
     {
       if (types.find(id) != types.end())
         throw std::invalid_argument("Type already exists: " + id);

@@ -16,7 +16,7 @@ namespace coco
         return db->get_types();
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::unique_ptr<parameter>> &&static_pars, std::vector<std::unique_ptr<parameter>> &&dynamic_pars)
+    type &coco_core::create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &st = db->create_type(name, description, std::move(static_pars), std::move(dynamic_pars));
@@ -34,14 +34,14 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &p : type.get_static_parameters())
-            if (!pars.contains(p->get_name()))
+            if (!pars.contains(p.first))
             {
-                LOG_WARN("Parameters for item " + name + " do not contain parameter " + p->get_name());
+                LOG_WARN("Parameters for item " + name + " do not contain parameter " + p.first);
                 return db->get_items().front().get();
             }
-            else if (!p->validate(pars[p->get_name()]))
+            else if (!p.second->validate(pars[p.first]))
             {
-                LOG_WARN("Parameters for item " + name + " parameter " + p->get_name() + " is invalid");
+                LOG_WARN("Parameters for item " + name + " parameter " + p.first + " is invalid");
                 return db->get_items().front().get();
             }
         auto &s = db->create_item(type, name, pars);
@@ -53,14 +53,14 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &p : s.get_type().get_dynamic_parameters())
-            if (!data.contains(p->get_name()))
+            if (!data.contains(p.first))
             {
-                LOG_WARN("Data for item " + s.get_id() + " does not contain parameter " + p->get_name());
+                LOG_WARN("Data for item " + s.get_id() + " does not contain parameter " + p.first);
                 return;
             }
-            else if (!p->validate(data[p->get_name()]))
+            else if (!p.second->validate(data[p.first]))
             {
-                LOG_WARN("Data for item " + s.get_id() + " parameter " + p->get_name() + " is invalid");
+                LOG_WARN("Data for item " + s.get_id() + " parameter " + p.first + " is invalid");
                 return;
             }
 

@@ -140,4 +140,11 @@ namespace coco
                                       {"404",
                                        {{"description", "Item not found"},
                                         {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}};
+  const json::json items_message{
+      {"items_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"items"}}}},
+           {"items", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}};
 } // namespace coco

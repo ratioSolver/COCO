@@ -179,6 +179,28 @@ namespace coco
     std::recursive_mutex mtx;    // mutex for the core..
   };
 
+  inline json::json make_types_message(coco_core &core)
+  {
+    json::json j;
+    j["type"] = "types";
+    json::json types = json::json_type::array;
+    for (const auto &type : core.get_types())
+      types.push_back(to_json(type));
+    j["types"] = std::move(types);
+    return j;
+  }
+
+  inline json::json make_items_message(coco_core &core)
+  {
+    json::json j;
+    j["type"] = "items";
+    json::json items = json::json_type::array;
+    for (const auto &item : core.get_items())
+      items.push_back(to_json(item));
+    j["items"] = std::move(items);
+    return j;
+  }
+
   const json::json data_schema{"data",
                                {{"type", "object"},
                                 {"properties",

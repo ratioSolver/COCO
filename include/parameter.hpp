@@ -255,7 +255,7 @@ namespace coco
       res["multiple"] = p.is_multiple();
       if (!p.get_symbols().empty())
       {
-        json::json symbols;
+        json::json symbols(json::json_type::array);
         for (const auto &s : p.get_symbols())
           symbols.push_back(s);
         res["symbols"] = std::move(symbols);
@@ -266,7 +266,7 @@ namespace coco
     {
       auto &p = static_cast<const array_parameter &>(par);
       res["array_type"] = to_json(p.as_array_type());
-      json::json shape;
+      json::json shape(json::json_type::array);
       for (const auto &s : p.get_shape())
         shape.push_back(s);
       res["shape"] = std::move(shape);

@@ -5,6 +5,8 @@
 
 namespace coco
 {
+  class mongo_db;
+
   /**
    * @brief The bson_parameter_converter class is an abstract base class for converting coco_parameter objects to BSON documents and vice versa.
    */
@@ -29,6 +31,9 @@ namespace coco
      * @return The type of the converter.
      */
     [[nodiscard]] const std::string &get_type() const { return type; }
+
+    static bsoncxx::builder::basic::document to_bson(const mongo_db &db, const coco_parameter &p);
+    static std::unique_ptr<coco_parameter> from_bson(const mongo_db &db, const bsoncxx::v_noabi::document::view &doc);
 
     /**
      * @brief Converts a coco_parameter object to a BSON document.
@@ -98,9 +103,12 @@ namespace coco
   class array_parameter_converter : public bson_parameter_converter
   {
   public:
-    array_parameter_converter() : bson_parameter_converter("array") {}
+    array_parameter_converter(const mongo_db &db) : bson_parameter_converter("array"), db(db) {}
 
     bsoncxx::builder::basic::document to_bson(const coco_parameter &t) const override;
     std::unique_ptr<coco_parameter> from_bson(const bsoncxx::v_noabi::document::view &doc) const override;
+
+  private:
+    const mongo_db &db;
   };
 } // namespace coco

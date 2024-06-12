@@ -1,8 +1,12 @@
 #include <bsoncxx/builder/basic/array.hpp>
 #include "bson_parameter_converter.hpp"
+#include "mongo_db.hpp"
 
 namespace coco
 {
+    bsoncxx::builder::basic::document bson_parameter_converter::to_bson(const mongo_db &db, const coco_parameter &p) { return db.to_bson(p); }
+    std::unique_ptr<coco_parameter> bson_parameter_converter::from_bson(const mongo_db &db, const bsoncxx::v_noabi::document::view &doc) { return db.from_bson(doc); }
+
     bsoncxx::builder::basic::document integer_parameter_converter::to_bson(const coco_parameter &p) const
     {
         const auto &ip = static_cast<const integer_parameter &>(p);
@@ -94,7 +98,7 @@ namespace coco
         const auto &ap = static_cast<const array_parameter &>(p);
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("type", p.get_type()));
-        doc.append(bsoncxx::builder::basic::kvp("array_type", to_bson(ap.as_array_type())));
+        doc.append(bsoncxx::builder::basic::kvp("array_type", bson_parameter_converter::to_bson(db, ap.as_array_type())));
         bsoncxx::v_noabi::builder::basic::array dimensions;
         for (const auto &dim : ap.get_shape())
             dimensions.append(dim);
@@ -104,7 +108,7 @@ namespace coco
     std::unique_ptr<coco_parameter> array_parameter_converter::from_bson(const bsoncxx::v_noabi::document::view &doc) const
     {
         auto name = doc["name"].get_string().value.to_string();
-        auto array_type = from_bson(doc["array_type"].get_document().view());
+        auto array_type = bson_parameter_converter::from_bson(db, doc["array_type"].get_document().view());
         std::vector<int> dimensions;
         for (const auto &dim : doc["dimensions"].get_array().value)
             dimensions.push_back(dim.get_int32().value);

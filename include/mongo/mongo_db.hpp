@@ -16,6 +16,8 @@ namespace coco
    */
   class mongo_db : public coco_db
   {
+    friend class bson_parameter_converter;
+
   public:
     mongo_db(const json::json &config = {{"name", COCO_NAME}}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     virtual ~mongo_db() = default;
@@ -49,6 +51,10 @@ namespace coco
       static_assert(std::is_base_of<bson_parameter_converter, Tp>::value, "Tp must be a subclass of bson_parameter_converter");
       converters.emplace(Tp::type, std::make_unique<Tp>(std::forward<Args>(args)...));
     }
+
+  private:
+    bsoncxx::builder::basic::document to_bson(const coco_parameter &p) const { return converters.at(p.get_type())->to_bson(p); }
+    std::unique_ptr<coco_parameter> from_bson(const bsoncxx::v_noabi::document::view &doc) const { return converters.at(doc["type"].get_string().value.to_string())->from_bson(doc); }
 
   private:
     mongocxx::client conn;

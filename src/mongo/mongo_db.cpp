@@ -28,13 +28,13 @@ namespace coco
             std::unordered_map<std::string, std::unique_ptr<coco_parameter>> static_pars;
             for (const auto &p : doc["static_parameters"].get_array().value)
             {
-                auto par = converters.at(p.get_document().view()["type"].get_string().value.to_string())->from_bson(p.get_document().view());
+                auto par = from_bson(p.get_document().view());
                 static_pars[par->get_name()] = std::move(par);
             }
             std::unordered_map<std::string, std::unique_ptr<coco_parameter>> dynamic_pars;
             for (const auto &p : doc["dynamic_parameters"].get_array().value)
             {
-                auto par = converters.at(p.get_document().view()["type"].get_string().value.to_string())->from_bson(p.get_document().view());
+                auto par = from_bson(p.get_document().view());
                 dynamic_pars[par->get_name()] = std::move(par);
             }
             coco_db::create_type(id, name, description, std::move(static_pars), std::move(dynamic_pars));
@@ -104,11 +104,11 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("description", description));
         auto static_parameters = bsoncxx::builder::basic::array{};
         for (const auto &p : static_pars)
-            static_parameters.append(converters.at(p.second->get_type())->to_bson(*p.second));
+            static_parameters.append(to_bson(*p.second));
         doc.append(bsoncxx::builder::basic::kvp("static_parameters", static_parameters));
         auto dynamic_parameters = bsoncxx::builder::basic::array{};
         for (const auto &p : dynamic_pars)
-            dynamic_parameters.append(converters.at(p.second->get_type())->to_bson(*p.second));
+            dynamic_parameters.append(to_bson(*p.second));
         doc.append(bsoncxx::builder::basic::kvp("dynamic_parameters", dynamic_parameters));
         auto result = types_collection.insert_one(doc.view());
         if (result)

@@ -11,6 +11,7 @@ namespace coco
     {
         const auto &ip = static_cast<const integer_parameter &>(p);
         bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
         doc.append(bsoncxx::builder::basic::kvp("type", p.get_type()));
         if (ip.get_min() != std::numeric_limits<long>::min())
             doc.append(bsoncxx::builder::basic::kvp("min", ip.get_min()));
@@ -30,6 +31,7 @@ namespace coco
     {
         const auto &rp = static_cast<const real_parameter &>(p);
         bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
         doc.append(bsoncxx::builder::basic::kvp("type", p.get_type()));
         if (rp.get_min() != -std::numeric_limits<double>::infinity())
             doc.append(bsoncxx::builder::basic::kvp("min", rp.get_min()));
@@ -48,6 +50,7 @@ namespace coco
     bsoncxx::builder::basic::document boolean_parameter_converter::to_bson(const coco_parameter &p) const
     {
         bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
         doc.append(bsoncxx::builder::basic::kvp("type", p.get_type()));
         return doc;
     }
@@ -61,13 +64,14 @@ namespace coco
     {
         const auto &sp = static_cast<const symbolic_parameter &>(p);
         bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
         doc.append(bsoncxx::builder::basic::kvp("type", p.get_type()));
         if (!sp.get_symbols().empty())
         {
             bsoncxx::v_noabi::builder::basic::array values;
             for (const auto &value : sp.get_symbols())
                 values.append(value);
-            doc.append(bsoncxx::builder::basic::kvp("values", values));
+            doc.append(bsoncxx::builder::basic::kvp("symbols", values));
         }
         return doc;
     }
@@ -84,6 +88,7 @@ namespace coco
     bsoncxx::builder::basic::document string_parameter_converter::to_bson(const coco_parameter &p) const
     {
         bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
         doc.append(bsoncxx::builder::basic::kvp("type", p.get_type()));
         return doc;
     }
@@ -97,6 +102,7 @@ namespace coco
     {
         const auto &ap = static_cast<const array_parameter &>(p);
         bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
         doc.append(bsoncxx::builder::basic::kvp("type", p.get_type()));
         doc.append(bsoncxx::builder::basic::kvp("array_type", bson_parameter_converter::to_bson(db, ap.as_array_type())));
         bsoncxx::v_noabi::builder::basic::array dimensions;

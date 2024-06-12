@@ -26,7 +26,7 @@ namespace coco
      * @param dynamic_pars The dynamic parameters of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars) = 0;
+    virtual type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars) = 0;
 
     /**
      * Sets the name of the given type.
@@ -50,7 +50,7 @@ namespace coco
      * @param type The type to which the static parameter will be added.
      * @param par A unique pointer to the parameter to be added.
      */
-    virtual void add_static_parameter(type &type, std::unique_ptr<parameter> &&par) { type.static_parameters[par->get_name()] = std::move(par); }
+    virtual void add_static_parameter(type &type, std::unique_ptr<coco_parameter> &&par) { type.static_parameters[par->get_name()] = std::move(par); }
     /**
      * @brief Removes a static parameter from a given type.
      *
@@ -66,7 +66,7 @@ namespace coco
      * @param type The type to which the dynamic parameter will be added.
      * @param par A unique pointer to the parameter to be added.
      */
-    virtual void add_dynamic_parameter(type &type, std::unique_ptr<parameter> &&par) { type.dynamic_parameters[par->get_name()] = std::move(par); }
+    virtual void add_dynamic_parameter(type &type, std::unique_ptr<coco_parameter> &&par) { type.dynamic_parameters[par->get_name()] = std::move(par); }
     /**
      * @brief Removes a dynamic parameter from the given type.
      *
@@ -236,7 +236,7 @@ namespace coco
     virtual rule &create_deliberative_rule(const std::string &name, const std::string &content) = 0;
 
   protected:
-    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars)
+    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars)
     {
       if (types.find(id) != types.end())
         throw std::invalid_argument("Type already exists: " + id);

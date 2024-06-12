@@ -25,16 +25,16 @@ namespace coco
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
-            std::unordered_map<std::string, std::unique_ptr<parameter>> static_pars;
+            std::unordered_map<std::string, std::unique_ptr<coco_parameter>> static_pars;
             for (const auto &p : doc["static_parameters"].get_array().value)
             {
-                auto par = from_bson(p.get_document().view());
+                auto par = converters.at(p.get_document().view()["type"].get_string().value.to_string())->from_bson(p.get_document().view());
                 static_pars[par->get_name()] = std::move(par);
             }
-            std::unordered_map<std::string, std::unique_ptr<parameter>> dynamic_pars;
+            std::unordered_map<std::string, std::unique_ptr<coco_parameter>> dynamic_pars;
             for (const auto &p : doc["dynamic_parameters"].get_array().value)
             {
-                auto par = from_bson(p.get_document().view());
+                auto par = converters.at(p.get_document().view()["type"].get_string().value.to_string())->from_bson(p.get_document().view());
                 dynamic_pars[par->get_name()] = std::move(par);
             }
             coco_db::create_type(id, name, description, std::move(static_pars), std::move(dynamic_pars));
@@ -97,18 +97,18 @@ namespace coco
         LOG_DEBUG("Retrieved " << get_deliberative_rules().size() << " deliberative rules");
     }
 
-    type &mongo_db::create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars)
+    type &mongo_db::create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", name));
         doc.append(bsoncxx::builder::basic::kvp("description", description));
         auto static_parameters = bsoncxx::builder::basic::array{};
         for (const auto &p : static_pars)
-            static_parameters.append(to_bson(*p.second));
+            static_parameters.append(converters.at(p.second->get_type())->to_bson(*p.second));
         doc.append(bsoncxx::builder::basic::kvp("static_parameters", static_parameters));
         auto dynamic_parameters = bsoncxx::builder::basic::array{};
         for (const auto &p : dynamic_pars)
-            dynamic_parameters.append(to_bson(*p.second));
+            dynamic_parameters.append(converters.at(p.second->get_type())->to_bson(*p.second));
         doc.append(bsoncxx::builder::basic::kvp("dynamic_parameters", dynamic_parameters));
         auto result = types_collection.insert_one(doc.view());
         if (result)
@@ -128,10 +128,10 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("description", description))));
         types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{type.get_id()})), doc.view());
     }
-    void mongo_db::add_static_parameter(type &type, std::unique_ptr<parameter> &&par)
+    void mongo_db::add_static_parameter(type &type, std::unique_ptr<coco_parameter> &&par)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_parameters", to_bson(*par)))));
+        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_parameters", converters.at(par->get_type())->to_bson(*par)))));
         types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{type.get_id()})), doc.view());
     }
     void mongo_db::remove_static_parameter(type &type, const std::string &name)
@@ -140,10 +140,10 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_parameters", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("name", name))))));
         types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{type.get_id()})), doc.view());
     }
-    void mongo_db::add_dynamic_parameter(type &type, std::unique_ptr<parameter> &&par)
+    void mongo_db::add_dynamic_parameter(type &type, std::unique_ptr<coco_parameter> &&par)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("dynamic_parameters", to_bson(*par)))));
+        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("dynamic_parameters", converters.at(par->get_type())->to_bson(*par)))));
         types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{type.get_id()})), doc.view());
     }
     void mongo_db::remove_dynamic_parameter(type &type, const std::string &name)
@@ -222,109 +222,5 @@ namespace coco
         if (result)
             return coco_db::create_deliberative_rule(result->inserted_id().get_oid().value.to_string(), name, content);
         throw std::invalid_argument("Failed to insert deliberative rule: " + name);
-    }
-
-    bsoncxx::builder::basic::document mongo_db::to_bson(const parameter &p)
-    {
-        bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
-        switch (p.get_type())
-        {
-        case parameter_type::Integer:
-        {
-            const auto &ip = static_cast<const integer_parameter &>(p);
-            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Integer)));
-            if (ip.get_min() != std::numeric_limits<long>::min())
-                doc.append(bsoncxx::builder::basic::kvp("min", ip.get_min()));
-            if (ip.get_max() != std::numeric_limits<long>::max())
-                doc.append(bsoncxx::builder::basic::kvp("max", ip.get_max()));
-            break;
-        }
-        case parameter_type::Real:
-        {
-            const auto &fp = static_cast<const real_parameter &>(p);
-            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Real)));
-            if (fp.get_min() != std::numeric_limits<double>::min())
-                doc.append(bsoncxx::builder::basic::kvp("min", fp.get_min()));
-            if (fp.get_max() != std::numeric_limits<double>::max())
-                doc.append(bsoncxx::builder::basic::kvp("max", fp.get_max()));
-            break;
-        }
-        case parameter_type::Boolean:
-            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Boolean)));
-            break;
-        case parameter_type::Symbol:
-        {
-            const auto &sp = static_cast<const symbol_parameter &>(p);
-            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Symbol)));
-            if (!sp.get_symbols().empty())
-            {
-                bsoncxx::v_noabi::builder::basic::array values;
-                for (const auto &value : sp.get_symbols())
-                    values.append(value);
-                doc.append(bsoncxx::builder::basic::kvp("values", values));
-            }
-            break;
-        }
-        case parameter_type::String:
-            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::String)));
-            break;
-        case parameter_type::Array:
-        {
-            const auto &ap = static_cast<const array_parameter &>(p);
-            doc.append(bsoncxx::builder::basic::kvp("type", static_cast<int>(parameter_type::Array)));
-            doc.append(bsoncxx::builder::basic::kvp("array_type", to_bson(ap.as_array_type())));
-            bsoncxx::v_noabi::builder::basic::array dimensions;
-            for (const auto &dim : ap.get_shape())
-                dimensions.append(dim);
-            doc.append(bsoncxx::builder::basic::kvp("dimensions", dimensions));
-            break;
-        }
-        default:
-            assert(false);
-        }
-        return doc;
-    }
-
-    std::unique_ptr<parameter> mongo_db::from_bson(const bsoncxx::v_noabi::document::view &doc)
-    {
-        auto name = doc["name"].get_string().value.to_string();
-        auto type = static_cast<parameter_type>(doc["type"].get_int32().value);
-        switch (type)
-        {
-        case parameter_type::Integer:
-        {
-            auto min = doc["min"].get_int64().value;
-            auto max = doc["max"].get_int64().value;
-            return std::make_unique<integer_parameter>(name, min, max);
-        }
-        case parameter_type::Real:
-        {
-            auto min = doc["min"].get_double().value;
-            auto max = doc["max"].get_double().value;
-            return std::make_unique<real_parameter>(name, min, max);
-        }
-        case parameter_type::Boolean:
-            return std::make_unique<boolean_parameter>(name);
-        case parameter_type::Symbol:
-        {
-            std::vector<std::string> values;
-            for (const auto &value : doc["values"].get_array().value)
-                values.push_back(value.get_string().value.to_string());
-            return std::make_unique<symbol_parameter>(name, values);
-        }
-        case parameter_type::String:
-            return std::make_unique<string_parameter>(name);
-        case parameter_type::Array:
-        {
-            auto array_type = from_bson(doc["array_type"].get_document().view());
-            std::vector<int> dimensions;
-            for (const auto &dim : doc["dimensions"].get_array().value)
-                dimensions.push_back(dim.get_int32().value);
-            return std::make_unique<array_parameter>(name, std::move(array_type), dimensions);
-        }
-        default:
-            assert(false);
-        }
     }
 } // namespace coco

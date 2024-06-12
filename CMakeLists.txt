@@ -25,7 +25,7 @@ message(STATUS "MongoDB port: ${MONGODB_PORT}")
 
 add_subdirectory(extern/plexa)
 
-add_library(CoCo src/coco_core.cpp src/coco_db.cpp src/coco_type.cpp src/coco_item.cpp src/coco_executor.cpp src/mongo/mongo_db.cpp)
+add_library(CoCo src/coco_core.cpp src/coco_db.cpp src/coco_type.cpp src/coco_item.cpp src/coco_executor.cpp src/mongo/mongo_db.cpp src/mongo/bson_parameter_converter.cpp)
 target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/mongo> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR} ${CLIPS_INCLUDE_DIR})
 add_dependencies(CoCo PlExA)
 target_link_directories(CoCo PUBLIC ${CLIPS_LIB_DIR})

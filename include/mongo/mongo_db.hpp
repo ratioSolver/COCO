@@ -3,24 +3,30 @@
 #include <mongocxx/instance.hpp>
 #include <mongocxx/client.hpp>
 #include "coco_db.hpp"
+#include "bson_parameter_converter.hpp"
 
 #define MONGODB_URI(host, port) "mongodb://" host ":" port
 
 namespace coco
 {
+  /**
+   * @brief Represents a MongoDB database.
+   *
+   * This class provides methods to interact with a MongoDB database.
+   */
   class mongo_db : public coco_db
   {
   public:
     mongo_db(const json::json &config = {{"name", COCO_NAME}}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     virtual ~mongo_db() = default;
 
-    type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars) override;
+    type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars) override;
 
     void set_type_name(type &type, const std::string &name) override;
     void set_type_description(type &type, const std::string &description) override;
-    void add_static_parameter(type &type, std::unique_ptr<parameter> &&par) override;
+    void add_static_parameter(type &type, std::unique_ptr<coco_parameter> &&par) override;
     void remove_static_parameter(type &type, const std::string &name) override;
-    void add_dynamic_parameter(type &type, std::unique_ptr<parameter> &&par) override;
+    void add_dynamic_parameter(type &type, std::unique_ptr<coco_parameter> &&par) override;
     void remove_dynamic_parameter(type &type, const std::string &name) override;
     void delete_type(const type &type) override;
 
@@ -36,9 +42,13 @@ namespace coco
 
     rule &create_deliberative_rule(const std::string &name, const std::string &content) override;
 
-  private:
-    static bsoncxx::builder::basic::document to_bson(const parameter &p);
-    static std::unique_ptr<parameter> from_bson(const bsoncxx::v_noabi::document::view &doc);
+  protected:
+    template <typename Tp, typename... Args>
+    void new_parameter_converter(Args &&...args) noexcept
+    {
+      static_assert(std::is_base_of<bson_parameter_converter, Tp>::value, "Tp must be a subclass of bson_parameter_converter");
+      converters.emplace(Tp::type, std::make_unique<Tp>(std::forward<Args>(args)...));
+    }
 
   private:
     mongocxx::client conn;
@@ -52,5 +62,6 @@ namespace coco
     mongocxx::collection item_data_collection;
     mongocxx::collection reactive_rules_collection;
     mongocxx::collection deliberative_rules_collection;
+    std::unordered_map<std::string, std::unique_ptr<bson_parameter_converter>> converters;
   };
 } // namespace coco

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "json.hpp"
-#include <string>
 #include <iostream>
 #include <vector>
 #include <memory>
@@ -10,43 +9,12 @@
 
 namespace coco
 {
-  enum parameter_type
-  {
-    Integer,
-    Real,
-    Boolean,
-    Symbol,
-    String,
-    Array
-  };
-
-  inline std::string to_string(parameter_type type)
-  {
-    switch (type)
-    {
-    case Integer:
-      return "Integer";
-    case Real:
-      return "Real";
-    case Boolean:
-      return "Boolean";
-    case Symbol:
-      return "Symbol";
-    case String:
-      return "String";
-    case Array:
-      return "Array";
-    default:
-      return "Unknown";
-    }
-  }
-
   /**
    * @brief Represents a parameter.
    *
    * This class represents a parameter with a name and a type.
    */
-  class parameter
+  class coco_parameter
   {
   public:
     /**
@@ -55,12 +23,12 @@ namespace coco
      * @param name The name of the parameter.
      * @param type The type of the parameter.
      */
-    parameter(const std::string &name, parameter_type type) : name(name), type(type) {}
+    coco_parameter(const std::string &name, const std::string &type) : name(name), type(type) {}
 
     /**
      * @brief Destructor for the parameter.
      */
-    virtual ~parameter() = default;
+    virtual ~coco_parameter() = default;
 
     /**
      * @brief Gets the name of the parameter.
@@ -74,9 +42,11 @@ namespace coco
      *
      * @return The type of the parameter.
      */
-    [[nodiscard]] parameter_type get_type() const { return type; }
+    [[nodiscard]] const std::string &get_type() const { return type; }
 
     virtual bool validate(const json::json &value) const = 0;
+
+    virtual json::json to_json() const { return json::json{{"name", name}, {"type", type}}; };
 
   private:
     /**
@@ -87,24 +57,24 @@ namespace coco
      */
     std::ostream &operator<<(std::ostream &os) const
     {
-      os << "Parameter: " << name << " (" << to_string(type) << ")";
+      os << "Parameter: " << name << " (" << type << ")";
       return os;
     }
 
   private:
-    std::string name;    ///< The name of the parameter.
-    parameter_type type; ///< The type of the parameter.
+    std::string name; // The name of the parameter.
+    std::string type; // The type of the parameter.
   };
 
-  class integer_parameter : public parameter
+  class integer_parameter : public coco_parameter
   {
   public:
-    integer_parameter(const std::string &name, long min, long max) : parameter(name, parameter_type::Integer), min(min), max(max) {}
+    integer_parameter(const std::string &name, long min, long max) : coco_parameter(name, "integer"), min(min), max(max) {}
 
     [[nodiscard]] long get_min() const { return min; }
     [[nodiscard]] long get_max() const { return max; }
 
-    bool validate(const json::json &value) const override
+    [[nodiscard]] bool validate(const json::json &value) const override
     {
       if (value.get_type() != json::json_type::number)
         return false;
@@ -112,19 +82,29 @@ namespace coco
       return v >= min && v <= max;
     }
 
+    [[nodiscard]] json::json to_json() const override
+    {
+      json::json res = coco_parameter::to_json();
+      if (min != std::numeric_limits<long>::min())
+        res["min"] = min;
+      if (max != std::numeric_limits<long>::max())
+        res["max"] = max;
+      return res;
+    }
+
   private:
     const long min, max;
   };
 
-  class real_parameter : public parameter
+  class real_parameter : public coco_parameter
   {
   public:
-    real_parameter(const std::string &name, double min, double max) : parameter(name, parameter_type::Real), min(min), max(max) {}
+    real_parameter(const std::string &name, double min, double max) : coco_parameter(name, "real"), min(min), max(max) {}
 
     [[nodiscard]] double get_min() const { return min; }
     [[nodiscard]] double get_max() const { return max; }
 
-    bool validate(const json::json &value) const override
+    [[nodiscard]] bool validate(const json::json &value) const override
     {
       if (value.get_type() != json::json_type::number)
         return false;
@@ -132,27 +112,37 @@ namespace coco
       return v >= min && v <= max;
     }
 
+    [[nodiscard]] json::json to_json() const override
+    {
+      json::json res = coco_parameter::to_json();
+      if (min != -std::numeric_limits<double>::infinity())
+        res["min"] = min;
+      if (max != std::numeric_limits<double>::infinity())
+        res["max"] = max;
+      return res;
+    }
+
   private:
     const double min, max;
   };
 
-  class boolean_parameter : public parameter
+  class boolean_parameter : public coco_parameter
   {
   public:
-    boolean_parameter(const std::string &name) : parameter(name, parameter_type::Boolean) {}
+    boolean_parameter(const std::string &name) : coco_parameter(name, "boolean") {}
 
-    bool validate(const json::json &value) const override { return value.get_type() == json::json_type::boolean; }
+    [[nodiscard]] bool validate(const json::json &value) const override { return value.get_type() == json::json_type::boolean; }
   };
 
-  class symbol_parameter : public parameter
+  class symbolic_parameter : public coco_parameter
   {
   public:
-    symbol_parameter(const std::string &name, const std::vector<std::string> &symbols, bool multiple = false) : parameter(name, parameter_type::Symbol), symbols(symbols), multiple(multiple) {}
+    symbolic_parameter(const std::string &name, const std::vector<std::string> &symbols, bool multiple = false) : coco_parameter(name, "symbol"), symbols(symbols), multiple(multiple) {}
 
     [[nodiscard]] const std::vector<std::string> &get_symbols() const { return symbols; }
     [[nodiscard]] bool is_multiple() const { return multiple; }
 
-    bool validate(const json::json &value) const override
+    [[nodiscard]] bool validate(const json::json &value) const override
     {
       if (multiple)
       {
@@ -175,28 +165,42 @@ namespace coco
       }
     }
 
+    [[nodiscard]] json::json to_json() const override
+    {
+      json::json res = coco_parameter::to_json();
+      res["multiple"] = multiple;
+      if (!symbols.empty())
+      {
+        json::json s(json::json_type::array);
+        for (const auto &symbol : symbols)
+          s.push_back(symbol);
+        res["symbols"] = std::move(s);
+      }
+      return res;
+    }
+
   private:
     const std::vector<std::string> symbols;
     const bool multiple;
   };
 
-  class string_parameter : public parameter
+  class string_parameter : public coco_parameter
   {
   public:
-    string_parameter(const std::string &name) : parameter(name, parameter_type::String) {}
+    string_parameter(const std::string &name) : coco_parameter(name, "string") {}
 
-    bool validate(const json::json &value) const override { return value.get_type() == json::json_type::string; }
+    [[nodiscard]] bool validate(const json::json &value) const override { return value.get_type() == json::json_type::string; }
   };
 
-  class array_parameter : public parameter
+  class array_parameter : public coco_parameter
   {
   public:
-    array_parameter(const std::string &name, std::unique_ptr<parameter> &&type, const std::vector<int> &shape) : parameter(name, parameter_type::Array), type(std::move(type)), shape(shape) {}
+    array_parameter(const std::string &name, std::unique_ptr<coco_parameter> &&type, const std::vector<int> &shape) : coco_parameter(name, "array"), type(std::move(type)), shape(shape) {}
 
-    [[nodiscard]] const parameter &as_array_type() const { return *type; }
+    [[nodiscard]] const coco_parameter &as_array_type() const { return *type; }
     [[nodiscard]] const std::vector<int> &get_shape() const { return shape; }
 
-    bool validate(const json::json &value) const override
+    [[nodiscard]] bool validate(const json::json &value) const override
     {
       if (value.get_type() != json::json_type::array)
         return false;
@@ -215,68 +219,21 @@ namespace coco
       return true;
     }
 
+    [[nodiscard]] json::json to_json() const override
+    {
+      json::json res = coco_parameter::to_json();
+      res["array_type"] = type->to_json();
+      json::json s(json::json_type::array);
+      for (const auto &sh : shape)
+        s.push_back(sh);
+      res["shape"] = std::move(s);
+      return res;
+    }
+
   private:
-    const std::unique_ptr<parameter> type;
+    const std::unique_ptr<coco_parameter> type;
     const std::vector<int> shape;
   };
-
-  /**
-   * Converts a parameter object to a JSON object.
-   *
-   * @param par The parameter object to convert.
-   * @return The JSON object representing the parameter.
-   */
-  inline json::json to_json(const parameter &par)
-  {
-    json::json res{{"name", par.get_name()}, {"type", to_string(par.get_type())}};
-    switch (par.get_type())
-    {
-    case Integer:
-    {
-      auto &p = static_cast<const integer_parameter &>(par);
-      if (p.get_min() != std::numeric_limits<long>::min())
-        res["min"] = p.get_min();
-      if (p.get_max() != std::numeric_limits<long>::max())
-        res["max"] = p.get_max();
-      break;
-    }
-    case Real:
-    {
-      auto &p = static_cast<const real_parameter &>(par);
-      if (p.get_min() != -std::numeric_limits<double>::infinity())
-        res["min"] = p.get_min();
-      if (p.get_max() != std::numeric_limits<double>::infinity())
-        res["max"] = p.get_max();
-      break;
-    }
-    case Symbol:
-    {
-      auto &p = static_cast<const symbol_parameter &>(par);
-      res["multiple"] = p.is_multiple();
-      if (!p.get_symbols().empty())
-      {
-        json::json symbols(json::json_type::array);
-        for (const auto &s : p.get_symbols())
-          symbols.push_back(s);
-        res["symbols"] = std::move(symbols);
-      }
-      break;
-    }
-    case Array:
-    {
-      auto &p = static_cast<const array_parameter &>(par);
-      res["array_type"] = to_json(p.as_array_type());
-      json::json shape(json::json_type::array);
-      for (const auto &s : p.get_shape())
-        shape.push_back(s);
-      res["shape"] = std::move(shape);
-      break;
-    }
-    default:
-      break;
-    }
-    return res;
-  }
 
   const json::json parameter_schema{{"parameter",
                                      {{"oneOf", std::vector<json::json>{

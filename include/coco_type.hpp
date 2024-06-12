@@ -1,6 +1,6 @@
 #pragma once
 
-#include "parameter.hpp"
+#include "coco_parameter.hpp"
 #include "clips.h"
 #include <memory>
 #include <limits>
@@ -28,7 +28,7 @@ namespace coco
      * @param static_pars The static parameters of the CoCo type.
      * @param dynamic_pars The dynamic parameters of the CoCo type.
      */
-    type(const std::string &id, const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars);
+    type(const std::string &id, const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars);
 
     /**
      * @brief Gets the ID of the CoCo type.
@@ -56,20 +56,20 @@ namespace coco
      *
      * @return The static parameters of the CoCo type.
      */
-    [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<parameter>> &get_static_parameters() const { return static_parameters; }
+    [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &get_static_parameters() const { return static_parameters; }
 
     /**
      * @brief Gets the dynamic parameters of the CoCo type.
      *
      * @return The dynamic parameters of the CoCo type.
      */
-    [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<parameter>> &get_dynamic_parameters() const { return dynamic_parameters; }
+    [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &get_dynamic_parameters() const { return dynamic_parameters; }
 
   private:
-    const std::string id;                                                           // the ID of the CoCo type
-    std::string name, description;                                                  // the name and description of the CoCo type
-    std::unordered_map<std::string, std::unique_ptr<parameter>> static_parameters;  // the static parameters of the CoCo type
-    std::unordered_map<std::string, std::unique_ptr<parameter>> dynamic_parameters; // the dynamic parameters of the CoCo type
+    const std::string id;                                                                // the ID of the CoCo type
+    std::string name, description;                                                       // the name and description of the CoCo type
+    std::unordered_map<std::string, std::unique_ptr<coco_parameter>> static_parameters;  // the static parameters of the CoCo type
+    std::unordered_map<std::string, std::unique_ptr<coco_parameter>> dynamic_parameters; // the dynamic parameters of the CoCo type
   };
 
   /**
@@ -83,11 +83,11 @@ namespace coco
     json::json j{{"id", st.get_id()}, {"name", st.get_name()}, {"description", st.get_description()}};
     json::json j_static_pars(json::json_type::array);
     for (const auto &p : st.get_static_parameters())
-      j_static_pars.push_back(to_json(*p.second));
+      j_static_pars.push_back(p.second->to_json());
     j["static_parameters"] = std::move(j_static_pars);
     json::json j_dyn_pars(json::json_type::array);
     for (const auto &p : st.get_dynamic_parameters())
-      j_dyn_pars.push_back(to_json(*p.second));
+      j_dyn_pars.push_back(p.second->to_json());
     j["dynamic_parameters"] = std::move(j_dyn_pars);
     return j;
   }

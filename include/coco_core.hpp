@@ -39,7 +39,7 @@ namespace coco
      * @param dynamic_pars The dynamic parameters of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars);
+    type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars);
 
     /**
      * Retrieves a vector of references to the items in the database.

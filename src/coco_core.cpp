@@ -16,7 +16,7 @@ namespace coco
         return db->get_types();
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<parameter>> &&dynamic_pars)
+    type &coco_core::create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &st = db->create_type(name, description, std::move(static_pars), std::move(dynamic_pars));

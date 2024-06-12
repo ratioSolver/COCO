@@ -22,7 +22,7 @@ namespace coco
     mongo_db(const json::json &config = {{"name", COCO_NAME}}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     virtual ~mongo_db() = default;
 
-    type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars) override;
+    [[nodiscard]] type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars) override;
 
     void set_type_name(type &type, const std::string &name) override;
     void set_type_description(type &type, const std::string &description) override;
@@ -32,7 +32,7 @@ namespace coco
     void remove_dynamic_parameter(type &type, const std::string &name) override;
     void delete_type(const type &type) override;
 
-    item &create_item(const type &tp, const std::string &name, const json::json &pars) override;
+    [[nodiscard]] item &create_item(const type &tp, const std::string &name, const json::json &pars) override;
 
     void set_item_name(item &it, const std::string &name) override;
     void set_item_parameters(item &it, const json::json &pars) override;
@@ -40,21 +40,22 @@ namespace coco
 
     void add_data(const item &it, const std::chrono::system_clock::time_point &timestamp, const json::json &data) override;
 
-    rule &create_reactive_rule(const std::string &name, const std::string &content) override;
+    [[nodiscard]] rule &create_reactive_rule(const std::string &name, const std::string &content) override;
 
-    rule &create_deliberative_rule(const std::string &name, const std::string &content) override;
+    [[nodiscard]] rule &create_deliberative_rule(const std::string &name, const std::string &content) override;
 
   protected:
     template <typename Tp, typename... Args>
     void new_parameter_converter(Args &&...args) noexcept
     {
       static_assert(std::is_base_of<bson_parameter_converter, Tp>::value, "Tp must be a subclass of bson_parameter_converter");
-      converters.emplace(Tp::type, std::make_unique<Tp>(std::forward<Args>(args)...));
+      auto tp = std::make_unique<Tp>(std::forward<Args>(args)...);
+      converters[tp->get_type()] = std::move(tp);
     }
 
   private:
-    bsoncxx::builder::basic::document to_bson(const coco_parameter &p) const { return converters.at(p.get_type())->to_bson(p); }
-    std::unique_ptr<coco_parameter> from_bson(const bsoncxx::v_noabi::document::view &doc) const { return converters.at(doc["type"].get_string().value.to_string())->from_bson(doc); }
+    [[nodiscard]] bsoncxx::builder::basic::document to_bson(const coco_parameter &p) const { return converters.at(p.get_type())->to_bson(p); }
+    [[nodiscard]] std::unique_ptr<coco_parameter> from_bson(const bsoncxx::v_noabi::document::view &doc) const { return converters.at(doc["type"].get_string().value.to_string())->from_bson(doc); }
 
   private:
     mongocxx::client conn;

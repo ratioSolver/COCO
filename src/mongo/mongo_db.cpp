@@ -19,6 +19,13 @@ namespace coco
             types_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
         }
 
+        new_parameter_converter<integer_parameter_converter>();
+        new_parameter_converter<real_parameter_converter>();
+        new_parameter_converter<boolean_parameter_converter>();
+        new_parameter_converter<symbolic_parameter_converter>();
+        new_parameter_converter<string_parameter_converter>();
+        new_parameter_converter<array_parameter_converter>(*this);
+
         LOG_DEBUG("Retrieving types from MongoDB");
         for (const auto &doc : types_collection.find({}))
         {

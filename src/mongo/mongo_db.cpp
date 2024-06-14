@@ -25,6 +25,7 @@ namespace coco
         new_parameter_converter<symbolic_parameter_converter>();
         new_parameter_converter<string_parameter_converter>();
         new_parameter_converter<array_parameter_converter>(*this);
+        new_parameter_converter<geometry_parameter_converter>();
 
         LOG_DEBUG("Retrieving types from MongoDB");
         for (const auto &doc : types_collection.find({}))

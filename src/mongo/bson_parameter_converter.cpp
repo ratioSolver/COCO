@@ -120,4 +120,19 @@ namespace coco
             dimensions.push_back(dim.get_int32().value);
         return std::make_unique<array_parameter>(name, std::move(array_type), dimensions);
     }
+
+    bsoncxx::builder::basic::document geometry_parameter_converter::to_bson(const coco_parameter &t) const
+    {
+        auto &p = dynamic_cast<const geometry_parameter &>(t);
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", p.get_name()));
+        doc.append(bsoncxx::builder::basic::kvp("type", p.get_type()));
+        return doc;
+    }
+
+    std::unique_ptr<coco_parameter> geometry_parameter_converter::from_bson(const bsoncxx::v_noabi::document::view &doc) const
+    {
+        auto name = doc["name"].get_string().value.to_string();
+        return std::make_unique<geometry_parameter>(name);
+    }
 } // namespace coco

@@ -235,6 +235,85 @@ namespace coco
     const std::vector<int> shape;
   };
 
+  class geometry_parameter : public coco_parameter
+  {
+  public:
+    geometry_parameter(const std::string &name) : coco_parameter(name, "geometry") {}
+
+    [[nodiscard]] bool validate(const json::json &value) const override
+    {
+      if (value.get_type() != json::json_type::object || !value.contains("type"))
+        return false;
+      auto type = value["type"];
+      if (type != "Point" && type != "MultiPoint" && type != "LineString" && type != "MultiLineString" && type != "Polygon" && type != "MultiPolygon" && type != "GeometryCollection")
+        return false;
+      if ((type == "Point" && !value.contains("coordinates")) || !is_position(value["coordinates"]))
+        return false;
+      if ((type == "MultiPoint" && !value.contains("coordinates")) || value["coordinates"].get_type() != json::json_type::array)
+        for (const auto &v : value["coordinates"].as_array())
+          if (!is_position(v))
+            return false;
+      if ((type == "LineString" && !value.contains("coordinates")) || value["coordinates"].get_type() != json::json_type::array)
+        for (const auto &v : value["coordinates"].as_array())
+          if (!is_position(v))
+            return false;
+      if ((type == "MultiLineString" && !value.contains("coordinates")) || value["coordinates"].get_type() != json::json_type::array)
+      {
+        for (const auto &v : value["coordinates"].as_array())
+          if (v.get_type() != json::json_type::array)
+            return false;
+          else
+            for (const auto &vv : v.as_array())
+              if (!is_position(vv))
+                return false;
+      }
+      if ((type == "Polygon" && !value.contains("coordinates")) || value["coordinates"].get_type() != json::json_type::array)
+      {
+        for (const auto &v : value["coordinates"].as_array())
+          if (v.get_type() != json::json_type::array)
+            return false;
+          else
+            for (const auto &vv : v.as_array())
+              if (!is_position(vv))
+                return false;
+      }
+      if ((type == "MultiPolygon" && !value.contains("coordinates")) || value["coordinates"].get_type() != json::json_type::array)
+      {
+        for (const auto &v : value["coordinates"].as_array())
+          if (v.get_type() != json::json_type::array)
+            return false;
+          else
+            for (const auto &vv : v.as_array())
+              if (vv.get_type() != json::json_type::array)
+                return false;
+              else
+                for (const auto &vvv : vv.as_array())
+                  if (!is_position(vvv))
+                    return false;
+      }
+      if ((type == "GeometryCollection" && !value.contains("geometries")) || value["geometries"].get_type() != json::json_type::array)
+      {
+        for (const auto &v : value["geometries"].as_array())
+          if (v.get_type() != json::json_type::object || !v.contains("type") || !v.contains("coordinates"))
+            return false;
+          else if (!validate(v))
+            return false;
+      }
+      return true;
+    }
+
+  private:
+    bool is_position(const json::json &value) const
+    {
+      if (value.get_type() != json::json_type::array || value.size() < 2)
+        return false;
+      for (const auto &v : value.as_array())
+        if (v.get_type() != json::json_type::number)
+          return false;
+      return true;
+    }
+  };
+
   const json::json parameter_schema{{"parameter",
                                      {{"oneOf", std::vector<json::json>{
                                                     {{"$ref", "#/components/schemas/integer_parameter"}},
@@ -242,9 +321,11 @@ namespace coco
                                                     {{"$ref", "#/components/schemas/boolean_parameter"}},
                                                     {{"$ref", "#/components/schemas/symbol_parameter"}},
                                                     {{"$ref", "#/components/schemas/string_parameter"}},
-                                                    {{"$ref", "#/components/schemas/array_parameter"}}}}}}};
+                                                    {{"$ref", "#/components/schemas/array_parameter"}},
+                                                    {{"$ref", "#/components/schemas/geometry_parameter"}}}}}}};
   const json::json integer_parameter_schema{{"integer_parameter",
                                              {{"type", "object"},
+                                              {"description", "An integer parameter. It has a name and, optionally, a minimum and maximum value."},
                                               {"properties",
                                                {{"name", {{"type", "string"}}},
                                                 {"type", {{"type", "string"}, {"enum", {"integer"}}}},
@@ -253,6 +334,7 @@ namespace coco
                                               {"required", std::vector<json::json>{"name", "type"}}}}};
   const json::json real_parameter_schema{{"real_parameter",
                                           {{"type", "object"},
+                                           {"description", "A real parameter. It has a name and, optionally, a minimum and maximum value."},
                                            {"properties",
                                             {{"name", {{"type", "string"}}},
                                              {"type", {{"type", "string"}, {"enum", {"real"}}}},
@@ -261,12 +343,14 @@ namespace coco
                                            {"required", std::vector<json::json>{"name", "type"}}}}};
   const json::json boolean_parameter_schema{{"boolean_parameter",
                                              {{"type", "object"},
+                                              {"description", "A boolean parameter. It has a name."},
                                               {"properties",
                                                {{"name", {{"type", "string"}}},
                                                 {"type", {{"type", "string"}, {"enum", {"boolean"}}}}}},
                                               {"required", std::vector<json::json>{"name", "type"}}}}};
   const json::json symbol_parameter_schema{{"symbol_parameter",
                                             {{"type", "object"},
+                                             {"description", "A symbolic parameter. It has a name and a list of allowed symbols. If multiple is true, the parameter can have multiple values among the symbols."},
                                              {"properties",
                                               {{"name", {{"type", "string"}}},
                                                {"type", {{"type", "string"}, {"enum", {"symbol"}}}},
@@ -275,16 +359,71 @@ namespace coco
                                              {"required", {"name", "type", "symbols"}}}}};
   const json::json string_parameter_schema{{"string_parameter",
                                             {{"type", "object"},
+                                             {"description", "A string parameter. It has a name."},
                                              {"properties",
                                               {{"name", {{"type", "string"}}},
                                                {"type", {{"type", "string"}, {"enum", {"string"}}}}}},
                                              {"required", std::vector<json::json>{"name", "type"}}}}};
   const json::json array_parameter_schema{{"array_parameter",
                                            {{"type", "object"},
+                                            {"description", "An array parameter. It has a name, an array type, and a shape."},
                                             {"properties",
                                              {{"name", {{"type", "string"}}},
                                               {"type", {{"type", "string"}, {"enum", {"array"}}}},
                                               {"array_type", {{"$ref", "#/components/schemas/parameter"}}},
                                               {"shape", {{"type", "array"}, {"items", {{"type", "integer"}}}}}}},
                                             {"required", {"name", "type", "array_type", "shape"}}}}};
+  const json::json geometry_parameter_schema{{"geometry_parameter",
+                                              {{"oneOf", std::vector<json::json>{
+                                                             {"$ref", "#/components/schemas/point"},
+                                                             {"$ref", "#/components/schemas/multi_point"},
+                                                             {"$ref", "#/components/schemas/line_string"},
+                                                             {"$ref", "#/components/schemas/multi_line_string"},
+                                                             {"$ref", "#/components/schemas/polygon"},
+                                                             {"$ref", "#/components/schemas/multi_polygon"},
+                                                             {"$ref", "#/components/schemas/geometry_collection"}}}}}};
+  const json::json coordinate_schema{"coordinates",
+                                     {{"type", "array"},
+                                      {"description", "An array of two or three numbers representing the x, y, and optionally z coordinates of the position."},
+                                      {"items", {{"type", "number"}}}}};
+  const json::json linear_ring_schema{"linear_ring",
+                                      {{"type", "array"},
+                                       {"description", "A linear ring is a closed LineString with four or more positions. The first and last positions are equivalent (they represent equivalent points). It MUST follow the right-hand rule with respect to the area it bounds, i.e., exterior rings are counterclockwise, and holes are clockwise."},
+                                       {"items", {{"$ref", "#/components/schemas/coordinates"}}}}};
+  const json::json point_schema{"point",
+                                {{"type", "object"},
+                                 {"description", "A point is a position in coordinate space."},
+                                 {"properties",
+                                  {{"type", {{"type", "string"}, {"enum", {"Point"}}}},
+                                   {"coordinates", {{"$ref", "#/components/schemas/coordinates"}}}}}}};
+  const json::json multi_point_schema{"multi_point",
+                                      {{"type", "object"},
+                                       {"properties",
+                                        {{"type", {{"type", "string"}, {"enum", {"MultiPoint"}}}},
+                                         {"coordinates", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coordinates"}}}}}}}}};
+  const json::json line_string_schema{"line_string",
+                                      {{"type", "object"},
+                                       {"properties",
+                                        {{"type", {{"type", "string"}, {"enum", {"LineString"}}}},
+                                         {"coordinates", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coordinates"}}}}}}}}};
+  const json::json multi_line_string_schema{"multi_line_string",
+                                            {{"type", "object"},
+                                             {"properties",
+                                              {{"type", {{"type", "string"}, {"enum", {"MultiLineString"}}}},
+                                               {"coordinates", {{"type", "array"}, {"items", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coordinates"}}}}}}}}}}};
+  const json::json polygon_schema{"polygon",
+                                  {{"type", "object"},
+                                   {"properties",
+                                    {{"type", {{"type", "string"}, {"enum", {"Polygon"}}}},
+                                     {"coordinates", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/linear_ring"}}}}}}}}};
+  const json::json multi_polygon_schema{"multi_polygon",
+                                        {{"type", "object"},
+                                         {"properties",
+                                          {{"type", {{"type", "string"}, {"enum", {"MultiPolygon"}}}},
+                                           {"coordinates", {{"type", "array"}, {"items", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/linear_ring"}}}}}}}}}}};
+  const json::json geometry_collection_schema{"geometry_collection",
+                                              {{"type", "object"},
+                                               {"properties",
+                                                {{"type", {{"type", "string"}, {"enum", {"GeometryCollection"}}}},
+                                                 {"geometries", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/geometry_parameter"}}}}}}}}};
 } // namespace coco

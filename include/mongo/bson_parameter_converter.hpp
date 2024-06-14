@@ -111,4 +111,13 @@ namespace coco
   private:
     const mongo_db &db;
   };
+
+  class geometry_parameter_converter : public bson_parameter_converter
+  {
+  public:
+    geometry_parameter_converter() : bson_parameter_converter("geometry") {}
+
+    bsoncxx::builder::basic::document to_bson(const coco_parameter &t) const override;
+    std::unique_ptr<coco_parameter> from_bson(const bsoncxx::v_noabi::document::view &doc) const override;
+  };
 } // namespace coco

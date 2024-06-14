@@ -62,7 +62,7 @@ namespace coco
             auto type_id = doc["type_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto parameters = json::load(bsoncxx::to_json(doc["parameters"].get_document().view()));
-            coco_db::create_item(id, get_type(type_id), name, parameters);
+            coco_db::create_item(id, get_type_by_id(type_id), name, parameters);
         }
         LOG_DEBUG("Retrieved " << get_items().size() << " items");
 

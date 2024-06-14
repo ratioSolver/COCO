@@ -84,7 +84,11 @@ namespace coco
      *
      * @param type The type to remove.
      */
-    virtual void delete_type(const type &type) { types.erase(type.get_id()); }
+    virtual void delete_type(const type &type)
+    {
+      types_by_name.erase(type.get_name());
+      types_by_id.erase(type.get_id());
+    }
 
     /**
      * Returns a vector of references to the types.
@@ -96,7 +100,7 @@ namespace coco
     std::vector<std::reference_wrapper<type>> get_types() const
     {
       std::vector<std::reference_wrapper<type>> res;
-      for (auto &s : types)
+      for (auto &s : types_by_id)
         res.push_back(*s.second);
       return res;
     }
@@ -108,11 +112,25 @@ namespace coco
      * @return A reference to the type with the specified ID.
      * @throws std::invalid_argument if the type with the specified ID is not found.
      */
-    type &get_type(const std::string &id) const
+    type &get_type_by_id(const std::string &id) const
     {
-      if (types.find(id) == types.end())
+      if (types_by_id.find(id) == types_by_id.end())
         throw std::invalid_argument("Type not found: " + id);
-      return *types.at(id);
+      return *types_by_id.at(id);
+    }
+
+    /**
+     * Retrieves the reference to a type based on its name.
+     *
+     * @param name The name of the type to retrieve.
+     * @return A reference to the type with the specified name.
+     * @throws std::invalid_argument if the type with the specified name is not found.
+     */
+    type &get_type_by_name(const std::string &name) const
+    {
+      if (types_by_name.find(name) == types_by_name.end())
+        throw std::invalid_argument("Type not found: " + name);
+      return types_by_name.at(name);
     }
 
     /**
@@ -238,15 +256,18 @@ namespace coco
   protected:
     type &create_type(const std::string &id, const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars)
     {
-      if (types.find(id) != types.end())
+      if (types_by_id.find(id) != types_by_id.end())
         throw std::invalid_argument("Type already exists: " + id);
-      types[id] = std::make_unique<type>(id, name, description, std::move(static_pars), std::move(dynamic_pars));
-      return *types[id];
+      auto tp = std::make_unique<type>(id, name, description, std::move(static_pars), std::move(dynamic_pars));
+      types_by_name.emplace(name, *tp);
+      types_by_id.emplace(id, std::move(tp));
+      return *types_by_id[id];
     }
     item &create_item(const std::string &id, const type &type, const std::string &name, const json::json &pars)
     {
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
+      items.emplace(id, std::make_unique<item>(id, type, name, pars));
       items[id] = std::make_unique<item>(id, type, name, pars);
       return *items[id];
     }
@@ -254,23 +275,24 @@ namespace coco
     {
       if (reactive_rules.find(id) != reactive_rules.end())
         throw std::invalid_argument("Reactive rule already exists: " + id);
-      reactive_rules[id] = std::make_unique<rule>(id, name, content);
+      reactive_rules.emplace(id, std::make_unique<rule>(id, name, content));
       return *reactive_rules[id];
     }
     rule &create_deliberative_rule(const std::string &id, const std::string &name, const std::string &content)
     {
       if (deliberative_rules.find(id) != deliberative_rules.end())
         throw std::invalid_argument("Deliberative rule already exists: " + id);
-      deliberative_rules[id] = std::make_unique<rule>(id, name, content);
+      deliberative_rules.emplace(id, std::make_unique<rule>(id, name, content));
       return *deliberative_rules[id];
     }
 
   private:
     const json::json config; // The app name.
 
-    std::map<std::string, std::unique_ptr<type>> types;              // The types stored in the database by ID.
-    std::map<std::string, std::unique_ptr<item>> items;              // The items stored in the database by ID.
-    std::map<std::string, std::unique_ptr<rule>> reactive_rules;     // The reactive rules stored in the database by ID.
-    std::map<std::string, std::unique_ptr<rule>> deliberative_rules; // The deliberative rules stored in the database by ID.
+    std::map<std::string, std::unique_ptr<type>> types_by_id;          // The types stored in the database by ID.
+    std::map<std::string, std::reference_wrapper<type>> types_by_name; // The types stored in the database by name.
+    std::map<std::string, std::unique_ptr<item>> items;                // The items stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> reactive_rules;       // The reactive rules stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> deliberative_rules;   // The deliberative rules stored in the database by ID.
   };
 } // namespace coco

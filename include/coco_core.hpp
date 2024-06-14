@@ -190,6 +190,30 @@ namespace coco
     return j;
   }
 
+  inline json::json make_new_type_message(const type &tp)
+  {
+    json::json j;
+    j["type"] = "new_type";
+    j["tp"] = to_json(tp);
+    return j;
+  }
+
+  inline json::json make_updated_type_message(const type &tp)
+  {
+    json::json j;
+    j["type"] = "updated_type";
+    j["tp"] = to_json(tp);
+    return j;
+  }
+
+  inline json::json make_deleted_type_message(const std::string &tp_id)
+  {
+    json::json j;
+    j["type"] = "deleted_type";
+    j["tp_id"] = tp_id;
+    return j;
+  }
+
   inline json::json make_items_message(coco_core &core)
   {
     json::json j;
@@ -198,6 +222,30 @@ namespace coco
     for (const auto &item : core.get_items())
       items.push_back(to_json(item));
     j["items"] = std::move(items);
+    return j;
+  }
+
+  inline json::json make_new_item_message(const item &itm)
+  {
+    json::json j;
+    j["type"] = "new_item";
+    j["itm"] = to_json(itm);
+    return j;
+  }
+
+  inline json::json make_updated_item_message(const item &itm)
+  {
+    json::json j;
+    j["type"] = "updated_item";
+    j["itm"] = to_json(itm);
+    return j;
+  }
+
+  inline json::json make_deleted_item_message(const std::string &itm_id)
+  {
+    json::json j;
+    j["type"] = "deleted_item";
+    j["itm_id"] = itm_id;
     return j;
   }
 

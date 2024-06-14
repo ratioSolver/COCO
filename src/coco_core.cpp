@@ -114,15 +114,15 @@ namespace coco
         return r;
     }
 
-    void coco_core::new_type([[maybe_unused]] const type &s) { LOG_TRACE("New type: " + s.get_id()); }
-    void coco_core::updated_type([[maybe_unused]] const type &s) { LOG_TRACE("Updated type: " + s.get_id()); }
-    void coco_core::deleted_type([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted type: " + id); }
+    void coco_core::new_type([[maybe_unused]] const type &tp) { LOG_TRACE("New type: " + tp.get_id()); }
+    void coco_core::updated_type([[maybe_unused]] const type &tp) { LOG_TRACE("Updated type: " + tp.get_id()); }
+    void coco_core::deleted_type([[maybe_unused]] const std::string &tp_id) { LOG_TRACE("Deleted type: " + tp_id); }
 
-    void coco_core::new_item([[maybe_unused]] const item &s) { LOG_TRACE("New item: " + s.get_id()); }
-    void coco_core::updated_item([[maybe_unused]] const item &s) { LOG_TRACE("Updated item: " + s.get_id()); }
-    void coco_core::deleted_item([[maybe_unused]] const std::string &id) { LOG_TRACE("Deleted item: " + id); }
+    void coco_core::new_item([[maybe_unused]] const item &itm) { LOG_TRACE("New item: " + itm.get_id()); }
+    void coco_core::updated_item([[maybe_unused]] const item &itm) { LOG_TRACE("Updated item: " + itm.get_id()); }
+    void coco_core::deleted_item([[maybe_unused]] const std::string &itm_id) { LOG_TRACE("Deleted item: " + itm_id); }
 
-    void coco_core::new_data([[maybe_unused]] const item &s, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) { LOG_TRACE("Item " + s.get_id() + " data: " + data.dump()); }
+    void coco_core::new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) { LOG_TRACE("Item " + itm.get_id() + " data: " + data.dump()); }
 
     void coco_core::new_solver([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("New solver: " + exec.get_solver().get_name() + " (" + std::to_string(get_id(exec)) + ")"); }
     void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) { LOG_TRACE("Deleted solver: " + std::to_string(id)); }

@@ -164,4 +164,25 @@ namespace coco
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"types"}}}},
            {"types", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}};
+  const json::json new_type_message{
+      {"new_type_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"new_type"}}}},
+           {"new_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}};
+  const json::json updated_type_message{
+      {"updated_type_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"updated_type"}}}},
+           {"updated_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}};
+  const json::json deleted_type_message{
+      {"deleted_type_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"deleted_type"}}}},
+           {"deleted_type", {{"type", "string"}, {"format", "uuid"}}}}}}}}};
 } // namespace coco

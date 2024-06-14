@@ -131,15 +131,15 @@ namespace coco
     rule &create_deliberative_rule(const std::string &name, const std::string &content);
 
   private:
-    virtual void new_type(const type &s);
-    virtual void updated_type(const type &s);
-    virtual void deleted_type(const std::string &id);
+    virtual void new_type(const type &tp);
+    virtual void updated_type(const type &tp);
+    virtual void deleted_type(const std::string &tp_id);
 
-    virtual void new_item(const item &s);
-    virtual void updated_item(const item &s);
-    virtual void deleted_item(const std::string &id);
+    virtual void new_item(const item &itm);
+    virtual void updated_item(const item &itm);
+    virtual void deleted_item(const std::string &itm_id);
 
-    virtual void new_data(const item &s, const std::chrono::system_clock::time_point &timestamp, const json::json &data);
+    virtual void new_data(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data);
 
     virtual void new_solver(const coco_executor &exec);
     virtual void deleted_solver(const uintptr_t id);
@@ -201,58 +201,9 @@ namespace coco
     return j;
   }
 
-  const json::json data_schema{"data",
-                               {{"type", "object"},
-                                {"properties",
-                                 {{"timestamp", {{"type", "string"}, {"format", "date-time"}}},
-                                  {"data", {{"type", "object"}}}}}}};
   const json::json error_schema{"error",
                                 {{"type", "object"},
                                  {"properties",
                                   {{"code", {{"type", "integer"}}},
                                    {"message", {{"type", "string"}}}}}}};
-  const json::json data_path{"/data/{item_id}",
-                             {{"get",
-                               {{"summary", "Retrieve the data of the specified item"},
-                                {"description", "Endpoint to fetch the data of the specified item. The data can be filtered by specifying the start and end date"},
-                                {"parameters",
-                                 {{{"name", "item_id"},
-                                   {"description", "ID of the item"},
-                                   {"in", "path"},
-                                   {"required", true},
-                                   {"schema", {{"type", "string"}, {"format", "uuid"}}}},
-                                  {{"name", "from"},
-                                   {"description", "Start date for filtering data"},
-                                   {"in", "query"},
-                                   {"schema", {{"type", "string"}, {"format", "date-time"}}}},
-                                  {{"name", "to"},
-                                   {"description", "End date for filtering data"},
-                                   {"in", "query"},
-                                   {"schema", {{"type", "string"}, {"format", "date-time"}}}}}},
-                                {"responses",
-                                 {{"200",
-                                   {{"description", "Successful response with the data of the specified item"},
-                                    {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/data"}}}}}}}}}}},
-                                  {"404",
-                                   {{"description", "Item not found"},
-                                    {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
-                              {"post",
-                               {{"summary", "Add data to the specified item"},
-                                {"description", "Endpoint to add data to the specified item"},
-                                {"parameters",
-                                 {{{"name", "item_id"},
-                                   {"description", "ID of the item"},
-                                   {"in", "path"},
-                                   {"required", true},
-                                   {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
-                                {"requestBody", {{"content", {{"application/json", {{"schema", {{"type", "object"}}}}}}}}},
-                                {"responses",
-                                 {{"200",
-                                   {{"description", "Successful response"}}},
-                                  {"400",
-                                   {{"description", "Invalid input"},
-                                    {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
-                                  {"404",
-                                   {{"description", "Item not found"},
-                                    {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}};
 } // namespace coco

@@ -163,6 +163,9 @@ namespace coco
 
     void mongo_db::delete_type(const type &type)
     {
+        for (const auto &it : get_items())
+            if (&it.get().get_type() == &type)
+                delete_item(it);
         types_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic ::kvp("_id", bsoncxx::oid{type.get_id()})));
         coco_db::delete_type(type);
     }
@@ -195,6 +198,7 @@ namespace coco
 
     void mongo_db::delete_item(const item &it)
     {
+        item_data_collection.delete_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{it.get_id()})));
         items_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{it.get_id()})));
         coco_db::delete_item(it);
     }

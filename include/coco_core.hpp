@@ -179,10 +179,10 @@ namespace coco
     std::recursive_mutex mtx;    // mutex for the core..
   };
 
-  inline json::json make_types_message(coco_core &core)
+  inline json::json make_taxonomy_message(coco_core &core)
   {
     json::json j;
-    j["type"] = "types";
+    j["type"] = "taxonomy";
     json::json types = json::json_type::array;
     for (const auto &type : core.get_types())
       types.push_back(to_json(type));

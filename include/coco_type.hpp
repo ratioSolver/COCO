@@ -157,12 +157,12 @@ namespace coco
                                       {"404",
                                        {{"description", "Type not found"},
                                         {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}};
-  const json::json types_message{
+  const json::json taxonomy_message{
       {"types_message",
        {"payload",
         {{"type", "object"},
          {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"types"}}}},
+          {{"type", {{"type", "string"}, {"enum", {"taxonomy"}}}},
            {"types", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}};
   const json::json new_type_message{
       {"new_type_message",

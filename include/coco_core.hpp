@@ -249,6 +249,67 @@ namespace coco
     return j;
   }
 
+  inline json::json make_reactive_rules_message(coco_core &core)
+  {
+    json::json j;
+    j["type"] = "reactive_rules";
+    json::json rules = json::json_type::array;
+    for (const auto &r : core.get_reactive_rules())
+      rules.push_back(to_json(r));
+    j["rules"] = std::move(rules);
+    return j;
+  }
+
+  inline json::json make_deliberative_rules_message(coco_core &core)
+  {
+    json::json j;
+    j["type"] = "deliberative_rules";
+    json::json rules = json::json_type::array;
+    for (const auto &r : core.get_deliberative_rules())
+      rules.push_back(to_json(r));
+    j["rules"] = std::move(rules);
+    return j;
+  }
+
+  inline json::json make_solvers_message(coco_core &core)
+  {
+    json::json j;
+    j["type"] = "solvers";
+    json::json solvers = json::json_type::array;
+    for (const auto &exec : core.get_solvers())
+      solvers.push_back(to_json(exec));
+    j["solvers"] = std::move(solvers);
+    return j;
+  }
+
+  const json::json taxonomy_message{
+      {"types_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"taxonomy"}}}},
+           {"types", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}};
+  const json::json reactive_rules_message{
+      {"reactive_rules_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"reactive_rules"}}}},
+           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/rule"}}}}}}}}}}};
+  const json::json deliberative_rules_message{
+      {"deliberative_rules_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"deliberative_rules"}}}},
+           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/rule"}}}}}}}}}}};
+  const json::json solvers_message{
+      {"solvers_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"solvers"}}}},
+           {"solvers", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/solver"}}}}}}}}}}};
   const json::json error_schema{"error",
                                 {{"type", "object"},
                                  {"properties",

@@ -54,10 +54,10 @@ namespace coco
   };
 
   /**
-   * @brief Gets the unique identifier of the given solver.
+   * @brief Gets the unique identifier of the given executor.
    *
-   * @param exec the solver to get the unique identifier of.
-   * @return uintptr_t the unique identifier of the given solver.
+   * @param exec the executor to get the unique identifier of.
+   * @return uintptr_t the unique identifier of the given executor.
    */
   inline uintptr_t get_id(const coco_executor &exec) { return reinterpret_cast<uintptr_t>(&exec); }
 } // namespace coco

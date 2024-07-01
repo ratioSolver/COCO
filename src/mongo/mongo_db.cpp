@@ -7,11 +7,28 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["parameters"])]), parameters_collection(db["types"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
     {
         assert(conn);
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
             LOG_DEBUG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
+
+        if (parameters_collection.list_indexes().begin() == parameters_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for parameters collection");
+            parameters_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
+        }
+
+        LOG_DEBUG("Retrieving all parameters from MongoDB");
+        for (const auto &doc : parameters_collection.find({}))
+        {
+            auto id = doc["_id"].get_oid().value.to_string();
+            auto name = doc["name"].get_string().value.to_string();
+            auto description = doc["description"].get_string().value.to_string();
+            auto schema = json::load(bsoncxx::to_json(doc["schema"].get_document().view()));
+            coco_db::create_parameter(id, name, description, std::move(schema));
+        }
+        LOG_DEBUG("Retrieved " << get_parameters().size() << " parameters");
 
         if (types_collection.list_indexes().begin() == types_collection.list_indexes().end())
         {
@@ -19,32 +36,18 @@ namespace coco
             types_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
         }
 
-        new_parameter_converter<integer_parameter_converter>();
-        new_parameter_converter<real_parameter_converter>();
-        new_parameter_converter<boolean_parameter_converter>();
-        new_parameter_converter<symbolic_parameter_converter>();
-        new_parameter_converter<string_parameter_converter>();
-        new_parameter_converter<array_parameter_converter>(*this);
-        new_parameter_converter<geometry_parameter_converter>();
-
-        LOG_DEBUG("Retrieving types from MongoDB");
+        LOG_DEBUG("Retrieving all types from MongoDB");
         for (const auto &doc : types_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
-            std::unordered_map<std::string, std::unique_ptr<coco_parameter>> static_pars;
+            std::map<std::string, std::reference_wrapper<parameter>> static_pars;
             for (const auto &p : doc["static_parameters"].get_array().value)
-            {
-                auto par = from_bson(p.get_document().view());
-                static_pars[par->get_name()] = std::move(par);
-            }
-            std::unordered_map<std::string, std::unique_ptr<coco_parameter>> dynamic_pars;
+                static_pars.emplace(p.get_oid().value.to_string(), std::ref(get_parameter(p.get_oid().value.to_string())));
+            std::map<std::string, std::reference_wrapper<parameter>> dynamic_pars;
             for (const auto &p : doc["dynamic_parameters"].get_array().value)
-            {
-                auto par = from_bson(p.get_document().view());
-                dynamic_pars[par->get_name()] = std::move(par);
-            }
+                dynamic_pars.emplace(p.get_oid().value.to_string(), std::ref(get_parameter(p.get_oid().value.to_string())));
             coco_db::create_type(id, name, description, std::move(static_pars), std::move(dynamic_pars));
         }
         LOG_DEBUG("Retrieved " << get_types().size() << " types");
@@ -55,14 +58,14 @@ namespace coco
             items_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
         }
 
-        LOG_DEBUG("Retrieving items from MongoDB");
+        LOG_DEBUG("Retrieving all items from MongoDB");
         for (const auto &doc : items_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
             auto type_id = doc["type_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto parameters = json::load(bsoncxx::to_json(doc["parameters"].get_document().view()));
-            coco_db::create_item(id, get_type_by_id(type_id), name, parameters);
+            coco_db::create_item(id, get_type(type_id), name, parameters);
         }
         LOG_DEBUG("Retrieved " << get_items().size() << " items");
 
@@ -105,18 +108,62 @@ namespace coco
         LOG_DEBUG("Retrieved " << get_deliberative_rules().size() << " deliberative rules");
     }
 
-    type &mongo_db::create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars)
+    [[nodiscard]] parameter &mongo_db::create_parameter(const std::string &name, const std::string &description, json::json &&schema)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", name));
+        doc.append(bsoncxx::builder::basic::kvp("description", description));
+        doc.append(bsoncxx::builder::basic::kvp("schema", bsoncxx::from_json(schema.dump())));
+        auto result = parameters_collection.insert_one(doc.view());
+        if (result)
+            return coco_db::create_parameter(result->inserted_id().get_oid().value.to_string(), name, description, std::move(schema));
+        throw std::invalid_argument("Failed to insert parameter: " + name);
+    }
+
+    void mongo_db::set_parameter_name(parameter &par, const std::string &name)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("name", name))));
+        parameters_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{par.get_id()})), doc.view());
+    }
+    void mongo_db::set_parameter_description(parameter &par, const std::string &description)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("description", description))));
+        parameters_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{par.get_id()})), doc.view());
+    }
+    void mongo_db::set_parameter_schema(parameter &par, json::json &&schema)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("schema", bsoncxx::from_json(schema.dump())))));
+        parameters_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{par.get_id()})), doc.view());
+    }
+    void mongo_db::delete_parameter(const parameter &par)
+    {
+        // Remove parameter from all types
+        for (const auto &it : get_types())
+        {
+            if (it.get().get_static_parameters().find(par.get_id()) != it.get().get_static_parameters().end())
+                remove_static_parameter(it, par.get_name());
+            if (it.get().get_dynamic_parameters().find(par.get_id()) != it.get().get_dynamic_parameters().end())
+                remove_dynamic_parameter(it, par.get_name());
+        }
+        parameters_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{par.get_id()})));
+        coco_db::delete_parameter(par);
+    }
+
+    type &mongo_db::create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", name));
         doc.append(bsoncxx::builder::basic::kvp("description", description));
         auto static_parameters = bsoncxx::builder::basic::array{};
         for (const auto &p : static_pars)
-            static_parameters.append(to_bson(*p.second));
+            static_parameters.append(p.second.get().get_id());
         doc.append(bsoncxx::builder::basic::kvp("static_parameters", static_parameters));
         auto dynamic_parameters = bsoncxx::builder::basic::array{};
         for (const auto &p : dynamic_pars)
-            dynamic_parameters.append(to_bson(*p.second));
+            dynamic_parameters.append(p.second.get().get_id());
         doc.append(bsoncxx::builder::basic::kvp("dynamic_parameters", dynamic_parameters));
         auto result = types_collection.insert_one(doc.view());
         if (result)
@@ -136,10 +183,10 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("description", description))));
         types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{type.get_id()})), doc.view());
     }
-    void mongo_db::add_static_parameter(type &type, std::unique_ptr<coco_parameter> &&par)
+    void mongo_db::add_static_parameter(type &type, parameter &par)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_parameters", converters.at(par->get_type())->to_bson(*par)))));
+        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_parameters", bsoncxx::oid{par.get_id()}))));
         types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{type.get_id()})), doc.view());
     }
     void mongo_db::remove_static_parameter(type &type, const std::string &name)
@@ -148,10 +195,10 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_parameters", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("name", name))))));
         types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{type.get_id()})), doc.view());
     }
-    void mongo_db::add_dynamic_parameter(type &type, std::unique_ptr<coco_parameter> &&par)
+    void mongo_db::add_dynamic_parameter(type &type, parameter &par)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("dynamic_parameters", converters.at(par->get_type())->to_bson(*par)))));
+        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("dynamic_parameters", bsoncxx::oid{par.get_id()}))));
         types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{type.get_id()})), doc.view());
     }
     void mongo_db::remove_dynamic_parameter(type &type, const std::string &name)
@@ -163,6 +210,7 @@ namespace coco
 
     void mongo_db::delete_type(const type &type)
     {
+        // Remove all items of this type
         for (const auto &it : get_items())
             if (&it.get().get_type() == &type)
                 delete_item(it);

@@ -39,7 +39,7 @@ namespace coco
      * @param dynamic_pars The dynamic parameters of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars);
+    type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars);
 
     /**
      * Retrieves a vector of references to the items in the database.
@@ -171,7 +171,8 @@ namespace coco
     virtual void end(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
 
   private:
-    std::set<std::unique_ptr<coco_executor>> executors;
+    json::json schemas;                                 // the JSON schemas..
+    std::set<std::unique_ptr<coco_executor>> executors; // the executors..
 
   protected:
     std::unique_ptr<coco_db> db; // the database..
@@ -288,6 +289,7 @@ namespace coco
         {{"type", "object"},
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"taxonomy"}}}},
+           {"parameters", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_parameter"}}}}},
            {"types", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}};
   const json::json reactive_rules_message{
       {"reactive_rules_message",

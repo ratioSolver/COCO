@@ -4,6 +4,7 @@
 #include "coco_item.hpp"
 #include "coco_rule.hpp"
 #include <chrono>
+#include <stdexcept>
 
 namespace coco
 {
@@ -16,6 +17,98 @@ namespace coco
     const json::json &get_config() const { return config; }
 
     /**
+     * @brief Creates a parameter with the given name, description, and schema.
+     *
+     * This function is virtual and must be implemented by derived classes.
+     *
+     * @param name The name of the parameter.
+     * @param description The description of the parameter.
+     * @param schema The JSON schema for the parameter.
+     * @return A reference to the created parameter.
+     */
+    virtual parameter &create_parameter(const std::string &name, const std::string &description, json::json &&schema) = 0;
+
+    /**
+     * Sets the name of the given parameter.
+     *
+     * @param par The parameter to set the name for.
+     * @param name The name to set for the parameter.
+     */
+    virtual void set_parameter_name(parameter &par, const std::string &name) { par.name = name; }
+
+    /**
+     * @brief Sets the description of a parameter.
+     *
+     * This function sets the description of a given parameter. The description provides additional information about the parameter.
+     *
+     * @param par The parameter to set the description for.
+     * @param description The description to set for the parameter.
+     */
+    virtual void set_parameter_description(parameter &par, const std::string &description) { par.description = description; }
+
+    /**
+     * @brief Sets the schema of a parameter.
+     *
+     * This function sets the schema of a given parameter. The schema defines the structure of the parameter.
+     *
+     * @param par The parameter to set the schema for.
+     * @param schema The schema to set for the parameter.
+     */
+    virtual void set_parameter_schema(parameter &par, json::json &&schema) { par.schema = schema; }
+
+    /**
+     * @brief Removes a parameter from the database.
+     *
+     * This function removes the specified parameter from the database.
+     *
+     * @param par The parameter to remove.
+     */
+    virtual void delete_parameter(const parameter &par) { parameters.erase(par.get_id()); }
+
+    /**
+     * Retrieves a vector of references to the parameters in the database.
+     *
+     * This function retrieves all the parameters stored in the database and returns them as a vector of `parameter` objects. The returned vector contains references to the actual parameters stored in the `parameters` map.
+     *
+     * @return A vector of references to the parameters.
+     */
+    std::vector<std::reference_wrapper<parameter>> get_parameters() const
+    {
+      std::vector<std::reference_wrapper<parameter>> res;
+      for (auto &p : parameters)
+        res.push_back(*p.second);
+      return res;
+    }
+
+    /**
+     * Retrieves the reference to a parameter based on its ID.
+     *
+     * @param id The ID of the parameter to retrieve.
+     * @return A reference to the parameter with the specified ID.
+     * @throws std::invalid_argument if the parameter with the specified ID is not found.
+     */
+    parameter &get_parameter(const std::string &id) const
+    {
+      if (parameters.find(id) == parameters.end())
+        throw std::invalid_argument("Parameter not found: " + id);
+      return *parameters.at(id);
+    }
+
+    /**
+     * Retrieves the reference to a parameter based on its name.
+     *
+     * @param name The name of the parameter to retrieve.
+     * @return A reference to the parameter with the specified name.
+     * @throws std::invalid_argument if the parameter with the specified name is not found.
+     */
+    parameter &get_parameter_by_name(const std::string &name) const
+    {
+      if (parameters_by_name.find(name) == parameters_by_name.end())
+        throw std::invalid_argument("Parameter not found: " + name);
+      return parameters_by_name.at(name);
+    }
+
+    /**
      * @brief Creates a new type.
      *
      * This function creates a new type with the specified name, description, and parameters.
@@ -26,7 +119,7 @@ namespace coco
      * @param dynamic_pars The dynamic parameters of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars) = 0;
+    virtual type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars) = 0;
 
     /**
      * Sets the name of the given type.
@@ -48,9 +141,9 @@ namespace coco
      * Adds a static parameter to the given type.
      *
      * @param type The type to which the static parameter will be added.
-     * @param par A unique pointer to the parameter to be added.
+     * @param par The static parameter to add.
      */
-    virtual void add_static_parameter(type &type, std::unique_ptr<coco_parameter> &&par) { type.static_parameters[par->get_name()] = std::move(par); }
+    virtual void add_static_parameter(type &type, parameter &par) { type.static_parameters.emplace(par.name, par); }
     /**
      * @brief Removes a static parameter from a given type.
      *
@@ -64,9 +157,9 @@ namespace coco
      * Adds a dynamic parameter to the given type.
      *
      * @param type The type to which the dynamic parameter will be added.
-     * @param par A unique pointer to the parameter to be added.
+     * @param par The dynamic parameter to add.
      */
-    virtual void add_dynamic_parameter(type &type, std::unique_ptr<coco_parameter> &&par) { type.dynamic_parameters[par->get_name()] = std::move(par); }
+    virtual void add_dynamic_parameter(type &type, parameter &par) { type.dynamic_parameters.emplace(par.name, par); }
     /**
      * @brief Removes a dynamic parameter from the given type.
      *
@@ -112,7 +205,7 @@ namespace coco
      * @return A reference to the type with the specified ID.
      * @throws std::invalid_argument if the type with the specified ID is not found.
      */
-    type &get_type_by_id(const std::string &id) const
+    type &get_type(const std::string &id) const
     {
       if (types_by_id.find(id) == types_by_id.end())
         throw std::invalid_argument("Type not found: " + id);
@@ -254,7 +347,16 @@ namespace coco
     virtual rule &create_deliberative_rule(const std::string &name, const std::string &content) = 0;
 
   protected:
-    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars)
+    parameter &create_parameter(const std::string &id, const std::string &name, const std::string &description, json::json &&schema)
+    {
+      if (parameters.find(id) != parameters.end())
+        throw std::invalid_argument("Parameter already exists: " + id);
+      auto par = std::make_unique<parameter>(id, name, description, std::move(schema));
+      parameters_by_name.emplace(name, *par);
+      parameters.emplace(id, std::move(par));
+      return *parameters[id];
+    }
+    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars)
     {
       if (types_by_id.find(id) != types_by_id.end())
         throw std::invalid_argument("Type already exists: " + id);
@@ -289,10 +391,12 @@ namespace coco
   private:
     const json::json config; // The app name.
 
-    std::map<std::string, std::unique_ptr<type>> types_by_id;          // The types stored in the database by ID.
-    std::map<std::string, std::reference_wrapper<type>> types_by_name; // The types stored in the database by name.
-    std::map<std::string, std::unique_ptr<item>> items;                // The items stored in the database by ID.
-    std::map<std::string, std::unique_ptr<rule>> reactive_rules;       // The reactive rules stored in the database by ID.
-    std::map<std::string, std::unique_ptr<rule>> deliberative_rules;   // The deliberative rules stored in the database by ID.
+    std::map<std::string, std::unique_ptr<parameter>> parameters;                // The parameters stored in the database by ID.
+    std::map<std::string, std::reference_wrapper<parameter>> parameters_by_name; // The parameters stored in the database by name.
+    std::map<std::string, std::unique_ptr<type>> types_by_id;                    // The types stored in the database by ID.
+    std::map<std::string, std::reference_wrapper<type>> types_by_name;           // The types stored in the database by name.
+    std::map<std::string, std::unique_ptr<item>> items;                          // The items stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> reactive_rules;                 // The reactive rules stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> deliberative_rules;             // The deliberative rules stored in the database by ID.
   };
 } // namespace coco

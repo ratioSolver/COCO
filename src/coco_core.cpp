@@ -16,7 +16,7 @@ namespace coco
         return db->get_types();
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&static_pars, std::unordered_map<std::string, std::unique_ptr<coco_parameter>> &&dynamic_pars)
+    type &coco_core::create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &st = db->create_type(name, description, std::move(static_pars), std::move(dynamic_pars));
@@ -39,11 +39,12 @@ namespace coco
                 LOG_WARN("Parameters for item " + name + " do not contain parameter " + p.first);
                 return db->get_items().front().get();
             }
-            else if (!p.second->validate(pars[p.first]))
+            else if (!json::validate(pars[p.first], p.second.get().get_schema(), schemas))
             {
                 LOG_WARN("Parameters for item " + name + " parameter " + p.first + " is invalid");
                 return db->get_items().front().get();
             }
+
         auto &s = db->create_item(type, name, pars);
         new_item(s);
         return s;
@@ -58,7 +59,7 @@ namespace coco
                 LOG_WARN("Data for item " + s.get_id() + " does not contain parameter " + p.first);
                 return;
             }
-            else if (!p.second->validate(data[p.first]))
+            else if (!json::validate(data[p.first], p.second.get().get_schema(), schemas))
             {
                 LOG_WARN("Data for item " + s.get_id() + " parameter " + p.first + " is invalid");
                 return;

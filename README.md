@@ -62,30 +62,12 @@ sudo apt-get install libssl-dev
 
 **Installing MongoDB cxx drivers**
 
-Download and configure the mongoc driver.
+Download and configure the mongo-cxx driver.
 
 ```shell
-git clone https://github.com/mongodb/mongo-c-driver.git
-cd mongo-c-driver
-python build/calc_release_version.py > VERSION_CURRENT
-mkdir cmake-build
-cd cmake-build
-cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
-```
-
-Compile and install it.
-
-```shell
-cmake --build .
-sudo cmake --build . --target install
-```
-
-Download the mongocxx driver.
-
-```shell
-curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r3.9.0/mongo-cxx-driver-r3.9.0.tar.gz
-tar -xzf mongo-cxx-driver-r3.9.0.tar.gz
-cd mongo-cxx-driver-r3.9.0/build
+curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r3.10.1/mongo-cxx-driver-r3.10.1.tar.gz
+tar -xzf mongo-cxx-driver-r3.10.1.tar.gz
+cd mongo-cxx-driver-r3.10.1/build
 ```
 
 Configure the driver.

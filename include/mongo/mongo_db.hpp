@@ -57,8 +57,8 @@ namespace coco
     mongocxx::database db;
 
   private:
-    mongocxx::collection parameters_collection;
     mongocxx::collection types_collection;
+    mongocxx::collection parameters_collection;
     mongocxx::collection items_collection;
     mongocxx::collection item_data_collection;
     mongocxx::collection reactive_rules_collection;

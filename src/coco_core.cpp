@@ -16,6 +16,12 @@ namespace coco
         return db->get_types();
     }
 
+    type &coco_core::get_type(const std::string &id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_type(id);
+    }
+
     type &coco_core::create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -24,10 +30,22 @@ namespace coco
         return st;
     }
 
+    void coco_core::delete_type(const std::string &id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->delete_type(db->get_type(id));
+    }
+
     std::vector<std::reference_wrapper<item>> coco_core::get_items()
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         return db->get_items();
+    }
+
+    item &coco_core::get_item(const std::string &id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_item(id);
     }
 
     item &coco_core::create_item(const type &type, const std::string &name, const json::json &pars)
@@ -48,6 +66,12 @@ namespace coco
         auto &s = db->create_item(type, name, pars);
         new_item(s);
         return s;
+    }
+
+    void coco_core::delete_item(const std::string &id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->delete_item(db->get_item(id));
     }
 
     void coco_core::add_data(const item &s, const json::json &data)

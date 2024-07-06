@@ -29,6 +29,17 @@ namespace coco
     std::vector<std::reference_wrapper<type>> get_types();
 
     /**
+     * @brief Retrieves a type with the specified ID.
+     *
+     * This function retrieves the type with the specified ID.
+     *
+     * @param id The ID of the type.
+     * @return A reference to the type.
+     * @throws std::invalid_argument if the type does not exist.
+     */
+    type &get_type(const std::string &id);
+
+    /**
      * @brief Creates a new type.
      *
      * This function creates a new type with the specified name, description, and parameters.
@@ -42,6 +53,16 @@ namespace coco
     type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars);
 
     /**
+     * @brief Deletes the type with the specified ID.
+     *
+     * This function deletes the type with the specified ID.
+     *
+     * @param id The ID of the type.
+     * @throws std::invalid_argument if the type does not exist.
+     */
+    void delete_type(const std::string &id);
+
+    /**
      * Retrieves a vector of references to the items in the database.
      *
      * This function retrieves all the items stored in the database and returns them as a vector of `item` objects. The returned vector contains references to the actual items stored in the `items` map.
@@ -49,6 +70,17 @@ namespace coco
      * @return A vector of references to the items.
      */
     std::vector<std::reference_wrapper<item>> get_items();
+
+    /**
+     * @brief Retrieves an item with the specified ID.
+     *
+     * This function retrieves the item with the specified ID.
+     *
+     * @param id The ID of the item.
+     * @return A reference to the item.
+     * @throws std::invalid_argument if the item does not exist.
+     */
+    item &get_item(const std::string &id);
 
     /**
      * @brief Creates an item of the specified type with the given name and optional data.
@@ -59,6 +91,16 @@ namespace coco
      * @return A reference to the created item.
      */
     item &create_item(const type &type, const std::string &name, const json::json &pars);
+
+    /**
+     * @brief Deletes the item with the specified ID.
+     *
+     * This function deletes the item with the specified ID.
+     *
+     * @param id The ID of the item.
+     * @throws std::invalid_argument if the item does not exist.
+     */
+    void delete_item(const std::string &id);
 
     /**
      * @brief Adds data to the item.

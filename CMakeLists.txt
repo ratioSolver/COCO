@@ -19,18 +19,35 @@ set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 set(MONGODB_HOST "localhost" CACHE STRING "The MongoDB Host")
 set(MONGODB_PORT "27017" CACHE STRING "The MongoDB Port")
 
+option(ENABLE_MQTT "Enable MQTT" OFF)
+
 message(STATUS "CoCo name: ${COCO_NAME}")
 message(STATUS "MongoDB host: ${MONGODB_HOST}")
 message(STATUS "MongoDB port: ${MONGODB_PORT}")
+message(STATUS "Enable MQTT: ${ENABLE_MQTT}")
 
 add_subdirectory(extern/plexa)
 
-add_library(CoCo src/coco_core.cpp src/coco_db.cpp src/coco_type.cpp src/coco_item.cpp src/coco_executor.cpp src/mongo/mongo_db.cpp)
-target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/mongo> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR} ${CLIPS_INCLUDE_DIR})
+add_library(CoCo src/coco_core.cpp src/coco_db.cpp src/coco_type.cpp src/coco_item.cpp src/coco_executor.cpp src/mongo/mongo_db.cpp $<$<BOOL:${ENABLE_MQTT}>:${CMAKE_CURRENT_SOURCE_DIR}/src/mqtt/mqtt_connection.cpp>)
+target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/mongo> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR} ${CLIPS_INCLUDE_DIR} $<$<BOOL:${ENABLE_MQTT}>:${CMAKE_CURRENT_SOURCE_DIR}/include/mqtt>)
 add_dependencies(CoCo PlExA)
 target_link_directories(CoCo PUBLIC ${CLIPS_LIB_DIR})
 target_link_libraries(CoCo PUBLIC PlExA clips mongo::bsoncxx_shared mongo::mongocxx_shared)
 target_compile_definitions(CoCo PUBLIC COCO_NAME="${COCO_NAME}" MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
+
+if(ENABLE_MQTT)
+    find_package(PahoMqttCpp REQUIRED)
+
+    set(MQTT_HOST "localhost" CACHE STRING "The MQTT Host")
+    set(MQTT_PORT "1883" CACHE STRING "The MQTT Port")
+
+    message(STATUS "MQTT host: ${MQTT_HOST}")
+    message(STATUS "MQTT port: ${MQTT_PORT}")
+
+    target_include_directories(CoCo PUBLIC ${PAHO_MQTT_CPP_INCLUDE_DIR})
+    target_link_libraries(CoCo PUBLIC ${PAHO_MQTT_CPP_LIBRARIES})
+    target_compile_definitions(CoCo PUBLIC ENABLE_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
+endif()
 
 if(MSVC)
     target_compile_options(CoCo PRIVATE /W4)

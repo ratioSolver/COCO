@@ -86,3 +86,26 @@ sudo cmake --build . --target install
 **Installing MongoDB (optional)**
 
 For installation of MongoDB refer to the official [documentation](https://www.mongodb.com/docs/manual/installation).
+
+### MQTT Integration (optional)
+
+COCO allows to integrate with MQTT brokers for receiving data from IoT devices. To enable this feature, it is required to install the [Paho MQTT C++ library](https://github.com/eclipse/paho.mqtt.cpp).
+
+**Installing Paho MQTT C++ library**
+
+```shell
+sudo apt-get install libssl-dev
+```
+
+Download and configure the Paho MQTT C++ library.
+
+```shell
+git clone https://github.com/eclipse/paho.mqtt.cpp
+cd paho.mqtt.cpp
+git checkout v1.4.0
+git submodule init
+git submodule update
+
+cmake -Bbuild -H. -DPAHO_WITH_MQTT_C=ON
+sudo cmake --build build/ --target install
+```

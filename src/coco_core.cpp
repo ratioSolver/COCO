@@ -10,6 +10,32 @@ namespace coco
         assert(env != nullptr);
     }
 
+    std::vector<std::reference_wrapper<parameter>> coco_core::get_parameters()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_parameters();
+    }
+
+    parameter &coco_core::get_parameter(const std::string &id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_parameter(id);
+    }
+
+    parameter &coco_core::create_parameter(const std::string &name, const std::string &description, json::json &&schema)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        auto &par = db->create_parameter(name, description, std::move(schema));
+        new_parameter(par);
+        return par;
+    }
+
+    void coco_core::delete_parameter(const std::string &id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->delete_parameter(db->get_parameter(id));
+    }
+
     std::vector<std::reference_wrapper<type>> coco_core::get_types()
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -138,6 +164,10 @@ namespace coco
         new_deliberative_rule(r);
         return r;
     }
+
+    void coco_core::new_parameter([[maybe_unused]] const parameter &par) { LOG_TRACE("New parameter: " + par.get_id()); }
+    void coco_core::updated_parameter([[maybe_unused]] const parameter &par) { LOG_TRACE("Updated parameter: " + par.get_id()); }
+    void coco_core::deleted_parameter([[maybe_unused]] const std::string &par_id) { LOG_TRACE("Deleted parameter: " + par_id); }
 
     void coco_core::new_type([[maybe_unused]] const type &tp) { LOG_TRACE("New type: " + tp.get_id()); }
     void coco_core::updated_type([[maybe_unused]] const type &tp) { LOG_TRACE("Updated type: " + tp.get_id()); }

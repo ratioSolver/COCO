@@ -20,6 +20,48 @@ namespace coco
     virtual ~coco_core() = default;
 
     /**
+     * @brief Returns a vector of references to the parameters.
+     *
+     * This function retrieves all the parameters stored in the database and returns them as a vector of `parameter` objects. The returned vector contains references to the actual parameters stored in the `parameters` map.
+     *
+     * @return A vector of parameters.
+     */
+    std::vector<std::reference_wrapper<parameter>> get_parameters();
+
+    /**
+     * @brief Retrieves a parameter with the specified ID.
+     *
+     * This function retrieves the parameter with the specified ID.
+     *
+     * @param id The ID of the parameter.
+     * @return A reference to the parameter.
+     * @throws std::invalid_argument if the parameter does not exist.
+     */
+    parameter &get_parameter(const std::string &id);
+
+    /**
+     * @brief Creates a new parameter.
+     *
+     * This function creates a new parameter with the specified name, description, and schema.
+     *
+     * @param name The name of the parameter.
+     * @param description The description of the parameter.
+     * @param schema The schema of the parameter.
+     * @return A reference to the created parameter.
+     */
+    parameter &create_parameter(const std::string &name, const std::string &description, json::json &&schema);
+
+    /**
+     * @brief Deletes the parameter with the specified ID.
+     *
+     * This function deletes the parameter with the specified ID.
+     *
+     * @param id The ID of the parameter.
+     * @throws std::invalid_argument if the parameter does not exist.
+     */
+    void delete_parameter(const std::string &id);
+
+    /**
      * @brief Returns a vector of references to the types.
      *
      * This function retrieves all the types stored in the database and returns them as a vector of `type` objects. The returned vector contains references to the actual types stored in the `types` map.
@@ -173,6 +215,10 @@ namespace coco
     rule &create_deliberative_rule(const std::string &name, const std::string &content);
 
   private:
+    virtual void new_parameter(const parameter &par);
+    virtual void updated_parameter(const parameter &par);
+    virtual void deleted_parameter(const std::string &par_id);
+
     virtual void new_type(const type &tp);
     virtual void updated_type(const type &tp);
     virtual void deleted_type(const std::string &tp_id);

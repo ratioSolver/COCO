@@ -60,6 +60,14 @@ namespace coco
     json::json schema;       // The schema of the parameter.
   };
 
+  /**
+   * Converts a parameter object to a JSON object.
+   *
+   * @param par The parameter object to convert.
+   * @return The JSON object representing the parameter.
+   */
+  inline json::json to_json(const parameter &par) { return json::json{{"id", par.get_id()}, {"name", par.get_name()}, {"description", par.get_description()}, {"schema", par.get_schema()}}; }
+
   const json::json coco_parameter_schema = {"coco_parameter",
                                             {{"type", "object"},
                                              {"properties",

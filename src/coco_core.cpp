@@ -48,7 +48,7 @@ namespace coco
         return db->get_type(id);
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars)
+    type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const parameter>> &&static_pars, std::vector<std::reference_wrapper<const parameter>> &&dynamic_pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &st = db->create_type(name, description, std::move(static_pars), std::move(dynamic_pars));
@@ -74,22 +74,22 @@ namespace coco
         return db->get_item(id);
     }
 
-    item &coco_core::create_item(const type &type, const std::string &name, const json::json &pars)
+    item &coco_core::create_item(const type &tp, const std::string &name, const json::json &pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        for (const auto &p : type.get_static_parameters())
-            if (!pars.contains(p.first))
+        for (const auto &p : tp.get_static_parameters())
+            if (!pars.contains(p.get().get_name()))
             {
-                LOG_WARN("Parameters for item " + name + " do not contain parameter " + p.first);
+                LOG_WARN("Parameters for item " + name + " do not contain parameter " + p.get().get_name());
                 return db->get_items().front().get();
             }
-            else if (!json::validate(pars[p.first], p.second.get().get_schema(), schemas))
+            else if (!json::validate(pars[p.get().get_name()], p.get().get_schema(), schemas))
             {
-                LOG_WARN("Parameters for item " + name + " parameter " + p.first + " is invalid");
+                LOG_WARN("Parameters for item " + name + " parameter " + p.get().get_name() + " is invalid");
                 return db->get_items().front().get();
             }
 
-        auto &s = db->create_item(type, name, pars);
+        auto &s = db->create_item(tp, name, pars);
         new_item(s);
         return s;
     }
@@ -104,14 +104,14 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &p : s.get_type().get_dynamic_parameters())
-            if (!data.contains(p.first))
+            if (!data.contains(p.get().get_name()))
             {
-                LOG_WARN("Data for item " + s.get_id() + " does not contain parameter " + p.first);
+                LOG_WARN("Data for item " + s.get_id() + " do not contain parameter " + p.get().get_name());
                 return;
             }
-            else if (!json::validate(data[p.first], p.second.get().get_schema(), schemas))
+            else if (!json::validate(data[p.get().get_name()], p.get().get_schema(), schemas))
             {
-                LOG_WARN("Data for item " + s.get_id() + " parameter " + p.first + " is invalid");
+                LOG_WARN("Data for item " + s.get_id() + " parameter " + p.get().get_name() + " is invalid");
                 return;
             }
 

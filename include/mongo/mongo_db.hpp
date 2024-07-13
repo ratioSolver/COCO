@@ -25,18 +25,26 @@ namespace coco
 
     void set_parameter_name(parameter &par, const std::string &name) override;
     void set_parameter_description(parameter &par, const std::string &description) override;
+    void add_super_parameter(parameter &par, const parameter &super_par) override;
+    void remove_super_parameter(parameter &par, const parameter &super_par) override;
+    void add_disjoint_parameter(parameter &par, const parameter &disjoint_par) override;
+    void remove_disjoint_parameter(parameter &par, const parameter &disjoint_par) override;
     void set_parameter_schema(parameter &par, json::json &&schema) override;
     void delete_parameter(const parameter &par) override;
 
-    [[nodiscard]] type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars) override;
+    [[nodiscard]] type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const parameter>> &&static_pars, std::vector<std::reference_wrapper<const parameter>> &&dynamic_pars) override;
 
-    void set_type_name(type &type, const std::string &name) override;
-    void set_type_description(type &type, const std::string &description) override;
-    void add_static_parameter(type &type, parameter &par) override;
-    void remove_static_parameter(type &type, const std::string &name) override;
-    void add_dynamic_parameter(type &type, parameter &par) override;
-    void remove_dynamic_parameter(type &type, const std::string &name) override;
-    void delete_type(const type &type) override;
+    void set_type_name(type &tp, const std::string &name) override;
+    void set_type_description(type &tp, const std::string &description) override;
+    void add_super_type(type &tp, const type &super_type) override;
+    void remove_super_type(type &tp, const type &super_type) override;
+    void add_disjoint_type(type &tp, const type &disjoint_type) override;
+    void remove_disjoint_type(type &tp, const type &disjoint_type) override;
+    void add_static_parameter(type &tp, const parameter &par) override;
+    void remove_static_parameter(type &tp, const parameter &par) override;
+    void add_dynamic_parameter(type &tp, const parameter &par) override;
+    void remove_dynamic_parameter(type &tp, const parameter &par) override;
+    void delete_type(const type &tp) override;
 
     [[nodiscard]] item &create_item(const type &tp, const std::string &name, const json::json &pars) override;
 

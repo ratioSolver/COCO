@@ -102,7 +102,8 @@ namespace coco
                                      {"properties",
                                       {{"id", {{"type", "string"}, {"format", "uuid"}}},
                                        {"name", {{"type", "string"}}},
-                                       {"content", {{"type", "string"}}}}}}};
+                                       {"content", {{"type", "string"}}}},
+                                      {"required", {"id", "name", "content"}}}}};
 
   const json::json reactive_rules_path{"/reactive_rules",
                                        {{"get",

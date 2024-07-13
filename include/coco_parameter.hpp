@@ -1,10 +1,13 @@
 #pragma once
 
 #include "json.hpp"
+#include <functional>
 
 namespace coco
 {
   class coco_db;
+  class type;
+
   /**
    * @brief Represents a parameter object.
    *
@@ -47,6 +50,20 @@ namespace coco
     const std::string &get_description() const { return description; }
 
     /**
+     * @brief Gets the super parameters of the parameter.
+     *
+     * @return The super parameters of the parameter.
+     */
+    const std::vector<std::reference_wrapper<const parameter>> &get_super_parameters() const { return super_parameters; }
+
+    /**
+     * @brief Gets the disjoint parameters of the parameter.
+     *
+     * @return The disjoint parameters of the parameter.
+     */
+    const std::vector<std::reference_wrapper<const parameter>> &get_disjoint_parameters() const { return disjoint_parameters; }
+
+    /**
      * @brief Gets the schema of the parameter.
      *
      * @return The schema of the parameter.
@@ -54,10 +71,12 @@ namespace coco
     const json::json &get_schema() const { return schema; }
 
   private:
-    std::string id;          // The ID of the parameter.
-    std::string name;        // The name of the parameter.
-    std::string description; // The description of the parameter.
-    json::json schema;       // The schema of the parameter.
+    std::string id;                                                           // The ID of the parameter.
+    std::string name;                                                         // The name of the parameter.
+    std::string description;                                                  // The description of the parameter.
+    std::vector<std::reference_wrapper<const parameter>> super_parameters;    // The super parameters of the parameter.
+    std::vector<std::reference_wrapper<const parameter>> disjoint_parameters; // The disjoint parameters of the parameter.
+    json::json schema;                                                        // The schema of the parameter.
   };
 
   /**
@@ -66,7 +85,25 @@ namespace coco
    * @param par The parameter object to convert.
    * @return The JSON object representing the parameter.
    */
-  inline json::json to_json(const parameter &par) { return json::json{{"id", par.get_id()}, {"name", par.get_name()}, {"description", par.get_description()}, {"schema", par.get_schema()}}; }
+  inline json::json to_json(const parameter &par)
+  {
+    json::json j{{"id", par.get_id()}, {"name", par.get_name()}, {"description", par.get_description()}, {"schema", par.get_schema()}};
+    if (!par.get_super_parameters().empty())
+    {
+      json::json j_super_parameters(json::json_type::array);
+      for (const auto &sp : par.get_super_parameters())
+        j_super_parameters.push_back(sp.get().get_id());
+      j["super_parameters"] = j_super_parameters;
+    }
+    if (!par.get_disjoint_parameters().empty())
+    {
+      json::json j_disjoint_parameters(json::json_type::array);
+      for (const auto &dp : par.get_disjoint_parameters())
+        j_disjoint_parameters.push_back(dp.get().get_id());
+      j["disjoint_parameters"] = j_disjoint_parameters;
+    }
+    return j;
+  }
 
   const json::json coco_parameter_schema = {"coco_parameter",
                                             {{"type", "object"},
@@ -74,6 +111,8 @@ namespace coco
                                               {{"id", {{"type", "string"}}},
                                                {"name", {{"type", "string"}}},
                                                {"description", {{"type", "string"}}},
+                                               {"super_parameters", {{"type", "array"}, {"items", {{"type", "string"}, {"format", "uuid"}}}}},
+                                               {"disjoint_parameters", {{"type", "array"}, {"items", {{"type", "string"}, {"format", "uuid"}}}}},
                                                {"schema", {{"type", "object"}}}},
                                               {"required", {"id", "name", "schema"}}}}};
   const json::json parameters_path{"/parameters",

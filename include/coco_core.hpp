@@ -92,7 +92,7 @@ namespace coco
      * @param dynamic_pars The dynamic parameters of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::reference_wrapper<parameter>> &&static_pars, std::map<std::string, std::reference_wrapper<parameter>> &&dynamic_pars);
+    type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const parameter>> &&static_pars, std::vector<std::reference_wrapper<const parameter>> &&dynamic_pars);
 
     /**
      * @brief Deletes the type with the specified ID.
@@ -127,12 +127,12 @@ namespace coco
     /**
      * @brief Creates an item of the specified type with the given name and optional data.
      *
-     * @param type The type of the item.
+     * @param tp The type of the item.
      * @param name The name of the item.
      * @param pars The parameters of the item.
      * @return A reference to the created item.
      */
-    item &create_item(const type &type, const std::string &name, const json::json &pars);
+    item &create_item(const type &tp, const std::string &name, const json::json &pars);
 
     /**
      * @brief Deletes the item with the specified ID.

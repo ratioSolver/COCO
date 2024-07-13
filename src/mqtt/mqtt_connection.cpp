@@ -92,18 +92,12 @@ namespace coco
         else if (topic == COCO_NAME "/commands/create_type")
         { // create type
             json::json j = json::load(msg->to_string());
-            std::map<std::string, std::reference_wrapper<parameter>> static_parameters;
+            std::vector<std::reference_wrapper<const parameter>> static_parameters;
             for (const auto &p : j["static_parameters"].as_array())
-            {
-                auto &par = core.get_parameter(static_cast<std::string>(p));
-                static_parameters.emplace(par.get_name(), par);
-            }
-            std::map<std::string, std::reference_wrapper<parameter>> dynamic_parameters;
+                static_parameters.push_back(core.get_parameter(static_cast<std::string>(p)));
+            std::vector<std::reference_wrapper<const parameter>> dynamic_parameters;
             for (const auto &p : j["dynamic_parameters"].as_array())
-            {
-                auto &par = core.get_parameter(static_cast<std::string>(p));
-                dynamic_parameters.emplace(par.get_name(), par);
-            }
+                dynamic_parameters.push_back(core.get_parameter(static_cast<std::string>(p)));
             core.create_type(j["name"], j["description"], std::move(static_parameters), std::move(dynamic_parameters));
         }
         else if (topic == COCO_NAME "/commands/delete_type") // delete type

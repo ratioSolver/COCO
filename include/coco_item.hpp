@@ -20,9 +20,9 @@ namespace coco
      * @param id The ID of the item.
      * @param tp The type of the item.
      * @param name The name of the item.
-     * @param pars The parameters of the item.
+     * @param props The properties of the item.
      */
-    item(const std::string &id, const type &tp, const std::string &name, const json::json &pars);
+    item(const std::string &id, const type &tp, const std::string &name, const json::json &props);
 
     /**
      * @brief Gets the ID of the item.
@@ -46,17 +46,17 @@ namespace coco
     [[nodiscard]] const std::string &get_name() const { return name; }
 
     /**
-     * @brief Gets the parameters of the item.
+     * @brief Gets the properties of the item.
      *
-     * @return The parameters of the item.
+     * @return The properties of the item.
      */
-    [[nodiscard]] const json::json &get_parameters() const { return parameters; }
+    [[nodiscard]] const json::json &get_properties() const { return properties; }
 
   private:
     const std::string id;  // The ID of the item.
     const type &tp;        // The type of the item.
     std::string name;      // The name of the item.
-    json::json parameters; // The parameters of the item.
+    json::json properties; // The properties of the item.
   };
 
   /**
@@ -65,7 +65,7 @@ namespace coco
    * @param s The item object to convert.
    * @return A JSON object representing the item.
    */
-  inline json::json to_json(const item &s) { return json::json{{"id", s.get_id()}, {"type", s.get_type().get_id()}, {"name", s.get_name()}, {"parameters", s.get_parameters()}}; }
+  inline json::json to_json(const item &s) { return json::json{{"id", s.get_id()}, {"type", s.get_type().get_id()}, {"name", s.get_name()}, {"properties", s.get_properties()}}; }
 
   const json::json coco_item_schema{"coco_item",
                                     {{"type", "object"},
@@ -73,7 +73,7 @@ namespace coco
                                       {{"id", {{"type", "string"}, {"format", "uuid"}}},
                                        {"type", {{"type", "string"}, {"format", "uuid"}}},
                                        {"name", {{"type", "string"}}},
-                                       {"parameters", {{"type", "object"}}}}}}};
+                                       {"properties", {{"type", "object"}}}}}}};
   const json::json items_path{"/items",
                               {{"get",
                                 {{"summary", "Retrieve all the CoCo items"},

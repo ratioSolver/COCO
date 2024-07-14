@@ -7,6 +7,13 @@ namespace coco
     json::json property::to_json() const noexcept { return json::json{{"name", name}, {"description", description}}; }
 
     integer_property::integer_property(const std::string &name, const std::string &description, long min, long max) noexcept : property(name, description), min(min), max(max) {}
+    bool integer_property::validate(const json::json &j, const json::json &) const noexcept
+    {
+        if (j.get_type() != json::json_type::number)
+            return false;
+        long value = j;
+        return value >= min && value <= max;
+    }
     json::json integer_property::to_json() const noexcept
     {
         json::json j = property::to_json();
@@ -19,6 +26,13 @@ namespace coco
     }
 
     float_property::float_property(const std::string &name, const std::string &description, double min, double max) noexcept : property(name, description), min(min), max(max) {}
+    bool float_property::validate(const json::json &j, const json::json &) const noexcept
+    {
+        if (j.get_type() != json::json_type::number)
+            return false;
+        double value = j;
+        return value >= min && value <= max;
+    }
     json::json float_property::to_json() const noexcept
     {
         json::json j = property::to_json();
@@ -31,6 +45,7 @@ namespace coco
     }
 
     string_property::string_property(const std::string &name, const std::string &description) noexcept : property(name, description) {}
+    bool string_property::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::string; }
     json::json string_property::to_json() const noexcept
     {
         json::json j = property::to_json();
@@ -39,6 +54,7 @@ namespace coco
     }
 
     symbol_property::symbol_property(const std::string &name, const std::string &description) noexcept : property(name, description) {}
+    bool symbol_property::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::string; }
     json::json symbol_property::to_json() const noexcept
     {
         json::json j = property::to_json();
@@ -47,6 +63,7 @@ namespace coco
     }
 
     json_property::json_property(const std::string &name, const std::string &description, json::json &&schema) noexcept : property(name, description), schema(std::move(schema)) {}
+    bool json_property::validate(const json::json &j, const json::json &schema_refs) const noexcept { return j.get_type() == json::json_type::object && json::validate(j, schema, schema_refs); }
     json::json json_property::to_json() const noexcept
     {
         json::json j = property::to_json();

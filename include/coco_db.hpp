@@ -17,157 +17,17 @@ namespace coco
     const json::json &get_config() const { return config; }
 
     /**
-     * @brief Creates a parameter with the given name, description, and schema.
-     *
-     * This function is virtual and must be implemented by derived classes.
-     *
-     * @param name The name of the parameter.
-     * @param description The description of the parameter.
-     * @param schema The JSON schema for the parameter.
-     * @return A reference to the created parameter.
-     */
-    virtual parameter &create_parameter(const std::string &name, const std::string &description, json::json &&schema) = 0;
-
-    /**
-     * Sets the name of the given parameter.
-     *
-     * @param par The parameter to set the name for.
-     * @param name The name to set for the parameter.
-     */
-    virtual void set_parameter_name(parameter &par, const std::string &name) { par.name = name; }
-
-    /**
-     * @brief Sets the description of a parameter.
-     *
-     * This function sets the description of a given parameter. The description provides additional information about the parameter.
-     *
-     * @param par The parameter to set the description for.
-     * @param description The description to set for the parameter.
-     */
-    virtual void set_parameter_description(parameter &par, const std::string &description) { par.description = description; }
-
-    /**
-     * @brief Adds a super parameter to the given parameter.
-     *
-     * This function adds a super parameter to the given parameter. A super parameter is a parameter that the given parameter extends.
-     *
-     * @param par The parameter to which the super parameter will be added.
-     * @param super_par The super parameter to add.
-     */
-    virtual void add_super_parameter(parameter &par, const parameter &super_par) { par.super_parameters.push_back(super_par); }
-
-    /**
-     * @brief Removes a super parameter from the given parameter.
-     *
-     * This function removes the super parameter with the specified ID from the given parameter.
-     *
-     * @param par The parameter from which to remove the super parameter.
-     * @param super_par The super parameter to remove.
-     */
-    virtual void remove_super_parameter(parameter &par, const parameter &super_par)
-    {
-      par.super_parameters.erase(std::find_if(par.super_parameters.begin(), par.super_parameters.end(), [&super_par](const parameter &p)
-                                              { return p.id == super_par.id; }));
-    }
-
-    /**
-     * @brief Adds a disjoint parameter to the given parameter.
-     *
-     * This function adds a disjoint parameter to the given parameter. A disjoint parameter is a parameter that is disjoint with the given parameter.
-     *
-     * @param par The parameter to which the disjoint parameter will be added.
-     * @param disjoint_par The disjoint parameter to add.
-     */
-    virtual void add_disjoint_parameter(parameter &par, const parameter &disjoint_par) { par.disjoint_parameters.push_back(disjoint_par); }
-
-    /**
-     * @brief Removes a disjoint parameter from the given parameter.
-     *
-     * This function removes the disjoint parameter with the specified ID from the given parameter.
-     *
-     * @param par The parameter from which to remove the disjoint parameter.
-     * @param disjoint_par The disjoint parameter to remove.
-     */
-    virtual void remove_disjoint_parameter(parameter &par, const parameter &disjoint_par)
-    {
-      par.disjoint_parameters.erase(std::find_if(par.disjoint_parameters.begin(), par.disjoint_parameters.end(), [&disjoint_par](const parameter &p)
-                                                 { return p.id == disjoint_par.id; }));
-    }
-
-    /**
-     * @brief Sets the schema of a parameter.
-     *
-     * This function sets the schema of a given parameter. The schema defines the structure of the parameter.
-     *
-     * @param par The parameter to set the schema for.
-     * @param schema The schema to set for the parameter.
-     */
-    virtual void set_parameter_schema(parameter &par, json::json &&schema) { par.schema = schema; }
-
-    /**
-     * @brief Removes a parameter from the database.
-     *
-     * This function removes the specified parameter from the database.
-     *
-     * @param par The parameter to be removed.
-     */
-    virtual void delete_parameter(const parameter &par) { parameters.erase(par.id); }
-
-    /**
-     * Retrieves a vector of references to the parameters in the database.
-     *
-     * This function retrieves all the parameters stored in the database and returns them as a vector of `parameter` objects. The returned vector contains references to the actual parameters stored in the `parameters` map.
-     *
-     * @return A vector of references to the parameters.
-     */
-    std::vector<std::reference_wrapper<parameter>> get_parameters() const
-    {
-      std::vector<std::reference_wrapper<parameter>> res;
-      for (auto &p : parameters)
-        res.push_back(*p.second);
-      return res;
-    }
-
-    /**
-     * Retrieves the reference to a parameter based on its ID.
-     *
-     * @param id The ID of the parameter to retrieve.
-     * @return A reference to the parameter with the specified ID.
-     * @throws std::invalid_argument if the parameter with the specified ID is not found.
-     */
-    parameter &get_parameter(const std::string &id) const
-    {
-      if (parameters.find(id) == parameters.end())
-        throw std::invalid_argument("Parameter not found: " + id);
-      return *parameters.at(id);
-    }
-
-    /**
-     * Retrieves the reference to a parameter based on its name.
-     *
-     * @param name The name of the parameter to retrieve.
-     * @return A reference to the parameter with the specified name.
-     * @throws std::invalid_argument if the parameter with the specified name is not found.
-     */
-    parameter &get_parameter_by_name(const std::string &name) const
-    {
-      if (parameters_by_name.find(name) == parameters_by_name.end())
-        throw std::invalid_argument("Parameter not found: " + name);
-      return parameters_by_name.at(name);
-    }
-
-    /**
      * @brief Creates a new type.
      *
-     * This function creates a new type with the specified name, description, and parameters.
+     * This function creates a new type with the specified name, description, and properties.
      *
      * @param name The name of the type.
      * @param description The description of the type.
-     * @param static_pars The static parameters of the type.
-     * @param dynamic_pars The dynamic parameters of the type.
+     * @param static_properties The static properties of the type.
+     * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const parameter>> &&static_pars, std::vector<std::reference_wrapper<const parameter>> &&dynamic_pars) = 0;
+    virtual type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_properties, std::map<std::string, std::unique_ptr<property>> &&dynamic_properties) = 0;
 
     /**
      * Sets the name of the given type.
@@ -188,96 +48,40 @@ namespace coco
     virtual void set_type_description(type &tp, const std::string &description) { tp.description = description; }
 
     /**
-     * @brief Adds a super type to the given type.
+     * Adds a static property to the given type.
      *
-     * This function adds a super type to the given type. A super type is a type that the given type extends.
-     *
-     * @param tp The type to which the super type will be added.
-     * @param st The super type to add.
+     * @param tp The type to which the static property will be added.
+     * @param prop The static property to add.
      */
-    virtual void add_super_type(type &tp, const type &st) { tp.super_types.push_back(st); }
+    virtual void add_static_property(type &tp, std::unique_ptr<property> &&prop) { tp.static_properties.emplace(prop->get_name(), std::move(prop)); }
 
     /**
-     * @brief Removes a super type from the given type.
+     * @brief Removes a static property from the given type.
      *
-     * This function removes the super type with the specified ID from the given type.
+     * This function removes the static property with the specified id from the given type.
      *
-     * @param tp The type from which to remove the super type.
-     * @param st The ID of the super type to remove.
+     * @param tp The type from which to remove the static property.
+     * @param prop The static property to remove.
      */
-    virtual void remove_super_type(type &tp, const type &st)
-    {
-      tp.super_types.erase(std::find_if(tp.super_types.begin(), tp.super_types.end(), [&st](const type &t)
-                                        { return t.id == st.id; }));
-    }
+    virtual void remove_static_property(type &tp, const property &prop) { tp.static_properties.erase(prop.get_name()); }
 
     /**
-     * @brief Adds a disjoint type to the given type.
+     * Adds a dynamic property to the given type.
      *
-     * This function adds a disjoint type to the given type. A disjoint type is a type that is disjoint with the given type.
-     *
-     * @param tp The type to which the disjoint type will be added.
-     * @param disjoint_type The disjoint type to add.
+     * @param tp The type to which the dynamic property will be added.
+     * @param prop The dynamic property to add.
      */
-    virtual void add_disjoint_type(type &tp, const type &disjoint_type) { tp.disjoint_types.push_back(disjoint_type); }
+    virtual void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop) { tp.dynamic_properties.emplace(prop->get_name(), std::move(prop)); }
 
     /**
-     * @brief Removes a disjoint type from the given type.
+     * @brief Removes a dynamic property from the given type.
      *
-     * This function removes the disjoint type with the specified ID from the given type.
+     * This function removes the dynamic property with the specified id from the given type.
      *
-     * @param tp The type from which to remove the disjoint type.
-     * @param disjoint_type The disjoint type to remove.
+     * @param tp The type from which to remove the dynamic property.
+     * @param prop The dynamic property to remove.
      */
-    virtual void remove_disjoint_type(type &tp, const type &disjoint_type)
-    {
-      tp.disjoint_types.erase(std::find_if(tp.disjoint_types.begin(), tp.disjoint_types.end(), [&disjoint_type](const type &t)
-                                           { return t.id == disjoint_type.id; }));
-    }
-
-    /**
-     * Adds a static parameter to the given type.
-     *
-     * @param tp The type to which the static parameter will be added.
-     * @param par The static parameter to add.
-     */
-    virtual void add_static_parameter(type &tp, const parameter &par) { tp.static_parameters.push_back(par); }
-
-    /**
-     * @brief Removes a static parameter from the given type.
-     *
-     * This function removes the static parameter with the specified id from the given type.
-     *
-     * @param tp The type from which to remove the static parameter.
-     * @param par The static parameter to remove.
-     */
-    virtual void remove_static_parameter(type &tp, const parameter &par)
-    {
-      tp.static_parameters.erase(std::find_if(tp.static_parameters.begin(), tp.static_parameters.end(), [&par](const parameter &p)
-                                              { return p.id == par.id; }));
-    }
-
-    /**
-     * Adds a dynamic parameter to the given type.
-     *
-     * @param tp The type to which the dynamic parameter will be added.
-     * @param par The dynamic parameter to add.
-     */
-    virtual void add_dynamic_parameter(type &tp, const parameter &par) { tp.dynamic_parameters.push_back(par); }
-
-    /**
-     * @brief Removes a dynamic parameter from the given type.
-     *
-     * This function removes the dynamic parameter with the specified id from the given type.
-     *
-     * @param tp The type from which to remove the dynamic parameter.
-     * @param par The dynamic parameter to remove.
-     */
-    virtual void remove_dynamic_parameter(type &tp, const parameter &par)
-    {
-      tp.dynamic_parameters.erase(std::find_if(tp.dynamic_parameters.begin(), tp.dynamic_parameters.end(), [&par](const parameter &p)
-                                               { return p.id == par.id; }));
-    }
+    virtual void remove_dynamic_property(type &tp, const property &prop) { tp.dynamic_properties.erase(prop.get_name()); }
 
     /**
      * @brief Removes a type from the database.
@@ -340,7 +144,7 @@ namespace coco
      *
      * @param tp The type of the item.
      * @param name The name of the item.
-     * @param pars The parameters of the item.
+     * @param pars The properties of the item.
      * @return A reference to the created item.
      */
     virtual item &create_item(const type &tp, const std::string &name, const json::json &pars) = 0;
@@ -348,28 +152,28 @@ namespace coco
     /**
      * Sets the name of an item.
      *
-     * @param item The item to set the name for.
+     * @param itm The item to set the name for.
      * @param name The new name for the item.
      */
-    virtual void set_item_name(item &item, const std::string &name) { item.name = name; }
+    virtual void set_item_name(item &itm, const std::string &name) { itm.name = name; }
     /**
-     * @brief Sets the parameters of an item.
+     * @brief Sets the properties of an item.
      *
-     * This function sets the parameters of the given item using the provided JSON object.
+     * This function sets the properties of the given item using the provided JSON object.
      *
-     * @param item The item to set the parameters for.
-     * @param pars The JSON object containing the parameters.
+     * @param itm The item to set the properties for.
+     * @param props The JSON object containing the properties.
      */
-    virtual void set_item_parameters(item &item, const json::json &pars) { item.parameters = pars; }
+    virtual void set_item_properties(item &itm, const json::json &props) { itm.properties = props; }
 
     /**
      * @brief Removes an item from the database.
      *
      * This function removes the specified item from the database.
      *
-     * @param item The item to be removed.
+     * @param itm The item to be removed.
      */
-    virtual void delete_item(const item &item) { items.erase(item.id); }
+    virtual void delete_item(const item &itm) { items.erase(itm.id); }
 
     /**
      * Retrieves a vector of references to the items in the database.
@@ -405,11 +209,11 @@ namespace coco
      *
      * This function adds the provided data to the database for the specified item.
      *
-     * @param item The item to which the data will be added.
+     * @param itm The item to which the data will be added.
      * @param timestamp The timestamp of the data.
      * @param data The data to be added to the database.
      */
-    virtual void add_data(const item &item, const std::chrono::system_clock::time_point &timestamp, const json::json &data) = 0;
+    virtual void add_data(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) = 0;
 
     /**
      * Returns a vector of references to the reactive rules in the database.
@@ -456,20 +260,11 @@ namespace coco
     virtual rule &create_deliberative_rule(const std::string &name, const std::string &content) = 0;
 
   protected:
-    parameter &create_parameter(const std::string &id, const std::string &name, const std::string &description, json::json &&schema)
-    {
-      if (parameters.find(id) != parameters.end())
-        throw std::invalid_argument("Parameter already exists: " + id);
-      auto par = std::make_unique<parameter>(id, name, description, std::move(schema));
-      parameters_by_name.emplace(name, *par);
-      parameters.emplace(id, std::move(par));
-      return *parameters[id];
-    }
-    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const parameter>> &&static_pars, std::vector<std::reference_wrapper<const parameter>> &&dynamic_pars)
+    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_properties, std::map<std::string, std::unique_ptr<property>> &&dynamic_properties)
     {
       if (types_by_id.find(id) != types_by_id.end())
         throw std::invalid_argument("Type already exists: " + id);
-      auto tp = std::make_unique<type>(id, name, description, std::move(static_pars), std::move(dynamic_pars));
+      auto tp = std::make_unique<type>(id, name, description, std::move(static_properties), std::move(dynamic_properties));
       types_by_name.emplace(name, *tp);
       types_by_id.emplace(id, std::move(tp));
       return *types_by_id[id];
@@ -500,12 +295,10 @@ namespace coco
   private:
     const json::json config; // The app name.
 
-    std::map<std::string, std::unique_ptr<parameter>> parameters;                // The parameters stored in the database by ID.
-    std::map<std::string, std::reference_wrapper<parameter>> parameters_by_name; // The parameters stored in the database by name.
-    std::map<std::string, std::unique_ptr<type>> types_by_id;                    // The types stored in the database by ID.
-    std::map<std::string, std::reference_wrapper<type>> types_by_name;           // The types stored in the database by name.
-    std::map<std::string, std::unique_ptr<item>> items;                          // The items stored in the database by ID.
-    std::map<std::string, std::unique_ptr<rule>> reactive_rules;                 // The reactive rules stored in the database by ID.
-    std::map<std::string, std::unique_ptr<rule>> deliberative_rules;             // The deliberative rules stored in the database by ID.
+    std::map<std::string, std::unique_ptr<type>> types_by_id;          // The types stored in the database by ID.
+    std::map<std::string, std::reference_wrapper<type>> types_by_name; // The types stored in the database by name.
+    std::map<std::string, std::unique_ptr<item>> items;                // The items stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> reactive_rules;       // The reactive rules stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> deliberative_rules;   // The deliberative rules stored in the database by ID.
   };
 } // namespace coco

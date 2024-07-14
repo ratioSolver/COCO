@@ -5,36 +5,7 @@
 
 namespace coco
 {
-    coco_core::coco_core(std::unique_ptr<coco_db> &&db) : db(std::move(db)), env(CreateEnvironment())
-    {
-        assert(env != nullptr);
-    }
-
-    std::vector<std::reference_wrapper<parameter>> coco_core::get_parameters()
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        return db->get_parameters();
-    }
-
-    parameter &coco_core::get_parameter(const std::string &id)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        return db->get_parameter(id);
-    }
-
-    parameter &coco_core::create_parameter(const std::string &name, const std::string &description, json::json &&schema)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &par = db->create_parameter(name, description, std::move(schema));
-        new_parameter(par);
-        return par;
-    }
-
-    void coco_core::delete_parameter(const std::string &id)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        db->delete_parameter(db->get_parameter(id));
-    }
+    coco_core::coco_core(std::unique_ptr<coco_db> &&db) : db(std::move(db)), env(CreateEnvironment()) { assert(env != nullptr); }
 
     std::vector<std::reference_wrapper<type>> coco_core::get_types()
     {
@@ -48,7 +19,7 @@ namespace coco
         return db->get_type(id);
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const parameter>> &&static_pars, std::vector<std::reference_wrapper<const parameter>> &&dynamic_pars)
+    type &coco_core::create_type(const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_pars, std::map<std::string, std::unique_ptr<property>> &&dynamic_pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &st = db->create_type(name, description, std::move(static_pars), std::move(dynamic_pars));
@@ -77,17 +48,11 @@ namespace coco
     item &coco_core::create_item(const type &tp, const std::string &name, const json::json &pars)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        for (const auto &p : tp.get_static_parameters())
-            if (!pars.contains(p.get().get_name()))
-            {
-                LOG_WARN("Parameters for item " + name + " do not contain parameter " + p.get().get_name());
-                return db->get_items().front().get();
-            }
-            else if (!json::validate(pars[p.get().get_name()], p.get().get_schema(), schemas))
-            {
-                LOG_WARN("Parameters for item " + name + " parameter " + p.get().get_name() + " is invalid");
-                return db->get_items().front().get();
-            }
+        for (const auto &[p_name, p] : tp.get_static_properties())
+            if (!pars.contains(p_name))
+                LOG_WARN("Parameters for type " + tp.get_id() + " do not contain " + p_name);
+            else if (!p->validate(pars[p_name], schemas))
+                LOG_WARN("Parameter " + p_name + " for type " + tp.get_id() + " is invalid");
 
         auto &s = db->create_item(tp, name, pars);
         new_item(s);
@@ -103,17 +68,11 @@ namespace coco
     void coco_core::add_data(const item &s, const json::json &data)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        for (const auto &p : s.get_type().get_dynamic_parameters())
-            if (!data.contains(p.get().get_name()))
-            {
-                LOG_WARN("Data for item " + s.get_id() + " do not contain parameter " + p.get().get_name());
-                return;
-            }
-            else if (!json::validate(data[p.get().get_name()], p.get().get_schema(), schemas))
-            {
-                LOG_WARN("Data for item " + s.get_id() + " parameter " + p.get().get_name() + " is invalid");
-                return;
-            }
+        for (const auto &[p_name, p] : s.get_type().get_dynamic_properties())
+            if (!data.contains(p_name))
+                LOG_WARN("Data for item " + s.get_id() + " do not contain " + p_name);
+            else if (!p->validate(data[p_name], schemas))
+                LOG_WARN("Data " + p_name + " for item " + s.get_id() + " is invalid");
 
         db->add_data(s, std::chrono::system_clock::now(), data);
         new_data(s, std::chrono::system_clock::now(), data);
@@ -164,10 +123,6 @@ namespace coco
         new_deliberative_rule(r);
         return r;
     }
-
-    void coco_core::new_parameter([[maybe_unused]] const parameter &par) { LOG_TRACE("New parameter: " + par.get_id()); }
-    void coco_core::updated_parameter([[maybe_unused]] const parameter &par) { LOG_TRACE("Updated parameter: " + par.get_id()); }
-    void coco_core::deleted_parameter([[maybe_unused]] const std::string &par_id) { LOG_TRACE("Deleted parameter: " + par_id); }
 
     void coco_core::new_type([[maybe_unused]] const type &tp) { LOG_TRACE("New type: " + tp.get_id()); }
     void coco_core::updated_type([[maybe_unused]] const type &tp) { LOG_TRACE("Updated type: " + tp.get_id()); }

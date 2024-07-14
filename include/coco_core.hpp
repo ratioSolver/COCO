@@ -20,48 +20,6 @@ namespace coco
     virtual ~coco_core() = default;
 
     /**
-     * @brief Returns a vector of references to the parameters.
-     *
-     * This function retrieves all the parameters stored in the database and returns them as a vector of `parameter` objects. The returned vector contains references to the actual parameters stored in the `parameters` map.
-     *
-     * @return A vector of parameters.
-     */
-    std::vector<std::reference_wrapper<parameter>> get_parameters();
-
-    /**
-     * @brief Retrieves a parameter with the specified ID.
-     *
-     * This function retrieves the parameter with the specified ID.
-     *
-     * @param id The ID of the parameter.
-     * @return A reference to the parameter.
-     * @throws std::invalid_argument if the parameter does not exist.
-     */
-    parameter &get_parameter(const std::string &id);
-
-    /**
-     * @brief Creates a new parameter.
-     *
-     * This function creates a new parameter with the specified name, description, and schema.
-     *
-     * @param name The name of the parameter.
-     * @param description The description of the parameter.
-     * @param schema The schema of the parameter.
-     * @return A reference to the created parameter.
-     */
-    parameter &create_parameter(const std::string &name, const std::string &description, json::json &&schema);
-
-    /**
-     * @brief Deletes the parameter with the specified ID.
-     *
-     * This function deletes the parameter with the specified ID.
-     *
-     * @param id The ID of the parameter.
-     * @throws std::invalid_argument if the parameter does not exist.
-     */
-    void delete_parameter(const std::string &id);
-
-    /**
      * @brief Returns a vector of references to the types.
      *
      * This function retrieves all the types stored in the database and returns them as a vector of `type` objects. The returned vector contains references to the actual types stored in the `types` map.
@@ -84,15 +42,15 @@ namespace coco
     /**
      * @brief Creates a new type.
      *
-     * This function creates a new type with the specified name, description, and parameters.
+     * This function creates a new type with the specified name, description, and properties.
      *
      * @param name The name of the type.
      * @param description The description of the type.
-     * @param static_pars The static parameters of the type.
-     * @param dynamic_pars The dynamic parameters of the type.
+     * @param static_props The static properties of the type.
+     * @param dynamic_props The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const parameter>> &&static_pars, std::vector<std::reference_wrapper<const parameter>> &&dynamic_pars);
+    type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_props, std::map<std::string, std::unique_ptr<property>> &&dynamic_props);
 
     /**
      * @brief Deletes the type with the specified ID.
@@ -129,10 +87,10 @@ namespace coco
      *
      * @param tp The type of the item.
      * @param name The name of the item.
-     * @param pars The parameters of the item.
+     * @param props The properties of the item.
      * @return A reference to the created item.
      */
-    item &create_item(const type &tp, const std::string &name, const json::json &pars);
+    item &create_item(const type &tp, const std::string &name, const json::json &props);
 
     /**
      * @brief Deletes the item with the specified ID.
@@ -215,10 +173,6 @@ namespace coco
     rule &create_deliberative_rule(const std::string &name, const std::string &content);
 
   private:
-    virtual void new_parameter(const parameter &par);
-    virtual void updated_parameter(const parameter &par);
-    virtual void deleted_parameter(const std::string &par_id);
-
     virtual void new_type(const type &tp);
     virtual void updated_type(const type &tp);
     virtual void deleted_type(const std::string &tp_id);
@@ -377,7 +331,7 @@ namespace coco
         {{"type", "object"},
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"taxonomy"}}}},
-           {"parameters", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_parameter"}}}}},
+           {"properties", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_parameter"}}}}},
            {"types", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}};
   const json::json reactive_rules_message{
       {"reactive_rules_message",

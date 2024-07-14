@@ -265,4 +265,52 @@ namespace coco
    * @return A unique pointer to the created property object.
    */
   std::unique_ptr<property> make_property(const json::json &j);
+
+  const json::json property_schema{{"property",
+                                    {{"oneOf", std::vector<json::json>{
+                                                   {"$ref", "#/components/schemas/int_property"},
+                                                   {"$ref", "#/components/schemas/float_property"},
+                                                   {"$ref", "#/components/schemas/string_property"},
+                                                   {"$ref", "#/components/schemas/symbol_property"},
+                                                   {"$ref", "#/components/schemas/json_property"}}}}}};
+  const json::json integer_property_schema{{"integer_property",
+                                            {{"type", "object"},
+                                             {"properties",
+                                              {{"type", {{"type", "string"}, {"enum", {"integer"}}}},
+                                               {"name", {{"type", "string"}}},
+                                               {"description", {{"type", "string"}}},
+                                               {"min", {{"type", "integer"}}},
+                                               {"max", {{"type", "integer"}}}}},
+                                             {"required", std::vector<json::json>{"type", "name"}}}}};
+  const json::json float_property_schema{{"float_property",
+                                          {{"type", "object"},
+                                           {"properties",
+                                            {{"type", {{"type", "string"}, {"enum", {"float"}}}},
+                                             {"name", {{"type", "string"}}},
+                                             {"description", {{"type", "string"}}},
+                                             {"min", {{"type", "number"}}},
+                                             {"max", {{"type", "number"}}}}},
+                                           {"required", std::vector<json::json>{"type", "name"}}}}};
+  const json::json string_property_schema{{"string_property",
+                                           {{"type", "object"},
+                                            {"properties",
+                                             {{"type", {{"type", "string"}, {"enum", {"string"}}}},
+                                              {"name", {{"type", "string"}}},
+                                              {"description", {{"type", "string"}}}}},
+                                            {"required", std::vector<json::json>{"type", "name"}}}}};
+  const json::json symbol_property_schema{{"symbol_property",
+                                           {{"type", "object"},
+                                            {"properties",
+                                             {{"type", {{"type", "string"}, {"enum", {"symbol"}}}},
+                                              {"name", {{"type", "string"}}},
+                                              {"description", {{"type", "string"}}}}},
+                                            {"required", std::vector<json::json>{"type", "name"}}}}};
+  const json::json json_property_schema{{"json_property",
+                                         {{"type", "object"},
+                                          {"properties",
+                                           {{"type", {{"type", "string"}, {"enum", {"json"}}}},
+                                            {"name", {{"type", "string"}}},
+                                            {"description", {{"type", "string"}}},
+                                            {"schema", {{"type", "object"}}}}},
+                                          {"required", std::vector<json::json>{"type", "name", "schema"}}}}};
 } // namespace coco

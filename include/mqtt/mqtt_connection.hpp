@@ -8,7 +8,7 @@
 namespace coco
 {
   class coco_core;
-  class parameter;
+  class property;
   class type;
   class item;
 
@@ -16,9 +16,6 @@ namespace coco
   {
   public:
     mqtt_connection(coco_core &core, const std::string &mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT), const std::string &client_id = COCO_NAME);
-
-    void new_parameter(const parameter &par);
-    void deleted_parameter(const std::string &par_id);
 
     void new_type(const type &tp);
     void deleted_type(const std::string &tp_id);

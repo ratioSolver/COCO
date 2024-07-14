@@ -17,9 +17,6 @@ namespace coco
         client.connect(conn_opts);
     }
 
-    void mqtt_connection::new_parameter(const parameter &par) { client.publish(COCO_NAME "/notifications/new_parameter", to_json(par).dump(), 1, false); }
-    void mqtt_connection::deleted_parameter(const std::string &par_id) { client.publish(COCO_NAME "/notifications/deleted_parameter", par_id, 1, false); }
-
     void mqtt_connection::new_type(const type &tp) { client.publish(COCO_NAME "/notifications/new_type", to_json(tp).dump(), 1, false); }
     void mqtt_connection::deleted_type(const std::string &tp_id) { client.publish(COCO_NAME "/notifications/deleted_type", tp_id, 1, false); }
 
@@ -49,14 +46,14 @@ namespace coco
 
         LOG_INFO("Connected to MQTT broker");
         for (const auto &itm : core.get_items())
-            if (!itm.get().get_type().get_dynamic_parameters().empty())
+            if (!itm.get().get_type().get_dynamic_properties().empty())
             {
                 LOG_DEBUG("Subscribing to " << itm.get().get_id());
                 client.subscribe(COCO_NAME "/commands/items/" + itm.get().get_id(), 1);
             }
 
-        client.subscribe(COCO_NAME "/commands/create_parameter", 1);
-        client.subscribe(COCO_NAME "/commands/delete_parameter", 1);
+        client.subscribe(COCO_NAME "/commands/create_property", 1);
+        client.subscribe(COCO_NAME "/commands/delete_property", 1);
         client.subscribe(COCO_NAME "/commands/create_type", 1);
         client.subscribe(COCO_NAME "/commands/delete_type", 1);
         client.subscribe(COCO_NAME "/commands/create_item", 1);
@@ -81,31 +78,29 @@ namespace coco
             itm_id = itm_id.substr(0, itm_id.find("/data"));
             core.add_data(core.get_item(itm_id), json::load(msg->to_string()));
         }
-        else if (topic == COCO_NAME "/commands/create_parameter")
-        { // create parameter
-            json::json j = json::load(msg->to_string());
-            auto schema = j["schema"];
-            core.create_parameter(j["name"], j["description"], std::move(schema));
-        }
-        else if (topic == COCO_NAME "/commands/delete_parameter") // delete parameter
-            core.delete_parameter(msg->to_string());
         else if (topic == COCO_NAME "/commands/create_type")
         { // create type
             json::json j = json::load(msg->to_string());
-            std::vector<std::reference_wrapper<const parameter>> static_parameters;
-            for (const auto &p : j["static_parameters"].as_array())
-                static_parameters.push_back(core.get_parameter(static_cast<std::string>(p)));
-            std::vector<std::reference_wrapper<const parameter>> dynamic_parameters;
-            for (const auto &p : j["dynamic_parameters"].as_array())
-                dynamic_parameters.push_back(core.get_parameter(static_cast<std::string>(p)));
-            core.create_type(j["name"], j["description"], std::move(static_parameters), std::move(dynamic_parameters));
+            std::map<std::string, std::unique_ptr<property>> static_properties;
+            for (const auto &p : j["properties"].as_array())
+            {
+                auto prop = make_property(p);
+                static_properties[prop->get_name()] = std::move(prop);
+            }
+            std::map<std::string, std::unique_ptr<property>> dynamic_properties;
+            for (const auto &p : j["dynamic_properties"].as_array())
+            {
+                auto prop = make_property(p);
+                dynamic_properties[prop->get_name()] = std::move(prop);
+            }
+            core.create_type(j["name"], j["description"], std::move(static_properties), std::move(dynamic_properties));
         }
         else if (topic == COCO_NAME "/commands/delete_type") // delete type
             core.delete_type(msg->to_string());
         else if (topic == COCO_NAME "/commands/create_item")
         { // create item
             json::json j = json::load(msg->to_string());
-            core.create_item(core.get_type(j["type"]), j["name"], j["parameters"]);
+            core.create_item(core.get_type(j["type"]), j["name"], j["properties"]);
         }
         else if (topic == COCO_NAME "/commands/delete_item") // delete item
             core.delete_item(msg->to_string());

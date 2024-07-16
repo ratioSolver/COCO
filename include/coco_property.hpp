@@ -1,11 +1,14 @@
 #pragma once
 
 #include "json.hpp"
+#include "clips.h"
 #include <limits>
 #include <memory>
 
 namespace coco
 {
+  class type;
+
   /**
    * @brief Represents a property with a name and description.
    */
@@ -35,6 +38,17 @@ namespace coco
      * @return The description of the property.
      */
     std::string get_description() const noexcept { return description; }
+
+    /**
+     * Converts the property to a deftemplate string representation.
+     *
+     * @param tp The type representing the `domain` of the property.
+     * @param is_static A flag indicating whether the property is static or dynamic.
+     * @return The deftemplate string representation of the property.
+     */
+    virtual std::string to_deftemplate(const type &tp, bool is_static) const noexcept = 0;
+
+    virtual void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept = 0;
 
     /**
      * @brief Validates the property against a JSON object and schema references.
@@ -85,6 +99,9 @@ namespace coco
      */
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
 
+    std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
+    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
+
   private:
     /**
      * @brief Converts the `integer_property` object to a JSON object.
@@ -124,6 +141,9 @@ namespace coco
      * @return `true` if the JSON object is valid, `false` otherwise.
      */
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
+
+    std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
+    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
 
   private:
     /**
@@ -165,6 +185,9 @@ namespace coco
      */
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
 
+    std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
+    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
+
   private:
     /**
      * @brief Converts the string property to a JSON object.
@@ -201,6 +224,9 @@ namespace coco
      */
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
 
+    std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
+    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
+
   private:
     /**
      * @brief Converts the symbol property to a JSON object.
@@ -235,6 +261,9 @@ namespace coco
      * @return `true` if the JSON object is valid, `false` otherwise.
      */
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
+
+    std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
+    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
 
   private:
     /**

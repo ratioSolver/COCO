@@ -9,7 +9,7 @@ namespace coco
     {
         assert(env != nullptr);
         AddUDF(env, "new_solver_script", "v", 2, 2, "ys", new_solver_script, "new_solver_script", this);
-        AddUDF(env, "new_solver_files", "v", 2, 2, "ym", new_solver_files, "new_solver_files", this);
+        AddUDF(env, "new_solver_rules", "v", 2, 2, "ym", new_solver_rules, "new_solver_rules", this);
         AddUDF(env, "start_execution", "v", 1, 1, "l", start_execution, "start_execution", this);
         AddUDF(env, "pause_execution", "v", 1, 1, "l", pause_execution, "pause_execution", this);
         AddUDF(env, "delay_task", "v", 2, 3, "llm", delay_task, "delay_task", this);
@@ -18,6 +18,8 @@ namespace coco
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", this);
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", this);
         AddUDF(env, "delete_solver", "v", 1, 1, "l", coco::delete_solver, "delete_solver", this);
+
+        reset_knowledge_base();
     }
 
     std::vector<std::reference_wrapper<type>> coco_core::get_types()
@@ -221,6 +223,63 @@ namespace coco
 #endif
     }
 
+    void coco_core::reset_knowledge_base()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        Clear(env);
+        AssertString(env, std::string("(deftemplate item_type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))").c_str());
+        AssertString(env, std::string("(deftemplate item (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))").c_str());
+        AssertString(env, std::string("(deftemplate is_instance_of (slot item_id (type SYMBOL)) (slot type_id (type SYMBOL)))").c_str());
+        AssertString(env, std::string("(deftemplate solver (slot id (type INTEGER)) (slot purpose (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))").c_str());
+        AssertString(env, std::string("(deftemplate task (slot solver_id (type INTEGER)) (slot id (type INTEGER)) (slot task_type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))").c_str());
+        AssertString(env, std::string("(deffunction tick () (do-for-all-facts ((?task task)) TRUE (modify ?task (since (+ ?task:since 1)))) (return TRUE))").c_str());
+        AssertString(env, std::string("(deffunction starting (?id ?task_type ?pars ?vals) (return TRUE))").c_str());
+        AssertString(env, std::string("(deffunction ending (?id ?id) (return TRUE))").c_str());
+
+        for (auto &tp : db->get_types())
+        {
+            FactBuilder *type_fact_builder = CreateFactBuilder(env, "item_type");
+            FBPutSlotSymbol(type_fact_builder, "id", tp.get().get_id().c_str());
+            FBPutSlotString(type_fact_builder, "name", tp.get().get_name().c_str());
+            FBPutSlotString(type_fact_builder, "description", tp.get().get_description().c_str());
+            FBAssert(type_fact_builder);
+            FBDispose(type_fact_builder);
+
+            for (const auto &[p_name, p] : tp.get().get_static_properties())
+                AssertString(env, p.get()->to_deftemplate(tp.get(), true).c_str());
+            for (const auto &[p_name, p] : tp.get().get_dynamic_properties())
+                AssertString(env, p.get()->to_deftemplate(tp.get(), false).c_str());
+        }
+
+        for (auto &itm : db->get_items())
+        {
+            FactBuilder *item_fact_builder = CreateFactBuilder(env, "item");
+            FBPutSlotSymbol(item_fact_builder, "id", itm.get().get_id().c_str());
+            FBPutSlotString(item_fact_builder, "name", itm.get().get_name().c_str());
+            FBPutSlotString(item_fact_builder, "description", itm.get().get_type().get_description().c_str());
+            FBAssert(item_fact_builder);
+            FBDispose(item_fact_builder);
+
+            FactBuilder *is_instance_of_fact_builder = CreateFactBuilder(env, "is_instance_of");
+            FBPutSlotSymbol(is_instance_of_fact_builder, "item_id", itm.get().get_id().c_str());
+            FBPutSlotSymbol(is_instance_of_fact_builder, "type_id", itm.get().get_type().get_id().c_str());
+            FBAssert(is_instance_of_fact_builder);
+            FBDispose(is_instance_of_fact_builder);
+
+            for (const auto &[p_name, p] : itm.get().get_type().get_static_properties())
+            {
+                FactBuilder *item_fact_builder = CreateFactBuilder(env, (itm.get().get_type().get_name() + "_has_" + p_name).c_str());
+                FBPutSlotSymbol(item_fact_builder, "item_id", itm.get().get_id().c_str());
+                p->set_value(item_fact_builder, itm.get().get_properties()[p_name]);
+                FBAssert(item_fact_builder);
+                FBDispose(item_fact_builder);
+            }
+        }
+
+        for (auto &r_rule : db->get_reactive_rules())
+            AssertString(env, r_rule.get().get_content().c_str());
+    }
+
     void new_solver_script(Environment *, UDFContext *udfc, UDFValue *)
     {
         LOG_DEBUG("Creating new solver..");
@@ -245,7 +304,7 @@ namespace coco
         }
     }
 
-    void new_solver_files(Environment *, UDFContext *udfc, UDFValue *)
+    void new_solver_rules(Environment *, UDFContext *udfc, UDFValue *)
     {
         LOG_DEBUG("Creating new solver..");
 
@@ -256,26 +315,23 @@ namespace coco
             return;
         auto &exec = cc.create_solver(solver_purpose.lexemeValue->contents, utils::rational::one);
 
-        UDFValue riddle_files;
-        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &riddle_files))
+        UDFValue deliberative_rule_names;
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &deliberative_rule_names))
             return;
 
-        std::vector<std::string> fs;
-        for (size_t i = 0; i < riddle_files.multifieldValue->length; ++i)
+        for (size_t i = 0; i < deliberative_rule_names.multifieldValue->length; ++i)
         {
-            auto &file = riddle_files.multifieldValue->contents[i];
-            if (file.header->type != STRING_TYPE)
+            auto &rule_name = deliberative_rule_names.multifieldValue->contents[i];
+            if (rule_name.header->type != STRING_TYPE)
                 return;
-            fs.push_back(file.lexemeValue->contents);
-        }
-
-        try
-        {
-            exec.adapt(fs);
-        }
-        catch (const std::exception &e)
-        {
-            LOG_ERR("Invalid RiDDLe files: " + std::string(e.what()));
+            try
+            {
+                exec.adapt(cc.db->get_reactive_rule_by_name(rule_name.lexemeValue->contents).get_content());
+            }
+            catch (const std::exception &e)
+            {
+                LOG_ERR("Invalid RiDDLe files: " + std::string(e.what()));
+            }
         }
     }
 

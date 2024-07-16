@@ -221,8 +221,10 @@ namespace coco
     void ending(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
     virtual void end(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
 
+    void reset_knowledge_base();
+
     friend void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void new_solver_rules(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void pause_execution(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void delay_task(Environment *env, UDFContext *udfc, UDFValue *out);
@@ -243,7 +245,7 @@ namespace coco
   };
 
   void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
-  void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);
+  void new_solver_rules(Environment *env, UDFContext *udfc, UDFValue *out);
   void start_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
   void pause_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
   void delay_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);

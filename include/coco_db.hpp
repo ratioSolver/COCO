@@ -229,6 +229,34 @@ namespace coco
     }
 
     /**
+     * Retrieves the reactive rule with the specified ID.
+     *
+     * @param id The ID of the reactive rule to retrieve.
+     * @return A reference to the reactive rule.
+     * @throws std::invalid_argument if the reactive rule with the specified ID is not found.
+     */
+    rule &get_reactive_rule(const std::string &id) const
+    {
+      if (reactive_rules.find(id) == reactive_rules.end())
+        throw std::invalid_argument("Reactive rule not found: " + id);
+      return *reactive_rules.at(id);
+    }
+
+    /**
+     * Retrieves a reactive rule by its name.
+     *
+     * @param name The name of the reactive rule to retrieve.
+     * @return A reference to the reactive rule.
+     * @throws std::invalid_argument if the reactive rule with the given name is not found.
+     */
+    rule &get_reactive_rule_by_name(const std::string &name) const
+    {
+      if (reactive_rules_by_name.find(name) == reactive_rules_by_name.end())
+        throw std::invalid_argument("Reactive rule not found: " + name);
+      return reactive_rules_by_name.at(name);
+    }
+
+    /**
      * @brief Creates a reactive rule with the given name and content.
      *
      * @param name The name of the reactive rule.
@@ -248,6 +276,34 @@ namespace coco
       for (auto &r : deliberative_rules)
         res.push_back(*r.second);
       return res;
+    }
+
+    /**
+     * Retrieves the deliberative rule with the specified ID.
+     *
+     * @param id The ID of the deliberative rule to retrieve.
+     * @return A reference to the deliberative rule.
+     * @throws std::invalid_argument if the deliberative rule with the specified ID is not found.
+     */
+    rule &get_deliberative_rule(const std::string &id) const
+    {
+      if (deliberative_rules.find(id) == deliberative_rules.end())
+        throw std::invalid_argument("Deliberative rule not found: " + id);
+      return *deliberative_rules.at(id);
+    }
+
+    /**
+     * Retrieves a deliberative rule by its name.
+     *
+     * @param name The name of the deliberative rule to retrieve.
+     * @return A reference to the deliberative rule.
+     * @throws std::invalid_argument if the deliberative rule with the specified name is not found.
+     */
+    rule &get_deliberative_rule_by_name(const std::string &name) const
+    {
+      if (deliberative_rules_by_name.find(name) == deliberative_rules_by_name.end())
+        throw std::invalid_argument("Deliberative rule not found: " + name);
+      return deliberative_rules_by_name.at(name);
     }
 
     /**
@@ -281,24 +337,30 @@ namespace coco
     {
       if (reactive_rules.find(id) != reactive_rules.end())
         throw std::invalid_argument("Reactive rule already exists: " + id);
-      reactive_rules.emplace(id, std::make_unique<rule>(id, name, content));
+      auto rr = std::make_unique<rule>(id, name, content);
+      reactive_rules_by_name.emplace(name, *rr);
+      reactive_rules.emplace(id, std::move(rr));
       return *reactive_rules[id];
     }
     rule &create_deliberative_rule(const std::string &id, const std::string &name, const std::string &content)
     {
       if (deliberative_rules.find(id) != deliberative_rules.end())
         throw std::invalid_argument("Deliberative rule already exists: " + id);
-      deliberative_rules.emplace(id, std::make_unique<rule>(id, name, content));
+      auto dr = std::make_unique<rule>(id, name, content);
+      deliberative_rules_by_name.emplace(name, *dr);
+      deliberative_rules.emplace(id, std::move(dr));
       return *deliberative_rules[id];
     }
 
   private:
     const json::json config; // The app name.
 
-    std::map<std::string, std::unique_ptr<type>> types_by_id;          // The types stored in the database by ID.
-    std::map<std::string, std::reference_wrapper<type>> types_by_name; // The types stored in the database by name.
-    std::map<std::string, std::unique_ptr<item>> items;                // The items stored in the database by ID.
-    std::map<std::string, std::unique_ptr<rule>> reactive_rules;       // The reactive rules stored in the database by ID.
-    std::map<std::string, std::unique_ptr<rule>> deliberative_rules;   // The deliberative rules stored in the database by ID.
+    std::map<std::string, std::unique_ptr<type>> types_by_id;                       // The types stored in the database by ID.
+    std::map<std::string, std::reference_wrapper<type>> types_by_name;              // The types stored in the database by name.
+    std::map<std::string, std::unique_ptr<item>> items;                             // The items stored in the database by ID.
+    std::map<std::string, std::unique_ptr<rule>> reactive_rules;                    // The reactive rules stored in the database by ID.
+    std::map<std::string, std::reference_wrapper<rule>> reactive_rules_by_name;     // The reactive rules stored in the database by name.
+    std::map<std::string, std::unique_ptr<rule>> deliberative_rules;                // The deliberative rules stored in the database by ID.
+    std::map<std::string, std::reference_wrapper<rule>> deliberative_rules_by_name; // The deliberative rules stored in the database by name.
   };
 } // namespace coco

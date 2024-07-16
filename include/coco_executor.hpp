@@ -36,6 +36,7 @@ namespace coco
   {
   public:
     coco_executor(coco_core &cc, const std::string &name, const utils::rational &units_per_tick = utils::rational::one);
+    ~coco_executor();
 
     coco_core &get_core() const { return cc; }
 
@@ -51,6 +52,8 @@ namespace coco
 
   private:
     coco_core &cc;
+    Fact *solver_fact = nullptr;
+    std::unordered_map<const ratio::atom *, Fact *> task_facts;
   };
 
   /**

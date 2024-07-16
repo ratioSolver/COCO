@@ -133,6 +133,15 @@ namespace coco
     coco_executor &create_solver(const std::string &name, const utils::rational &units_per_tick = utils::rational::one);
 
     /**
+     * @brief Deletes the given solver.
+     *
+     * This function deletes the given solver.
+     *
+     * @param exec The solver to delete.
+     */
+    void delete_solver(coco_executor &exec);
+
+    /**
      * @brief Retrieves a vector of references to the reactive rules.
      *
      * This function retrieves all the reactive rules as a vector of `rule` objects.
@@ -212,6 +221,17 @@ namespace coco
     void ending(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
     virtual void end(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
 
+    friend void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void pause_execution(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void delay_task(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void failure(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
+
   private:
     json::json schemas;                                 // the JSON schemas..
     std::set<std::unique_ptr<coco_executor>> executors; // the executors..
@@ -221,6 +241,17 @@ namespace coco
     Environment *env;            // the CLIPS environment..
     std::recursive_mutex mtx;    // mutex for the core..
   };
+
+  void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
+  void new_solver_files(Environment *env, UDFContext *udfc, UDFValue *out);
+  void start_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
+  void pause_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
+  void delay_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
+  void extend_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
+  void failure([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
+  void adapt_script([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
+  void adapt_files([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
+  void delete_solver([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
 
   inline json::json make_taxonomy_message(coco_core &core)
   {

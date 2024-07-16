@@ -3,29 +3,13 @@
 (deftemplate is_instance_of (slot item_id (type SYMBOL)) (slot type_id (type SYMBOL)))
 (deffunction item_data (?item ?item_type ?time ?data))
 
-(deftemplate solver (slot solver_ptr (type INTEGER)) (slot solver_type (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))
-(deftemplate task (slot solver_ptr (type INTEGER)) (slot id (type INTEGER)) (slot task_type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))
-
-(deffunction add_task (?solver_ptr ?id ?task_type ?pars ?vals)
-    (assert (task (solver_ptr ?solver_ptr) (id ?id) (task_type ?task_type) (pars ?pars) (vals ?vals)))
-    (return TRUE)
-)
-
-(deffunction remove_task (?solver_ptr ?id)
-    (do-for-fact ((?task task)) (eq ?task:solver_ptr ?solver_ptr) (eq ?task:id ?id) (retract ?task))
-    (return TRUE)
-)
+(deftemplate solver (slot id (type INTEGER)) (slot purpose (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))
+(deftemplate task (slot solver_id (type INTEGER)) (slot id (type INTEGER)) (slot task_type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))
 
 (deffunction tick ()
     (do-for-all-facts ((?task task)) TRUE (modify ?task (since (+ ?task:since 1))))
     (return TRUE)
 )
 
-(deffunction starting (?solver_ptr ?task_type ?pars ?vals) (return TRUE))
-(deffunction ending (?solver_ptr ?id) (return TRUE))
-(deffunction start (?solver_ptr ?id ?task_type ?pars ?vals)
-    (add_task ?solver_ptr ?id ?task_type ?pars ?vals)
-)
-(deffunction end (?solver_ptr ?id)
-    (remove_task ?solver_ptr ?id)
-)
+(deffunction starting (?id ?task_type ?pars ?vals) (return TRUE))
+(deffunction ending (?id ?id) (return TRUE))

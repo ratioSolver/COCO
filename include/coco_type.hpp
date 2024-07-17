@@ -29,6 +29,7 @@ namespace coco
      * @param dynamic_properties The dynamic properties of the type.
      */
     type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept;
+    ~type() noexcept;
 
     /**
      * @brief Converts the `type` object to a JSON representation.
@@ -82,8 +83,11 @@ namespace coco
 
   private:
     void add_parent(const type &parent) noexcept;
+    void remove_parent(const type &parent) noexcept;
     void add_static_property(std::unique_ptr<property> &&prop) noexcept;
+    void remove_static_property(const property &prop) noexcept;
     void add_dynamic_property(std::unique_ptr<property> &&prop) noexcept;
+    void remove_dynamic_property(const property &prop) noexcept;
 
     /**
      * @brief Converts the `type` object to a JSON representation.
@@ -94,10 +98,12 @@ namespace coco
 
   private:
     coco_core &cc;                                                       // The CoCo core object.
+    Fact *type_fact = nullptr;                                           // The type fact.
     std::string id;                                                      // The ID of the type.
     std::string name;                                                    // The name of the type.
     std::string description;                                             // The description of the type.
     std::map<std::string, std::reference_wrapper<const type>> parents;   // The parent types of the type.
+    std::map<std::string, Fact *> parent_facts;                          // The parent facts of the type.
     std::map<std::string, std::unique_ptr<property>> static_properties;  // The static properties of the type.
     std::map<std::string, std::unique_ptr<property>> dynamic_properties; // The dynamic properties of the type.
   };

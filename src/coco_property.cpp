@@ -55,7 +55,7 @@ namespace coco
         deftemplate += "))";
         return deftemplate;
     }
-    void integer_property::set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept { FBPutSlotInteger(item_fact_builder, get_name().c_str(), static_cast<long>(value)); }
+    void integer_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotInteger(property_fact_builder, get_name().c_str(), static_cast<long>(value)); }
 
     float_property::float_property(const std::string &name, const std::string &description, std::optional<double> default_value, double min, double max) noexcept : property(name, description), default_value(default_value), min(min), max(max) {}
     bool float_property::validate(const json::json &j, const json::json &) const noexcept
@@ -104,7 +104,7 @@ namespace coco
         deftemplate += "))";
         return deftemplate;
     }
-    void float_property::set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept { FBPutSlotFloat(item_fact_builder, get_name().c_str(), static_cast<double>(value)); }
+    void float_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotFloat(property_fact_builder, get_name().c_str(), static_cast<double>(value)); }
 
     string_property::string_property(const std::string &name, const std::string &description, std::optional<std::string> default_value) noexcept : property(name, description), default_value(default_value) {}
     bool string_property::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::string; }
@@ -129,7 +129,7 @@ namespace coco
         deftemplate += ")";
         return deftemplate;
     }
-    void string_property::set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept { FBPutSlotString(item_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }
+    void string_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }
 
     symbol_property::symbol_property(const std::string &name, const std::string &description, std::optional<std::string> default_value) noexcept : property(name, description), default_value(default_value) {}
     bool symbol_property::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::string; }
@@ -154,7 +154,7 @@ namespace coco
         deftemplate += ")";
         return deftemplate;
     }
-    void symbol_property::set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept { FBPutSlotSymbol(item_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }
+    void symbol_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }
 
     json_property::json_property(const std::string &name, const std::string &description, json::json &&schema, std::optional<json::json> default_value) noexcept : property(name, description), schema(std::move(schema)), default_value(default_value) {}
     bool json_property::validate(const json::json &j, const json::json &schema_refs) const noexcept { return j.get_type() == json::json_type::object && json::validate(j, schema, schema_refs); }
@@ -180,7 +180,7 @@ namespace coco
         deftemplate += ")";
         return deftemplate;
     }
-    void json_property::set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept { FBPutSlotString(item_fact_builder, get_name().c_str(), value.dump().c_str()); }
+    void json_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, get_name().c_str(), value.dump().c_str()); }
 
     std::unique_ptr<property> make_property(const json::json &j)
     {

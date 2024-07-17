@@ -71,7 +71,7 @@ namespace coco
         }
         for (const auto &[tp, p] : parents)
             for (const auto &id : p)
-                set_parent(*tp, get_type(id));
+                add_parent(*tp, get_type(id));
         LOG_DEBUG("Retrieved " << get_types().size() << " types");
 
         LOG_DEBUG("Retrieving all items from MongoDB");

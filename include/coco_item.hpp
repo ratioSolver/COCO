@@ -24,6 +24,7 @@ namespace coco
      * @param props The properties of the item.
      */
     item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &props) noexcept;
+    ~item() noexcept;
 
     /**
      * @brief Gets the ID of the item.
@@ -54,11 +55,14 @@ namespace coco
     [[nodiscard]] const json::json &get_properties() const { return properties; }
 
   private:
-    coco_core &cc;         // The CoCo core object.
-    const std::string id;  // The ID of the item.
-    const type &tp;        // The type of the item.
-    std::string name;      // The name of the item.
-    json::json properties; // The properties of the item.
+    coco_core &cc;                                // The CoCo core object.
+    Fact *item_fact = nullptr;                    // The fact representing the item.
+    Fact *is_instance_of = nullptr;               // The fact representing the type of the item.
+    const std::string id;                         // The ID of the item.
+    const type &tp;                               // The type of the item.
+    std::string name;                             // The name of the item.
+    json::json properties;                        // The properties of the item.
+    std::map<std::string, Fact *> property_facts; // The facts representing the properties of the item.
   };
 
   /**

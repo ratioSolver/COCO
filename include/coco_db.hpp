@@ -59,7 +59,7 @@ namespace coco
     virtual void set_type_description(type &tp, const std::string &description) { tp.description = description; }
 
     /**
-     * Adds a parent to the given type.
+     * @brief Adds a parent to the given type.
      *
      * This function adds the specified parent to the given type. The parent is added to the `parents` map of the type,
      * using the parent's name as the key and the parent object as the value.
@@ -67,7 +67,7 @@ namespace coco
      * @param tp The type to which the parent will be added.
      * @param parent The parent type to be added.
      */
-    virtual void add_parent(type &tp, const type &parent) { tp.parents.emplace(parent.name, parent); }
+    virtual void add_parent(type &tp, const type &parent) { tp.add_parent(parent); }
 
     /**
      * @brief Removes a parent from the given type.
@@ -360,7 +360,6 @@ namespace coco
       types.emplace(id, std::move(tp));
       return *types[id];
     }
-    void set_parent(type &tp, const type &parent) { tp.parents.emplace(parent.name, parent); }
     item &create_item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &pars)
     {
       if (items.find(id) != items.end())

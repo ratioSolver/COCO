@@ -46,7 +46,6 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->delete_type(db->get_type(id));
-        db->init(*this);
     }
 
     std::vector<std::reference_wrapper<item>> coco_core::get_items()
@@ -79,7 +78,6 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->delete_item(db->get_item(id));
-        db->init(*this);
     }
 
     void coco_core::add_data(const item &s, const json::json &data)

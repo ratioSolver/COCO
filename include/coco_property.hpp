@@ -55,10 +55,10 @@ namespace coco
      *
      * This function is responsible for setting the value of the property based on the provided `value`.
      *
-     * @param item_fact_builder A pointer to the FactBuilder object.
+     * @param property_fact_builder A pointer to the FactBuilder object.
      * @param value The value to be set for the property.
      */
-    virtual void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept = 0;
+    virtual void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept = 0;
 
     /**
      * @brief Validates the property against a JSON object and schema references.
@@ -111,7 +111,7 @@ namespace coco
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
 
     std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
-    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
+    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
   private:
     /**
@@ -156,7 +156,7 @@ namespace coco
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
 
     std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
-    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
+    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
   private:
     /**
@@ -200,7 +200,7 @@ namespace coco
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
 
     std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
-    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
+    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
   private:
     /**
@@ -242,7 +242,7 @@ namespace coco
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
 
     std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
-    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
+    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
   private:
     /**
@@ -283,7 +283,7 @@ namespace coco
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
 
     std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
-    void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept override;
+    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
   private:
     /**

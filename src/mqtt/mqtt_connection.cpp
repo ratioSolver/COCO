@@ -81,19 +81,19 @@ namespace coco
         else if (topic == COCO_NAME "/commands/create_type")
         { // create type
             json::json j = json::load(msg->to_string());
-            std::map<std::string, std::unique_ptr<property>> static_properties;
-            for (const auto &p : j["properties"].as_array())
-            {
-                auto prop = make_property(p);
-                static_properties[prop->get_name()] = std::move(prop);
-            }
-            std::map<std::string, std::unique_ptr<property>> dynamic_properties;
-            for (const auto &p : j["dynamic_properties"].as_array())
-            {
-                auto prop = make_property(p);
-                dynamic_properties[prop->get_name()] = std::move(prop);
-            }
-            core.create_type(j["name"], j["description"], std::move(static_properties), std::move(dynamic_properties));
+            std::vector<std::reference_wrapper<const type>> parents;
+            if (j.contains("parents"))
+                for (const auto &p : j["parents"].as_array())
+                    parents.push_back(core.get_type(p));
+            std::vector<std::unique_ptr<property>> static_properties;
+            if (j.contains("properties"))
+                for (const auto &p : j["properties"].as_array())
+                    static_properties.push_back(make_property(p));
+            std::vector<std::unique_ptr<property>> dynamic_properties;
+            if (j.contains("dynamic_properties"))
+                for (const auto &p : j["dynamic_properties"].as_array())
+                    dynamic_properties.push_back(make_property(p));
+            core.create_type(j["name"], j["description"], std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         }
         else if (topic == COCO_NAME "/commands/delete_type") // delete type
             core.delete_type(msg->to_string());

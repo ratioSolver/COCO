@@ -1,6 +1,7 @@
 #pragma once
 
 #include "coco_property.hpp"
+#include <set>
 
 namespace coco
 {
@@ -26,7 +27,7 @@ namespace coco
      * @param static_properties The static properties of the type.
      * @param dynamic_properties The dynamic properties of the type.
      */
-    type(const std::string &id, const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_properties, std::map<std::string, std::unique_ptr<property>> &&dynamic_properties) noexcept;
+    type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept;
 
     /**
      * @brief Converts the `type` object to a JSON representation.
@@ -58,6 +59,13 @@ namespace coco
     std::string get_description() const noexcept { return description; }
 
     /**
+     * @brief Gets the parent types of the type.
+     *
+     * @return The parent types of the type.
+     */
+    const std::map<std::string, std::reference_wrapper<const type>> &get_parents() const noexcept { return parents; }
+
+    /**
      * @brief Gets the static properties of the type.
      *
      * @return The static properties of the type.
@@ -83,6 +91,7 @@ namespace coco
     std::string id;                                                      // The ID of the type.
     std::string name;                                                    // The name of the type.
     std::string description;                                             // The description of the type.
+    std::map<std::string, std::reference_wrapper<const type>> parents;   // The parent types of the type.
     std::map<std::string, std::unique_ptr<property>> static_properties;  // The static properties of the type.
     std::map<std::string, std::unique_ptr<property>> dynamic_properties; // The dynamic properties of the type.
   };
@@ -101,6 +110,7 @@ namespace coco
                                       {{"id", {{"type", "string"}, {"format", "uuid"}}},
                                        {"name", {{"type", "string"}}},
                                        {"description", {{"type", "string"}}},
+                                       {"parents", {{"type", "array"}, {"items", {{"type", "string"}, {"format", "uuid"}}}}},
                                        {"static_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}}},
                                        {"dynamic_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}}}}}}};
   const json::json types_path{"/types",

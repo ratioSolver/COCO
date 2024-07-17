@@ -3,6 +3,7 @@
 #include "json.hpp"
 #include "clips.h"
 #include <limits>
+#include <optional>
 #include <memory>
 
 namespace coco
@@ -48,6 +49,14 @@ namespace coco
      */
     virtual std::string to_deftemplate(const type &tp, bool is_static) const noexcept = 0;
 
+    /**
+     * Sets the value of the property.
+     *
+     * This function is responsible for setting the value of the property based on the provided `value`.
+     *
+     * @param item_fact_builder A pointer to the FactBuilder object.
+     * @param value The value to be set for the property.
+     */
     virtual void set_value(FactBuilder *item_fact_builder, const json::json &value) const noexcept = 0;
 
     /**
@@ -85,10 +94,11 @@ namespace coco
      *
      * @param name The name of the property.
      * @param description The description of the property.
+     * @param default_value The default value for the property (default: `std::nullopt`).
      * @param min The minimum value allowed for the property (default: `std::numeric_limits<long>::min()`).
      * @param max The maximum value allowed for the property (default: `std::numeric_limits<long>::max()`).
      */
-    integer_property(const std::string &name, const std::string &description, long min = std::numeric_limits<long>::min(), long max = std::numeric_limits<long>::max()) noexcept;
+    integer_property(const std::string &name, const std::string &description, std::optional<long> default_value = std::nullopt, long min = std::numeric_limits<long>::min(), long max = std::numeric_limits<long>::max()) noexcept;
 
     /**
      * @brief Validates the given JSON object against the property's schema references.
@@ -111,8 +121,9 @@ namespace coco
     json::json to_json() const noexcept override;
 
   private:
-    long min; // The minimum value allowed for the property.
-    long max; // The maximum value allowed for the property.
+    std::optional<long> default_value; // The default value for the property.
+    long min;                          // The minimum value allowed for the property.
+    long max;                          // The maximum value allowed for the property.
   };
 
   /**
@@ -128,10 +139,11 @@ namespace coco
      *
      * @param name The name of the property.
      * @param description The description of the property.
+     * @param default_value The default value for the property. Defaults to `std::nullopt`.
      * @param min The minimum value allowed for the property. Defaults to `-std::numeric_limits<double>::max()`.
      * @param max The maximum value allowed for the property. Defaults to `std::numeric_limits<double>::max()`.
      */
-    float_property(const std::string &name, const std::string &description, double min = -std::numeric_limits<double>::max(), double max = std::numeric_limits<double>::max()) noexcept;
+    float_property(const std::string &name, const std::string &description, std::optional<double> default_value = std::nullopt, double min = -std::numeric_limits<double>::max(), double max = std::numeric_limits<double>::max()) noexcept;
 
     /**
      * @brief Validates the given JSON object against the property's schema references.
@@ -154,8 +166,9 @@ namespace coco
     json::json to_json() const noexcept override;
 
   private:
-    double min; // The minimum value allowed for the property.
-    double max; // The maximum value allowed for the property.
+    std::optional<double> default_value; // The default value for the property.
+    double min;                          // The minimum value allowed for the property.
+    double max;                          // The maximum value allowed for the property.
   };
 
   /**
@@ -172,7 +185,7 @@ namespace coco
      * @param name The name of the string property.
      * @param description The description of the string property.
      */
-    string_property(const std::string &name, const std::string &description) noexcept;
+    string_property(const std::string &name, const std::string &description, std::optional<std::string> default_value = std::nullopt) noexcept;
 
     /**
      * @brief Validates the string property against the given JSON data and schema references.
@@ -197,6 +210,9 @@ namespace coco
      * @return The JSON representation of the string property.
      */
     json::json to_json() const noexcept override;
+
+  private:
+    std::optional<std::string> default_value; // The default value for the property.
   };
 
   /**
@@ -213,7 +229,7 @@ namespace coco
      * @param name The name of the symbol property.
      * @param description The description of the symbol property.
      */
-    symbol_property(const std::string &name, const std::string &description) noexcept;
+    symbol_property(const std::string &name, const std::string &description, std::optional<std::string> default_value = std::nullopt) noexcept;
 
     /**
      * @brief Validates the symbol property against the given JSON data and schema references.
@@ -234,6 +250,9 @@ namespace coco
      * @return The JSON representation of the symbol property.
      */
     json::json to_json() const noexcept override;
+
+  private:
+    std::optional<std::string> default_value; // The default value for the property.
   };
 
   /**
@@ -251,7 +270,7 @@ namespace coco
      * @param description The description of the property.
      * @param schema The JSON schema for the property.
      */
-    json_property(const std::string &name, const std::string &description, json::json &&schema) noexcept;
+    json_property(const std::string &name, const std::string &description, json::json &&schema, std::optional<json::json> default_value = std::nullopt) noexcept;
 
     /**
      * @brief Validates the given JSON object against the JSON schema.
@@ -274,7 +293,8 @@ namespace coco
     json::json to_json() const noexcept override;
 
   private:
-    json::json schema; // The JSON schema for the property.
+    json::json schema;                       // The JSON schema for the property.
+    std::optional<json::json> default_value; // The default value for the property.
   };
 
   /**

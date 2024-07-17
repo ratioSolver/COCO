@@ -23,11 +23,12 @@ namespace coco
      *
      * @param name The name of the type.
      * @param description The description of the type.
+     * @param parents The parent types of the type.
      * @param static_properties The static properties of the type.
      * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_properties, std::map<std::string, std::unique_ptr<property>> &&dynamic_properties) = 0;
+    virtual type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) = 0;
 
     /**
      * Sets the name of the given type.
@@ -46,6 +47,27 @@ namespace coco
      * @param description The description to set for the type.
      */
     virtual void set_type_description(type &tp, const std::string &description) { tp.description = description; }
+
+    /**
+     * Adds a parent to the given type.
+     *
+     * This function adds the specified parent to the given type. The parent is added to the `parents` map of the type,
+     * using the parent's name as the key and the parent object as the value.
+     *
+     * @param tp The type to which the parent will be added.
+     * @param parent The parent type to be added.
+     */
+    virtual void add_parent(type &tp, const type &parent) { tp.parents.emplace(parent.name, parent); }
+
+    /**
+     * @brief Removes a parent from the given type.
+     *
+     * This function removes the specified parent from the given type.
+     *
+     * @param tp The type from which to remove the parent.
+     * @param parent The parent to be removed.
+     */
+    virtual void remove_parent(type &tp, const type &parent) { tp.parents.erase(parent.name); }
 
     /**
      * Adds a static property to the given type.
@@ -316,15 +338,16 @@ namespace coco
     virtual rule &create_deliberative_rule(const std::string &name, const std::string &content) = 0;
 
   protected:
-    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_properties, std::map<std::string, std::unique_ptr<property>> &&dynamic_properties)
+    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {
       if (types_by_id.find(id) != types_by_id.end())
         throw std::invalid_argument("Type already exists: " + id);
-      auto tp = std::make_unique<type>(id, name, description, std::move(static_properties), std::move(dynamic_properties));
+      auto tp = std::make_unique<type>(id, name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
       types_by_name.emplace(name, *tp);
       types_by_id.emplace(id, std::move(tp));
       return *types_by_id[id];
     }
+    void set_parent(type &tp, const type &parent) { tp.parents.emplace(parent.name, parent); }
     item &create_item(const std::string &id, const type &tp, const std::string &name, const json::json &pars)
     {
       if (items.find(id) != items.end())

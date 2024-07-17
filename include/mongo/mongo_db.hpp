@@ -21,7 +21,7 @@ namespace coco
     mongo_db(const json::json &config = {{"name", COCO_NAME}}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
     virtual ~mongo_db() = default;
 
-    [[nodiscard]] type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_properties, std::map<std::string, std::unique_ptr<property>> &&dynamic_properties) override;
+    [[nodiscard]] type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;
 
     void set_type_name(type &tp, const std::string &name) override;
     void set_type_description(type &tp, const std::string &description) override;

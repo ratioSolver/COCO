@@ -46,11 +46,12 @@ namespace coco
      *
      * @param name The name of the type.
      * @param description The description of the type.
-     * @param static_props The static properties of the type.
-     * @param dynamic_props The dynamic properties of the type.
+     * @param parents The parents of the type.
+     * @param static_properties The static properties of the type.
+     * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_props, std::map<std::string, std::unique_ptr<property>> &&dynamic_props);
+    type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties);
 
     /**
      * @brief Deletes the type with the specified ID.

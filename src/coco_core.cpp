@@ -34,10 +34,10 @@ namespace coco
         return db->get_type(id);
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, std::map<std::string, std::unique_ptr<property>> &&static_pars, std::map<std::string, std::unique_ptr<property>> &&dynamic_pars)
+    type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &st = db->create_type(name, description, std::move(static_pars), std::move(dynamic_pars));
+        auto &st = db->create_type(name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         new_type(st);
         return st;
     }
@@ -227,15 +227,33 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         Clear(env);
-        AssertString(env, std::string("(deftemplate item_type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))").c_str());
-        AssertString(env, std::string("(deftemplate item (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))").c_str());
-        AssertString(env, std::string("(deftemplate is_instance_of (slot item_id (type SYMBOL)) (slot type_id (type SYMBOL)))").c_str());
-        AssertString(env, std::string("(deftemplate solver (slot id (type INTEGER)) (slot purpose (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))").c_str());
-        AssertString(env, std::string("(deftemplate task (slot solver_id (type INTEGER)) (slot id (type INTEGER)) (slot task_type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))").c_str());
-        AssertString(env, std::string("(deffunction tick () (do-for-all-facts ((?task task)) TRUE (modify ?task (since (+ ?task:since 1)))) (return TRUE))").c_str());
-        AssertString(env, std::string("(deffunction starting (?id ?task_type ?pars ?vals) (return TRUE))").c_str());
-        AssertString(env, std::string("(deffunction ending (?id ?id) (return TRUE))").c_str());
 
+        // we build the basic knowledge base..
+        Build(env, "(deftemplate item_type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))");
+        Build(env, "(deftemplate is_a (slot type_id (type SYMBOL)) (slot parent_id (type SYMBOL)))");
+        Build(env, "(deftemplate item (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))");
+        Build(env, "(deftemplate is_instance_of (slot item_id (type SYMBOL)) (slot type_id (type SYMBOL)))");
+        Build(env, "(defrule inheritance (is_a (type_id ?t) (parent_id ?p)) (is_instance_of (item_id ?i) (type_id ?t)) => (assert (is_instance_of (item_id ?i) (type_id ?p))))");
+        Build(env, "(deftemplate solver (slot id (type INTEGER)) (slot purpose (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))");
+        Build(env, "(deftemplate task (slot solver_id (type INTEGER)) (slot id (type INTEGER)) (slot task_type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))");
+        Build(env, "(deffunction tick () (do-for-all-facts ((?task task)) TRUE (modify ?task (since (+ ?task:since 1)))) (return TRUE))");
+        Build(env, "(deffunction starting (?solver_id ?task_type ?pars ?vals) (return TRUE))");
+        Build(env, "(deffunction ending (?solver_id ?id) (return TRUE))");
+
+        // we build the knowledge base from the database..
+        for (auto &tp : db->get_types())
+        {
+            for (const auto &[p_name, p] : tp.get().get_static_properties())
+                Build(env, p.get()->to_deftemplate(tp.get(), true).c_str());
+            for (const auto &[p_name, p] : tp.get().get_dynamic_properties())
+                Build(env, p.get()->to_deftemplate(tp.get(), false).c_str());
+        }
+
+        // we build the rules..
+        for (auto &r_rule : db->get_reactive_rules())
+            Build(env, r_rule.get().get_content().c_str());
+
+        // we assert the type facts..
         for (auto &tp : db->get_types())
         {
             FactBuilder *type_fact_builder = CreateFactBuilder(env, "item_type");
@@ -244,13 +262,19 @@ namespace coco
             FBPutSlotString(type_fact_builder, "description", tp.get().get_description().c_str());
             FBAssert(type_fact_builder);
             FBDispose(type_fact_builder);
-
-            for (const auto &[p_name, p] : tp.get().get_static_properties())
-                AssertString(env, p.get()->to_deftemplate(tp.get(), true).c_str());
-            for (const auto &[p_name, p] : tp.get().get_dynamic_properties())
-                AssertString(env, p.get()->to_deftemplate(tp.get(), false).c_str());
         }
+        // we assert the is_a facts..
+        for (auto &tp : db->get_types())
+            for (const auto &p : tp.get().get_parents())
+            {
+                FactBuilder *is_a_fact_builder = CreateFactBuilder(env, "is_a");
+                FBPutSlotSymbol(is_a_fact_builder, "type_id", tp.get().get_id().c_str());
+                FBPutSlotSymbol(is_a_fact_builder, "parent_id", p.second.get().get_id().c_str());
+                FBAssert(is_a_fact_builder);
+                FBDispose(is_a_fact_builder);
+            }
 
+        // we assert the item facts..
         for (auto &itm : db->get_items())
         {
             FactBuilder *item_fact_builder = CreateFactBuilder(env, "item");
@@ -276,8 +300,7 @@ namespace coco
             }
         }
 
-        for (auto &r_rule : db->get_reactive_rules())
-            AssertString(env, r_rule.get().get_content().c_str());
+        Run(env, -1);
     }
 
     void new_solver_script(Environment *, UDFContext *udfc, UDFValue *)

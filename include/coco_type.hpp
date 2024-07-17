@@ -21,13 +21,14 @@ namespace coco
     /**
      * @brief Constructs a new `type` object.
      *
+     * @param cc The CoCo core object.
      * @param id The ID of the type.
      * @param name The name of the type.
      * @param description The description of the type.
      * @param static_properties The static properties of the type.
      * @param dynamic_properties The dynamic properties of the type.
      */
-    type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept;
+    type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept;
 
     /**
      * @brief Converts the `type` object to a JSON representation.
@@ -80,6 +81,10 @@ namespace coco
     const std::map<std::string, std::unique_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
 
   private:
+    void add_parent(const type &parent) noexcept;
+    void add_static_property(std::unique_ptr<property> &&prop) noexcept;
+    void add_dynamic_property(std::unique_ptr<property> &&prop) noexcept;
+
     /**
      * @brief Converts the `type` object to a JSON representation.
      *
@@ -88,6 +93,7 @@ namespace coco
     json::json to_json() const noexcept;
 
   private:
+    coco_core &cc;                                                       // The CoCo core object.
     std::string id;                                                      // The ID of the type.
     std::string name;                                                    // The name of the type.
     std::string description;                                             // The description of the type.

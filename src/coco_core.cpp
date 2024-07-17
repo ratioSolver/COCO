@@ -37,7 +37,7 @@ namespace coco
     type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &st = db->create_type(name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+        auto &st = db->create_type(*this, name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         new_type(st);
         return st;
     }
@@ -46,6 +46,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->delete_type(db->get_type(id));
+        db->init(*this);
     }
 
     std::vector<std::reference_wrapper<item>> coco_core::get_items()
@@ -69,7 +70,7 @@ namespace coco
             else if (!p->validate(pars[p_name], schemas))
                 LOG_WARN("Parameter " + p_name + " for type " + tp.get_id() + " is invalid");
 
-        auto &s = db->create_item(tp, name, pars);
+        auto &s = db->create_item(*this, tp, name, pars);
         new_item(s);
         return s;
     }
@@ -78,6 +79,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->delete_item(db->get_item(id));
+        db->init(*this);
     }
 
     void coco_core::add_data(const item &s, const json::json &data)
@@ -130,7 +132,7 @@ namespace coco
     rule &coco_core::create_reactive_rule(const std::string &name, const std::string &content)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &r = db->create_reactive_rule(name, content);
+        auto &r = db->create_reactive_rule(*this, name, content);
         new_reactive_rule(r);
         return r;
     }
@@ -144,7 +146,7 @@ namespace coco
     rule &coco_core::create_deliberative_rule(const std::string &name, const std::string &content)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &r = db->create_deliberative_rule(name, content);
+        auto &r = db->create_deliberative_rule(*this, name, content);
         new_deliberative_rule(r);
         return r;
     }
@@ -231,7 +233,7 @@ namespace coco
         // we build the basic knowledge base..
         Build(env, "(deftemplate item_type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))");
         Build(env, "(deftemplate is_a (slot type_id (type SYMBOL)) (slot parent_id (type SYMBOL)))");
-        Build(env, "(deftemplate item (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))");
+        Build(env, "(deftemplate item (slot id (type SYMBOL)) (slot name (type STRING)))");
         Build(env, "(deftemplate is_instance_of (slot item_id (type SYMBOL)) (slot type_id (type SYMBOL)))");
         Build(env, "(defrule inheritance (is_a (type_id ?t) (parent_id ?p)) (is_instance_of (item_id ?i) (type_id ?t)) => (assert (is_instance_of (item_id ?i) (type_id ?p))))");
         Build(env, "(deftemplate solver (slot id (type INTEGER)) (slot purpose (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))");
@@ -240,65 +242,8 @@ namespace coco
         Build(env, "(deffunction starting (?solver_id ?task_type ?pars ?vals) (return TRUE))");
         Build(env, "(deffunction ending (?solver_id ?id) (return TRUE))");
 
-        // we build the knowledge base from the database..
-        for (auto &tp : db->get_types())
-        {
-            for (const auto &[p_name, p] : tp.get().get_static_properties())
-                Build(env, p.get()->to_deftemplate(tp.get(), true).c_str());
-            for (const auto &[p_name, p] : tp.get().get_dynamic_properties())
-                Build(env, p.get()->to_deftemplate(tp.get(), false).c_str());
-        }
-
-        // we build the rules..
-        for (auto &r_rule : db->get_reactive_rules())
-            Build(env, r_rule.get().get_content().c_str());
-
-        // we assert the type facts..
-        for (auto &tp : db->get_types())
-        {
-            FactBuilder *type_fact_builder = CreateFactBuilder(env, "item_type");
-            FBPutSlotSymbol(type_fact_builder, "id", tp.get().get_id().c_str());
-            FBPutSlotString(type_fact_builder, "name", tp.get().get_name().c_str());
-            FBPutSlotString(type_fact_builder, "description", tp.get().get_description().c_str());
-            FBAssert(type_fact_builder);
-            FBDispose(type_fact_builder);
-        }
-        // we assert the is_a facts..
-        for (auto &tp : db->get_types())
-            for (const auto &p : tp.get().get_parents())
-            {
-                FactBuilder *is_a_fact_builder = CreateFactBuilder(env, "is_a");
-                FBPutSlotSymbol(is_a_fact_builder, "type_id", tp.get().get_id().c_str());
-                FBPutSlotSymbol(is_a_fact_builder, "parent_id", p.second.get().get_id().c_str());
-                FBAssert(is_a_fact_builder);
-                FBDispose(is_a_fact_builder);
-            }
-
-        // we assert the item facts..
-        for (auto &itm : db->get_items())
-        {
-            FactBuilder *item_fact_builder = CreateFactBuilder(env, "item");
-            FBPutSlotSymbol(item_fact_builder, "id", itm.get().get_id().c_str());
-            FBPutSlotString(item_fact_builder, "name", itm.get().get_name().c_str());
-            FBPutSlotString(item_fact_builder, "description", itm.get().get_type().get_description().c_str());
-            FBAssert(item_fact_builder);
-            FBDispose(item_fact_builder);
-
-            FactBuilder *is_instance_of_fact_builder = CreateFactBuilder(env, "is_instance_of");
-            FBPutSlotSymbol(is_instance_of_fact_builder, "item_id", itm.get().get_id().c_str());
-            FBPutSlotSymbol(is_instance_of_fact_builder, "type_id", itm.get().get_type().get_id().c_str());
-            FBAssert(is_instance_of_fact_builder);
-            FBDispose(is_instance_of_fact_builder);
-
-            for (const auto &[p_name, p] : itm.get().get_type().get_static_properties())
-            {
-                FactBuilder *item_fact_builder = CreateFactBuilder(env, (itm.get().get_type().get_name() + "_has_" + p_name).c_str());
-                FBPutSlotSymbol(item_fact_builder, "item_id", itm.get().get_id().c_str());
-                p->set_value(item_fact_builder, itm.get().get_properties()[p_name]);
-                FBAssert(item_fact_builder);
-                FBDispose(item_fact_builder);
-            }
-        }
+        // we load the basic knowledge base..
+        db->init(*this);
 
         Run(env, -1);
     }

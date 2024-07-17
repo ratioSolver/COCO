@@ -28,7 +28,7 @@ message(STATUS "Enable MQTT: ${ENABLE_MQTT}")
 
 add_subdirectory(extern/plexa)
 
-add_library(CoCo src/coco_core.cpp src/coco_db.cpp src/coco_type.cpp src/coco_property.cpp src/coco_item.cpp src/coco_executor.cpp src/mongo/mongo_db.cpp $<$<BOOL:${ENABLE_MQTT}>:${CMAKE_CURRENT_SOURCE_DIR}/src/mqtt/mqtt_connection.cpp>)
+add_library(CoCo src/coco_core.cpp src/coco_db.cpp src/coco_type.cpp src/coco_property.cpp src/coco_item.cpp src/coco_rule.cpp src/coco_executor.cpp src/mongo/mongo_db.cpp $<$<BOOL:${ENABLE_MQTT}>:${CMAKE_CURRENT_SOURCE_DIR}/src/mqtt/mqtt_connection.cpp>)
 target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/mongo> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR} ${CLIPS_INCLUDE_DIR} $<$<BOOL:${ENABLE_MQTT}>:${CMAKE_CURRENT_SOURCE_DIR}/include/mqtt>)
 add_dependencies(CoCo PlExA)
 target_link_directories(CoCo PUBLIC ${CLIPS_LIB_DIR})

@@ -17,12 +17,13 @@ namespace coco
     /**
      * @brief Constructs an item object.
      *
+     * @param cc The CoCo core object.
      * @param id The ID of the item.
      * @param tp The type of the item.
      * @param name The name of the item.
      * @param props The properties of the item.
      */
-    item(const std::string &id, const type &tp, const std::string &name, const json::json &props);
+    item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &props) noexcept;
 
     /**
      * @brief Gets the ID of the item.
@@ -53,6 +54,7 @@ namespace coco
     [[nodiscard]] const json::json &get_properties() const { return properties; }
 
   private:
+    coco_core &cc;         // The CoCo core object.
     const std::string id;  // The ID of the item.
     const type &tp;        // The type of the item.
     std::string name;      // The name of the item.

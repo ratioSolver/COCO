@@ -8,6 +8,7 @@
 
 namespace coco
 {
+  class coco_core;
   class type;
 
   /**

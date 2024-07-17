@@ -8,6 +8,8 @@
 
 namespace coco
 {
+  class coco_core;
+
   class coco_db
   {
   public:
@@ -17,10 +19,18 @@ namespace coco
     const json::json &get_config() const { return config; }
 
     /**
+     * Initializes the coco_db object.
+     *
+     * @param cc The coco_core object used for initialization.
+     */
+    virtual void init(coco_core &cc);
+
+    /**
      * @brief Creates a new type.
      *
      * This function creates a new type with the specified name, description, and properties.
      *
+     * @param cc The CoCo core object.
      * @param name The name of the type.
      * @param description The description of the type.
      * @param parents The parent types of the type.
@@ -28,7 +38,7 @@ namespace coco
      * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) = 0;
+    virtual type &create_type(coco_core &cc, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) = 0;
 
     /**
      * Sets the name of the given type.
@@ -115,7 +125,7 @@ namespace coco
     virtual void delete_type(const type &tp)
     {
       types_by_name.erase(tp.name);
-      types_by_id.erase(tp.id);
+      types.erase(tp.id);
     }
 
     /**
@@ -128,7 +138,7 @@ namespace coco
     std::vector<std::reference_wrapper<type>> get_types() const
     {
       std::vector<std::reference_wrapper<type>> res;
-      for (auto &s : types_by_id)
+      for (auto &s : types)
         res.push_back(*s.second);
       return res;
     }
@@ -142,9 +152,9 @@ namespace coco
      */
     type &get_type(const std::string &id) const
     {
-      if (types_by_id.find(id) == types_by_id.end())
+      if (types.find(id) == types.end())
         throw std::invalid_argument("Type not found: " + id);
-      return *types_by_id.at(id);
+      return *types.at(id);
     }
 
     /**
@@ -164,12 +174,13 @@ namespace coco
     /**
      * @brief Creates an item of the specified type with the given name and optional data.
      *
+     * @param cc The CoCo core object.
      * @param tp The type of the item.
      * @param name The name of the item.
      * @param pars The properties of the item.
      * @return A reference to the created item.
      */
-    virtual item &create_item(const type &tp, const std::string &name, const json::json &pars) = 0;
+    virtual item &create_item(coco_core &cc, const type &tp, const std::string &name, const json::json &pars) = 0;
 
     /**
      * Sets the name of an item.
@@ -281,11 +292,12 @@ namespace coco
     /**
      * @brief Creates a reactive rule with the given name and content.
      *
+     * @param cc The CoCo core object.
      * @param name The name of the reactive rule.
      * @param content The content of the reactive rule.
      * @return A reference to the created reactive rule.
      */
-    virtual rule &create_reactive_rule(const std::string &name, const std::string &content) = 0;
+    virtual rule &create_reactive_rule(coco_core &cc, const std::string &name, const std::string &content) = 0;
 
     /**
      * Returns a vector of references to the deliberative rules in the database.
@@ -331,45 +343,46 @@ namespace coco
     /**
      * @brief Creates a deliberative rule with the given name and content.
      *
+     * @param cc The CoCo core object.
      * @param name The name of the deliberative rule.
      * @param content The content of the deliberative rule.
      * @return A reference to the created deliberative rule.
      */
-    virtual rule &create_deliberative_rule(const std::string &name, const std::string &content) = 0;
+    virtual rule &create_deliberative_rule(coco_core &cc, const std::string &name, const std::string &content) = 0;
 
   protected:
-    type &create_type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
+    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {
-      if (types_by_id.find(id) != types_by_id.end())
+      if (types.find(id) != types.end())
         throw std::invalid_argument("Type already exists: " + id);
-      auto tp = std::make_unique<type>(id, name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+      auto tp = std::make_unique<type>(cc, id, name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
       types_by_name.emplace(name, *tp);
-      types_by_id.emplace(id, std::move(tp));
-      return *types_by_id[id];
+      types.emplace(id, std::move(tp));
+      return *types[id];
     }
     void set_parent(type &tp, const type &parent) { tp.parents.emplace(parent.name, parent); }
-    item &create_item(const std::string &id, const type &tp, const std::string &name, const json::json &pars)
+    item &create_item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &pars)
     {
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
-      items.emplace(id, std::make_unique<item>(id, tp, name, pars));
-      items[id] = std::make_unique<item>(id, tp, name, pars);
+      items.emplace(id, std::make_unique<item>(cc, id, tp, name, pars));
+      items[id] = std::make_unique<item>(cc, id, tp, name, pars);
       return *items[id];
     }
-    rule &create_reactive_rule(const std::string &id, const std::string &name, const std::string &content)
+    rule &create_reactive_rule(coco_core &cc, const std::string &id, const std::string &name, const std::string &content)
     {
       if (reactive_rules.find(id) != reactive_rules.end())
         throw std::invalid_argument("Reactive rule already exists: " + id);
-      auto rr = std::make_unique<rule>(id, name, content);
+      auto rr = std::make_unique<rule>(cc, id, name, content);
       reactive_rules_by_name.emplace(name, *rr);
       reactive_rules.emplace(id, std::move(rr));
       return *reactive_rules[id];
     }
-    rule &create_deliberative_rule(const std::string &id, const std::string &name, const std::string &content)
+    rule &create_deliberative_rule(coco_core &cc, const std::string &id, const std::string &name, const std::string &content)
     {
       if (deliberative_rules.find(id) != deliberative_rules.end())
         throw std::invalid_argument("Deliberative rule already exists: " + id);
-      auto dr = std::make_unique<rule>(id, name, content);
+      auto dr = std::make_unique<rule>(cc, id, name, content);
       deliberative_rules_by_name.emplace(name, *dr);
       deliberative_rules.emplace(id, std::move(dr));
       return *deliberative_rules[id];
@@ -378,7 +391,7 @@ namespace coco
   private:
     const json::json config; // The app name.
 
-    std::map<std::string, std::unique_ptr<type>> types_by_id;                       // The types stored in the database by ID.
+    std::map<std::string, std::unique_ptr<type>> types;                             // The types stored in the database by ID.
     std::map<std::string, std::reference_wrapper<type>> types_by_name;              // The types stored in the database by name.
     std::map<std::string, std::unique_ptr<item>> items;                             // The items stored in the database by ID.
     std::map<std::string, std::unique_ptr<rule>> reactive_rules;                    // The reactive rules stored in the database by ID.

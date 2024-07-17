@@ -14,6 +14,10 @@ namespace coco
   {
     friend class coco_solver;
     friend class coco_executor;
+    friend class type;
+    friend class item;
+    friend class property;
+    friend class rule;
 
   public:
     coco_core(std::unique_ptr<coco_db> &&db);

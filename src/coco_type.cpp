@@ -1,15 +1,36 @@
 #include "coco_type.hpp"
+#include "coco_core.hpp"
 
 namespace coco
 {
-    type::type(const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept : id(id), name(name), description(description)
+    type::type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept : cc(cc), id(id), name(name), description(description)
     {
-        for (auto &p : parents)
-            this->parents.emplace(p.get().name, p);
         for (auto &p : static_properties)
-            this->static_properties.emplace(p->get_name(), std::move(p));
+            add_static_property(std::move(p));
         for (auto &p : dynamic_properties)
-            this->dynamic_properties.emplace(p->get_name(), std::move(p));
+            add_dynamic_property(std::move(p));
+        for (auto &p : parents)
+            add_parent(p.get());
+    }
+
+    void type::add_parent(const type &parent) noexcept
+    {
+        FactBuilder *is_a_fact_builder = CreateFactBuilder(cc.env, "is_a");
+        FBPutSlotSymbol(is_a_fact_builder, "type_id", get_id().c_str());
+        FBPutSlotSymbol(is_a_fact_builder, "parent_id", parent.get_id().c_str());
+        FBAssert(is_a_fact_builder);
+        FBDispose(is_a_fact_builder);
+        this->parents.emplace(parent.name, parent);
+    }
+    void type::add_static_property(std::unique_ptr<property> &&prop) noexcept
+    {
+        Build(cc.env, prop->to_deftemplate(*this, true).c_str());
+        this->static_properties.emplace(prop->get_name(), std::move(prop));
+    }
+    void type::add_dynamic_property(std::unique_ptr<property> &&prop) noexcept
+    {
+        Build(cc.env, prop->to_deftemplate(*this, true).c_str());
+        this->dynamic_properties.emplace(prop->get_name(), std::move(prop));
     }
 
     json::json type::to_json() const noexcept

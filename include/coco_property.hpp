@@ -87,7 +87,7 @@ namespace coco
    *
    * This class inherits from the base class `property` and provides functionality for handling integer properties.
    */
-  class integer_property : public property
+  class integer_property final : public property
   {
   public:
     /**
@@ -132,7 +132,7 @@ namespace coco
    *
    * This class inherits from the base class `property` and provides functionality for handling float properties.
    */
-  class float_property : public property
+  class float_property final : public property
   {
   public:
     /**
@@ -177,7 +177,7 @@ namespace coco
    *
    * This class inherits from the base class `property` and provides functionality for handling string properties.
    */
-  class string_property : public property
+  class string_property final : public property
   {
   public:
     /**
@@ -221,7 +221,7 @@ namespace coco
    *
    * This class inherits from the base class `property` and provides functionality to handle symbol properties.
    */
-  class symbol_property : public property
+  class symbol_property final : public property
   {
   public:
     /**
@@ -257,11 +257,68 @@ namespace coco
   };
 
   /**
+   * @brief Represents an item property.
+   *
+   * This class inherits from the base class `property` and provides functionality to define and manipulate item properties.
+   */
+  class item_property final : public property
+  {
+  public:
+    /**
+     * @brief Constructs an `item_property` object.
+     *
+     * @param name The name of the property.
+     * @param description The description of the property.
+     * @param tp The type of the property.
+     * @param default_value The default value of the property (optional).
+     */
+    item_property(const std::string &name, const std::string &description, const type &tp, std::optional<std::string> default_value = std::nullopt) noexcept;
+
+    /**
+     * @brief Validates the property value against the given JSON and schema references.
+     *
+     * @param j The JSON value to validate.
+     * @param schema_refs The schema references to validate against.
+     * @return `true` if the property value is valid, `false` otherwise.
+     */
+    bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
+
+    /**
+     * @brief Converts the property to a deftemplate string representation.
+     *
+     * @param tp The type of the property.
+     * @param is_static Indicates whether the property is static or not.
+     * @return The deftemplate string representation of the property.
+     */
+    std::string to_deftemplate(const type &tp, bool is_static) const noexcept override;
+
+    /**
+     * @brief Sets the value of the property.
+     *
+     * @param property_fact_builder The FactBuilder object to set the value on.
+     * @param value The value to set.
+     */
+    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
+
+  private:
+    /**
+     * @brief Converts the property to a JSON representation.
+     *
+     * @return The JSON representation of the property.
+     */
+    json::json to_json() const noexcept override;
+
+  private:
+    const type &tp;                           // The type of the property.
+    std::optional<std::string> default_value; // The default value for the property.
+  };
+
+  /**
    * @brief Represents a JSON property.
    *
    * This class inherits from the base class `property` and provides functionality to work with JSON properties.
    */
-  class json_property : public property
+  class json_property final : public property
   {
   public:
     /**
@@ -311,10 +368,11 @@ namespace coco
    *
    * This function takes a JSON object as input and creates a property object based on its contents.
    *
+   * @param cc The CoCo core object.
    * @param j The JSON object containing the property data.
    * @return A unique pointer to the created property object.
    */
-  std::unique_ptr<property> make_property(const json::json &j);
+  std::unique_ptr<property> make_property(coco_core &cc, const json::json &j);
 
   const json::json property_schema{{"property",
                                     {{"oneOf", std::vector<json::json>{
@@ -322,6 +380,7 @@ namespace coco
                                                    {"$ref", "#/components/schemas/float_property"},
                                                    {"$ref", "#/components/schemas/string_property"},
                                                    {"$ref", "#/components/schemas/symbol_property"},
+                                                   {"$ref", "#/components/schemas/item_property"},
                                                    {"$ref", "#/components/schemas/json_property"}}}}}};
   const json::json integer_property_schema{{"integer_property",
                                             {{"type", "object"},
@@ -355,6 +414,14 @@ namespace coco
                                               {"name", {{"type", "string"}}},
                                               {"description", {{"type", "string"}}}}},
                                             {"required", std::vector<json::json>{"type", "name"}}}}};
+  const json::json item_property_schema{{"item_property",
+                                         {{"type", "object"},
+                                          {"properties",
+                                           {{"type", {{"type", "string"}, {"enum", {"item"}}}},
+                                            {"name", {{"type", "string"}}},
+                                            {"description", {{"type", "string"}}},
+                                            {"item_type", {{"type", "string"}}}}},
+                                          {"required", std::vector<json::json>{"type", "name", "item_type"}}}}};
   const json::json json_property_schema{{"json_property",
                                          {{"type", "object"},
                                           {"properties",

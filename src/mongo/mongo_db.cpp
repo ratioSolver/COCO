@@ -57,14 +57,14 @@ namespace coco
             if (doc.find("static_properties") != doc.end())
                 for (const auto &p : doc["static_properties"].get_array().value)
                 {
-                    auto prop = make_property(json::load(bsoncxx::to_json(p.get_document().view())));
+                    auto prop = make_property(cc, json::load(bsoncxx::to_json(p.get_document().view())));
                     static_properties.emplace_back(std::move(prop));
                 }
             std::vector<std::unique_ptr<property>> dynamic_properties;
             if (doc.find("dynamic_properties") != doc.end())
                 for (const auto &p : doc["dynamic_properties"].get_array().value)
                 {
-                    auto prop = make_property(json::load(bsoncxx::to_json(p.get_document().view())));
+                    auto prop = make_property(cc, json::load(bsoncxx::to_json(p.get_document().view())));
                     dynamic_properties.emplace_back(std::move(prop));
                 }
             coco_db::create_type(cc, id, name, description, {}, std::move(static_properties), std::move(dynamic_properties));

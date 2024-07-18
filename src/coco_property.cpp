@@ -1,5 +1,4 @@
-#include "coco_property.hpp"
-#include "coco_type.hpp"
+#include "coco_core.hpp"
 #include <stdexcept>
 #include <algorithm>
 
@@ -34,7 +33,7 @@ namespace coco
         if (is_static)
             deftemplate = "(deftemplate " + tp.get_name() + "_has_" + get_name();
         else
-            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name();
+            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name() + " (timestamp (type INTEGER))";
         deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type INTEGER)";
         if (default_value.has_value())
             deftemplate += " (default " + std::to_string(default_value.value()) + ")";
@@ -83,7 +82,7 @@ namespace coco
         if (is_static)
             deftemplate = "(deftemplate " + tp.get_name() + "_has_" + get_name();
         else
-            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name();
+            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name() + " (timestamp (type INTEGER))";
         deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type FLOAT)";
         if (default_value.has_value())
             deftemplate += " (default " + std::to_string(default_value.value()) + ")";
@@ -122,7 +121,7 @@ namespace coco
         if (is_static)
             deftemplate = "(deftemplate " + tp.get_name() + "_has_" + get_name();
         else
-            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name();
+            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name() + " (timestamp (type INTEGER))";
         deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type STRING)";
         if (default_value.has_value())
             deftemplate += " (default \"" + default_value.value() + "\")";
@@ -147,7 +146,7 @@ namespace coco
         if (is_static)
             deftemplate = "(deftemplate " + tp.get_name() + "_has_" + get_name();
         else
-            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name();
+            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name() + " (timestamp (type INTEGER))";
         deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type SYMBOL))";
         if (default_value.has_value())
             deftemplate += " (default " + default_value.value() + ")";
@@ -155,6 +154,32 @@ namespace coco
         return deftemplate;
     }
     void symbol_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }
+
+    item_property::item_property(const std::string &name, const std::string &description, const type &tp, std::optional<std::string> default_value) noexcept : property(name, description), tp(tp), default_value(default_value) {}
+    bool item_property::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::string; }
+    json::json item_property::to_json() const noexcept
+    {
+        json::json j = property::to_json();
+        j["type"] = "item";
+        j["item_type"] = tp.get_id();
+        if (default_value.has_value())
+            j["default"] = default_value.value();
+        return j;
+    }
+    std::string item_property::to_deftemplate(const type &tp, bool is_static) const noexcept
+    {
+        std::string deftemplate;
+        if (is_static)
+            deftemplate = "(deftemplate " + tp.get_name() + "_has_" + get_name();
+        else
+            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name() + " (timestamp (type INTEGER))";
+        deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type SYMBOL))";
+        if (default_value.has_value())
+            deftemplate += " (default " + default_value.value() + ")";
+        deftemplate += ")";
+        return deftemplate;
+    }
+    void item_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }
 
     json_property::json_property(const std::string &name, const std::string &description, json::json &&schema, std::optional<json::json> default_value) noexcept : property(name, description), schema(std::move(schema)), default_value(default_value) {}
     bool json_property::validate(const json::json &j, const json::json &schema_refs) const noexcept { return j.get_type() == json::json_type::object && json::validate(j, schema, schema_refs); }
@@ -173,7 +198,7 @@ namespace coco
         if (is_static)
             deftemplate = "(deftemplate " + tp.get_name() + "_has_" + get_name();
         else
-            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name();
+            deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name() + " (timestamp (type INTEGER))";
         deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type STRING)";
         if (default_value.has_value())
             deftemplate += " (default \"" + default_value.value().dump() + "\")";
@@ -182,7 +207,7 @@ namespace coco
     }
     void json_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, get_name().c_str(), value.dump().c_str()); }
 
-    std::unique_ptr<property> make_property(const json::json &j)
+    std::unique_ptr<property> make_property(coco_core &cc, const json::json &j)
     {
         if (j["type"] == "integer")
         {
@@ -223,6 +248,13 @@ namespace coco
             if (j.contains("default"))
                 default_value = j["default"];
             return std::make_unique<symbol_property>(j["name"], j["description"]);
+        }
+        if (j["type"] == "item")
+        {
+            std::optional<std::string> default_value;
+            if (j.contains("default"))
+                default_value = j["default"];
+            return std::make_unique<item_property>(j["name"], j["description"], cc.get_type(j["item_type"]), default_value);
         }
         if (j["type"] == "json")
         {

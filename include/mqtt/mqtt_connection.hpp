@@ -31,7 +31,7 @@ namespace coco
     void on_message(mqtt::const_message_ptr msg);
 
   private:
-    coco_core &core;
+    coco_core &cc;
     mqtt::async_client client;
     mqtt::connect_options conn_opts;
   };

@@ -4,7 +4,7 @@
 
 namespace coco
 {
-    mqtt_connection::mqtt_connection(coco_core &core, const std::string &mqtt_uri, const std::string &client_id) : core(core), client(mqtt_uri, client_id)
+    mqtt_connection::mqtt_connection(coco_core &core, const std::string &mqtt_uri, const std::string &client_id) : cc(core), client(mqtt_uri, client_id)
     {
         conn_opts.set_keep_alive_interval(20);
         conn_opts.set_clean_session(true);
@@ -45,7 +45,7 @@ namespace coco
         }
 
         LOG_INFO("Connected to MQTT broker");
-        for (const auto &itm : core.get_items())
+        for (const auto &itm : cc.get_items())
             if (!itm.get().get_type().get_dynamic_properties().empty())
             {
                 LOG_DEBUG("Subscribing to " << itm.get().get_id());
@@ -76,7 +76,7 @@ namespace coco
         { // data message
             std::string itm_id = topic.substr(strlen(COCO_NAME "/commands/items/"));
             itm_id = itm_id.substr(0, itm_id.find("/data"));
-            core.add_data(core.get_item(itm_id), json::load(msg->to_string()));
+            cc.add_data(cc.get_item(itm_id), json::load(msg->to_string()));
         }
         else if (topic == COCO_NAME "/commands/create_type")
         { // create type
@@ -84,25 +84,25 @@ namespace coco
             std::vector<std::reference_wrapper<const type>> parents;
             if (j.contains("parents"))
                 for (const auto &p : j["parents"].as_array())
-                    parents.push_back(core.get_type(p));
+                    parents.push_back(cc.get_type(p));
             std::vector<std::unique_ptr<property>> static_properties;
             if (j.contains("properties"))
                 for (const auto &p : j["properties"].as_array())
-                    static_properties.push_back(make_property(p));
+                    static_properties.push_back(make_property(cc, p));
             std::vector<std::unique_ptr<property>> dynamic_properties;
             if (j.contains("dynamic_properties"))
                 for (const auto &p : j["dynamic_properties"].as_array())
-                    dynamic_properties.push_back(make_property(p));
-            core.create_type(j["name"], j["description"], std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+                    dynamic_properties.push_back(make_property(cc, p));
+            cc.create_type(j["name"], j["description"], std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         }
         else if (topic == COCO_NAME "/commands/delete_type") // delete type
-            core.delete_type(msg->to_string());
+            cc.delete_type(msg->to_string());
         else if (topic == COCO_NAME "/commands/create_item")
         { // create item
             json::json j = json::load(msg->to_string());
-            core.create_item(core.get_type(j["type"]), j["name"], j["properties"]);
+            cc.create_item(cc.get_type(j["type"]), j["name"], j["properties"]);
         }
         else if (topic == COCO_NAME "/commands/delete_item") // delete item
-            core.delete_item(msg->to_string());
+            cc.delete_item(msg->to_string());
     }
 } // namespace coco

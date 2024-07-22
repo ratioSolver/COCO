@@ -1,6 +1,3 @@
 [submodule "extern/plexa"]
 	path = extern/plexa
 	url = https://github.com/ratioSolver/PlExA
-[submodule "extern/onto"]
-	path = extern/onto
-	url = https://github.com/ratioSolver/onto

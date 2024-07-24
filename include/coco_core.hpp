@@ -364,12 +364,11 @@ namespace coco
   }
 
   const json::json taxonomy_message{
-      {"types_message",
+      {"taxonomy_message",
        {"payload",
         {{"type", "object"},
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"taxonomy"}}}},
-           {"properties", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_parameter"}}}}},
            {"types", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}};
   const json::json reactive_rules_message{
       {"reactive_rules_message",
@@ -377,14 +376,14 @@ namespace coco
         {{"type", "object"},
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"reactive_rules"}}}},
-           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/rule"}}}}}}}}}}};
+           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}};
   const json::json deliberative_rules_message{
       {"deliberative_rules_message",
        {"payload",
         {{"type", "object"},
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"deliberative_rules"}}}},
-           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/rule"}}}}}}}}}}};
+           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}};
   const json::json solvers_message{
       {"solvers_message",
        {"payload",

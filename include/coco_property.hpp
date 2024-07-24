@@ -376,7 +376,7 @@ namespace coco
 
   const json::json property_schema{{"property",
                                     {{"oneOf", std::vector<json::json>{
-                                                   {"$ref", "#/components/schemas/int_property"},
+                                                   {"$ref", "#/components/schemas/integer_property"},
                                                    {"$ref", "#/components/schemas/float_property"},
                                                    {"$ref", "#/components/schemas/string_property"},
                                                    {"$ref", "#/components/schemas/symbol_property"},

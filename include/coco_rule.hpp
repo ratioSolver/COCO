@@ -101,12 +101,12 @@ namespace coco
     return j;
   }
 
-  const json::json coco_rule_schema{"coco_rule",
-                                    {{"type", "object"},
-                                     {"properties",
-                                      {{"id", {{"type", "string"}, {"format", "uuid"}}},
-                                       {"name", {{"type", "string"}}},
-                                       {"content", {{"type", "string"}}}},
+  const json::json coco_rule_schema{{"coco_rule",
+                                     {{"type", "object"},
+                                      {"properties",
+                                       {{"id", {{"type", "string"}, {"format", "uuid"}}},
+                                        {"name", {{"type", "string"}}},
+                                        {"content", {{"type", "string"}}}}},
                                       {"required", {"id", "name", "content"}}}}};
 
   const json::json reactive_rules_path{"/reactive_rules",

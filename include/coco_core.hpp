@@ -394,6 +394,5 @@ namespace coco
   const json::json error_schema{"error",
                                 {{"type", "object"},
                                  {"properties",
-                                  {{"code", {{"type", "integer"}}},
-                                   {"message", {{"type", "string"}}}}}}};
+                                  {{"message", {{"type", "string"}}}}}}};
 } // namespace coco

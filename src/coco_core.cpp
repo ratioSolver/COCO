@@ -60,16 +60,16 @@ namespace coco
         return db->get_item(id);
     }
 
-    item &coco_core::create_item(const type &tp, const std::string &name, const json::json &pars)
+    item &coco_core::create_item(const type &tp, const std::string &name, const json::json &props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &[p_name, p] : tp.get_static_properties())
-            if (!pars.contains(p_name))
-                LOG_WARN("Parameters for type " + tp.get_id() + " do not contain " + p_name);
-            else if (!p->validate(pars[p_name], schemas))
-                LOG_WARN("Parameter " + p_name + " for type " + tp.get_id() + " is invalid");
+            if (!props.contains(p_name))
+                LOG_WARN("Properties for new item " + name + " do not contain " + p_name + " from type " + tp.get_name());
+            else if (!p->validate(props[p_name], schemas))
+                LOG_WARN("Property " + p_name + " for type " + tp.get_name() + " is invalid");
 
-        auto &s = db->create_item(*this, tp, name, pars);
+        auto &s = db->create_item(*this, tp, name, props);
         new_item(s);
         return s;
     }

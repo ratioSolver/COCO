@@ -28,7 +28,7 @@ namespace coco
      * @param static_properties The static properties of the type.
      * @param dynamic_properties The dynamic properties of the type.
      */
-    type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept;
+    type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {}) noexcept;
     ~type() noexcept;
 
     /**

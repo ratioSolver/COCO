@@ -50,7 +50,7 @@ namespace coco
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
-            coco_db::create_type(cc, id, name, description, {}, {}, {});
+            coco_db::create_type(cc, id, name, description);
             types.push_back(bsoncxx::document::value{doc});
         }
         for (const auto &doc : types)

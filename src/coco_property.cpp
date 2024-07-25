@@ -187,7 +187,7 @@ namespace coco
     {
         json::json j = property::to_json();
         j["type"] = "item";
-        j["item_type"] = tp.get_id();
+        j["type_id"] = tp.get_id();
         j["multiple"] = multiple;
         if (!values.empty())
         {
@@ -322,7 +322,7 @@ namespace coco
             bool multiple = false;
             if (j.contains("multiple"))
                 multiple = j["multiple"];
-            return std::make_unique<item_property>(name, description, cc.get_type(j["item_type"]), default_value, values, multiple);
+            return std::make_unique<item_property>(name, description, cc.get_type(j["type_id"]), default_value, values, multiple);
         }
         if (j["type"] == "json")
         {

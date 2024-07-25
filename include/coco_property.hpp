@@ -401,7 +401,7 @@ namespace coco
                                                {"description", {{"type", "string"}}},
                                                {"min", {{"type", "integer"}}},
                                                {"max", {{"type", "integer"}}}}},
-                                             {"required", std::vector<json::json>{"type", "name"}}}}};
+                                             {"required", std::vector<json::json>{"type"}}}}};
   const json::json float_property_schema{{"float_property",
                                           {{"type", "object"},
                                            {"properties",
@@ -409,13 +409,13 @@ namespace coco
                                              {"description", {{"type", "string"}}},
                                              {"min", {{"type", "number"}}},
                                              {"max", {{"type", "number"}}}}},
-                                           {"required", std::vector<json::json>{"type", "name"}}}}};
+                                           {"required", std::vector<json::json>{"type"}}}}};
   const json::json string_property_schema{{"string_property",
                                            {{"type", "object"},
                                             {"properties",
                                              {{"type", {{"type", "string"}, {"enum", {"string"}}}},
                                               {"description", {{"type", "string"}}}}},
-                                            {"required", std::vector<json::json>{"type", "name"}}}}};
+                                            {"required", std::vector<json::json>{"type"}}}}};
   const json::json symbol_property_schema{{"symbol_property",
                                            {{"type", "object"},
                                             {"properties",
@@ -424,21 +424,22 @@ namespace coco
                                               {"multiple", {{"type", "boolean"}}},
                                               {"values", {{"type", "array", "items", {{"type", "string"}}}}},
                                               {"default", {{"type", "array", "items", {{"type", "string"}}}}}}},
-                                            {"required", std::vector<json::json>{"type", "name"}}}}};
+                                            {"required", std::vector<json::json>{"type"}}}}};
   const json::json item_property_schema{{"item_property",
                                          {{"type", "object"},
                                           {"properties",
                                            {{"type", {{"type", "string"}, {"enum", {"item"}}}},
                                             {"description", {{"type", "string"}}},
+                                            {"type_id", {{"type", "string"}, {"format", "uuid"}}},
                                             {"multiple", {{"type", "boolean"}}},
                                             {"values", {{"type", "array", "items", {{"type", "string"}}}}},
                                             {"default", {{"type", "array", "items", {{"type", "string"}}}}}}},
-                                          {"required", std::vector<json::json>{"type", "name", "item_type"}}}}};
+                                          {"required", std::vector<json::json>{"type", "type_id"}}}}};
   const json::json json_property_schema{{"json_property",
                                          {{"type", "object"},
                                           {"properties",
                                            {{"type", {{"type", "string"}, {"enum", {"json"}}}},
                                             {"description", {{"type", "string"}}},
                                             {"schema", {{"type", "object"}}}}},
-                                          {"required", std::vector<json::json>{"type", "name", "schema"}}}}};
+                                          {"required", std::vector<json::json>{"type", "schema"}}}}};
 } // namespace coco

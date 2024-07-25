@@ -351,7 +351,7 @@ namespace coco
     virtual rule &create_deliberative_rule(coco_core &cc, const std::string &name, const std::string &content) = 0;
 
   protected:
-    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
+    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {})
     {
       if (types.find(id) != types.end())
         throw std::invalid_argument("Type already exists: " + id);

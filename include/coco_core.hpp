@@ -58,14 +58,93 @@ namespace coco
     type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties);
 
     /**
+     * @brief Sets the name of the type.
+     *
+     * This function sets the name of the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param name The name of the type.
+     */
+    void set_type_name(type &tp, const std::string &name);
+
+    /**
+     * @brief Sets the description of the type.
+     *
+     * This function sets the description of the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param description The description of the type.
+     */
+    void set_type_description(type &tp, const std::string &description);
+
+    /**
+     * @brief Adds a parent to the type.
+     *
+     * This function adds a parent to the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param parent The parent to add.
+     */
+    void add_parent(type &tp, const type &parent);
+
+    /**
+     * @brief Removes a parent from the type.
+     *
+     * This function removes a parent from the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param parent The parent to remove.
+     */
+    void remove_parent(type &tp, const type &parent);
+
+    /**
+     * @brief Adds a static property to the type.
+     *
+     * This function adds a static property to the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param prop The property to add.
+     */
+    void add_static_property(type &tp, std::unique_ptr<property> &&prop);
+
+    /**
+     * @brief Removes a static property from the type.
+     *
+     * This function removes a static property from the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param prop The property to remove.
+     */
+    void remove_static_property(type &tp, const property &prop);
+
+    /**
+     * @brief Adds a dynamic property to the type.
+     *
+     * This function adds a dynamic property to the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param prop The property to add.
+     */
+    void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop);
+
+    /**
+     * @brief Removes a dynamic property from the type.
+     *
+     * This function removes a dynamic property from the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param prop The property to remove.
+     */
+    void remove_dynamic_property(type &tp, const property &prop);
+
+    /**
      * @brief Deletes the type with the specified ID.
      *
      * This function deletes the type with the specified ID.
      *
-     * @param id The ID of the type.
-     * @throws std::invalid_argument if the type does not exist.
+     * @param tp The type to delete.
      */
-    void delete_type(const std::string &id);
+    void delete_type(const type &tp);
 
     /**
      * Retrieves a vector of references to the items in the database.
@@ -102,10 +181,9 @@ namespace coco
      *
      * This function deletes the item with the specified ID.
      *
-     * @param id The ID of the item.
-     * @throws std::invalid_argument if the item does not exist.
+     * @param itm The item to delete.
      */
-    void delete_item(const std::string &id);
+    void delete_item(const item &itm);
 
     /**
      * @brief Adds data to the item.

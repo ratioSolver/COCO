@@ -82,6 +82,8 @@ namespace coco
     const std::map<std::string, std::unique_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
 
   private:
+    void set_name(const std::string &name) noexcept;
+    void set_description(const std::string &description) noexcept;
     void add_parent(const type &parent) noexcept;
     void remove_parent(const type &parent) noexcept;
     void add_static_property(std::unique_ptr<property> &&prop) noexcept;
@@ -177,7 +179,11 @@ namespace coco
                                     {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
                                     {"responses",
                                      {{"200",
-                                       {{"description", "Successful response"}}},
+                                       {{"description", "Successful response"},
+                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+                                      {"400",
+                                       {{"description", "Invalid parameters"},
+                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
                                       {"404",
                                        {{"description", "Type not found"},
                                         {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
@@ -192,6 +198,9 @@ namespace coco
                                     {"responses",
                                      {{"204",
                                        {{"description", "Successful response with the deleted type"}}},
+                                      {"400",
+                                       {{"description", "Invalid parameters"},
+                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
                                       {"404",
                                        {{"description", "Type not found"},
                                         {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}};

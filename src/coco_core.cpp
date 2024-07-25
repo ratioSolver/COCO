@@ -42,10 +42,73 @@ namespace coco
         return st;
     }
 
-    void coco_core::delete_type(const std::string &id)
+    void coco_core::set_type_name(type &tp, const std::string &name)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db->delete_type(db->get_type(id));
+        db->set_type_name(tp, name);
+        Run(env, -1);
+        updated_type(tp);
+    }
+
+    void coco_core::set_type_description(type &tp, const std::string &description)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->set_type_description(tp, description);
+        Run(env, -1);
+        updated_type(tp);
+    }
+
+    void coco_core::add_parent(type &tp, const type &parent)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->add_parent(tp, parent);
+        Run(env, -1);
+        updated_type(tp);
+    }
+
+    void coco_core::remove_parent(type &tp, const type &parent)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->remove_parent(tp, parent);
+        Run(env, -1);
+        updated_type(tp);
+    }
+
+    void coco_core::add_static_property(type &tp, std::unique_ptr<property> &&prop)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->add_static_property(tp, std::move(prop));
+        Run(env, -1);
+        updated_type(tp);
+    }
+
+    void coco_core::remove_static_property(type &tp, const property &prop)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->remove_static_property(tp, prop);
+        updated_type(tp);
+    }
+
+    void coco_core::add_dynamic_property(type &tp, std::unique_ptr<property> &&prop)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->add_dynamic_property(tp, std::move(prop));
+        Run(env, -1);
+        updated_type(tp);
+    }
+
+    void coco_core::remove_dynamic_property(type &tp, const property &prop)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->remove_dynamic_property(tp, prop);
+        updated_type(tp);
+    }
+
+    void coco_core::delete_type(const type &tp)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->delete_type(tp);
+        deleted_type(tp.get_id());
     }
 
     std::vector<std::reference_wrapper<item>> coco_core::get_items()
@@ -74,10 +137,11 @@ namespace coco
         return s;
     }
 
-    void coco_core::delete_item(const std::string &id)
+    void coco_core::delete_item(const item &itm)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db->delete_item(db->get_item(id));
+        db->delete_item(itm);
+        deleted_item(itm.get_id());
     }
 
     void coco_core::add_data(const item &s, const json::json &data)

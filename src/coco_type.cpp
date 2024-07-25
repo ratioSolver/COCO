@@ -26,6 +26,24 @@ namespace coco
         Retract(type_fact);
     }
 
+    void type::set_name(const std::string &name) noexcept
+    {
+        this->name = name;
+        FactModifier *type_fm = CreateFactModifier(cc.env, type_fact);
+        FMPutSlotString(type_fm, "name", name.c_str());
+        type_fact = FMModify(type_fm);
+        FMDispose(type_fm);
+    }
+
+    void type::set_description(const std::string &description) noexcept
+    {
+        this->description = description;
+        FactModifier *type_fm = CreateFactModifier(cc.env, type_fact);
+        FMPutSlotString(type_fm, "description", description.c_str());
+        type_fact = FMModify(type_fm);
+        FMDispose(type_fm);
+    }
+
     void type::add_parent(const type &parent) noexcept
     {
         FactBuilder *is_a_fact_builder = CreateFactBuilder(cc.env, "is_a");

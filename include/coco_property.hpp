@@ -75,6 +75,8 @@ namespace coco
      */
     virtual json::json to_json() const noexcept;
 
+    std::string to_deftemplate_name(const type &tp, bool is_static) const noexcept;
+
     friend json::json to_json(const property &p) noexcept;
 
   private:
@@ -229,11 +231,11 @@ namespace coco
      *
      * @param name The name of the symbol property.
      * @param description The description of the symbol property.
-     * @param multiple Indicates whether the property can have multiple values.
-     * @param values The possible values for the property.
      * @param default_value The default value for the property.
+     * @param values The possible values for the property.
+     * @param multiple Indicates whether the property can have multiple values.
      */
-    symbol_property(const std::string &name, const std::string &description, bool multiple = false, std::vector<std::string> values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
+    symbol_property(const std::string &name, const std::string &description, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
 
     /**
      * @brief Validates the symbol property against the given JSON data and schema references.
@@ -256,9 +258,9 @@ namespace coco
     json::json to_json() const noexcept override;
 
   private:
-    bool multiple;                                         // Indicates whether the property can have multiple values.
-    std::vector<std::string> values;                       // The possible values for the property.
     std::optional<std::vector<std::string>> default_value; // The default value for the property.
+    std::vector<std::string> values;                       // The possible values for the property.
+    bool multiple;                                         // Indicates whether the property can have multiple values.
   };
 
   /**
@@ -275,11 +277,11 @@ namespace coco
      * @param name The name of the property.
      * @param description The description of the property.
      * @param tp The type of the property.
-     * @param multiple Indicates whether the property can have multiple values.
-     * @param values The possible values for the property.
      * @param default_value The default value of the property (optional).
+     * @param values The possible values for the property.
+     * @param multiple Indicates whether the property can have multiple values.
      */
-    item_property(const std::string &name, const std::string &description, const type &tp, bool multiple = false, std::vector<std::string> values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
+    item_property(const std::string &name, const std::string &description, const type &tp, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
 
     /**
      * @brief Validates the property value against the given JSON and schema references.
@@ -317,9 +319,9 @@ namespace coco
 
   private:
     const type &tp;                                        // The type of the property.
-    bool multiple;                                         // Indicates whether the property can have multiple values.
-    std::vector<std::string> values;                       // The possible values for the property.
     std::optional<std::vector<std::string>> default_value; // The default value for the property.
+    std::vector<std::string> values;                       // The possible values for the property.
+    bool multiple;                                         // Indicates whether the property can have multiple values.
   };
 
   /**
@@ -378,10 +380,11 @@ namespace coco
    * This function takes a JSON object as input and creates a property object based on its contents.
    *
    * @param cc The CoCo core object.
+   * @param name The name of the property.
    * @param j The JSON object containing the property data.
    * @return A unique pointer to the created property object.
    */
-  std::unique_ptr<property> make_property(coco_core &cc, const json::json &j);
+  std::unique_ptr<property> make_property(coco_core &cc, const std::string &name, const json::json &j);
 
   const json::json property_schema{{"property",
                                     {{"oneOf", std::vector<json::json>{

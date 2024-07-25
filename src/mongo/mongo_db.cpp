@@ -44,35 +44,37 @@ namespace coco
     {
         coco_db::init(cc);
         LOG_DEBUG("Retrieving all types from MongoDB");
-        std::map<type *, std::vector<std::string>> parents;
+        std::vector<bsoncxx::document::value> types;
         for (const auto &doc : types_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
+            coco_db::create_type(cc, id, name, description, {}, {}, {});
+            types.push_back(bsoncxx::document::value{doc});
+        }
+        for (const auto &doc : types)
+        {
+            const auto id = doc["_id"].get_oid().value.to_string();
+            auto &tp = get_type(id);
+
             if (doc.find("parents") != doc.end())
                 for (const auto &p : doc["parents"].get_array().value)
-                    parents[&get_type(p.get_oid().value.to_string())].push_back(id);
-            std::vector<std::unique_ptr<property>> static_properties;
+                    add_parent(tp, get_type(p.get_oid().value.to_string()));
             if (doc.find("static_properties") != doc.end())
-                for (const auto &p : doc["static_properties"].get_array().value)
+                for (const auto &p : doc["static_properties"].get_document().value)
                 {
-                    auto prop = make_property(cc, json::load(bsoncxx::to_json(p.get_document().view())));
-                    static_properties.emplace_back(std::move(prop));
+                    auto prop = make_property(cc, p.key().to_string(), json::load(bsoncxx::to_json(p.get_document().value)));
+                    add_static_property(tp, std::move(prop));
                 }
-            std::vector<std::unique_ptr<property>> dynamic_properties;
             if (doc.find("dynamic_properties") != doc.end())
-                for (const auto &p : doc["dynamic_properties"].get_array().value)
+                for (const auto &p : doc["dynamic_properties"].get_document().value)
                 {
-                    auto prop = make_property(cc, json::load(bsoncxx::to_json(p.get_document().view())));
-                    dynamic_properties.emplace_back(std::move(prop));
+                    auto prop = make_property(cc, p.key().to_string(), json::load(bsoncxx::to_json(p.get_document().value)));
+                    add_dynamic_property(tp, std::move(prop));
                 }
-            coco_db::create_type(cc, id, name, description, {}, std::move(static_properties), std::move(dynamic_properties));
         }
-        for (const auto &[tp, p] : parents)
-            for (const auto &id : p)
-                add_parent(*tp, get_type(id));
-        LOG_DEBUG("Retrieved " << get_types().size() << " types");
+        LOG_DEBUG("Retrieved " << types.size() << " types");
 
         LOG_DEBUG("Retrieving all items from MongoDB");
         for (const auto &doc : items_collection.find({}))
@@ -120,16 +122,16 @@ namespace coco
         }
         if (!static_properties.empty())
         {
-            auto static_props = bsoncxx::builder::basic::array{};
+            auto static_props = bsoncxx::builder::basic::document{};
             for (const auto &p : static_properties)
-                static_props.append(bsoncxx::from_json(to_json(*p).dump()));
+                static_props.append(bsoncxx::builder::basic::kvp(p->get_name(), bsoncxx::from_json(to_json(*p).dump())));
             doc.append(bsoncxx::builder::basic::kvp("static_properties", static_props));
         }
         if (!dynamic_properties.empty())
         {
-            auto dynamic_props = bsoncxx::builder::basic::array{};
+            auto dynamic_props = bsoncxx::builder::basic::document{};
             for (const auto &p : dynamic_properties)
-                dynamic_props.append(bsoncxx::from_json(to_json(*p).dump()));
+                dynamic_props.append(bsoncxx::builder::basic::kvp(p->get_name(), bsoncxx::from_json(to_json(*p).dump())));
             doc.append(bsoncxx::builder::basic::kvp("dynamic_properties", dynamic_props));
         }
         auto result = types_collection.insert_one(doc.view());
@@ -159,7 +161,7 @@ namespace coco
     void mongo_db::add_static_property(type &tp, std::unique_ptr<property> &&prop)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_properties", bsoncxx::from_json(to_json(*prop).dump())))));
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_properties." + prop->get_name(), bsoncxx::from_json(to_json(*prop).dump())))));
         auto result = types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{tp.get_id()})), doc.view());
         if (!result)
             throw std::invalid_argument("Failed to add static property: " + prop->get_name());
@@ -168,7 +170,7 @@ namespace coco
     void mongo_db::remove_static_property(type &tp, const property &prop)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_properties", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("name", prop.get_name()))))));
+        doc.append(bsoncxx::builder::basic::kvp("$unset", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("static_properties." + prop.get_name(), ""))));
         auto result = types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{tp.get_id()})), doc.view());
         if (!result)
             throw std::invalid_argument("Failed to remove static property: " + prop.get_name());
@@ -177,7 +179,7 @@ namespace coco
     void mongo_db::add_dynamic_property(type &tp, std::unique_ptr<property> &&prop)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$push", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("dynamic_properties", bsoncxx::from_json(to_json(*prop).dump())))));
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("dynamic_properties." + prop->get_name(), bsoncxx::from_json(to_json(*prop).dump())))));
         auto result = types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{tp.get_id()})), doc.view());
         if (!result)
             throw std::invalid_argument("Failed to add dynamic property: " + prop->get_name());
@@ -186,7 +188,7 @@ namespace coco
     void mongo_db::remove_dynamic_property(type &tp, const property &prop)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("dynamic_properties", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("name", prop.get_name()))))));
+        doc.append(bsoncxx::builder::basic::kvp("$unset", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("dynamic_properties." + prop.get_name(), ""))));
         auto result = types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{tp.get_id()})), doc.view());
         if (!result)
             throw std::invalid_argument("Failed to remove dynamic property: " + prop.get_name());

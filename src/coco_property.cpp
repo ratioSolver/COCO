@@ -1,6 +1,7 @@
 #include "coco_core.hpp"
 #include <stdexcept>
 #include <algorithm>
+#include <cassert>
 
 namespace coco
 {
@@ -130,14 +131,32 @@ namespace coco
     }
     void string_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }
 
-    symbol_property::symbol_property(const std::string &name, const std::string &description, std::optional<std::string> default_value) noexcept : property(name, description), default_value(default_value) {}
+    symbol_property::symbol_property(const std::string &name, const std::string &description, bool multiple, std::vector<std::string> values, std::optional<std::vector<std::string>> default_value) noexcept : property(name, description), multiple(multiple), values(std::move(values)), default_value(default_value)
+    {
+        assert(!default_value.has_value() || std::all_of(default_value.value().begin(), default_value.value().end(), [this](const std::string &val)
+                                                         { return std::find(this->values.begin(), this->values.end(), val) != this->values.end(); }));
+        assert(!default_value.has_value() || !multiple || default_value.value().size() <= 1);
+    }
     bool symbol_property::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::string; }
     json::json symbol_property::to_json() const noexcept
     {
         json::json j = property::to_json();
         j["type"] = "symbol";
+        j["multiple"] = multiple;
+        if (!values.empty())
+        {
+            auto j_vals = json::json(json::json_type::array);
+            for (const auto &val : values)
+                j_vals.push_back(val);
+            j["values"] = j_vals;
+        }
         if (default_value.has_value())
-            j["default"] = default_value.value();
+        {
+            auto j_def_vals = json::json(json::json_type::array);
+            for (const auto &val : default_value.value())
+                j_def_vals.push_back(val);
+            j["default"] = j_def_vals;
+        }
         return j;
     }
     std::string symbol_property::to_deftemplate(const type &tp, bool is_static) const noexcept
@@ -147,23 +166,51 @@ namespace coco
             deftemplate = "(deftemplate " + tp.get_name() + "_has_" + get_name();
         else
             deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name() + " (timestamp (type INTEGER))";
-        deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type SYMBOL))";
+        deftemplate += " (slot item_id (type SYMBOL)) (";
+        if (multiple)
+            deftemplate += "multislot";
+        else
+            deftemplate += "slot";
+        deftemplate += " " + get_name() + " (type SYMBOL)";
         if (default_value.has_value())
-            deftemplate += " (default " + default_value.value() + ")";
+        {
+            deftemplate += " (default";
+            for (const auto &val : default_value.value())
+                deftemplate += " " + val;
+            deftemplate += ")";
+        }
         deftemplate += ")";
         return deftemplate;
     }
     void symbol_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }
 
-    item_property::item_property(const std::string &name, const std::string &description, const type &tp, std::optional<std::string> default_value) noexcept : property(name, description), tp(tp), default_value(default_value) {}
+    item_property::item_property(const std::string &name, const std::string &description, const type &tp, bool multiple, std::vector<std::string> values, std::optional<std::vector<std::string>> default_value) noexcept : property(name, description), tp(tp), multiple(multiple), values(std::move(values)), default_value(default_value)
+    {
+        assert(!default_value.has_value() || std::all_of(default_value.value().begin(), default_value.value().end(), [this](const std::string &val)
+                                                         { return std::find(this->values.begin(), this->values.end(), val) != this->values.end(); }));
+        assert(!default_value.has_value() || !multiple || default_value.value().size() <= 1);
+    }
     bool item_property::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::string; }
     json::json item_property::to_json() const noexcept
     {
         json::json j = property::to_json();
         j["type"] = "item";
         j["item_type"] = tp.get_id();
+        j["multiple"] = multiple;
+        if (!values.empty())
+        {
+            auto j_vals = json::json(json::json_type::array);
+            for (const auto &val : values)
+                j_vals.push_back(val);
+            j["values"] = j_vals;
+        }
         if (default_value.has_value())
-            j["default"] = default_value.value();
+        {
+            auto j_def_vals = json::json(json::json_type::array);
+            for (const auto &val : default_value.value())
+                j_def_vals.push_back(val);
+            j["default"] = j_def_vals;
+        }
         return j;
     }
     std::string item_property::to_deftemplate(const type &tp, bool is_static) const noexcept
@@ -173,9 +220,19 @@ namespace coco
             deftemplate = "(deftemplate " + tp.get_name() + "_has_" + get_name();
         else
             deftemplate = "(deftemplate " + tp.get_name() + "_" + get_name() + " (timestamp (type INTEGER))";
-        deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type SYMBOL))";
+        deftemplate += " (slot item_id (type SYMBOL)) (";
+        if (multiple)
+            deftemplate += "multislot";
+        else
+            deftemplate += "slot";
+        deftemplate += " " + get_name() + " (type SYMBOL)";
         if (default_value.has_value())
-            deftemplate += " (default " + default_value.value() + ")";
+        {
+            deftemplate += " (default";
+            for (const auto &val : default_value.value())
+                deftemplate += " " + val;
+            deftemplate += ")";
+        }
         deftemplate += ")";
         return deftemplate;
     }
@@ -247,14 +304,42 @@ namespace coco
             std::optional<std::string> default_value;
             if (j.contains("default"))
                 default_value = j["default"];
-            return std::make_unique<symbol_property>(j["name"], j["description"]);
+            bool multiple = false;
+            if (j.contains("multiple"))
+                multiple = j["multiple"];
+            std::vector<std::string> values;
+            if (j.contains("values"))
+                for (const auto &val : j["values"].as_array())
+                    values.push_back(val);
+            std::optional<std::vector<std::string>> default_values;
+            if (j.contains("default"))
+            {
+                default_values = std::vector<std::string>();
+                for (const auto &val : j["default"].as_array())
+                    default_values.value().push_back(val);
+            }
+            return std::make_unique<symbol_property>(j["name"], j["description"], multiple, values, default_values);
         }
         if (j["type"] == "item")
         {
             std::optional<std::string> default_value;
             if (j.contains("default"))
                 default_value = j["default"];
-            return std::make_unique<item_property>(j["name"], j["description"], cc.get_type(j["item_type"]), default_value);
+            bool multiple = false;
+            if (j.contains("multiple"))
+                multiple = j["multiple"];
+            std::vector<std::string> values;
+            if (j.contains("values"))
+                for (const auto &val : j["values"].as_array())
+                    values.push_back(val);
+            std::optional<std::vector<std::string>> default_values;
+            if (j.contains("default"))
+            {
+                default_values = std::vector<std::string>();
+                for (const auto &val : j["default"].as_array())
+                    default_values.value().push_back(val);
+            }
+            return std::make_unique<item_property>(j["name"], j["description"], cc.get_type(j["item_type"]), multiple, values, default_values);
         }
         if (j["type"] == "json")
         {

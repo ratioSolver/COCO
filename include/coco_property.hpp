@@ -229,8 +229,11 @@ namespace coco
      *
      * @param name The name of the symbol property.
      * @param description The description of the symbol property.
+     * @param multiple Indicates whether the property can have multiple values.
+     * @param values The possible values for the property.
+     * @param default_value The default value for the property.
      */
-    symbol_property(const std::string &name, const std::string &description, std::optional<std::string> default_value = std::nullopt) noexcept;
+    symbol_property(const std::string &name, const std::string &description, bool multiple = false, std::vector<std::string> values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
 
     /**
      * @brief Validates the symbol property against the given JSON data and schema references.
@@ -253,7 +256,9 @@ namespace coco
     json::json to_json() const noexcept override;
 
   private:
-    std::optional<std::string> default_value; // The default value for the property.
+    bool multiple;                                         // Indicates whether the property can have multiple values.
+    std::vector<std::string> values;                       // The possible values for the property.
+    std::optional<std::vector<std::string>> default_value; // The default value for the property.
   };
 
   /**
@@ -270,9 +275,11 @@ namespace coco
      * @param name The name of the property.
      * @param description The description of the property.
      * @param tp The type of the property.
+     * @param multiple Indicates whether the property can have multiple values.
+     * @param values The possible values for the property.
      * @param default_value The default value of the property (optional).
      */
-    item_property(const std::string &name, const std::string &description, const type &tp, std::optional<std::string> default_value = std::nullopt) noexcept;
+    item_property(const std::string &name, const std::string &description, const type &tp, bool multiple = false, std::vector<std::string> values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
 
     /**
      * @brief Validates the property value against the given JSON and schema references.
@@ -309,8 +316,10 @@ namespace coco
     json::json to_json() const noexcept override;
 
   private:
-    const type &tp;                           // The type of the property.
-    std::optional<std::string> default_value; // The default value for the property.
+    const type &tp;                                        // The type of the property.
+    bool multiple;                                         // Indicates whether the property can have multiple values.
+    std::vector<std::string> values;                       // The possible values for the property.
+    std::optional<std::vector<std::string>> default_value; // The default value for the property.
   };
 
   /**
@@ -386,7 +395,6 @@ namespace coco
                                             {{"type", "object"},
                                              {"properties",
                                               {{"type", {{"type", "string"}, {"enum", {"integer"}}}},
-                                               {"name", {{"type", "string"}}},
                                                {"description", {{"type", "string"}}},
                                                {"min", {{"type", "integer"}}},
                                                {"max", {{"type", "integer"}}}}},
@@ -395,7 +403,6 @@ namespace coco
                                           {{"type", "object"},
                                            {"properties",
                                             {{"type", {{"type", "string"}, {"enum", {"float"}}}},
-                                             {"name", {{"type", "string"}}},
                                              {"description", {{"type", "string"}}},
                                              {"min", {{"type", "number"}}},
                                              {"max", {{"type", "number"}}}}},
@@ -404,29 +411,30 @@ namespace coco
                                            {{"type", "object"},
                                             {"properties",
                                              {{"type", {{"type", "string"}, {"enum", {"string"}}}},
-                                              {"name", {{"type", "string"}}},
                                               {"description", {{"type", "string"}}}}},
                                             {"required", std::vector<json::json>{"type", "name"}}}}};
   const json::json symbol_property_schema{{"symbol_property",
                                            {{"type", "object"},
                                             {"properties",
                                              {{"type", {{"type", "string"}, {"enum", {"symbol"}}}},
-                                              {"name", {{"type", "string"}}},
-                                              {"description", {{"type", "string"}}}}},
+                                              {"description", {{"type", "string"}}},
+                                              {"multiple", {{"type", "boolean"}}},
+                                              {"values", {{"type", "array", "items", {{"type", "string"}}}}},
+                                              {"default", {{"type", "array", "items", {{"type", "string"}}}}}}},
                                             {"required", std::vector<json::json>{"type", "name"}}}}};
   const json::json item_property_schema{{"item_property",
                                          {{"type", "object"},
                                           {"properties",
                                            {{"type", {{"type", "string"}, {"enum", {"item"}}}},
-                                            {"name", {{"type", "string"}}},
                                             {"description", {{"type", "string"}}},
-                                            {"item_type", {{"type", "string"}}}}},
+                                            {"multiple", {{"type", "boolean"}}},
+                                            {"values", {{"type", "array", "items", {{"type", "string"}}}}},
+                                            {"default", {{"type", "array", "items", {{"type", "string"}}}}}}},
                                           {"required", std::vector<json::json>{"type", "name", "item_type"}}}}};
   const json::json json_property_schema{{"json_property",
                                          {{"type", "object"},
                                           {"properties",
                                            {{"type", {{"type", "string"}, {"enum", {"json"}}}},
-                                            {"name", {{"type", "string"}}},
                                             {"description", {{"type", "string"}}},
                                             {"schema", {{"type", "object"}}}}},
                                           {"required", std::vector<json::json>{"type", "name", "schema"}}}}};

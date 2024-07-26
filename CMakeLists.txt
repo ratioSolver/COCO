@@ -9,7 +9,8 @@ find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 
 set(MULTIPLE_EXECUTORS ON CACHE BOOL "Enable multiple executors" FORCE)
-set(ENABLE_API ON CACHE BOOL "Enable API" FORCE)
+set(BUILD_LISTENERS ON CACHE BOOL "Builds CoCo listeners" FORCE)
+set(COMPUTE_NAMES ON CACHE BOOL "Compute CoCo names" FORCE)
 
 set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
 
@@ -20,6 +21,7 @@ set(MONGODB_HOST "localhost" CACHE STRING "The MongoDB Host")
 set(MONGODB_PORT "27017" CACHE STRING "The MongoDB Port")
 
 option(ENABLE_MQTT "Enable MQTT" OFF)
+option(ENABLE_API "CoCo API" OFF)
 
 message(STATUS "CoCo name: ${COCO_NAME}")
 message(STATUS "MongoDB host: ${MONGODB_HOST}")
@@ -28,7 +30,7 @@ message(STATUS "Enable MQTT: ${ENABLE_MQTT}")
 
 add_subdirectory(extern/plexa)
 
-add_library(CoCo src/coco_core.cpp src/coco_db.cpp src/coco_type.cpp src/coco_property.cpp src/coco_item.cpp src/coco_rule.cpp src/coco_executor.cpp src/coco_api.cpp src/mongo/mongo_db.cpp $<$<BOOL:${ENABLE_MQTT}>:${CMAKE_CURRENT_SOURCE_DIR}/src/mqtt/mqtt_connection.cpp>)
+add_library(CoCo src/coco_core.cpp src/coco_db.cpp src/coco_type.cpp src/coco_property.cpp src/coco_item.cpp src/coco_rule.cpp src/coco_executor.cpp src/coco_api.cpp src/mongo/mongo_db.cpp $<$<BOOL:${ENABLE_API}>:${CMAKE_CURRENT_SOURCE_DIR}/src/coco_api.cpp> $<$<BOOL:${ENABLE_MQTT}>:${CMAKE_CURRENT_SOURCE_DIR}/src/mqtt/mqtt_connection.cpp>)
 target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/mongo> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR} ${CLIPS_INCLUDE_DIR} $<$<BOOL:${ENABLE_MQTT}>:${CMAKE_CURRENT_SOURCE_DIR}/include/mqtt>)
 add_dependencies(CoCo PlExA)
 target_link_directories(CoCo PUBLIC ${CLIPS_LIB_DIR})
@@ -47,6 +49,11 @@ if(ENABLE_MQTT)
     target_include_directories(CoCo PUBLIC ${PAHO_MQTT_CPP_INCLUDE_DIR})
     target_link_libraries(CoCo PUBLIC ${PAHO_MQTT_CPP_LIBRARIES})
     target_compile_definitions(CoCo PUBLIC ENABLE_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
+endif()
+
+message(STATUS "CoCo API: ${ENABLE_API}")
+if(ENABLE_API)
+    target_compile_definitions(CoCo PRIVATE ENABLE_API)
 endif()
 
 if(MSVC)

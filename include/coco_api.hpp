@@ -8,6 +8,15 @@ namespace coco
   class coco_core;
   class type;
   class item;
+  class rule;
+
+  /**
+   * Converts a type object to a JSON representation.
+   *
+   * @param t The type object to convert.
+   * @return The JSON representation of the type object.
+   */
+  [[nodiscard]] json::json to_json(const type &t) noexcept;
 
   /**
    * Converts an item object to a JSON object.
@@ -16,6 +25,14 @@ namespace coco
    * @return A JSON object representing the item.
    */
   [[nodiscard]] json::json to_json(const item &s) noexcept;
+
+  /**
+   * @brief Converts a rule object to JSON format.
+   *
+   * @param r The rule object to convert.
+   * @return The JSON representation of the rule.
+   */
+  [[nodiscard]] json::json to_json(const rule &r) noexcept;
 
   /**
    * @brief Creates a JSON message representing the taxonomy.
@@ -151,6 +168,29 @@ namespace coco
    */
   [[nodiscard]] json::json make_solvers_message(coco_core &core) noexcept;
 
+  /**
+   * Creates a JSON message for a new reactive rule.
+   *
+   * This function takes a rule object and converts it into a JSON message.
+   * It adds a "type" field to the JSON message indicating that it is a new reactive rule.
+   *
+   * @param r The rule object to convert into a JSON message.
+   * @return The JSON message representing the new reactive rule.
+   */
+  [[nodiscard]] json::json make_reactive_rule_message(const rule &r) noexcept;
+
+  /**
+   * Creates a JSON message for a new deliberative rule.
+   *
+   * This function takes a rule object and converts it into a JSON message.
+   * The resulting JSON message includes the rule data and a type field indicating
+   * that it is a new deliberative rule.
+   *
+   * @param r The rule object to convert into a JSON message.
+   * @return The JSON message representing the new deliberative rule.
+   */
+  [[nodiscard]] json::json make_deliberative_rule_message(const rule &r) noexcept;
+
   const json::json coco_schemas{
       {"property",
        {{"oneOf", std::vector<json::json>{{"$ref", "#/components/schemas/integer_property"}, {"$ref", "#/components/schemas/float_property"}, {"$ref", "#/components/schemas/string_property"}, {"$ref", "#/components/schemas/symbol_property"}, {"$ref", "#/components/schemas/item_property"}, {"$ref", "#/components/schemas/json_property"}}}}},
@@ -182,8 +222,8 @@ namespace coco
          {{"type", {{"type", "string"}, {"enum", {"symbol"}}}},
           {"description", {{"type", "string"}}},
           {"multiple", {{"type", "boolean"}}},
-          {"values", {{"type", "array", "items", {{"type", "string"}}}}},
-          {"default", {{"type", "array", "items", {{"type", "string"}}}}}}},
+          {"values", {{"type", "array"}, {"items", {{"type", "string"}}}}},
+          {"default", {{"type", "array"}, {"items", {{"type", "string"}}}}}}},
         {"required", std::vector<json::json>{"type"}}}},
       {"item_property",
        {{"type", "object"},
@@ -192,8 +232,8 @@ namespace coco
           {"description", {{"type", "string"}}},
           {"type_id", {{"type", "string"}, {"format", "uuid"}}},
           {"multiple", {{"type", "boolean"}}},
-          {"values", {{"type", "array", "items", {{"type", "string"}}}}},
-          {"default", {{"type", "array", "items", {{"type", "string"}}}}}}},
+          {"values", {{"type", "array"}, {"items", {{"type", "string"}}}}},
+          {"default", {{"type", "array"}, {"items", {{"type", "string"}}}}}}},
         {"required", std::vector<json::json>{"type", "type_id"}}}},
       {"json_property",
        {{"type", "object"},
@@ -202,6 +242,15 @@ namespace coco
           {"description", {{"type", "string"}}},
           {"schema", {{"type", "object"}}}}},
         {"required", std::vector<json::json>{"type", "schema"}}}},
+      {"coco_type",
+       {{"type", "object"},
+        {"properties",
+         {{"id", {{"type", "string"}, {"format", "uuid"}}},
+          {"name", {{"type", "string"}}},
+          {"description", {{"type", "string"}}},
+          {"parents", {{"type", "array"}, {"items", {{"type", "string"}, {"format", "uuid"}}}}},
+          {"static_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}}},
+          {"dynamic_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}}}}}}},
       {"coco_item",
        {{"type", "object"},
         {"properties",
@@ -213,9 +262,97 @@ namespace coco
        {{"type", "object"},
         {"properties",
          {{"timestamp", {{"type", "string"}, {"format", "date-time"}}},
-          {"data", {{"type", "object"}}}}}}}};
+          {"data", {{"type", "object"}}}}}}},
+      {"coco_rule",
+       {{"type", "object"},
+        {"properties",
+         {{"id", {{"type", "string"}, {"format", "uuid"}}},
+          {"name", {{"type", "string"}}},
+          {"content", {{"type", "string"}}}}},
+        {"required", {"id", "name", "content"}}}},
+      {"error",
+       {{"type", "object"},
+        {"properties",
+         {{"message", {{"type", "string"}}}}}}}};
 
   const json::json coco_paths{
+      {"/types",
+       {{"get",
+         {{"summary", "Retrieve all the CoCo types"},
+          {"description", "Endpoint to fetch all the managed types"},
+          {"responses",
+           {{"200",
+             {{"description", "Successful response with the stored types"},
+              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}}}}}},
+        {"post",
+         {{"summary", "Create a new type"},
+          {"description", "Endpoint to create a new type"},
+          {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+          {"responses",
+           {{"200",
+             {{"description", "Successful response"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+            {"400",
+             {{"description", "Invalid parameters"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"404",
+             {{"description", "Parent type not found"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"409",
+             {{"description", "Type already exists"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
+      {"/types/{type_id}",
+       {{"get",
+         {{"summary", "Retrieve the given type"},
+          {"description", "Endpoint to fetch the given type"},
+          {"parameters",
+           {{{"name", "type_id"},
+             {"in", "path"},
+             {"required", true},
+             {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+          {"responses",
+           {{"200",
+             {{"description", "Successful response with the given type"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+            {"404",
+             {{"description", "Type not found"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
+        {"put",
+         {{"summary", "Update the given type"},
+          {"description", "Endpoint to update the given type"},
+          {"parameters",
+           {{{"name", "type_id"},
+             {"in", "path"},
+             {"required", true},
+             {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+          {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+          {"responses",
+           {{"200",
+             {{"description", "Successful response"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+            {"400",
+             {{"description", "Invalid parameters"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"404",
+             {{"description", "Type not found"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
+        {"delete",
+         {{"summary", "Delete the given type"},
+          {"description", "Endpoint to delete the given type"},
+          {"parameters",
+           {{{"name", "type_id"},
+             {"in", "path"},
+             {"required", true},
+             {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+          {"responses",
+           {{"204",
+             {{"description", "Successful response with the deleted type"}}},
+            {"400",
+             {{"description", "Invalid parameters"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"404",
+             {{"description", "Type not found"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
       {"/items",
        {{"get",
          {{"summary", "Retrieve all the CoCo items"},
@@ -325,6 +462,74 @@ namespace coco
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
             {"404",
              {{"description", "Item not found"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
+      {"/reactive_rules",
+       {{"get",
+         {{"summary", "Retrieve all the CoCo reactive rules"},
+          {"description", "Endpoint to fetch all the managed reactive rules"},
+          {"responses",
+           {{"200",
+             {{"description", "Successful response with the stored reactive rules"},
+              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}},
+        {"post",
+         {{"summary", "Create a new CoCo reactive rule"},
+          {"description", "Endpoint to create a new reactive rule"},
+          {"requestBody",
+           {{"content",
+             {{"application/json",
+               {{"schema", {"$ref", "#/components/schemas/coco_rule"}}}}}}}},
+          {"responses",
+           {{"201",
+             {{"description", "Successful response with the created reactive rule"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}},
+      {"/reactive_rules/{rule_id}",
+       {{"delete",
+         {{"summary", "Delete the given CoCo reactive rule"},
+          {"description", "Endpoint to delete the given reactive rule"},
+          {"parameters",
+           {{{"name", "rule_id"},
+             {"in", "path"},
+             {"required", true},
+             {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+          {"responses",
+           {{"204",
+             {{"description", "Successful response with the deleted reactive rule"}}},
+            {"404",
+             {{"description", "Rule not found"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
+      {"/deliberative_rules",
+       {{"get",
+         {{"summary", "Retrieve all the CoCo deliberative rules"},
+          {"description", "Endpoint to fetch all the managed deliberative rules"},
+          {"responses",
+           {{"200",
+             {{"description", "Successful response with the stored deliberative rules"},
+              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}},
+        {"post",
+         {{"summary", "Create a new CoCo deliberative rule"},
+          {"description", "Endpoint to create a new deliberative rule"},
+          {"requestBody",
+           {{"content",
+             {{"application/json",
+               {{"schema", {"$ref", "#/components/schemas/coco_rule"}}}}}}}},
+          {"responses",
+           {{"201",
+             {{"description", "Successful response with the created deliberative rule"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}},
+      {"/deliberative_rules/{rule_id}",
+       {{"delete",
+         {{"summary", "Delete the given CoCo deliberative rule"},
+          {"description", "Endpoint to delete the given deliberative rule"},
+          {"parameters",
+           {{{"name", "rule_id"},
+             {"in", "path"},
+             {"required", true},
+             {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+          {"responses",
+           {{"204",
+             {{"description", "Successful response with the deleted deliberative rule"}}},
+            {"404",
+             {{"description", "Rule not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}}};
 
   const json::json coco_messages{
@@ -352,6 +557,30 @@ namespace coco
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"solvers"}}}},
            {"solvers", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/solver"}}}}}}}}}},
+      {{"types_message",
+        {"payload",
+         {{"type", "object"},
+          {"properties",
+           {{"type", {{"type", "string"}, {"enum", {"types"}}}},
+            {"types", {{"type", "array"}, {"types", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}},
+      {{"new_type_message",
+        {"payload",
+         {{"type", "object"},
+          {"properties",
+           {{"type", {{"type", "string"}, {"enum", {"new_type"}}}},
+            {"new_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+      {{"updated_type_message",
+        {"payload",
+         {{"type", "object"},
+          {"properties",
+           {{"type", {{"type", "string"}, {"enum", {"updated_type"}}}},
+            {"updated_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+      {"deleted_type_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"deleted_type"}}}},
+           {"deleted_type", {{"type", "string"}, {"format", "uuid"}}}}}}}},
       {{"items_message",
         {"payload",
          {{"type", "object"},
@@ -382,9 +611,5 @@ namespace coco
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"data"}}}},
            {"item_id", {{"type", "string"}, {"format", "uuid"}}},
-           {"data", {{"$ref", "#/components/schemas/data"}}}}}}}},
-      {"error",
-       {{"type", "object"},
-        {"properties",
-         {{"message", {{"type", "string"}}}}}}}};
+           {"data", {{"$ref", "#/components/schemas/data"}}}}}}}}};
 } // namespace coco

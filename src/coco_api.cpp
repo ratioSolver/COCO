@@ -3,7 +3,43 @@
 
 namespace coco
 {
+    [[nodiscard]] json::json to_json(const type &t) noexcept
+    {
+        json::json j = json::json{{"id", t.get_id()}, {"name", t.get_name()}, {"description", t.get_description()}};
+        if (!t.get_parents().empty())
+        {
+            json::json parents_json(json::json_type::array);
+            for (const auto &p : t.get_parents())
+                parents_json.push_back(p.second.get().get_id());
+            j["parents"] = parents_json;
+        }
+        if (!t.get_static_properties().empty())
+        {
+            json::json static_properties_json(json::json_type::array);
+            for (const auto &p : t.get_static_properties())
+                static_properties_json.push_back(coco::to_json(*p.second));
+            j["static_properties"] = static_properties_json;
+        }
+        if (!t.get_dynamic_properties().empty())
+        {
+            json::json dynamic_properties_json(json::json_type::array);
+            for (const auto &p : t.get_dynamic_properties())
+                dynamic_properties_json.push_back(coco::to_json(*p.second));
+            j["dynamic_properties"] = dynamic_properties_json;
+        }
+        return j;
+    }
+
     [[nodiscard]] json::json to_json(const item &s) noexcept { return json::json{{"id", s.get_id()}, {"type", s.get_type().get_id()}, {"name", s.get_name()}, {"properties", s.get_properties()}}; }
+
+    [[nodiscard]] json::json to_json(const rule &r) noexcept
+    {
+        json::json j;
+        j["id"] = r.get_id();
+        j["name"] = r.get_name();
+        j["content"] = r.get_content();
+        return j;
+    }
 
     [[nodiscard]] json::json make_taxonomy_message(coco_core &core) noexcept
     {
@@ -117,4 +153,19 @@ namespace coco
         j["solvers"] = std::move(solvers);
         return j;
     }
+
+    [[nodiscard]] json::json make_reactive_rule_message(const rule &r) noexcept
+    {
+        json::json j = to_json(r);
+        j["type"] = "new_reactive_rule";
+        return j;
+    }
+
+    [[nodiscard]] json::json make_deliberative_rule_message(const rule &r) noexcept
+    {
+        json::json j = to_json(r);
+        j["type"] = "new_deliberative_rule";
+        return j;
+    }
+
 } // namespace coco

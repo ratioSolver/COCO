@@ -32,14 +32,6 @@ namespace coco
     ~type() noexcept;
 
     /**
-     * @brief Converts the `type` object to a JSON representation.
-     *
-     * @param t The `type` object to convert.
-     * @return The JSON representation of the `type` object.
-     */
-    friend json::json to_json(const type &t) noexcept;
-
-    /**
      * @brief Gets the ID of the type.
      *
      * @return The ID of the type.
@@ -91,13 +83,6 @@ namespace coco
     void add_dynamic_property(std::unique_ptr<property> &&prop) noexcept;
     void remove_dynamic_property(const property &prop) noexcept;
 
-    /**
-     * @brief Converts the `type` object to a JSON representation.
-     *
-     * @return The JSON representation of the `type` object.
-     */
-    json::json to_json() const noexcept;
-
   private:
     coco_core &cc;                                                       // The CoCo core object.
     Fact *type_fact = nullptr;                                           // The type fact.
@@ -109,127 +94,4 @@ namespace coco
     std::map<std::string, std::unique_ptr<property>> static_properties;  // The static properties of the type.
     std::map<std::string, std::unique_ptr<property>> dynamic_properties; // The dynamic properties of the type.
   };
-
-  /**
-   * Converts a type object to a JSON representation.
-   *
-   * @param t The type object to convert.
-   * @return The JSON representation of the type object.
-   */
-  inline json::json to_json(const type &t) noexcept { return t.to_json(); }
-
-  const json::json coco_type_schema{"coco_type",
-                                    {{"type", "object"},
-                                     {"properties",
-                                      {{"id", {{"type", "string"}, {"format", "uuid"}}},
-                                       {"name", {{"type", "string"}}},
-                                       {"description", {{"type", "string"}}},
-                                       {"parents", {{"type", "array"}, {"items", {{"type", "string"}, {"format", "uuid"}}}}},
-                                       {"static_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}}},
-                                       {"dynamic_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}}}}}}};
-  const json::json types_path{"/types",
-                              {{"get",
-                                {{"summary", "Retrieve all the CoCo types"},
-                                 {"description", "Endpoint to fetch all the managed types"},
-                                 {"responses",
-                                  {{"200",
-                                    {{"description", "Successful response with the stored types"},
-                                     {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}}}}}},
-                               {"post",
-                                {{"summary", "Create a new type"},
-                                 {"description", "Endpoint to create a new type"},
-                                 {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
-                                 {"responses",
-                                  {{"200",
-                                    {{"description", "Successful response"},
-                                     {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
-                                   {"400",
-                                    {{"description", "Invalid parameters"},
-                                     {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
-                                   {"404",
-                                    {{"description", "Parent type not found"},
-                                     {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
-                                   {"409",
-                                    {{"description", "Type already exists"},
-                                     {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}};
-  const json::json types_id_path{"/types/{type_id}",
-                                 {{"get",
-                                   {{"summary", "Retrieve the given type"},
-                                    {"description", "Endpoint to fetch the given type"},
-                                    {"parameters",
-                                     {{{"name", "type_id"},
-                                       {"in", "path"},
-                                       {"required", true},
-                                       {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
-                                    {"responses",
-                                     {{"200",
-                                       {{"description", "Successful response with the given type"},
-                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
-                                      {"404",
-                                       {{"description", "Type not found"},
-                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
-                                  {"put",
-                                   {{"summary", "Update the given type"},
-                                    {"description", "Endpoint to update the given type"},
-                                    {"parameters",
-                                     {{{"name", "type_id"},
-                                       {"in", "path"},
-                                       {"required", true},
-                                       {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
-                                    {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
-                                    {"responses",
-                                     {{"200",
-                                       {{"description", "Successful response"},
-                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
-                                      {"400",
-                                       {{"description", "Invalid parameters"},
-                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
-                                      {"404",
-                                       {{"description", "Type not found"},
-                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
-                                  {"delete",
-                                   {{"summary", "Delete the given type"},
-                                    {"description", "Endpoint to delete the given type"},
-                                    {"parameters",
-                                     {{{"name", "type_id"},
-                                       {"in", "path"},
-                                       {"required", true},
-                                       {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
-                                    {"responses",
-                                     {{"204",
-                                       {{"description", "Successful response with the deleted type"}}},
-                                      {"400",
-                                       {{"description", "Invalid parameters"},
-                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
-                                      {"404",
-                                       {{"description", "Type not found"},
-                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}};
-  const json::json types_message{
-      {"types_message",
-       {"payload",
-        {{"type", "object"},
-         {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"types"}}}},
-           {"types", {{"type", "array"}, {"types", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}};
-  const json::json new_type_message{
-      {"new_type_message",
-       {"payload",
-        {{"type", "object"},
-         {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"new_type"}}}},
-           {"new_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}};
-  const json::json updated_type_message{
-      {"updated_type_message",
-       {"payload",
-        {{"type", "object"},
-         {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"updated_type"}}}},
-           {"updated_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}};
-  const json::json deleted_type_message{
-      {"deleted_type_message",
-       {"payload",
-        {{"type", "object"},
-         {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"deleted_type"}}}},
-           {"deleted_type", {{"type", "string"}, {"format", "uuid"}}}}}}}}};
 } // namespace coco

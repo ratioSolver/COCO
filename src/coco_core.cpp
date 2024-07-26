@@ -214,79 +214,45 @@ namespace coco
         return r;
     }
 
-    void coco_core::new_type([[maybe_unused]] const type &tp) { LOG_TRACE("New type: " + tp.get_id()); }
-    void coco_core::updated_type([[maybe_unused]] const type &tp) { LOG_TRACE("Updated type: " + tp.get_id()); }
-    void coco_core::deleted_type([[maybe_unused]] const std::string &tp_id) { LOG_TRACE("Deleted type: " + tp_id); }
+    void coco_core::new_type([[maybe_unused]] const type &tp) {}
+    void coco_core::updated_type([[maybe_unused]] const type &tp) {}
+    void coco_core::deleted_type([[maybe_unused]] const std::string &tp_id) {}
 
-    void coco_core::new_item([[maybe_unused]] const item &itm) { LOG_TRACE("New item: " + itm.get_id()); }
-    void coco_core::updated_item([[maybe_unused]] const item &itm) { LOG_TRACE("Updated item: " + itm.get_id()); }
-    void coco_core::deleted_item([[maybe_unused]] const std::string &itm_id) { LOG_TRACE("Deleted item: " + itm_id); }
+    void coco_core::new_item([[maybe_unused]] const item &itm) {}
+    void coco_core::updated_item([[maybe_unused]] const item &itm) {}
+    void coco_core::deleted_item([[maybe_unused]] const std::string &itm_id) {}
 
-    void coco_core::new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) { LOG_TRACE("Item " + itm.get_id() + " data: " + data.dump()); }
+    void coco_core::new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) {}
 
-    void coco_core::new_solver([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("New solver: " + exec.get_solver().get_name() + " (" + std::to_string(get_id(exec)) + ")"); }
-    void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) { LOG_TRACE("Deleted solver: " + std::to_string(id)); }
+    void coco_core::new_solver([[maybe_unused]] const coco_executor &exec) {}
+    void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) {}
 
-    void coco_core::new_reactive_rule([[maybe_unused]] const rule &r) { LOG_TRACE("New reactive rule: " + r.get_id()); }
-    void coco_core::new_deliberative_rule([[maybe_unused]] const rule &r) { LOG_TRACE("New deliberative rule: " + r.get_id()); }
+    void coco_core::new_reactive_rule([[maybe_unused]] const rule &r) {}
+    void coco_core::new_deliberative_rule([[maybe_unused]] const rule &r) {}
 
-    void coco_core::state_changed([[maybe_unused]] const coco_executor &exec) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " is now " + to_string(exec.get_state())); }
+    void coco_core::state_changed([[maybe_unused]] const coco_executor &exec) {}
 
-    void coco_core::flaw_created([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " found a flaw: " + to_string(f.get_phi())); }
-    void coco_core::flaw_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) { LOG_TRACE("Flaw " + to_string(f.get_phi()) + " is now " + to_state(f)); }
-    void coco_core::flaw_cost_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) { LOG_TRACE("Flaw " + to_string(f.get_phi()) + " cost changed to " + to_string(f.get_estimated_cost())); }
-    void coco_core::flaw_position_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) { LOG_TRACE("Flaw " + to_string(f.get_phi()) + " position changed to " + std::to_string(exec.get_solver().get_idl_theory().bounds(f.get_position()).first)); }
-    void coco_core::current_flaw([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) { LOG_TRACE("Current flaw: " + to_string(f.get_phi())); }
+    void coco_core::flaw_created([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
+    void coco_core::flaw_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
+    void coco_core::flaw_cost_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
+    void coco_core::flaw_position_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
+    void coco_core::current_flaw([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
 
-    void coco_core::resolver_created([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " created a resolver: " + to_string(r.get_rho())); }
-    void coco_core::resolver_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) { LOG_TRACE("Resolver " + to_string(r.get_rho()) + " is now " + to_state(r)); }
-    void coco_core::current_resolver([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) { LOG_TRACE("Current resolver: " + to_string(r.get_rho())); }
+    void coco_core::resolver_created([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
+    void coco_core::resolver_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
+    void coco_core::current_resolver([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
 
-    void coco_core::causal_link_added([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r) { LOG_TRACE("Causal link added: " + to_string(f.get_phi()) + " -> " + to_string(r.get_rho())); }
+    void coco_core::causal_link_added([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r) {}
 
-    void coco_core::executor_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] ratio::executor::executor_state state) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " is now " + to_string(state)); }
+    void coco_core::executor_state_changed([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] ratio::executor::executor_state state) {}
 
-    void coco_core::tick([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const utils::rational &time) { LOG_TRACE("Solver " + exec.get_solver().get_name() + " ticked at " + to_string(time)); }
+    void coco_core::tick([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const utils::rational &time) {}
 
-    void coco_core::starting([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms)
-    {
-#if LOGGING_LEVEL >= LOG_TRACE_LEVEL
-        std::string str = "Solver " + exec.get_solver().get_name() + " starting atoms: ";
-        for (const auto &a : atoms)
-            str += std::to_string(get_id(a.get())) + " ";
-        LOG_TRACE(str);
-#endif
-    }
+    void coco_core::starting([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms) {}
+    void coco_core::start([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms) {}
 
-    void coco_core::start([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms)
-    {
-#if LOGGING_LEVEL >= LOG_TRACE_LEVEL
-        std::string str = "Solver " + exec.get_solver().get_name() + " started atoms: ";
-        for (const auto &a : atoms)
-            str += std::to_string(get_id(a.get())) + " ";
-        LOG_TRACE(str);
-#endif
-    }
-
-    void coco_core::ending([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms)
-    {
-#if LOGGING_LEVEL >= LOG_TRACE_LEVEL
-        std::string str = "Solver " + exec.get_solver().get_name() + " ending atoms: ";
-        for (const auto &a : atoms)
-            str += std::to_string(get_id(a.get())) + " ";
-        LOG_TRACE(str);
-#endif
-    }
-
-    void coco_core::end([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms)
-    {
-#if LOGGING_LEVEL >= LOG_TRACE_LEVEL
-        std::string str = "Solver " + exec.get_solver().get_name() + " ended atoms: ";
-        for (const auto &a : atoms)
-            str += std::to_string(get_id(a.get())) + " ";
-        LOG_TRACE(str);
-#endif
-    }
+    void coco_core::ending([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms) {}
+    void coco_core::end([[maybe_unused]] const coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<const ratio::atom>> &atoms) {}
 
     void coco_core::reset_knowledge_base()
     {

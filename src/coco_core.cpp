@@ -1,7 +1,8 @@
-#include <cassert>
 #include "coco_core.hpp"
 #include "coco_db.hpp"
 #include "logging.hpp"
+#include <algorithm>
+#include <cassert>
 
 namespace coco
 {

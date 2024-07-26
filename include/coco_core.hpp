@@ -408,6 +408,16 @@ namespace coco
     return j;
   }
 
+  inline json::json make_new_data_message(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data)
+  {
+    json::json j;
+    j["type"] = "new_data";
+    j["itm_id"] = itm.get_id();
+    j["timestamp"] = std::chrono::system_clock::to_time_t(timestamp);
+    j["data"] = data;
+    return j;
+  }
+
   inline json::json make_reactive_rules_message(coco_core &core)
   {
     json::json j;

@@ -367,14 +367,6 @@ namespace coco
   };
 
   /**
-   * Converts a property object to a JSON representation.
-   *
-   * @param p The property object to convert.
-   * @return The JSON representation of the property.
-   */
-  inline json::json to_json(const property &p) noexcept { return p.to_json(); }
-
-  /**
    * @brief Creates a property object from a JSON object.
    *
    * This function takes a JSON object as input and creates a property object based on its contents.

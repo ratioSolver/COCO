@@ -1,5 +1,6 @@
 #include "mqtt_connection.hpp"
 #include "coco_core.hpp"
+#include "coco_api.hpp"
 #include "logging.hpp"
 
 namespace coco
@@ -87,22 +88,22 @@ namespace coco
                     parents.push_back(cc.get_type(p));
             std::vector<std::unique_ptr<property>> static_properties;
             if (j.contains("properties"))
-                for (const auto &p : j["properties"].as_array())
-                    static_properties.push_back(make_property(cc, p));
+                for (const auto &p : j["properties"].as_object())
+                    static_properties.push_back(make_property(cc, p.first, p.second));
             std::vector<std::unique_ptr<property>> dynamic_properties;
             if (j.contains("dynamic_properties"))
-                for (const auto &p : j["dynamic_properties"].as_array())
-                    dynamic_properties.push_back(make_property(cc, p));
+                for (const auto &p : j["dynamic_properties"].as_object())
+                    dynamic_properties.push_back(make_property(cc, p.first, p.second));
             cc.create_type(j["name"], j["description"], std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         }
         else if (topic == COCO_NAME "/commands/delete_type") // delete type
-            cc.delete_type(msg->to_string());
+            cc.delete_type(cc.get_type(msg->to_string()));
         else if (topic == COCO_NAME "/commands/create_item")
         { // create item
             json::json j = json::load(msg->to_string());
             cc.create_item(cc.get_type(j["type"]), j["name"], j["properties"]);
         }
         else if (topic == COCO_NAME "/commands/delete_item") // delete item
-            cc.delete_item(msg->to_string());
+            cc.delete_item(cc.get_item(msg->to_string()));
     }
 } // namespace coco

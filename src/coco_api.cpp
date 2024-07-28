@@ -3,6 +3,8 @@
 
 namespace coco
 {
+    [[nodiscard]] json::json to_json(const property &p) noexcept { return p.to_json(); }
+
     [[nodiscard]] json::json to_json(const type &t) noexcept
     {
         json::json j = json::json{{"id", t.get_id()}, {"name", t.get_name()}, {"description", t.get_description()}};

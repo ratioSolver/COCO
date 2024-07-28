@@ -6,9 +6,18 @@
 namespace coco
 {
   class coco_core;
+  class property;
   class type;
   class item;
   class rule;
+
+  /**
+   * Converts a property object to a JSON representation.
+   *
+   * @param p The property object to convert.
+   * @return The JSON representation of the property.
+   */
+  [[nodiscard]] json::json to_json(const property &p) noexcept;
 
   /**
    * Converts a type object to a JSON representation.

@@ -238,15 +238,25 @@ namespace coco
     }
 
     /**
+     * Retrieves data for a given item within a specified time range.
+     *
+     * @param itm The item for which to retrieve data.
+     * @param from The starting time of the data range.
+     * @param to The ending time of the data range.
+     * @return A JSON object containing the retrieved data.
+     */
+    virtual json::json get_data(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to) = 0;
+
+    /**
      * @brief Adds data to the database for a given item.
      *
      * This function adds the provided data to the database for the specified item.
      *
      * @param itm The item to which the data will be added.
-     * @param timestamp The timestamp of the data.
      * @param data The data to be added to the database.
+     * @param timestamp The timestamp of the data. Defaults to the current time.
      */
-    virtual void add_data(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) = 0;
+    virtual void add_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
 
     /**
      * Returns a vector of references to the reactive rules in the database.

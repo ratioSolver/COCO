@@ -113,13 +113,13 @@ namespace coco
         return j;
     }
 
-    [[nodiscard]] json::json make_data_message(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) noexcept
+    [[nodiscard]] json::json make_new_data_message(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) noexcept
     {
         json::json j;
-        j["type"] = "data";
+        j["type"] = "new_data";
         j["item_id"] = itm.get_id();
-        j["timestamp"] = std::chrono::system_clock::to_time_t(timestamp);
         j["data"] = data;
+        j["timestamp"] = std::chrono::system_clock::to_time_t(timestamp);
         return j;
     }
 

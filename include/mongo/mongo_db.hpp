@@ -24,8 +24,8 @@ namespace coco
 
     [[nodiscard]] type &create_type(coco_core &cc, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;
 
-    void set_type_name(type &tp, const std::string &name)  override;
-    void set_type_description(type &tp, const std::string &description)  override;
+    void set_type_name(type &tp, const std::string &name) override;
+    void set_type_description(type &tp, const std::string &description) override;
     void add_static_property(type &tp, std::unique_ptr<property> &&prop) override;
     void remove_static_property(type &tp, const property &prop) override;
     void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop) override;
@@ -38,7 +38,8 @@ namespace coco
     void set_item_properties(item &itm, const json::json &props) override;
     void delete_item(const item &itm) override;
 
-    void add_data(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) override;
+    [[nodiscard]] json::json get_data(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to) override;
+    void add_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
 
     [[nodiscard]] rule &create_reactive_rule(coco_core &cc, const std::string &name, const std::string &content) override;
 

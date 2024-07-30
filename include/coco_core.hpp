@@ -216,14 +216,27 @@ namespace coco
     void delete_item(const item &itm);
 
     /**
+     * @brief Retrieves the data of the item.
+     *
+     * This function retrieves the data of the specified item within the specified time range.
+     *
+     * @param itm The item.
+     * @param from The start of the time range.
+     * @param to The end of the time range.
+     * @return The data of the item.
+     */
+    json::json get_data(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to);
+
+    /**
      * @brief Adds data to the item.
      *
      * This function adds the provided data to the specified item.
      *
      * @param item The item to which the data will be added.
      * @param data The data to be added.
+     * @param timestamp The timestamp of the data. Defaults to the current time.
      */
-    void add_data(const item &item, const json::json &data);
+    void add_data(const item &item, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
 
     /**
      * @brief Retrieves a vector of references to the solvers.
@@ -303,7 +316,7 @@ namespace coco
     virtual void updated_item(const item &itm);
     virtual void deleted_item(const std::string &itm_id);
 
-    virtual void new_data(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data);
+    virtual void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp);
 
     virtual void new_solver(const coco_executor &exec);
     virtual void deleted_solver(const uintptr_t id);

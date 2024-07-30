@@ -136,11 +136,11 @@ namespace coco
    * This function creates a new data message using the provided item, timestamp, and data.
    *
    * @param itm The item to include in the data message.
-   * @param timestamp The timestamp of the data message.
    * @param data The data to include in the message.
+   * @param timestamp The timestamp of the data message.
    * @return A JSON object representing the new data message.
    */
-  [[nodiscard]] json::json make_data_message(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) noexcept;
+  [[nodiscard]] json::json make_new_data_message(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) noexcept;
 
   /**
    * @brief Creates a JSON message containing reactive rules.
@@ -629,11 +629,11 @@ namespace coco
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"deleted_item"}}}},
            {"deleted_item", {{"type", "string"}, {"format", "uuid"}}}}}}}},
-      {"data_message",
+      {"new_data_message",
        {"payload",
         {{"type", "object"},
          {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"data"}}}},
+          {{"type", {{"type", "string"}, {"enum", {"new_data"}}}},
            {"item_id", {{"type", "string"}, {"format", "uuid"}}},
            {"timestamp", {{"type", "string"}, {"format", "date-time"}}},
            {"data", {{"type", "object"}}}}}}}}};

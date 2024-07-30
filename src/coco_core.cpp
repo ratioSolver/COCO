@@ -180,7 +180,13 @@ namespace coco
         deleted_item(itm.get_id());
     }
 
-    void coco_core::add_data(const item &s, const json::json &data)
+    json::json coco_core::get_data(const item &s, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_data(s, from, to);
+    }
+
+    void coco_core::add_data(const item &s, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &[p_name, p] : s.get_type().get_dynamic_properties())
@@ -189,8 +195,8 @@ namespace coco
             else if (!p->validate(data[p_name], schemas))
                 LOG_WARN("Data " + p_name + " for item " + s.get_id() + " is invalid");
 
-        db->add_data(s, std::chrono::system_clock::now(), data);
-        new_data(s, std::chrono::system_clock::now(), data);
+        db->add_data(s, data, timestamp);
+        new_data(s, data, timestamp);
     }
 
     std::vector<std::reference_wrapper<coco_executor>> coco_core::get_solvers()
@@ -257,7 +263,7 @@ namespace coco
     void coco_core::updated_item([[maybe_unused]] const item &itm) {}
     void coco_core::deleted_item([[maybe_unused]] const std::string &itm_id) {}
 
-    void coco_core::new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp, [[maybe_unused]] const json::json &data) {}
+    void coco_core::new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
     void coco_core::new_solver([[maybe_unused]] const coco_executor &exec) {}
     void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) {}

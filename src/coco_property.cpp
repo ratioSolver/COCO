@@ -11,9 +11,11 @@ namespace coco
     {
         std::string type_name = tp.get_name();
         type_name.erase(std::remove(type_name.begin(), type_name.end(), ' '), type_name.end());
+        std::string property_name = get_name();
+        property_name.erase(std::remove(property_name.begin(), property_name.end(), ' '), property_name.end());
         if (is_static)
-            return type_name + "_has_" + name;
-        return type_name + "_" + name;
+            return type_name + "_has_" + property_name;
+        return type_name + "_" + property_name;
     }
 
     integer_property::integer_property(const std::string &name, const std::string &description, std::optional<long> default_value, long min, long max) noexcept : property(name, description), default_value(default_value), min(min), max(max) {}
@@ -221,7 +223,7 @@ namespace coco
                 deftemplate += " " + val;
             deftemplate += ")";
         }
-        deftemplate += ")";
+        deftemplate += "))";
         return deftemplate;
     }
     void item_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, get_name().c_str(), static_cast<std::string>(value).c_str()); }

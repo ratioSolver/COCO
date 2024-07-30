@@ -153,6 +153,26 @@ namespace coco
         return s;
     }
 
+    void coco_core::set_item_name(item &itm, const std::string &name)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->set_item_name(itm, name);
+        updated_item(itm);
+    }
+
+    void coco_core::set_item_properties(item &itm, const json::json &props)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        for (const auto &[p_name, p] : itm.get_type().get_static_properties())
+            if (!props.contains(p_name))
+                LOG_WARN("Properties for item " + itm.get_id() + " do not contain " + p_name);
+            else if (!p->validate(props[p_name], schemas))
+                LOG_WARN("Property " + p_name + " for item " + itm.get_id() + " is invalid");
+
+        db->set_item_properties(itm, props);
+        updated_item(itm);
+    }
+
     void coco_core::delete_item(const item &itm)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);

@@ -187,6 +187,26 @@ namespace coco
     item &create_item(const type &tp, const std::string &name, const json::json &props);
 
     /**
+     * @brief Sets the name of the item.
+     *
+     * This function sets the name of the item with the specified ID.
+     *
+     * @param itm The item.
+     * @param name The name of the item.
+     */
+    void set_item_name(item &itm, const std::string &name);
+
+    /**
+     * @brief Sets the properties of the item.
+     *
+     * This function sets the properties of the item with the specified ID.
+     *
+     * @param itm The item.
+     * @param props The properties of the item.
+     */
+    void set_item_properties(item &itm, const json::json &props);
+
+    /**
      * @brief Deletes the item with the specified ID.
      *
      * This function deletes the item with the specified ID.

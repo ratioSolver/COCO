@@ -140,7 +140,7 @@ namespace coco
    * @param data The data to include in the message.
    * @return A JSON object representing the new data message.
    */
-  [[nodiscard]] json::json make_new_data_message(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) noexcept;
+  [[nodiscard]] json::json make_data_message(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) noexcept;
 
   /**
    * @brief Creates a JSON message containing reactive rules.
@@ -620,5 +620,6 @@ namespace coco
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"data"}}}},
            {"item_id", {{"type", "string"}, {"format", "uuid"}}},
-           {"data", {{"$ref", "#/components/schemas/data"}}}}}}}}};
+           {"timestamp", {{"type", "string"}, {"format", "date-time"}}},
+           {"data", {{"type", "object"}}}}}}}}};
 } // namespace coco

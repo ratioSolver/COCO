@@ -58,7 +58,7 @@ namespace coco
     {
         json::json j;
         j["type"] = "new_type";
-        j["tp"] = to_json(tp);
+        j["new_type"] = to_json(tp);
         return j;
     }
 
@@ -66,7 +66,7 @@ namespace coco
     {
         json::json j;
         j["type"] = "updated_type";
-        j["tp"] = to_json(tp);
+        j["updated_type"] = to_json(tp);
         return j;
     }
 
@@ -74,7 +74,7 @@ namespace coco
     {
         json::json j;
         j["type"] = "deleted_type";
-        j["tp_id"] = tp_id;
+        j["deleted_type"] = tp_id;
         return j;
     }
 
@@ -93,7 +93,7 @@ namespace coco
     {
         json::json j;
         j["type"] = "new_item";
-        j["itm"] = to_json(itm);
+        j["new_item"] = to_json(itm);
         return j;
     }
 
@@ -101,7 +101,7 @@ namespace coco
     {
         json::json j;
         j["type"] = "updated_item";
-        j["itm"] = to_json(itm);
+        j["updated_item"] = to_json(itm);
         return j;
     }
 
@@ -109,15 +109,15 @@ namespace coco
     {
         json::json j;
         j["type"] = "deleted_item";
-        j["itm_id"] = itm_id;
+        j["deleted_item"] = itm_id;
         return j;
     }
 
-    [[nodiscard]] json::json make_new_data_message(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) noexcept
+    [[nodiscard]] json::json make_data_message(const item &itm, const std::chrono::system_clock::time_point &timestamp, const json::json &data) noexcept
     {
         json::json j;
-        j["type"] = "new_data";
-        j["itm_id"] = itm.get_id();
+        j["type"] = "data";
+        j["item_id"] = itm.get_id();
         j["timestamp"] = std::chrono::system_clock::to_time_t(timestamp);
         j["data"] = data;
         return j;

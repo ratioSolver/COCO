@@ -365,7 +365,6 @@ namespace coco
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
       items.emplace(id, std::make_unique<item>(cc, id, tp, name, pars));
-      items[id] = std::make_unique<item>(cc, id, tp, name, pars);
       return *items[id];
     }
     rule &create_reactive_rule(coco_core &cc, const std::string &id, const std::string &name, const std::string &content)

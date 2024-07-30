@@ -112,6 +112,21 @@ namespace coco
         deleted_type(tp.get_id());
     }
 
+    std::vector<std::reference_wrapper<item>> coco_core::get_items_by_type(const type &tp)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<std::reference_wrapper<item>> res;
+        FunctionCallBuilder *all_instances_of_builder = CreateFunctionCallBuilder(env, 1);
+        FCBAppendSymbol(all_instances_of_builder, tp.get_id().c_str());
+        CLIPSValue instances;
+        FCBCall(all_instances_of_builder, "get-all-instances-of", &instances); // we call the function
+        FCBDispose(all_instances_of_builder);
+        if (instances.header->type == MULTIFIELD_TYPE)
+            for (size_t i = 0; i < instances.multifieldValue->length; ++i)
+                res.push_back(get_item(instances.multifieldValue->contents[i].lexemeValue->contents));
+        return res;
+    }
+
     std::vector<std::reference_wrapper<item>> coco_core::get_items()
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -260,11 +275,14 @@ namespace coco
         Clear(env);
 
         // we build the basic knowledge base..
-        Build(env, "(deftemplate item_type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))");
+        Build(env, "(deftemplate type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))");
         Build(env, "(deftemplate is_a (slot type_id (type SYMBOL)) (slot parent_id (type SYMBOL)))");
         Build(env, "(deftemplate item (slot id (type SYMBOL)) (slot name (type STRING)))");
         Build(env, "(deftemplate is_instance_of (slot item_id (type SYMBOL)) (slot type_id (type SYMBOL)))");
         Build(env, "(defrule inheritance (is_a (type_id ?t) (parent_id ?p)) (is_instance_of (item_id ?i) (type_id ?t)) => (assert (is_instance_of (item_id ?i) (type_id ?p))))");
+        Build(env, "(deffunction get-all-instances-of (?type_id) (bind ?instances (create$)) (do-for-all-facts ((?is_instance_of is_instance_of)) (eq ?is_instance_of:type_id ?type_id) (bind ?instances (create$ ?instances ?is_instance_of:item_id))) (return ?instances))");
+
+        // we build the basic knowledge base for the solvers..
         Build(env, "(deftemplate solver (slot id (type INTEGER)) (slot purpose (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))");
         Build(env, "(deftemplate task (slot solver_id (type INTEGER)) (slot id (type INTEGER)) (slot task_type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))");
         Build(env, "(deffunction tick () (do-for-all-facts ((?task task)) TRUE (modify ?task (since (+ ?task:since 1)))) (return TRUE))");

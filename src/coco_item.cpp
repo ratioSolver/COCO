@@ -1,5 +1,6 @@
 #include "coco_item.hpp"
 #include "coco_core.hpp"
+#include "logging.hpp"
 
 namespace coco
 {

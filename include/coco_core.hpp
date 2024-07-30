@@ -156,6 +156,16 @@ namespace coco
     std::vector<std::reference_wrapper<item>> get_items();
 
     /**
+     * @brief Retrieves a vector of references to the items of the specified type.
+     *
+     * This function retrieves all the items of the specified type and returns them as a vector of `item` objects. The returned vector contains references to the actual items stored in the `items` map.
+     *
+     * @param tp The type of the items to retrieve.
+     * @return A vector of references to the items.
+     */
+    std::vector<std::reference_wrapper<item>> get_items_by_type(const type &tp);
+
+    /**
      * @brief Retrieves an item with the specified ID.
      *
      * This function retrieves the item with the specified ID.

@@ -119,7 +119,7 @@ namespace coco
         j["type"] = "new_data";
         j["item_id"] = itm.get_id();
         j["data"] = data;
-        j["timestamp"] = std::chrono::system_clock::to_time_t(timestamp);
+        j["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count();
         return j;
     }
 

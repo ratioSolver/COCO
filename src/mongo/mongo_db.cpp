@@ -257,7 +257,7 @@ namespace coco
         query.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$gte", bsoncxx::types::b_date{from}), bsoncxx::builder::basic::kvp("$lte", bsoncxx::types::b_date{to}))));
         json::json data = json::json_type::array;
         for (const auto &doc : item_data_collection.find(query.view()))
-            data.push_back(json::load(bsoncxx::to_json(doc["data"].get_document().view())));
+            data.push_back(json::json{{"data", json::load(bsoncxx::to_json(doc["data"].get_document().view()))}, {"timestamp", doc["timestamp"].get_date().to_int64()}});
         return data;
     }
 

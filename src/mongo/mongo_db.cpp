@@ -250,7 +250,17 @@ namespace coco
         coco_db::delete_item(it);
     }
 
-    json::json mongo_db::get_data(const item &it, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
+    [[nodiscard]] std::pair<json::json, std::chrono::system_clock::time_point> mongo_db::get_last_data(const item &itm)
+    {
+        bsoncxx::builder::basic::document query;
+        query.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm.get_id()}));
+        auto doc = item_data_collection.find_one(query.view());
+        if (doc)
+            return {json::load(bsoncxx::to_json(doc->view()["data"].get_document().view())), doc->view()["timestamp"].get_date()};
+        return {{}, std::chrono::system_clock::time_point{}};
+    }
+
+    [[nodiscard]] json::json mongo_db::get_data(const item &it, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
     {
         bsoncxx::builder::basic::document query;
         query.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{it.get_id()}));
@@ -261,7 +271,7 @@ namespace coco
         return data;
     }
 
-    void mongo_db::add_data(const item &it, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
+    void mongo_db::add_data(item &it, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{it.get_id()}));
@@ -270,6 +280,7 @@ namespace coco
         auto result = item_data_collection.insert_one(doc.view());
         if (!result)
             throw std::invalid_argument("Failed to insert data for item: " + it.get_name());
+        coco_db::add_data(it, data, timestamp);
     }
 
     rule &mongo_db::create_reactive_rule(coco_core &cc, const std::string &name, const std::string &content)

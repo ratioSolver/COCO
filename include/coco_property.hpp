@@ -10,6 +10,7 @@ namespace coco
 {
   class coco_core;
   class type;
+  class item;
 
   /**
    * @brief Represents a property with a name and description.
@@ -17,6 +18,8 @@ namespace coco
   class property
   {
     friend class coco_core;
+    friend class type;
+    friend class item;
 
   public:
     /**
@@ -44,15 +47,6 @@ namespace coco
     std::string get_description() const noexcept { return description; }
 
     /**
-     * Converts the property to a deftemplate string representation.
-     *
-     * @param tp The type representing the `domain` of the property.
-     * @param is_dynamic A flag indicating whether the property is dynamic or static.
-     * @return The deftemplate string representation of the property.
-     */
-    virtual std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept = 0;
-
-    /**
      * Sets the value of the property.
      *
      * This function is responsible for setting the value of the property based on the provided `value`.
@@ -72,10 +66,13 @@ namespace coco
 
   protected:
     /**
-     * @brief Converts the property to a JSON object.
-     * @return The JSON representation of the property.
+     * Converts the property to a deftemplate string representation.
+     *
+     * @param tp The type representing the `domain` of the property.
+     * @param is_dynamic A flag indicating whether the property is dynamic or static.
+     * @return The deftemplate string representation of the property.
      */
-    virtual json::json to_json() const noexcept;
+    virtual std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept = 0;
 
     /**
      * @brief Converts the given type to a deftemplate name.
@@ -88,6 +85,12 @@ namespace coco
      * @return The deftemplate name corresponding to the given type.
      */
     std::string to_deftemplate_name(const type &tp, bool is_dynamic = true) const noexcept;
+
+    /**
+     * @brief Converts the property to a JSON object.
+     * @return The JSON representation of the property.
+     */
+    virtual json::json to_json() const noexcept;
 
     friend json::json to_json(const property &p) noexcept;
 

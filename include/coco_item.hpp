@@ -1,6 +1,7 @@
 #pragma once
 
 #include "coco_type.hpp"
+#include <chrono>
 
 namespace coco
 {
@@ -12,6 +13,7 @@ namespace coco
   class item final
   {
     friend class coco_db;
+    friend class coco_core;
 
   public:
     /**
@@ -53,6 +55,35 @@ namespace coco
      * @return The properties of the item.
      */
     [[nodiscard]] const json::json &get_properties() const { return properties; }
+
+  private:
+    /**
+     * @brief Sets the name of the item.
+     *
+     * This function sets the name of the item to the specified value.
+     *
+     * @param name The new name for the item.
+     */
+    void set_name(const std::string &name);
+
+    /**
+     * @brief Sets the properties of the item.
+     *
+     * This function takes a JSON object containing the properties and sets them for the item.
+     *
+     * @param props The JSON object containing the properties.
+     */
+    void set_properties(const json::json &props);
+
+    /**
+     * @brief Sets the value of the item.
+     *
+     * This function sets the value of the item using the provided JSON value.
+     *
+     * @param value The JSON value to set as the item's value.
+     * @param timestamp The timestamp of the value.
+     */
+    void set_value(const json::json &value, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
 
   private:
     coco_core &cc;                                // The CoCo core object.

@@ -38,8 +38,9 @@ namespace coco
     void set_item_properties(item &itm, const json::json &props) override;
     void delete_item(const item &itm) override;
 
+    [[nodiscard]] std::pair<json::json, std::chrono::system_clock::time_point> get_last_data(const item &itm) override;
     [[nodiscard]] json::json get_data(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to) override;
-    void add_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
+    void add_data(item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
 
     [[nodiscard]] rule &create_reactive_rule(coco_core &cc, const std::string &name, const std::string &content) override;
     void set_reactive_rule_name(rule &rl, const std::string &name) override;

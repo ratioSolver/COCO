@@ -1,5 +1,6 @@
 #include "coco_type.hpp"
 #include "coco_core.hpp"
+#include <cassert>
 
 namespace coco
 {
@@ -15,6 +16,7 @@ namespace coco
         FBPutSlotString(type_fact_builder, "name", name.c_str());
         FBPutSlotString(type_fact_builder, "description", description.c_str());
         type_fact = FBAssert(type_fact_builder);
+        assert(type_fact);
         FBDispose(type_fact_builder);
         for (auto &p : parents)
             add_parent(p.get());
@@ -50,6 +52,7 @@ namespace coco
         FBPutSlotSymbol(is_a_fact_builder, "type_id", get_id().c_str());
         FBPutSlotSymbol(is_a_fact_builder, "parent_id", parent.get_id().c_str());
         Fact *parent_fact = FBAssert(is_a_fact_builder);
+        assert(parent_fact);
         FBDispose(is_a_fact_builder);
         parents.emplace(parent.name, parent);
         parent_facts.emplace(parent.name, parent_fact);

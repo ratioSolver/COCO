@@ -187,27 +187,18 @@ namespace coco
         return db->get_data(s, from, to);
     }
 
-    void coco_core::add_data(const item &s, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
+    void coco_core::add_data(item &s, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &[p_name, p] : s.get_type().get_dynamic_properties())
-        {
             if (!data.contains(p_name))
                 LOG_WARN("Data for item " + s.get_id() + " do not contain " + p_name);
             else if (!p->validate(data[p_name], schemas))
                 LOG_WARN("Data " + p_name + " for item " + s.get_id() + " is invalid");
-            FactBuilder *prop_fact_builder = CreateFactBuilder(env, p->to_deftemplate_name(s.get_type()).c_str());
-            FBPutSlotSymbol(prop_fact_builder, "item_id", s.get_id().c_str());
-            p->set_value(prop_fact_builder, data[p_name]);
-            FBPutSlotInteger(prop_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
-            [[maybe_unused]] Fact *prop_fact = FBAssert(prop_fact_builder);
-            assert(prop_fact);
-            FBDispose(prop_fact_builder);
-        }
-        Run(env, -1);
 
         db->add_data(s, data, timestamp);
         new_data(s, data, timestamp);
+        Run(env, -1);
     }
 
     std::vector<std::reference_wrapper<coco_executor>> coco_core::get_solvers()
@@ -324,6 +315,43 @@ namespace coco
         deleted_deliberative_rule(r);
     }
 
+    std::vector<Deftemplate *> coco_core::get_deftemplates()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<Deftemplate *> res;
+        Deftemplate *deftemplate = nullptr;
+        deftemplate = GetNextDeftemplate(env, deftemplate);
+        do
+        {
+            res.push_back(deftemplate);
+        } while ((deftemplate = GetNextDeftemplate(env, deftemplate)) != NULL);
+        return res;
+    }
+    std::vector<Defrule *> coco_core::get_defrules()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<Defrule *> res;
+        Defrule *defrule = nullptr;
+        defrule = GetNextDefrule(env, defrule);
+        do
+        {
+            res.push_back(defrule);
+        } while ((defrule = GetNextDefrule(env, defrule)) != NULL);
+        return res;
+    }
+    std::vector<Fact *> coco_core::get_facts()
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<Fact *> res;
+        Fact *fact = nullptr;
+        fact = GetNextFact(env, fact);
+        do
+        {
+            res.push_back(fact);
+        } while ((fact = GetNextFact(env, fact)) != NULL);
+        return res;
+    }
+
     void coco_core::new_type([[maybe_unused]] const type &tp) {}
     void coco_core::updated_type([[maybe_unused]] const type &tp) {}
     void coco_core::deleted_type([[maybe_unused]] const std::string &tp_id) {}
@@ -390,6 +418,12 @@ namespace coco
 
         // we load the basic knowledge base..
         db->init(*this);
+
+        for (const auto &itm : get_items())
+        {
+            auto data_timestamp = db->get_last_data(itm);
+            itm.get().set_value(data_timestamp.first, data_timestamp.second);
+        }
 
         Run(env, -1);
     }

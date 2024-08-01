@@ -46,7 +46,7 @@ namespace coco
      * @param tp The type to set the name for.
      * @param name The name to set for the type.
      */
-    virtual void set_type_name(type &tp, const std::string &name) { tp.name = name; }
+    virtual void set_type_name(type &tp, const std::string &name) { tp.set_name(name); }
 
     /**
      * @brief Sets the description of a type.
@@ -56,7 +56,7 @@ namespace coco
      * @param tp The type to set the description for.
      * @param description The description to set for the type.
      */
-    virtual void set_type_description(type &tp, const std::string &description) { tp.description = description; }
+    virtual void set_type_description(type &tp, const std::string &description) { tp.set_description(description); }
 
     /**
      * @brief Adds a parent to the given type.
@@ -188,7 +188,7 @@ namespace coco
      * @param itm The item to set the name for.
      * @param name The new name for the item.
      */
-    virtual void set_item_name(item &itm, const std::string &name) { itm.name = name; }
+    virtual void set_item_name(item &itm, const std::string &name) { itm.set_name(name); }
     /**
      * @brief Sets the properties of an item.
      *
@@ -197,7 +197,7 @@ namespace coco
      * @param itm The item to set the properties for.
      * @param props The JSON object containing the properties.
      */
-    virtual void set_item_properties(item &itm, const json::json &props) { itm.properties = props; }
+    virtual void set_item_properties(item &itm, const json::json &props) { itm.set_properties(props); }
 
     /**
      * @brief Removes an item from the database.
@@ -238,6 +238,14 @@ namespace coco
     }
 
     /**
+     * Retrieves the last data associated with the given item.
+     *
+     * @param itm The item for which to retrieve the last data.
+     * @return A pair containing the last data and the timestamp of the data.
+     */
+    virtual std::pair<json::json, std::chrono::system_clock::time_point> get_last_data(const item &itm) = 0;
+
+    /**
      * Retrieves data for a given item within a specified time range.
      *
      * @param itm The item for which to retrieve data.
@@ -256,7 +264,7 @@ namespace coco
      * @param data The data to be added to the database.
      * @param timestamp The timestamp of the data. Defaults to the current time.
      */
-    virtual void add_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
+    virtual void add_data(item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) { itm.set_value(data, timestamp); }
 
     /**
      * Returns a vector of references to the reactive rules in the database.

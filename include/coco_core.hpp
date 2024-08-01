@@ -3,7 +3,6 @@
 #include "coco_item.hpp"
 #include "coco_rule.hpp"
 #include "coco_executor.hpp"
-#include <chrono>
 #include <mutex>
 
 namespace coco
@@ -236,7 +235,7 @@ namespace coco
      * @param data The data to be added.
      * @param timestamp The timestamp of the data. Defaults to the current time.
      */
-    void add_data(const item &item, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
+    void add_data(item &item, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
 
     /**
      * @brief Retrieves a vector of references to the solvers.
@@ -386,6 +385,11 @@ namespace coco
      * @param r The deliberative rule to delete.
      */
     void delete_deliberative_rule(rule &r);
+
+  protected:
+    std::vector<Deftemplate *> get_deftemplates();
+    std::vector<Defrule *> get_defrules();
+    std::vector<Fact *> get_facts();
 
   private:
     virtual void new_type(const type &tp);

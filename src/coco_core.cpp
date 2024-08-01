@@ -9,6 +9,7 @@ namespace coco
     coco_core::coco_core(std::unique_ptr<coco_db> &&db) : db(std::move(db)), env(CreateEnvironment())
     {
         assert(env != nullptr);
+        AddUDF(env, "add_data", "v", 3, 3, "smm", coco::add_data, "add_data", this);
         AddUDF(env, "new_solver_script", "v", 2, 2, "ys", new_solver_script, "new_solver_script", this);
         AddUDF(env, "new_solver_rules", "v", 2, 2, "ym", new_solver_rules, "new_solver_rules", this);
         AddUDF(env, "start_execution", "v", 1, 1, "l", start_execution, "start_execution", this);
@@ -319,6 +320,52 @@ namespace coco
         db->init(*this);
 
         Run(env, -1);
+    }
+
+    void add_data(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Adding data..");
+
+        auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
+
+        UDFValue item_id; // we get the item id..
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
+            return;
+        auto &itm = cc.get_item(item_id.lexemeValue->contents);
+
+        UDFValue pars; // we get the parameters..
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &pars))
+            return;
+
+        UDFValue vals; // we get the values..
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &vals))
+            return;
+
+        json::json data;
+        for (size_t i = 0; i < pars.multifieldValue->length; ++i)
+        {
+            auto &par = pars.multifieldValue->contents[i];
+            if (par.header->type != SYMBOL_TYPE)
+                return;
+            auto &val = vals.multifieldValue->contents[i];
+            switch (val.header->type)
+            {
+            case INTEGER_TYPE:
+                data[par.lexemeValue->contents] = static_cast<int64_t>(val.integerValue->contents);
+                break;
+            case FLOAT_TYPE:
+                data[par.lexemeValue->contents] = val.floatValue->contents;
+                break;
+            case STRING_TYPE:
+            case SYMBOL_TYPE:
+                data[par.lexemeValue->contents] = val.lexemeValue->contents;
+                break;
+            default:
+                return;
+            }
+        }
+
+        cc.add_data(itm, data);
     }
 
     void new_solver_script(Environment *, UDFContext *udfc, UDFValue *)

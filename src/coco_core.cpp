@@ -416,6 +416,9 @@ namespace coco
         // we load the basic knowledge base..
         db->init(*this);
 
+        for (const auto dt : get_deftemplates())
+            DeftemplatePPForm(dt);
+
         for (const auto &itm : get_items())
         {
             auto data_timestamp = db->get_last_data(itm);

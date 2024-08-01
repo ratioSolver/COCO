@@ -91,6 +91,7 @@ namespace coco
     Fact *is_instance_of = nullptr;               // The fact representing the type of the item.
     const std::string id;                         // The ID of the item.
     const type &tp;                               // The type of the item.
+    std::set<const type *> types;                 // The types of the item.
     std::string name;                             // The name of the item.
     json::json properties;                        // The properties of the item.
     std::map<std::string, Fact *> property_facts; // The facts representing the properties of the item.

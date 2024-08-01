@@ -190,12 +190,6 @@ namespace coco
     void coco_core::add_data(item &s, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        for (const auto &[p_name, p] : s.get_type().get_dynamic_properties())
-            if (!data.contains(p_name))
-                LOG_WARN("Data for item " + s.get_id() + " do not contain " + p_name);
-            else if (!p->validate(data[p_name], schemas))
-                LOG_WARN("Data " + p_name + " for item " + s.get_id() + " is invalid");
-
         db->add_data(s, data, timestamp);
         new_data(s, data, timestamp);
         Run(env, -1);
@@ -321,10 +315,11 @@ namespace coco
         std::vector<Deftemplate *> res;
         Deftemplate *deftemplate = nullptr;
         deftemplate = GetNextDeftemplate(env, deftemplate);
-        do
-        {
-            res.push_back(deftemplate);
-        } while ((deftemplate = GetNextDeftemplate(env, deftemplate)) != NULL);
+        if (deftemplate)
+            do
+            {
+                res.push_back(deftemplate);
+            } while ((deftemplate = GetNextDeftemplate(env, deftemplate)) != NULL);
         return res;
     }
     std::vector<Defrule *> coco_core::get_defrules()
@@ -333,10 +328,11 @@ namespace coco
         std::vector<Defrule *> res;
         Defrule *defrule = nullptr;
         defrule = GetNextDefrule(env, defrule);
-        do
-        {
-            res.push_back(defrule);
-        } while ((defrule = GetNextDefrule(env, defrule)) != NULL);
+        if (defrule)
+            do
+            {
+                res.push_back(defrule);
+            } while ((defrule = GetNextDefrule(env, defrule)) != NULL);
         return res;
     }
     std::vector<Fact *> coco_core::get_facts()
@@ -345,10 +341,11 @@ namespace coco
         std::vector<Fact *> res;
         Fact *fact = nullptr;
         fact = GetNextFact(env, fact);
-        do
-        {
-            res.push_back(fact);
-        } while ((fact = GetNextFact(env, fact)) != NULL);
+        if (fact)
+            do
+            {
+                res.push_back(fact);
+            } while ((fact = GetNextFact(env, fact)) != NULL);
         return res;
     }
 

@@ -43,10 +43,10 @@ namespace coco
         return j;
     }
 
-    [[nodiscard]] json::json make_taxonomy_message(coco_core &core) noexcept
+    [[nodiscard]] json::json make_types_message(coco_core &core) noexcept
     {
         json::json j;
-        j["type"] = "taxonomy";
+        j["type"] = "types";
         json::json types = json::json_type::array;
         for (const auto &type : core.get_types())
             types.push_back(to_json(type));
@@ -134,6 +134,28 @@ namespace coco
         return j;
     }
 
+    [[nodiscard]] json::json make_new_reactive_rule_message(const rule &r) noexcept
+    {
+        json::json j = to_json(r);
+        j["type"] = "new_reactive_rule";
+        return j;
+    }
+
+    [[nodiscard]] json::json make_updated_reactive_rule_message(const rule &r) noexcept
+    {
+        json::json j = to_json(r);
+        j["type"] = "updated_reactive_rule";
+        return j;
+    }
+
+    [[nodiscard]] json::json make_deleted_reactive_rule_message(const std::string &r_id) noexcept
+    {
+        json::json j;
+        j["type"] = "deleted_reactive_rule";
+        j["deleted_reactive_rule"] = r_id;
+        return j;
+    }
+
     [[nodiscard]] json::json make_deliberative_rules_message(coco_core &core) noexcept
     {
         json::json j;
@@ -142,6 +164,28 @@ namespace coco
         for (const auto &r : core.get_deliberative_rules())
             rules.push_back(to_json(r));
         j["rules"] = std::move(rules);
+        return j;
+    }
+
+    [[nodiscard]] json::json make_new_deliberative_rule_message(const rule &r) noexcept
+    {
+        json::json j = to_json(r);
+        j["type"] = "new_deliberative_rule";
+        return j;
+    }
+
+    [[nodiscard]] json::json make_updated_deliberative_rule_message(const rule &r) noexcept
+    {
+        json::json j = to_json(r);
+        j["type"] = "updated_deliberative_rule";
+        return j;
+    }
+
+    [[nodiscard]] json::json make_deleted_deliberative_rule_message(const std::string &r_id) noexcept
+    {
+        json::json j;
+        j["type"] = "deleted_deliberative_rule";
+        j["deleted_deliberative_rule"] = r_id;
         return j;
     }
 
@@ -155,19 +199,4 @@ namespace coco
         j["solvers"] = std::move(solvers);
         return j;
     }
-
-    [[nodiscard]] json::json make_reactive_rule_message(const rule &r) noexcept
-    {
-        json::json j = to_json(r);
-        j["type"] = "new_reactive_rule";
-        return j;
-    }
-
-    [[nodiscard]] json::json make_deliberative_rule_message(const rule &r) noexcept
-    {
-        json::json j = to_json(r);
-        j["type"] = "new_deliberative_rule";
-        return j;
-    }
-
 } // namespace coco

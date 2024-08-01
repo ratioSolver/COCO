@@ -62,7 +62,7 @@ namespace coco
     }
     void type::add_static_property(std::unique_ptr<property> &&prop) noexcept
     {
-        Build(cc.env, prop->to_deftemplate(*this, true).c_str());
+        Build(cc.env, prop->to_deftemplate(*this, false).c_str());
         static_properties.emplace(prop->get_name(), std::move(prop));
     }
     void type::remove_static_property(const property &prop) noexcept { static_properties.erase(prop.get_name()); }

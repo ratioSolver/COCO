@@ -277,6 +277,17 @@ namespace coco
     std::vector<std::reference_wrapper<rule>> get_reactive_rules();
 
     /**
+     * @brief Retrieves a reactive rule with the specified ID.
+     *
+     * This function retrieves the reactive rule with the specified ID.
+     *
+     * @param id The ID of the reactive rule.
+     * @return A reference to the reactive rule.
+     * @throws std::invalid_argument if the reactive rule does not exist.
+     */
+    rule &get_reactive_rule(const std::string &id);
+
+    /**
      * @brief Creates a reactive rule with the specified name and content.
      *
      * This function creates a reactive rule with the specified name and content.
@@ -288,6 +299,35 @@ namespace coco
     rule &create_reactive_rule(const std::string &name, const std::string &content);
 
     /**
+     * @brief Sets the name of the reactive rule.
+     *
+     * This function sets the name of the reactive rule with the specified ID.
+     *
+     * @param r The reactive rule.
+     * @param name The name of the reactive rule.
+     */
+    void set_reactive_rule_name(rule &r, const std::string &name);
+
+    /**
+     * @brief Sets the content of the reactive rule.
+     *
+     * This function sets the content of the reactive rule with the specified ID.
+     *
+     * @param r The reactive rule.
+     * @param content The content of the reactive rule.
+     */
+    void set_reactive_rule_content(rule &r, const std::string &content);
+
+    /**
+     * @brief Deletes the reactive rule with the specified ID.
+     *
+     * This function deletes the reactive rule with the specified ID.
+     *
+     * @param r The reactive rule to delete.
+     */
+    void delete_reactive_rule(rule &r);
+
+    /**
      * @brief Retrieves a vector of references to the deliberative rules.
      *
      * This function retrieves all the deliberative rules as a vector of `rule` objects.
@@ -295,6 +335,17 @@ namespace coco
      * @return A vector of references to the deliberative rules.
      */
     std::vector<std::reference_wrapper<rule>> get_deliberative_rules();
+
+    /**
+     * @brief Retrieves a deliberative rule with the specified ID.
+     *
+     * This function retrieves the deliberative rule with the specified ID.
+     *
+     * @param id The ID of the deliberative rule.
+     * @return A reference to the deliberative rule.
+     * @throws std::invalid_argument if the deliberative rule does not exist.
+     */
+    rule &get_deliberative_rule(const std::string &id);
 
     /**
      * @brief Creates a deliberative rule with the specified name and content.
@@ -306,6 +357,35 @@ namespace coco
      * @return A reference to the created `rule` object.
      */
     rule &create_deliberative_rule(const std::string &name, const std::string &content);
+
+    /**
+     * @brief Sets the name of the deliberative rule.
+     *
+     * This function sets the name of the deliberative rule with the specified ID.
+     *
+     * @param r The deliberative rule.
+     * @param name The name of the deliberative rule.
+     */
+    void set_deliberative_rule_name(rule &r, const std::string &name);
+
+    /**
+     * @brief Sets the content of the deliberative rule.
+     *
+     * This function sets the content of the deliberative rule with the specified ID.
+     *
+     * @param r The deliberative rule.
+     * @param content The content of the deliberative rule.
+     */
+    void set_deliberative_rule_content(rule &r, const std::string &content);
+
+    /**
+     * @brief Deletes the deliberative rule with the specified ID.
+     *
+     * This function deletes the deliberative rule with the specified ID.
+     *
+     * @param r The deliberative rule to delete.
+     */
+    void delete_deliberative_rule(rule &r);
 
   private:
     virtual void new_type(const type &tp);
@@ -322,7 +402,12 @@ namespace coco
     virtual void deleted_solver(const uintptr_t id);
 
     virtual void new_reactive_rule(const rule &r);
+    virtual void updated_reactive_rule(const rule &r);
+    virtual void deleted_reactive_rule(const rule &r);
+
     virtual void new_deliberative_rule(const rule &r);
+    virtual void updated_deliberative_rule(const rule &r);
+    virtual void deleted_deliberative_rule(const rule &r);
 
     virtual void state_changed(const coco_executor &exec);
 

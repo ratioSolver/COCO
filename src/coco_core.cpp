@@ -9,7 +9,7 @@ namespace coco
     coco_core::coco_core(std::unique_ptr<coco_db> &&db) : db(std::move(db)), env(CreateEnvironment())
     {
         assert(env != nullptr);
-        AddUDF(env, "add_data", "v", 3, 3, "smm", coco::add_data, "add_data", this);
+        AddUDF(env, "add_data", "v", 3, 4, "ymml", coco::add_data, "add_data", this);
         AddUDF(env, "new_solver_script", "v", 2, 2, "ys", new_solver_script, "new_solver_script", this);
         AddUDF(env, "new_solver_rules", "v", 2, 2, "ym", new_solver_rules, "new_solver_rules", this);
         AddUDF(env, "start_execution", "v", 1, 1, "l", start_execution, "start_execution", this);
@@ -191,10 +191,20 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &[p_name, p] : s.get_type().get_dynamic_properties())
+        {
             if (!data.contains(p_name))
                 LOG_WARN("Data for item " + s.get_id() + " do not contain " + p_name);
             else if (!p->validate(data[p_name], schemas))
                 LOG_WARN("Data " + p_name + " for item " + s.get_id() + " is invalid");
+            FactBuilder *prop_fact_builder = CreateFactBuilder(env, p->to_deftemplate_name(s.get_type()).c_str());
+            FBPutSlotSymbol(prop_fact_builder, "item_id", s.get_id().c_str());
+            p->set_value(prop_fact_builder, data[p_name]);
+            FBPutSlotInteger(prop_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
+            [[maybe_unused]] Fact *prop_fact = FBAssert(prop_fact_builder);
+            assert(prop_fact);
+            FBDispose(prop_fact_builder);
+        }
+        Run(env, -1);
 
         db->add_data(s, data, timestamp);
         new_data(s, data, timestamp);
@@ -234,6 +244,12 @@ namespace coco
         return db->get_reactive_rules();
     }
 
+    rule &coco_core::get_reactive_rule(const std::string &id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_reactive_rule(id);
+    }
+
     rule &coco_core::create_reactive_rule(const std::string &name, const std::string &content)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -242,10 +258,39 @@ namespace coco
         return r;
     }
 
+    void coco_core::set_reactive_rule_name(rule &r, const std::string &name)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->set_reactive_rule_name(r, name);
+        Run(env, -1);
+        updated_reactive_rule(r);
+    }
+
+    void coco_core::set_reactive_rule_content(rule &r, const std::string &content)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->set_reactive_rule_content(r, content);
+        Run(env, -1);
+        updated_reactive_rule(r);
+    }
+
+    void coco_core::delete_reactive_rule(rule &r)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->delete_reactive_rule(r);
+        deleted_reactive_rule(r);
+    }
+
     std::vector<std::reference_wrapper<rule>> coco_core::get_deliberative_rules()
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         return db->get_deliberative_rules();
+    }
+
+    rule &coco_core::get_deliberative_rule(const std::string &id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db->get_deliberative_rule(id);
     }
 
     rule &coco_core::create_deliberative_rule(const std::string &name, const std::string &content)
@@ -254,6 +299,29 @@ namespace coco
         auto &r = db->create_deliberative_rule(*this, name, content);
         new_deliberative_rule(r);
         return r;
+    }
+
+    void coco_core::set_deliberative_rule_name(rule &r, const std::string &name)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->set_deliberative_rule_name(r, name);
+        Run(env, -1);
+        updated_deliberative_rule(r);
+    }
+
+    void coco_core::set_deliberative_rule_content(rule &r, const std::string &content)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->set_deliberative_rule_content(r, content);
+        Run(env, -1);
+        updated_deliberative_rule(r);
+    }
+
+    void coco_core::delete_deliberative_rule(rule &r)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->delete_deliberative_rule(r);
+        deleted_deliberative_rule(r);
     }
 
     void coco_core::new_type([[maybe_unused]] const type &tp) {}
@@ -270,7 +338,11 @@ namespace coco
     void coco_core::deleted_solver([[maybe_unused]] const uintptr_t id) {}
 
     void coco_core::new_reactive_rule([[maybe_unused]] const rule &r) {}
+    void coco_core::updated_reactive_rule([[maybe_unused]] const rule &r) {}
+    void coco_core::deleted_reactive_rule([[maybe_unused]] const rule &r) {}
     void coco_core::new_deliberative_rule([[maybe_unused]] const rule &r) {}
+    void coco_core::updated_deliberative_rule([[maybe_unused]] const rule &r) {}
+    void coco_core::deleted_deliberative_rule([[maybe_unused]] const rule &r) {}
 
     void coco_core::state_changed([[maybe_unused]] const coco_executor &exec) {}
 
@@ -365,7 +437,15 @@ namespace coco
             }
         }
 
-        cc.add_data(itm, data);
+        UDFValue timestamp; // we get the timestamp..
+        if (UDFHasNextArgument(udfc))
+        {
+            if (!UDFNextArgument(udfc, INTEGER_BIT, &timestamp))
+                return;
+            cc.add_data(itm, data, std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp.integerValue->contents)));
+        }
+        else
+            cc.add_data(itm, data);
     }
 
     void new_solver_script(Environment *, UDFContext *udfc, UDFValue *)

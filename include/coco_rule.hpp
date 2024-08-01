@@ -4,6 +4,7 @@
 
 namespace coco
 {
+  class coco_db;
   class coco_core;
 
   /**
@@ -13,6 +14,8 @@ namespace coco
    */
   class rule
   {
+    friend class coco_db;
+
   public:
     /**
      * @brief Constructs a rule object.

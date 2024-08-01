@@ -44,16 +44,15 @@ namespace coco
   [[nodiscard]] json::json to_json(const rule &r) noexcept;
 
   /**
-   * @brief Creates a JSON message representing the taxonomy.
+   * @brief Creates a JSON message containing all types.
    *
-   * This function takes a reference to a `coco_core` object and returns a JSON message
-   * representing the taxonomy. The returned JSON message can be used for various purposes,
-   * such as sending it over a network or storing it in a file.
+   * This function creates a JSON message containing all types managed by the given `coco_core` object.
+   * The message is returned as a `json::json` object.
    *
-   * @param core The `coco_core` object containing the taxonomy information.
-   * @return A JSON message representing the taxonomy.
+   * @param core The `coco_core` object to retrieve the types from.
+   * @return A `json::json` object containing all types.
    */
-  [[nodiscard]] json::json make_taxonomy_message(coco_core &core) noexcept;
+  [[nodiscard]] json::json make_types_message(coco_core &core) noexcept;
 
   /**
    * @brief Creates a new JSON message for the given type.
@@ -155,6 +154,39 @@ namespace coco
   [[nodiscard]] json::json make_reactive_rules_message(coco_core &core) noexcept;
 
   /**
+   * Creates a JSON message for a new reactive rule.
+   *
+   * This function takes a rule object and converts it into a JSON message.
+   * It adds a "type" field to the JSON message indicating that it is a new reactive rule.
+   *
+   * @param r The rule object to convert into a JSON message.
+   * @return The JSON message representing the new reactive rule.
+   */
+  [[nodiscard]] json::json make_new_reactive_rule_message(const rule &r) noexcept;
+
+  /**
+   * @brief Creates a JSON message containing updated reactive rule information.
+   *
+   * This function takes a `rule` object and returns a JSON message containing the updated information of the reactive rule.
+   * The JSON message can be used for communication or storage purposes.
+   *
+   * @param r The `rule` object to be included in the message.
+   * @return A JSON message containing the updated reactive rule information.
+   */
+  [[nodiscard]] json::json make_updated_reactive_rule_message(const rule &r) noexcept;
+
+  /**
+   * @brief Creates a JSON message indicating that a reactive rule has been deleted.
+   *
+   * This function takes the ID of the deleted reactive rule as input and returns a JSON message
+   * indicating that the reactive rule has been deleted.
+   *
+   * @param r_id The ID of the deleted reactive rule.
+   * @return A JSON message indicating that the reactive rule has been deleted.
+   */
+  [[nodiscard]] json::json make_deleted_reactive_rule_message(const std::string &r_id) noexcept;
+
+  /**
    * @brief Creates a JSON message containing deliberative rules.
    *
    * This function takes a reference to a `coco_core` object and returns a JSON message
@@ -167,28 +199,6 @@ namespace coco
   [[nodiscard]] json::json make_deliberative_rules_message(coco_core &core) noexcept;
 
   /**
-   * @brief Creates a JSON message containing information about solvers.
-   *
-   * This function takes a reference to a `coco_core` object and creates a JSON message
-   * containing information about the solvers. The message is returned as a `json::json` object.
-   *
-   * @param core The `coco_core` object representing the COCO platform.
-   * @return A `json::json` object representing the solvers message.
-   */
-  [[nodiscard]] json::json make_solvers_message(coco_core &core) noexcept;
-
-  /**
-   * Creates a JSON message for a new reactive rule.
-   *
-   * This function takes a rule object and converts it into a JSON message.
-   * It adds a "type" field to the JSON message indicating that it is a new reactive rule.
-   *
-   * @param r The rule object to convert into a JSON message.
-   * @return The JSON message representing the new reactive rule.
-   */
-  [[nodiscard]] json::json make_reactive_rule_message(const rule &r) noexcept;
-
-  /**
    * Creates a JSON message for a new deliberative rule.
    *
    * This function takes a rule object and converts it into a JSON message.
@@ -198,7 +208,40 @@ namespace coco
    * @param r The rule object to convert into a JSON message.
    * @return The JSON message representing the new deliberative rule.
    */
-  [[nodiscard]] json::json make_deliberative_rule_message(const rule &r) noexcept;
+  [[nodiscard]] json::json make_new_deliberative_rule_message(const rule &r) noexcept;
+
+  /**
+   * @brief Creates a JSON message containing updated deliberative rule information.
+   *
+   * This function takes a `rule` object and returns a JSON message containing the updated information of the deliberative rule.
+   * The JSON message can be used for communication or storage purposes.
+   *
+   * @param r The `rule` object to be included in the message.
+   * @return A JSON message containing the updated deliberative rule information.
+   */
+  [[nodiscard]] json::json make_updated_deliberative_rule_message(const rule &r) noexcept;
+
+  /**
+   * @brief Creates a JSON message indicating that a deliberative rule has been deleted.
+   *
+   * This function takes the ID of the deleted deliberative rule as input and returns a JSON message
+   * indicating that the deliberative rule has been deleted.
+   *
+   * @param r_id The ID of the deleted deliberative rule.
+   * @return A JSON message indicating that the deliberative rule has been deleted.
+   */
+  [[nodiscard]] json::json make_deleted_deliberative_rule_message(const std::string &r_id) noexcept;
+
+  /**
+   * @brief Creates a JSON message containing information about solvers.
+   *
+   * This function takes a reference to a `coco_core` object and creates a JSON message
+   * containing information about the solvers. The message is returned as a `json::json` object.
+   *
+   * @param core The `coco_core` object representing the COCO platform.
+   * @return A `json::json` object representing the solvers message.
+   */
+  [[nodiscard]] json::json make_solvers_message(coco_core &core) noexcept;
 
   const json::json coco_schemas{
       {"property",
@@ -557,24 +600,6 @@ namespace coco
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}}};
 
   const json::json coco_messages{
-      {"taxonomy_message",
-       {"payload",
-        {{"type", "object"},
-         {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"taxonomy"}}}},
-           {"types", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}},
-      {"reactive_rules_message",
-       {"payload",
-        {{"type", "object"},
-         {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"reactive_rules"}}}},
-           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}},
-      {"deliberative_rules_message",
-       {"payload",
-        {{"type", "object"},
-         {"properties",
-          {{"type", {{"type", "string"}, {"enum", {"deliberative_rules"}}}},
-           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}},
       {"solvers_message",
        {"payload",
         {{"type", "object"},
@@ -636,5 +661,53 @@ namespace coco
           {{"type", {{"type", "string"}, {"enum", {"new_data"}}}},
            {"item_id", {{"type", "string"}, {"format", "uuid"}}},
            {"timestamp", {{"type", "string"}, {"format", "date-time"}}},
-           {"data", {{"type", "object"}}}}}}}}};
+           {"data", {{"type", "object"}}}}}}}},
+      {"reactive_rules_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"reactive_rules"}}}},
+           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}},
+      {"new_reactive_rule_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"new_reactive_rule"}}}},
+           {"new_reactive_rule", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}},
+      {"updated_reactive_rule_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"updated_reactive_rule"}}}},
+           {"updated_reactive_rule", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}},
+      {"deleted_reactive_rule_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"deleted_reactive_rule"}}}},
+           {"deleted_reactive_rule", {{"type", "string"}, {"format", "uuid"}}}}}}}},
+      {"deliberative_rules_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"deliberative_rules"}}}},
+           {"rules", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}},
+      {"new_deliberative_rule_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"new_deliberative_rule"}}}},
+           {"new_deliberative_rule", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}},
+      {"updated_deliberative_rule_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"updated_deliberative_rule"}}}},
+           {"updated_deliberative_rule", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}},
+      {"deleted_deliberative_rule_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"deleted_deliberative_rule"}}}},
+           {"deleted_deliberative_rule", {{"type", "string"}, {"format", "uuid"}}}}}}}}};
 } // namespace coco

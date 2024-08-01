@@ -85,7 +85,7 @@ namespace coco
      * @param tp The type to which the static property will be added.
      * @param prop The static property to add.
      */
-    virtual void add_static_property(type &tp, std::unique_ptr<property> &&prop) { tp.static_properties.emplace(prop->get_name(), std::move(prop)); }
+    virtual void add_static_property(type &tp, std::unique_ptr<property> &&prop) { tp.add_static_property(std::move(prop)); }
 
     /**
      * @brief Removes a static property from the given type.
@@ -103,7 +103,7 @@ namespace coco
      * @param tp The type to which the dynamic property will be added.
      * @param prop The dynamic property to add.
      */
-    virtual void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop) { tp.dynamic_properties.emplace(prop->get_name(), std::move(prop)); }
+    virtual void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop) { tp.add_dynamic_property(std::move(prop)); }
 
     /**
      * @brief Removes a dynamic property from the given type.
@@ -310,6 +310,35 @@ namespace coco
     virtual rule &create_reactive_rule(coco_core &cc, const std::string &name, const std::string &content) = 0;
 
     /**
+     * @brief Sets the name of the reactive rule.
+     *
+     * This function is used to set the name of a reactive rule. The name is a string that helps identify the rule.
+     *
+     * @param r The reference to the rule object.
+     * @param name The name of the reactive rule.
+     */
+    virtual void set_reactive_rule_name(rule &r, const std::string &name) { r.name = name; }
+
+    /**
+     * @brief Sets the content of a reactive rule.
+     *
+     * This function sets the content of the given reactive rule `r` to the specified `content`.
+     *
+     * @param r The reactive rule to set the content for.
+     * @param content The content to set for the reactive rule.
+     */
+    virtual void set_reactive_rule_content(rule &r, const std::string &content) { r.content = content; }
+
+    /**
+     * @brief Deletes a reactive rule.
+     *
+     * This function deletes the specified reactive rule from the database.
+     *
+     * @param r The reactive rule to be deleted.
+     */
+    virtual void delete_reactive_rule(const rule &r) { reactive_rules.erase(r.id); }
+
+    /**
      * Returns a vector of references to the deliberative rules in the database.
      *
      * @return A vector of references to the deliberative rules.
@@ -359,6 +388,35 @@ namespace coco
      * @return A reference to the created deliberative rule.
      */
     virtual rule &create_deliberative_rule(coco_core &cc, const std::string &name, const std::string &content) = 0;
+
+    /**
+     * @brief Sets the name of a deliberative rule.
+     *
+     * This function sets the name of the given deliberative rule to the specified name.
+     *
+     * @param r The deliberative rule to set the name for.
+     * @param name The new name for the deliberative rule.
+     */
+    virtual void set_deliberative_rule_name(rule &r, const std::string &name) { r.name = name; }
+
+    /**
+     * @brief Sets the content of a deliberative rule.
+     *
+     * This function sets the content of the given deliberative rule to the specified content.
+     *
+     * @param r The rule to set the content for.
+     * @param content The content to set for the rule.
+     */
+    virtual void set_deliberative_rule_content(rule &r, const std::string &content) { r.content = content; }
+
+    /**
+     * @brief Deletes a deliberative rule.
+     *
+     * This function is used to delete a deliberative rule from the database.
+     *
+     * @param r The rule to be deleted.
+     */
+    virtual void delete_deliberative_rule(const rule &r) { deliberative_rules.erase(r.id); }
 
   protected:
     type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {})

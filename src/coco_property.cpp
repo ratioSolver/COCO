@@ -7,13 +7,13 @@ namespace coco
 {
     property::property(const std::string &name, const std::string &description) noexcept : name(name), description(description) {}
     json::json property::to_json() const noexcept { return json::json{{"name", name}, {"description", description}}; }
-    std::string property::to_deftemplate_name(const type &tp, bool is_static) const noexcept
+    std::string property::to_deftemplate_name(const type &tp, bool is_dynamic) const noexcept
     {
         std::string type_name = tp.get_name();
         type_name.erase(std::remove(type_name.begin(), type_name.end(), ' '), type_name.end());
         std::string property_name = get_name();
         property_name.erase(std::remove(property_name.begin(), property_name.end(), ' '), property_name.end());
-        if (is_static)
+        if (is_dynamic)
             return type_name + "_has_" + property_name;
         return type_name + "_" + property_name;
     }
@@ -38,10 +38,12 @@ namespace coco
         j["type"] = "integer";
         return j;
     }
-    std::string integer_property::to_deftemplate(const type &tp, bool is_static) const noexcept
+    std::string integer_property::to_deftemplate(const type &tp, bool is_dynamic) const noexcept
     {
-        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_static);
-        deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type INTEGER)";
+        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_dynamic) + " (slot item_id (type SYMBOL))";
+        if (is_dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += " (slot " + get_name() + " (type INTEGER)";
         if (default_value.has_value())
             deftemplate += " (default " + std::to_string(default_value.value()) + ")";
         if (min != std::numeric_limits<long>::min() || max != std::numeric_limits<long>::max())
@@ -83,10 +85,12 @@ namespace coco
         j["type"] = "float";
         return j;
     }
-    std::string float_property::to_deftemplate(const type &tp, bool is_static) const noexcept
+    std::string float_property::to_deftemplate(const type &tp, bool is_dynamic) const noexcept
     {
-        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_static);
-        deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type FLOAT)";
+        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_dynamic) + " (slot item_id (type SYMBOL))";
+        if (is_dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += " (slot " + get_name() + " (type FLOAT)";
         if (default_value.has_value())
             deftemplate += " (default " + std::to_string(default_value.value()) + ")";
         if (min != -std::numeric_limits<double>::max() || max != std::numeric_limits<double>::max())
@@ -118,10 +122,12 @@ namespace coco
             j["default"] = default_value.value();
         return j;
     }
-    std::string string_property::to_deftemplate(const type &tp, bool is_static) const noexcept
+    std::string string_property::to_deftemplate(const type &tp, bool is_dynamic) const noexcept
     {
-        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_static);
-        deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type STRING)";
+        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_dynamic) + " (slot item_id (type SYMBOL))";
+        if (is_dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += " (slot " + get_name() + " (type STRING)";
         if (default_value.has_value())
             deftemplate += " (default \"" + default_value.value() + "\")";
         deftemplate += "))";
@@ -157,10 +163,12 @@ namespace coco
         }
         return j;
     }
-    std::string symbol_property::to_deftemplate(const type &tp, bool is_static) const noexcept
+    std::string symbol_property::to_deftemplate(const type &tp, bool is_dynamic) const noexcept
     {
-        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_static);
-        deftemplate += " (slot item_id (type SYMBOL)) (";
+        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_dynamic) + " (slot item_id (type SYMBOL))";
+        if (is_dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += " (";
         if (multiple)
             deftemplate += "multislot";
         else
@@ -207,10 +215,12 @@ namespace coco
         }
         return j;
     }
-    std::string item_property::to_deftemplate(const type &tp, bool is_static) const noexcept
+    std::string item_property::to_deftemplate(const type &tp, bool is_dynamic) const noexcept
     {
-        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_static);
-        deftemplate += " (slot item_id (type SYMBOL)) (";
+        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_dynamic) + " (slot item_id (type SYMBOL))";
+        if (is_dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += " (";
         if (multiple)
             deftemplate += "multislot";
         else
@@ -239,10 +249,12 @@ namespace coco
             j["default"] = default_value.value();
         return j;
     }
-    std::string json_property::to_deftemplate(const type &tp, bool is_static) const noexcept
+    std::string json_property::to_deftemplate(const type &tp, bool is_dynamic) const noexcept
     {
-        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_static);
-        deftemplate += " (slot item_id (type SYMBOL)) (slot " + get_name() + " (type STRING)";
+        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_dynamic) + " (slot item_id (type SYMBOL))";
+        if (is_dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += " (slot " + get_name() + " (type STRING)";
         if (default_value.has_value())
             deftemplate += " (default \"" + default_value.value().dump() + "\")";
         deftemplate += ")";

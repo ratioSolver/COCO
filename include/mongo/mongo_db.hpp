@@ -42,8 +42,14 @@ namespace coco
     void add_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
 
     [[nodiscard]] rule &create_reactive_rule(coco_core &cc, const std::string &name, const std::string &content) override;
+    void set_reactive_rule_name(rule &rl, const std::string &name) override;
+    void set_reactive_rule_content(rule &rl, const std::string &content) override;
+    void delete_reactive_rule(const rule &rl) override;
 
     [[nodiscard]] rule &create_deliberative_rule(coco_core &cc, const std::string &name, const std::string &content) override;
+    void set_deliberative_rule_name(rule &rl, const std::string &name) override;
+    void set_deliberative_rule_content(rule &rl, const std::string &content) override;
+    void delete_deliberative_rule(const rule &rl) override;
 
   private:
     mongocxx::client conn;

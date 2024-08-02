@@ -51,7 +51,7 @@ namespace coco
         FactBuilder *is_a_fact_builder = CreateFactBuilder(cc.env, "is_a");
         FBPutSlotSymbol(is_a_fact_builder, "type_id", get_id().c_str());
         FBPutSlotSymbol(is_a_fact_builder, "parent_id", parent.get_id().c_str());
-        Fact *parent_fact = FBAssert(is_a_fact_builder);
+        auto parent_fact = FBAssert(is_a_fact_builder);
         assert(parent_fact);
         FBDispose(is_a_fact_builder);
         parents.emplace(parent.name, parent);

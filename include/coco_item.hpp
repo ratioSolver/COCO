@@ -95,5 +95,6 @@ namespace coco
     std::string name;                             // The name of the item.
     json::json properties;                        // The properties of the item.
     std::map<std::string, Fact *> property_facts; // The facts representing the properties of the item.
+    std::map<std::string, Fact *> value_facts;    // The facts representing the values of the properties of the item.
   };
 } // namespace coco

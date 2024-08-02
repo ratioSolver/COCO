@@ -63,7 +63,7 @@ namespace coco
                 FactBuilder *property_fact_builder = CreateFactBuilder(cc.env, p->to_deftemplate_name(*t, false).c_str());
                 FBPutSlotSymbol(property_fact_builder, "item_id", id.c_str());
                 p->set_value(property_fact_builder, properties[p_name]);
-                Fact *property_fact = FBAssert(property_fact_builder);
+                auto property_fact = FBAssert(property_fact_builder);
                 assert(property_fact);
                 FBDispose(property_fact_builder);
                 property_facts[p_name] = property_fact;
@@ -84,13 +84,16 @@ namespace coco
             for (const auto &[p_name, p] : t->get_dynamic_properties())
                 if (value.contains(p_name))
                 {
+                    if (value_facts.find(p_name) != value_facts.end())
+                        Retract(value_facts[p_name]); // Retract the old value
                     FactBuilder *value_fact_builder = CreateFactBuilder(cc.env, p->to_deftemplate_name(*t).c_str());
                     FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
                     p->set_value(value_fact_builder, value[p_name]);
                     FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
-                    [[maybe_unused]] Fact *value_fact = FBAssert(value_fact_builder);
+                    auto value_fact = FBAssert(value_fact_builder);
                     assert(value_fact);
                     FBDispose(value_fact_builder);
+                    value_facts[p_name] = value_fact;
                 }
     }
 } // namespace coco

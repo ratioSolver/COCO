@@ -22,6 +22,7 @@ set(MONGODB_PORT "27017" CACHE STRING "The MongoDB Port")
 
 option(ENABLE_MQTT "Enable MQTT" OFF)
 option(ENABLE_API "CoCo API" OFF)
+option(ENABLE_AUTH "Enable CoCo authentication" OFF)
 
 message(STATUS "CoCo name: ${COCO_NAME}")
 message(STATUS "MongoDB host: ${MONGODB_HOST}")
@@ -57,6 +58,11 @@ if(ENABLE_API)
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
     target_compile_definitions(CoCo PRIVATE ENABLE_API)
+endif()
+
+message(STATUS "CoCo authentication: ${ENABLE_AUTH}")
+if(ENABLE_AUTH)
+    target_compile_definitions(CoCo PRIVATE ENABLE_AUTH)
 endif()
 
 if(MSVC)

@@ -392,48 +392,209 @@ namespace coco
     std::vector<Fact *> get_facts();
 
   private:
+    /**
+     * @brief Notifies when the type is created.
+     *
+     * @param tp The created type.
+     */
     virtual void new_type(const type &tp);
+    /**
+     * @brief Notifies when the type is updated.
+     *
+     * @param tp The updated type.
+     */
     virtual void updated_type(const type &tp);
+    /**
+     * @brief Notifies when the type is deleted.
+     *
+     * @param tp_id The ID of the deleted type.
+     */
     virtual void deleted_type(const std::string &tp_id);
 
+    /**
+     * @brief Notifies when the item is created.
+     *
+     * @param itm The created item.
+     */
     virtual void new_item(const item &itm);
+    /**
+     * @brief Notifies when the item is updated.
+     *
+     * @param itm The updated item.
+     */
     virtual void updated_item(const item &itm);
+    /**
+     * @brief Notifies when the item is deleted.
+     *
+     * @param itm_id The ID of the deleted item.
+     */
     virtual void deleted_item(const std::string &itm_id);
 
+    /**
+     * @brief Notifies when new data is added to the item.
+     *
+     * @param itm The item.
+     * @param data The data.
+     * @param timestamp The timestamp of the data.
+     */
     virtual void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp);
 
+    /**
+     * @brief Notifies when the solver is created.
+     *
+     * @param exec The created solver.
+     */
     virtual void new_solver(const coco_executor &exec);
+    /**
+     * @brief Notifies when the solver is deleted.
+     *
+     * @param id The ID of the deleted solver.
+     */
     virtual void deleted_solver(const uintptr_t id);
 
+    /**
+     * @brief Notifies when the reactive rule is created.
+     *
+     * @param r The created reactive rule.
+     */
     virtual void new_reactive_rule(const rule &r);
+    /**
+     * @brief Notifies when the reactive rule is updated.
+     *
+     * @param r The updated reactive rule.
+     */
     virtual void updated_reactive_rule(const rule &r);
+    /**
+     * @brief Notifies when the reactive rule is deleted.
+     *
+     * @param r The deleted reactive rule.
+     */
     virtual void deleted_reactive_rule(const rule &r);
 
+    /**
+     * @brief Notifies when the deliberative rule is created.
+     *
+     * @param r The created deliberative rule.
+     */
     virtual void new_deliberative_rule(const rule &r);
+    /**
+     * @brief Notifies when the deliberative rule is updated.
+     *
+     * @param r The updated deliberative rule.
+     */
     virtual void updated_deliberative_rule(const rule &r);
+    /**
+     * @brief Notifies when the deliberative rule is deleted.
+     *
+     * @param r The deleted deliberative rule.
+     */
     virtual void deleted_deliberative_rule(const rule &r);
 
+    /**
+     * @brief Notifies when the state of the solver changes.
+     *
+     * @param exec The solver.
+     */
     virtual void state_changed(const coco_executor &exec);
 
+    /**
+     * @brief Notifies when a flaw is created.
+     *
+     * @param exec The solver.
+     * @param f The created flaw.
+     */
     virtual void flaw_created(const coco_executor &exec, const ratio::flaw &f);
+    /**
+     * @brief Notifies when the state of the flaw changes.
+     *
+     * @param exec The solver.
+     * @param f The flaw.
+     */
     virtual void flaw_state_changed(const coco_executor &exec, const ratio::flaw &f);
+    /**
+     * @brief Notifies when the cost of the flaw changes.
+     *
+     * @param exec The solver.
+     * @param f The flaw.
+     */
     virtual void flaw_cost_changed(const coco_executor &exec, const ratio::flaw &f);
+    /**
+     * @brief Notifies when the position of the flaw changes.
+     *
+     * @param exec The solver.
+     * @param f The flaw.
+     */
     virtual void flaw_position_changed(const coco_executor &exec, const ratio::flaw &f);
+    /**
+     * @brief Notifies when the current flaw changes.
+     *
+     * @param exec The solver.
+     * @param f The flaw.
+     */
     virtual void current_flaw(const coco_executor &exec, const ratio::flaw &f);
 
+    /**
+     * @brief Notifies when a resolver is created.
+     *
+     * @param exec The solver.
+     * @param r The created resolver.
+     */
     virtual void resolver_created(const coco_executor &exec, const ratio::resolver &r);
+    /**
+     * @brief Notifies when the state of the resolver changes.
+     *
+     * @param exec The solver.
+     * @param r The resolver.
+     */
     virtual void resolver_state_changed(const coco_executor &exec, const ratio::resolver &r);
+    /**
+     * @brief Notifies when the current resolver changes.
+     *
+     * @param exec The solver.
+     * @param r The resolver.
+     */
     virtual void current_resolver(const coco_executor &exec, const ratio::resolver &r);
 
+    /**
+     * @brief Notifies when a causal link is added.
+     *
+     * @param exec The solver.
+     * @param f The flaw.
+     * @param r The resolver.
+     */
     virtual void causal_link_added(const coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r);
 
+    /**
+     * @brief Notifies when the state of the executor changes.
+     *
+     * @param exec The solver.
+     * @param state The state of the executor.
+     */
     virtual void executor_state_changed(const coco_executor &exec, ratio::executor::executor_state state);
 
+    /**
+     * @brief Notifies the passage of time.
+     * 
+     * @param exec The solver.
+     * @param time The current time.
+     */
     virtual void tick(const coco_executor &exec, const utils::rational &time);
 
     void starting(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
+    /**
+     * @brief Starts the execution of the given atoms.
+     * 
+     * @param exec The solver.
+     * @param atoms The atoms to execute.
+     */
     virtual void start(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
     void ending(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
+    /**
+     * @brief Ends the execution of the given atoms.
+     * 
+     * @param exec The solver.
+     * @param atoms The atoms to execute.
+     */
     virtual void end(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
 
     void reset_knowledge_base();

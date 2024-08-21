@@ -42,46 +42,46 @@ namespace coco
     std::unique_ptr<network::response> update_deliberative_rule(const network::request &req);
     std::unique_ptr<network::response> delete_deliberative_rule(const network::request &req);
 
-    void on_ws_open(network::ws_session &ws);
-    void on_ws_message(network::ws_session &ws, const std::string &msg);
-    void on_ws_close(network::ws_session &ws);
-    void on_ws_error(network::ws_session &ws, const boost::system::error_code &);
+    virtual void on_ws_open(network::ws_session &ws);
+    virtual void on_ws_message(network::ws_session &ws, const std::string &msg);
+    virtual void on_ws_close(network::ws_session &ws);
+    virtual void on_ws_error(network::ws_session &ws, const boost::system::error_code &);
 
-    void new_type(const type &tp) override;
-    void updated_type(const type &tp) override;
-    void deleted_type(const std::string &tp_id) override;
+    virtual void new_type(const type &tp) override;
+    virtual void updated_type(const type &tp) override;
+    virtual void deleted_type(const std::string &tp_id) override;
 
-    void new_item(const item &itm) override;
-    void updated_item(const item &itm) override;
-    void deleted_item(const std::string &itm_id) override;
+    virtual void new_item(const item &itm) override;
+    virtual void updated_item(const item &itm) override;
+    virtual void deleted_item(const std::string &itm_id) override;
 
-    void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
+    virtual void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
 
-    void new_solver(const coco_executor &exec) override;
-    void deleted_solver(const uintptr_t id) override;
+    virtual void new_solver(const coco_executor &exec) override;
+    virtual void deleted_solver(const uintptr_t id) override;
 
-    void new_reactive_rule(const rule &r) override;
-    void new_deliberative_rule(const rule &r) override;
+    virtual void new_reactive_rule(const rule &r) override;
+    virtual void new_deliberative_rule(const rule &r) override;
 
-    void state_changed(const coco_executor &exec) override;
+    virtual void state_changed(const coco_executor &exec) override;
 
-    void flaw_created(const coco_executor &exec, const ratio::flaw &f) override;
-    void flaw_state_changed(const coco_executor &exec, const ratio::flaw &f) override;
-    void flaw_cost_changed(const coco_executor &exec, const ratio::flaw &f) override;
-    void flaw_position_changed(const coco_executor &exec, const ratio::flaw &f) override;
-    void current_flaw(const coco_executor &exec, const ratio::flaw &f) override;
+    virtual void flaw_created(const coco_executor &exec, const ratio::flaw &f) override;
+    virtual void flaw_state_changed(const coco_executor &exec, const ratio::flaw &f) override;
+    virtual void flaw_cost_changed(const coco_executor &exec, const ratio::flaw &f) override;
+    virtual void flaw_position_changed(const coco_executor &exec, const ratio::flaw &f) override;
+    virtual void current_flaw(const coco_executor &exec, const ratio::flaw &f) override;
 
-    void resolver_created(const coco_executor &exec, const ratio::resolver &r) override;
-    void resolver_state_changed(const coco_executor &exec, const ratio::resolver &r) override;
-    void current_resolver(const coco_executor &exec, const ratio::resolver &r) override;
+    virtual void resolver_created(const coco_executor &exec, const ratio::resolver &r) override;
+    virtual void resolver_state_changed(const coco_executor &exec, const ratio::resolver &r) override;
+    virtual void current_resolver(const coco_executor &exec, const ratio::resolver &r) override;
 
-    void causal_link_added(const coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r) override;
+    virtual void causal_link_added(const coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r) override;
 
-    void executor_state_changed(const coco_executor &exec, ratio::executor::executor_state state) override;
+    virtual void executor_state_changed(const coco_executor &exec, ratio::executor::executor_state state) override;
 
-    void tick(const coco_executor &exec, const utils::rational &time) override;
+    virtual void tick(const coco_executor &exec, const utils::rational &time) override;
 
-  private:
+  protected:
     void broadcast(const json::json &msg)
     {
       auto msg_str = msg.dump();

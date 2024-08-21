@@ -698,6 +698,9 @@ namespace coco
             components[s.first] = s.second;
         for (const auto &s : ratio::executor::executor_schemas.as_object())
             components[s.first] = s.second;
+#ifdef ENABLE_AUTH
+        components["securitySchemes"] = {{"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}};
+#endif
         return components;
     }
     [[nodiscard]] json::json build_messages() noexcept

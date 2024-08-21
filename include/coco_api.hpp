@@ -328,18 +328,56 @@ namespace coco
          {{"message", {{"type", "string"}}}}}}}};
 
   const json::json coco_paths{
+#ifdef ENABLE_AUTH
+      {"/login",
+       {{"post",
+         {{"summary", "Login to the CoCo platform"},
+          {"description", "Endpoint to login to the CoCo platform"},
+          {"requestBody",
+           {{"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"username", {{"type", "string"}}}, {"password", {{"type", "string"}}}}}}}}}}},
+            {"required", true}},
+           {"responses",
+            {{"200",
+              {{"description", "Successful login"},
+               {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}}}}}}}}}}}}},
+             {"400",
+              {{"description", "Invalid parameters"},
+               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+             {"401",
+              {{"description", "Unauthorized"},
+               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+             {"403",
+              {{"description", "Forbidden"},
+               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}}},
+#endif
       {"/types",
        {{"get",
          {{"summary", "Retrieve all the CoCo types"},
           {"description", "Endpoint to fetch all the managed types"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"responses",
            {{"200",
              {{"description", "Successful response with the stored types"},
-              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}}}}}}}},
+              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}}
+#ifdef ENABLE_AUTH
+            ,
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}
+#endif
+           }}}}}},
       {"/type",
        {{"post",
          {{"summary", "Create a new type"},
           {"description", "Endpoint to create a new type"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
           {"responses",
            {{"200",
@@ -348,6 +386,14 @@ namespace coco
             {"400",
              {{"description", "Invalid parameters"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Parent type not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
@@ -358,6 +404,9 @@ namespace coco
        {{"get",
          {{"summary", "Retrieve the given type"},
           {"description", "Endpoint to fetch the given type"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "type_id"},
              {"in", "path"},
@@ -367,12 +416,23 @@ namespace coco
            {{"200",
              {{"description", "Successful response with the given type"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Type not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
         {"put",
          {{"summary", "Update the given type"},
           {"description", "Endpoint to update the given type"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "type_id"},
              {"in", "path"},
@@ -386,12 +446,23 @@ namespace coco
             {"400",
              {{"description", "Invalid parameters"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Type not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
         {"delete",
          {{"summary", "Delete the given type"},
           {"description", "Endpoint to delete the given type"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "type_id"},
              {"in", "path"},
@@ -403,6 +474,14 @@ namespace coco
             {"400",
              {{"description", "Invalid parameters"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Type not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
@@ -410,6 +489,9 @@ namespace coco
        {{"get",
          {{"summary", "Retrieve all the CoCo items"},
           {"description", "Endpoint to fetch all the managed items. The items can be filtered by specifying the type ID"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "type_id"},
              {"in", "query"},
@@ -422,6 +504,14 @@ namespace coco
             {"400",
              {{"description", "Invalid parameters"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Type not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
@@ -429,6 +519,9 @@ namespace coco
        {{"post",
          {{"summary", "Create a new item"},
           {"description", "Endpoint to create a new item"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"requestBody", {{"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
           {"responses",
            {{"200",
@@ -436,6 +529,14 @@ namespace coco
             {"400",
              {{"description", "Invalid parameters"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Type not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
@@ -443,6 +544,9 @@ namespace coco
        {{"get",
          {{"summary", "Retrieve the given item"},
           {"description", "Endpoint to fetch the given item"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "item_id"},
              {"in", "path"},
@@ -452,12 +556,23 @@ namespace coco
            {{"200",
              {{"description", "Successful response with the given item"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Item not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
         {"put",
          {{"summary", "Update the given item"},
           {"description", "Endpoint to update the given item"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "item_id"},
              {"in", "path"},
@@ -467,12 +582,23 @@ namespace coco
           {"responses",
            {{"200",
              {{"description", "Successful response"}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Item not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
         {"delete",
          {{"summary", "Delete the given item"},
           {"description", "Endpoint to delete the given item"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "item_id"},
              {"in", "path"},
@@ -481,6 +607,14 @@ namespace coco
           {"responses",
            {{"204",
              {{"description", "Successful response with the deleted item"}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Item not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
@@ -488,6 +622,9 @@ namespace coco
        {{"get",
          {{"summary", "Retrieve the data of the specified item"},
           {"description", "Endpoint to fetch the data of the specified item. The data can be filtered by specifying the start and end date"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "item_id"},
              {"description", "ID of the item"},
@@ -506,12 +643,23 @@ namespace coco
            {{"200",
              {{"description", "Successful response with the data of the specified item"},
               {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/data"}}}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Item not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}},
         {"post",
          {{"summary", "Add data to the specified item"},
           {"description", "Endpoint to add data to the specified item"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "item_id"},
              {"description", "ID of the item"},
@@ -525,6 +673,14 @@ namespace coco
             {"400",
              {{"description", "Invalid input"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Item not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
@@ -532,14 +688,30 @@ namespace coco
        {{"get",
          {{"summary", "Retrieve all the CoCo reactive rules"},
           {"description", "Endpoint to fetch all the managed reactive rules"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"responses",
            {{"200",
              {{"description", "Successful response with the stored reactive rules"},
-              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}}}},
+              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}
+#ifdef ENABLE_AUTH
+            ,
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}
+#endif
+           }}}}}},
       {"/reactive_rule",
        {{"post",
          {{"summary", "Create a new CoCo reactive rule"},
           {"description", "Endpoint to create a new reactive rule"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"requestBody",
            {{"content",
              {{"application/json",
@@ -547,11 +719,24 @@ namespace coco
           {"responses",
            {{"201",
              {{"description", "Successful response with the created reactive rule"},
-              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}
+#ifdef ENABLE_AUTH
+            ,
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}
+#endif
+           }}}}}},
       {"/reactive_rule/{rule_id}",
        {{"delete",
          {{"summary", "Delete the given CoCo reactive rule"},
           {"description", "Endpoint to delete the given reactive rule"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "rule_id"},
              {"in", "path"},
@@ -560,6 +745,14 @@ namespace coco
           {"responses",
            {{"204",
              {{"description", "Successful response with the deleted reactive rule"}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Rule not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}},
@@ -567,14 +760,30 @@ namespace coco
        {{"get",
          {{"summary", "Retrieve all the CoCo deliberative rules"},
           {"description", "Endpoint to fetch all the managed deliberative rules"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"responses",
            {{"200",
              {{"description", "Successful response with the stored deliberative rules"},
-              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}}}},
+              {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}
+#ifdef ENABLE_AUTH
+            ,
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}
+#endif
+           }}}}}},
       {"/deliberative_rule",
        {{"post",
          {{"summary", "Create a new CoCo deliberative rule"},
           {"description", "Endpoint to create a new deliberative rule"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"requestBody",
            {{"content",
              {{"application/json",
@@ -582,11 +791,24 @@ namespace coco
           {"responses",
            {{"201",
              {{"description", "Successful response with the created deliberative rule"},
-              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}}}}}}},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/coco_rule"}}}}}}}}}
+#ifdef ENABLE_AUTH
+            ,
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}
+#endif
+           }}}}}},
       {"/deliberative_rule/{rule_id}",
        {{"delete",
          {{"summary", "Delete the given CoCo deliberative rule"},
           {"description", "Endpoint to delete the given deliberative rule"},
+#ifdef ENABLE_AUTH
+          {"security", {{"bearerAuth", std::vector<json::json>{}}}},
+#endif
           {"parameters",
            {{{"name", "rule_id"},
              {"in", "path"},
@@ -595,6 +817,14 @@ namespace coco
           {"responses",
            {{"204",
              {{"description", "Successful response with the deleted deliberative rule"}}},
+#ifdef ENABLE_AUTH
+            {"401",
+             {{"description", "Unauthorized"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+            {"403",
+             {{"description", "Forbidden"},
+              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}},
+#endif
             {"404",
              {{"description", "Rule not found"},
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}}};

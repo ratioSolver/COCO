@@ -109,6 +109,22 @@ def create_project() -> int:
         f.write(f'target_include_directories({project_name} PRIVATE include)\n')
         f.write(f'target_link_libraries({project_name} CoCo)\n')
 
+    if include_api:
+        # Create Dockerfile
+        dockerfile_path = os.path.join(project_dir, 'Dockerfile')
+        with open(dockerfile_path, 'w') as f:
+            f.write(f'# Use the CoCo base image\n')
+            f.write(f'FROM pstlab/coco_base\n\n')
+            f.write(f'# Expose the API port\n')
+            f.write(f'EXPOSE 8080\n\n')
+            f.write(f'# Set the environment variables\n')
+            f.write(f'ARG MONGODB_HOST={project_name}-mongo\n')
+            f.write(f'ARG MONGODB_PORT=27017\n')
+            f.write(f'ARG CLIENT_FOLDER=extern/client\n\n')
+            f.write(f'# Install NVM and Node.js\n')
+            f.write(f'RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash\n')
+            f.write(f'RUN bash -c ". ~/.nvm/nvm.sh && nvm install node"\n')
+
     return 0
 
 if __name__ == '__main__':

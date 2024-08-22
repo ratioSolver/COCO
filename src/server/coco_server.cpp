@@ -41,7 +41,7 @@ namespace coco
         add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, std::placeholders::_1)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, std::placeholders::_1)).on_error(std::bind(&coco_server::on_ws_error, this, std::placeholders::_1, std::placeholders::_2));
     }
 
-    std::unique_ptr<network::response> coco_server::index(const network::request &) { return std::make_unique<network::file_response>("client/dist/index.html"); }
+    std::unique_ptr<network::response> coco_server::index(const network::request &) { return std::make_unique<network::file_response>(CLIENT_DIR "/dist/index.html"); }
     std::unique_ptr<network::response> coco_server::assets(const network::request &req)
     {
         std::string target = req.get_target();

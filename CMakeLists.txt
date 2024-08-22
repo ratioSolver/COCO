@@ -54,10 +54,16 @@ endif()
 
 message(STATUS "CoCo API: ${ENABLE_API}")
 if(ENABLE_API)
+    set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/coco-client CACHE STRING "Client directory")
+
+    message(STATUS "Client directory: ${CLIENT_DIR}")
+
     add_subdirectory(extern/rationet)
+
     add_dependencies(CoCo ratioNet)
+
     target_link_libraries(CoCo PUBLIC ratioNet)
-    target_compile_definitions(CoCo PRIVATE ENABLE_API)
+    target_compile_definitions(CoCo PRIVATE ENABLE_API CLIENT_DIR="${CLIENT_DIR}")
 endif()
 
 message(STATUS "CoCo authentication: ${ENABLE_AUTH}")

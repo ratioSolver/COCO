@@ -10,8 +10,13 @@ namespace coco
         LOG_TRACE("OpenAPI: " + build_open_api().dump());
         LOG_TRACE("AsyncAPI: " + build_async_api().dump());
 
+#ifdef ENABLE_AUTH
+        add_route(network::Get, "^/$", std::bind(&coco_server::index, this, std::placeholders::_1), true);
+        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, std::placeholders::_1), true);
+#else
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, std::placeholders::_1));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, std::placeholders::_1));
+#endif
         add_route(network::Get, "^/open_api$", std::bind(&coco_server::open_api, this, std::placeholders::_1));
         add_route(network::Get, "^/async_api$", std::bind(&coco_server::async_api, this, std::placeholders::_1));
 
@@ -47,7 +52,7 @@ namespace coco
         std::string target = req.get_target();
         if (target.find('?') != std::string::npos)
             target = target.substr(0, target.find('?'));
-        return std::make_unique<network::file_response>("client/dist" + target);
+        return std::make_unique<network::file_response>(CLIENT_DIR "/dist" + target);
     }
     std::unique_ptr<network::response> coco_server::open_api(const network::request &) { return std::make_unique<network::json_response>(build_open_api()); }
     std::unique_ptr<network::response> coco_server::async_api(const network::request &) { return std::make_unique<network::json_response>(build_async_api()); }

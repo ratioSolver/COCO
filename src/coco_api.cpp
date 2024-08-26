@@ -17,17 +17,17 @@ namespace coco
         }
         if (!t.get_static_properties().empty())
         {
-            json::json static_properties_json(json::json_type::array);
+            json::json static_properties_json;
             for (const auto &p : t.get_static_properties())
-                static_properties_json.push_back(coco::to_json(*p.second));
-            j["static_properties"] = static_properties_json;
+                static_properties_json[p.first] = coco::to_json(*p.second);
+            j["static_properties"] = std::move(static_properties_json);
         }
         if (!t.get_dynamic_properties().empty())
         {
-            json::json dynamic_properties_json(json::json_type::array);
+            json::json dynamic_properties_json;
             for (const auto &p : t.get_dynamic_properties())
-                dynamic_properties_json.push_back(coco::to_json(*p.second));
-            j["dynamic_properties"] = dynamic_properties_json;
+                dynamic_properties_json[p.first] = coco::to_json(*p.second);
+            j["dynamic_properties"] = std::move(dynamic_properties_json);
         }
         return j;
     }

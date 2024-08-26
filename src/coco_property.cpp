@@ -6,7 +6,7 @@
 namespace coco
 {
     property::property(const std::string &name, const std::string &description) noexcept : name(name), description(description) {}
-    json::json property::to_json() const noexcept { return json::json{{"name", name}, {"description", description}}; }
+    json::json property::to_json() const noexcept { return json::json{{"description", description}}; }
     std::string property::to_deftemplate_name(const type &tp, bool is_dynamic) const noexcept
     {
         std::string type_name = tp.get_name();

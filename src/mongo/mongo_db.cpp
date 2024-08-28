@@ -250,10 +250,10 @@ namespace coco
         coco_db::set_item_value(it, value, timestamp);
         bsoncxx::builder::basic::document doc;
         bsoncxx::builder::basic::document data_doc;
-        data_doc.append(bsoncxx::builder::basic::kvp("value", bsoncxx::from_json(it.get_value().dump())));
+        data_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(it.get_value().dump())));
         data_doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
-        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("data", data_doc))));
-        auto result = item_data_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{it.get_id()})), doc.view());
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("value", data_doc))));
+        auto result = items_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{it.get_id()})), doc.view());
         if (!result)
             throw std::invalid_argument("Failed to update item value: " + it.get_value().dump());
     }

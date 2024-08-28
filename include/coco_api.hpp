@@ -119,6 +119,16 @@ namespace coco
   [[nodiscard]] json::json make_updated_item_message(const item &itm) noexcept;
 
   /**
+   * @brief Creates a new data item message.
+   *
+   * This function takes an item object as input and returns a JSON object representing a new data item message.
+   *
+   * @param itm The item object to be used for creating the message.
+   * @return A JSON object representing a new data item message.
+   */
+  [[nodiscard]] json::json make_new_value_message(const item &itm) noexcept;
+
+  /**
    * @brief Creates a JSON message indicating that an item has been deleted.
    *
    * This function takes the ID of the deleted item as input and returns a JSON message
@@ -309,7 +319,8 @@ namespace coco
          {{"id", {{"type", "string"}, {"format", "uuid"}}},
           {"type", {{"type", "string"}, {"format", "uuid"}}},
           {"name", {{"type", "string"}}},
-          {"properties", {{"type", "object"}}}}}}},
+          {"properties", {{"type", "object"}}},
+          {"value", {{"$ref", "#/components/schemas/data"}}}}}}},
       {"data",
        {{"type", "object"},
         {"properties",
@@ -878,6 +889,13 @@ namespace coco
           {"properties",
            {{"type", {{"type", "string"}, {"enum", {"updated_item"}}}},
             {"updated_item", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
+      {{"new_value_message",
+        {"payload",
+         {{"type", "object"},
+          {"properties",
+           {{"type", {{"type", "string"}, {"enum", {"new_value"}}}},
+            {"item_id", {{"type", "string"}, {"format", "uuid"}}},
+            {"value", {{"$ref", "#/components/schemas/data"}}}}}}}}},
       {"deleted_item_message",
        {"payload",
         {{"type", "object"},

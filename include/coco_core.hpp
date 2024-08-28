@@ -206,6 +206,18 @@ namespace coco
     void set_item_properties(item &itm, const json::json &props);
 
     /**
+     * @brief Sets the value of an item.
+     *
+     * This function sets the value of the specified item using the provided JSON value.
+     * Optionally, a timestamp can be provided to associate with the item.
+     *
+     * @param itm The item to set the value for.
+     * @param value The JSON value to set.
+     * @param timestamp The timestamp to associate with the item (default: current system time).
+     */
+    void set_item_value(item &itm, const json::json &value, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
+
+    /**
      * @brief Deletes the item with the specified ID.
      *
      * This function deletes the item with the specified ID.
@@ -423,6 +435,12 @@ namespace coco
      * @param itm The updated item.
      */
     virtual void updated_item(const item &itm);
+    /**
+     * @brief Notifies when the item has new data.
+     * 
+     * @param itm The item.
+     */
+    virtual void new_value(const item &itm);
     /**
      * @brief Notifies when the item is deleted.
      *

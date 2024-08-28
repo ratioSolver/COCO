@@ -32,7 +32,7 @@ namespace coco
         return j;
     }
 
-    [[nodiscard]] json::json to_json(const item &s) noexcept { return json::json{{"id", s.get_id()}, {"type", s.get_type().get_id()}, {"name", s.get_name()}, {"properties", s.get_properties()}}; }
+    [[nodiscard]] json::json to_json(const item &itm) noexcept { return json::json{{"id", itm.get_id()}, {"type", itm.get_type().get_id()}, {"name", itm.get_name()}, {"properties", itm.get_properties()}, {"value", {{"data", itm.get_value()}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(itm.get_timestamp().time_since_epoch()).count()}}}}; }
 
     [[nodiscard]] json::json to_json(const rule &r) noexcept
     {
@@ -102,6 +102,15 @@ namespace coco
         json::json j;
         j["type"] = "updated_item";
         j["updated_item"] = to_json(itm);
+        return j;
+    }
+
+    [[nodiscard]] json::json make_new_value_message(const item &itm) noexcept
+    {
+        json::json j;
+        j["type"] = "new_value";
+        j["item_id"] = itm.get_id();
+        j["value"] = {{"data", itm.get_value()}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(itm.get_timestamp().time_since_epoch()).count()}};
         return j;
     }
 

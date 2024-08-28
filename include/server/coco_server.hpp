@@ -53,6 +53,7 @@ namespace coco
 
     virtual void new_item(const item &itm) override;
     virtual void updated_item(const item &itm) override;
+    virtual void new_value(const item &itm) override;
     virtual void deleted_item(const std::string &itm_id) override;
 
     virtual void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;

@@ -174,6 +174,14 @@ namespace coco
         updated_item(itm);
     }
 
+    void coco_core::set_item_value(item &itm, const json::json &value, const std::chrono::system_clock::time_point &timestamp)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->set_item_value(itm, value, timestamp);
+        new_value(itm);
+        Run(env, -1);
+    }
+
     void coco_core::delete_item(const item &itm)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -181,18 +189,18 @@ namespace coco
         deleted_item(itm.get_id());
     }
 
-    json::json coco_core::get_data(const item &s, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
+    json::json coco_core::get_data(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        return db->get_data(s, from, to);
+        return db->get_data(itm, from, to);
     }
 
-    void coco_core::add_data(item &s, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
+    void coco_core::add_data(item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db->add_data(s, data, timestamp);
-        new_data(s, data, timestamp);
-        Run(env, -1);
+        set_item_value(itm, data, timestamp);
+        db->add_data(itm, data, timestamp);
+        new_data(itm, data, timestamp);
     }
 
     std::vector<std::reference_wrapper<coco_executor>> coco_core::get_solvers()
@@ -355,6 +363,7 @@ namespace coco
 
     void coco_core::new_item([[maybe_unused]] const item &itm) {}
     void coco_core::updated_item([[maybe_unused]] const item &itm) {}
+    void coco_core::new_value([[maybe_unused]] const item &itm) {}
     void coco_core::deleted_item([[maybe_unused]] const std::string &itm_id) {}
 
     void coco_core::new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
@@ -415,15 +424,6 @@ namespace coco
 
         // we load the basic knowledge base..
         db->init(*this);
-
-        for (const auto dt : get_deftemplates())
-            DeftemplatePPForm(dt);
-
-        for (const auto &itm : get_items())
-        {
-            auto data_timestamp = db->get_last_data(itm);
-            itm.get().set_value(data_timestamp.first, data_timestamp.second);
-        }
 
         Run(env, -1);
     }

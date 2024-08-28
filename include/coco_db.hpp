@@ -178,9 +178,11 @@ namespace coco
      * @param tp The type of the item.
      * @param name The name of the item.
      * @param pars The properties of the item.
+     * @param val The value of the item.
+     * @param timestamp The timestamp of the value.
      * @return A reference to the created item.
      */
-    virtual item &create_item(coco_core &cc, const type &tp, const std::string &name, const json::json &pars) = 0;
+    virtual item &create_item(coco_core &cc, const type &tp, const std::string &name, const json::json &pars, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
 
     /**
      * Sets the name of an item.
@@ -198,6 +200,17 @@ namespace coco
      * @param props The JSON object containing the properties.
      */
     virtual void set_item_properties(item &itm, const json::json &props) { itm.set_properties(props); }
+
+    /**
+     * @brief Sets the value of an item.
+     *
+     * This function sets the value of the given item using the provided JSON value.
+     *
+     * @param itm The item to set the value for.
+     * @param value The JSON value to set as the item's value.
+     * @param timestamp The timestamp of the value. Defaults to the current time.
+     */
+    virtual void set_item_value(item &itm, const json::json &value, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) { itm.set_value(value, timestamp); }
 
     /**
      * @brief Removes an item from the database.
@@ -238,14 +251,6 @@ namespace coco
     }
 
     /**
-     * Retrieves the last data associated with the given item.
-     *
-     * @param itm The item for which to retrieve the last data.
-     * @return A pair containing the last data and the timestamp of the data.
-     */
-    virtual std::pair<json::json, std::chrono::system_clock::time_point> get_last_data(const item &itm) = 0;
-
-    /**
      * Retrieves data for a given item within a specified time range.
      *
      * @param itm The item for which to retrieve data.
@@ -264,7 +269,7 @@ namespace coco
      * @param data The data to be added to the database.
      * @param timestamp The timestamp of the data. Defaults to the current time.
      */
-    virtual void add_data(item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) { itm.set_value(data, timestamp); }
+    virtual void add_data(item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
 
     /**
      * Returns a vector of references to the reactive rules in the database.
@@ -436,11 +441,11 @@ namespace coco
       types.emplace(id, std::move(tp));
       return *types[id];
     }
-    item &create_item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &pars)
+    item &create_item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &pars, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now())
     {
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
-      items.emplace(id, std::make_unique<item>(cc, id, tp, name, pars));
+      items.emplace(id, std::make_unique<item>(cc, id, tp, name, pars, val, timestamp));
       return *items[id];
     }
     rule &create_reactive_rule(coco_core &cc, const std::string &id, const std::string &name, const std::string &content)

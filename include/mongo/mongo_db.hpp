@@ -32,13 +32,13 @@ namespace coco
     void remove_dynamic_property(type &tp, const property &prop) override;
     void delete_type(const type &tp) override;
 
-    [[nodiscard]] item &create_item(coco_core &cc, const type &tp, const std::string &name, const json::json &props) override;
+    [[nodiscard]] item &create_item(coco_core &cc, const type &tp, const std::string &name, const json::json &props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
 
     void set_item_name(item &itm, const std::string &name) override;
     void set_item_properties(item &itm, const json::json &props) override;
+    void set_item_value(item &itm, const json::json &value, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
     void delete_item(const item &itm) override;
 
-    [[nodiscard]] std::pair<json::json, std::chrono::system_clock::time_point> get_last_data(const item &itm) override;
     [[nodiscard]] json::json get_data(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to) override;
     void add_data(item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
 

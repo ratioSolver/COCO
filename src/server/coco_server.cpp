@@ -11,39 +11,39 @@ namespace coco
         LOG_TRACE("AsyncAPI: " + build_async_api().dump());
 
 #ifdef ENABLE_AUTH
-        add_route(network::Get, "^/$", std::bind(&coco_server::index, this, std::placeholders::_1), true);
-        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, std::placeholders::_1), true);
+        add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request), true);
+        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request), true);
 #else
-        add_route(network::Get, "^/$", std::bind(&coco_server::index, this, std::placeholders::_1));
-        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, std::placeholders::_1));
+        add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
+        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
 #endif
-        add_route(network::Get, "^/open_api$", std::bind(&coco_server::open_api, this, std::placeholders::_1));
-        add_route(network::Get, "^/async_api$", std::bind(&coco_server::async_api, this, std::placeholders::_1));
+        add_route(network::Get, "^/open_api$", std::bind(&coco_server::open_api, this, network::placeholders::request));
+        add_route(network::Get, "^/async_api$", std::bind(&coco_server::async_api, this, network::placeholders::request));
 
-        add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, std::placeholders::_1));
-        add_route(network::Post, "^/type$", std::bind(&coco_server::create_type, this, std::placeholders::_1));
-        add_route(network::Put, "^/type/.*$", std::bind(&coco_server::update_type, this, std::placeholders::_1));
-        add_route(network::Delete, "^/type/.*$", std::bind(&coco_server::delete_type, this, std::placeholders::_1));
+        add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
+        add_route(network::Post, "^/type$", std::bind(&coco_server::create_type, this, network::placeholders::request));
+        add_route(network::Put, "^/type/.*$", std::bind(&coco_server::update_type, this, network::placeholders::request));
+        add_route(network::Delete, "^/type/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
 
-        add_route(network::Get, "^/items(\\?.*)?$", std::bind(&coco_server::get_items, this, std::placeholders::_1));
-        add_route(network::Post, "^/item$", std::bind(&coco_server::create_item, this, std::placeholders::_1));
-        add_route(network::Put, "^/item/.*$", std::bind(&coco_server::update_item, this, std::placeholders::_1));
-        add_route(network::Delete, "^/item/.*$", std::bind(&coco_server::delete_item, this, std::placeholders::_1));
+        add_route(network::Get, "^/items(\\?.*)?$", std::bind(&coco_server::get_items, this, network::placeholders::request));
+        add_route(network::Post, "^/item$", std::bind(&coco_server::create_item, this, network::placeholders::request));
+        add_route(network::Put, "^/item/.*$", std::bind(&coco_server::update_item, this, network::placeholders::request));
+        add_route(network::Delete, "^/item/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
 
-        add_route(network::Get, "^/data/.*$", std::bind(&coco_server::get_data, this, std::placeholders::_1));
-        add_route(network::Post, "^/data/.*$", std::bind(&coco_server::add_data, this, std::placeholders::_1));
+        add_route(network::Get, "^/data/.*$", std::bind(&coco_server::get_data, this, network::placeholders::request));
+        add_route(network::Post, "^/data/.*$", std::bind(&coco_server::add_data, this, network::placeholders::request));
 
-        add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, std::placeholders::_1));
-        add_route(network::Post, "^/reactive_rule$", std::bind(&coco_server::create_reactive_rule, this, std::placeholders::_1));
-        add_route(network::Put, "^/reactive_rule/.*$", std::bind(&coco_server::update_reactive_rule, this, std::placeholders::_1));
-        add_route(network::Delete, "^/reactive_rule/.*$", std::bind(&coco_server::delete_reactive_rule, this, std::placeholders::_1));
+        add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, network::placeholders::request));
+        add_route(network::Post, "^/reactive_rule$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
+        add_route(network::Put, "^/reactive_rule/.*$", std::bind(&coco_server::update_reactive_rule, this, network::placeholders::request));
+        add_route(network::Delete, "^/reactive_rule/.*$", std::bind(&coco_server::delete_reactive_rule, this, network::placeholders::request));
 
-        add_route(network::Get, "^/deliberative_rules$", std::bind(&coco_server::get_deliberative_rules, this, std::placeholders::_1));
-        add_route(network::Post, "^/deliberative_rule$", std::bind(&coco_server::create_deliberative_rule, this, std::placeholders::_1));
-        add_route(network::Put, "^/deliberative_rule/.*$", std::bind(&coco_server::update_deliberative_rule, this, std::placeholders::_1));
-        add_route(network::Delete, "^/deliberative_rule/.*$", std::bind(&coco_server::delete_deliberative_rule, this, std::placeholders::_1));
+        add_route(network::Get, "^/deliberative_rules$", std::bind(&coco_server::get_deliberative_rules, this, network::placeholders::request));
+        add_route(network::Post, "^/deliberative_rule$", std::bind(&coco_server::create_deliberative_rule, this, network::placeholders::request));
+        add_route(network::Put, "^/deliberative_rule/.*$", std::bind(&coco_server::update_deliberative_rule, this, network::placeholders::request));
+        add_route(network::Delete, "^/deliberative_rule/.*$", std::bind(&coco_server::delete_deliberative_rule, this, network::placeholders::request));
 
-        add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, std::placeholders::_1)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, std::placeholders::_1)).on_error(std::bind(&coco_server::on_ws_error, this, std::placeholders::_1, std::placeholders::_2));
+        add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
 
     std::unique_ptr<network::response> coco_server::index(const network::request &) { return std::make_unique<network::file_response>(CLIENT_DIR "/dist/index.html"); }
@@ -560,7 +560,7 @@ namespace coco
         clients.erase(&ws);
         LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
     }
-    void coco_server::on_ws_error(network::ws_session &ws, const boost::system::error_code &)
+    void coco_server::on_ws_error(network::ws_session &ws, const std::error_code &)
     {
         LOG_TRACE("Connection error with " << ws.remote_endpoint());
         std::lock_guard<std::recursive_mutex> _(mtx);

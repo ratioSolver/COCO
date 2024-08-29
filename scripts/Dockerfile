@@ -2,7 +2,7 @@
 FROM ubuntu:24.04 as builder
 
 # Install dependencies
-RUN apt update && apt install -y build-essential cmake git curl unzip libboost-all-dev
+RUN apt update && apt install -y build-essential cmake git curl unzip
 
 # Install MongoDB cxx drivers
 RUN curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r3.10.1/mongo-cxx-driver-r3.10.1.tar.gz

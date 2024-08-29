@@ -45,7 +45,7 @@ namespace coco
     virtual void on_ws_open(network::ws_session &ws);
     virtual void on_ws_message(network::ws_session &ws, const std::string &msg);
     virtual void on_ws_close(network::ws_session &ws);
-    virtual void on_ws_error(network::ws_session &ws, const boost::system::error_code &);
+    virtual void on_ws_error(network::ws_session &ws, const std::error_code &);
 
     virtual void new_type(const type &tp) override;
     virtual void updated_type(const type &tp) override;

@@ -3,6 +3,9 @@
 #include "coco_item.hpp"
 #include "coco_rule.hpp"
 #include "coco_executor.hpp"
+#ifdef ENABLE_TRANSFORMER
+#include "client.hpp"
+#endif
 #include <mutex>
 
 namespace coco
@@ -437,7 +440,7 @@ namespace coco
     virtual void updated_item(const item &itm);
     /**
      * @brief Notifies when the item has new data.
-     * 
+     *
      * @param itm The item.
      */
     virtual void new_value(const item &itm);
@@ -592,7 +595,7 @@ namespace coco
 
     /**
      * @brief Notifies the passage of time.
-     * 
+     *
      * @param exec The solver.
      * @param time The current time.
      */
@@ -601,7 +604,7 @@ namespace coco
     void starting(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
     /**
      * @brief Starts the execution of the given atoms.
-     * 
+     *
      * @param exec The solver.
      * @param atoms The atoms to execute.
      */
@@ -609,7 +612,7 @@ namespace coco
     void ending(const coco_executor &exec, const std::vector<std::reference_wrapper<const ratio::atom>> &atoms);
     /**
      * @brief Ends the execution of the given atoms.
-     * 
+     *
      * @param exec The solver.
      * @param atoms The atoms to execute.
      */
@@ -629,9 +632,18 @@ namespace coco
     friend void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
 
+#ifdef ENABLE_TRANSFORMER
+    friend void understand(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void trigger_intent(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void compute_response(Environment *env, UDFContext *udfc, UDFValue *out);
+#endif
+
   private:
     json::json schemas;                                 // the JSON schemas..
     std::set<std::unique_ptr<coco_executor>> executors; // the executors..
+#ifdef ENABLE_TRANSFORMER
+    network::client client{RASA_HOST, RASA_PORT}; // the transformer client..
+#endif
 
   protected:
     std::unique_ptr<coco_db> db; // the database..
@@ -642,12 +654,18 @@ namespace coco
   void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
   void new_solver_script(Environment *env, UDFContext *udfc, UDFValue *out);
   void new_solver_rules(Environment *env, UDFContext *udfc, UDFValue *out);
-  void start_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
-  void pause_execution([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
-  void delay_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
-  void extend_task([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
-  void failure([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
-  void adapt_script([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
-  void adapt_files([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
-  void delete_solver([[maybe_unused]] Environment *env, UDFContext *udfc, [[maybe_unused]] UDFValue *out);
+  void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
+  void pause_execution(Environment *env, UDFContext *udfc, UDFValue *out);
+  void delay_task(Environment *env, UDFContext *udfc, UDFValue *out);
+  void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
+  void failure(Environment *env, UDFContext *udfc, UDFValue *out);
+  void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
+  void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
+  void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
+
+#ifdef ENABLE_TRANSFORMER
+  void understand(Environment *env, UDFContext *udfc, UDFValue *out);
+  void trigger_intent(Environment *env, UDFContext *udfc, UDFValue *out);
+  void compute_response(Environment *env, UDFContext *udfc, UDFValue *out);
+#endif
 } // namespace coco

@@ -21,13 +21,13 @@ set(MONGODB_HOST "localhost" CACHE STRING "The MongoDB Host")
 set(MONGODB_PORT "27017" CACHE STRING "The MongoDB Port")
 
 option(ENABLE_MQTT "Enable MQTT" OFF)
+option(ENABLE_TRANSFORMER "Enable CoCo transformer" OFF)
 option(ENABLE_API "CoCo API" OFF)
 option(ENABLE_AUTH "Enable CoCo authentication" OFF)
 
 message(STATUS "CoCo name: ${COCO_NAME}")
 message(STATUS "MongoDB host: ${MONGODB_HOST}")
 message(STATUS "MongoDB port: ${MONGODB_PORT}")
-message(STATUS "Enable MQTT: ${ENABLE_MQTT}")
 
 add_subdirectory(extern/plexa)
 
@@ -38,6 +38,14 @@ target_link_directories(CoCo PUBLIC ${CLIPS_LIB_DIR})
 target_link_libraries(CoCo PUBLIC PlExA clips mongo::bsoncxx_shared mongo::mongocxx_shared)
 target_compile_definitions(CoCo PUBLIC COCO_NAME="${COCO_NAME}" MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 
+if(ENABLE_API OR ENABLE_TRANSFORMER)
+    add_subdirectory(extern/rationet)
+
+    add_dependencies(CoCo ratioNet)
+    target_link_libraries(CoCo PUBLIC ratioNet)
+endif()
+
+message(STATUS "Enable MQTT: ${ENABLE_MQTT}")
 if(ENABLE_MQTT)
     find_package(PahoMqttCpp REQUIRED)
 
@@ -55,15 +63,20 @@ endif()
 message(STATUS "CoCo API: ${ENABLE_API}")
 if(ENABLE_API)
     set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/coco-client CACHE STRING "Client directory")
-
     message(STATUS "Client directory: ${CLIENT_DIR}")
 
-    add_subdirectory(extern/rationet)
-
-    add_dependencies(CoCo ratioNet)
-
-    target_link_libraries(CoCo PUBLIC ratioNet)
     target_compile_definitions(CoCo PRIVATE ENABLE_API CLIENT_DIR="${CLIENT_DIR}")
+endif()
+
+message(STATUS "CoCo transformer: ${ENABLE_TRANSFORMER}")
+if(ENABLE_TRANSFORMER)
+    set(RASA_HOST "localhost" CACHE STRING "The Rasa Host")
+    set(RASA_PORT "5005" CACHE STRING "The Rasa Port")
+
+    message(STATUS "Rasa host: ${RASA_HOST}")
+    message(STATUS "Rasa port: ${RASA_PORT}")
+
+    target_compile_definitions(CoCo PRIVATE ENABLE_TRANSFORMER RASA_HOST="${RASA_HOST}" RASA_PORT=${RASA_PORT})
 endif()
 
 message(STATUS "CoCo authentication: ${ENABLE_AUTH}")

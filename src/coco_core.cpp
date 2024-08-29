@@ -21,6 +21,12 @@ namespace coco
         AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", this);
         AddUDF(env, "delete_solver", "v", 1, 1, "l", coco::delete_solver, "delete_solver", this);
 
+#ifdef ENABLE_TRANSFORMER
+        AddUDF(env, "understand", "v", 1, 1, "s", understand, "understand", this);
+        AddUDF(env, "trigger_intent", "v", 2, 4, "yymm", trigger_intent, "trigger_intent", this);
+        AddUDF(env, "compute_response", "v", 2, 2, "ys", compute_response, "compute_response", this);
+#endif
+
         reset_knowledge_base();
     }
 
@@ -422,6 +428,12 @@ namespace coco
         Build(env, "(deffunction starting (?solver_id ?task_type ?pars ?vals) (return TRUE))");
         Build(env, "(deffunction ending (?solver_id ?id) (return TRUE))");
 
+#ifdef ENABLE_TRANSFORMER
+        // we build the basic knowledge base for the transformer..
+        Build(env, "(deffunction intent (?intent ?confidence ?entities ?values ?confidences) (return TRUE))");
+        Build(env, "(deffunction response (?response ?confidence) (return TRUE))");
+#endif
+
         // we load the basic knowledge base..
         db->init(*this);
 
@@ -751,4 +763,154 @@ namespace coco
         auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
         cc.delete_solver(*coco_exec);
     }
+
+#ifdef ENABLE_TRANSFORMER
+    void understand(Environment *env, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Understanding..");
+
+        auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
+
+        UDFValue message;
+        if (!UDFFirstArgument(udfc, STRING_BIT, &message))
+            return;
+
+        auto res = cc.client.post("/model/parse", {{"text", message.lexemeValue->contents}});
+        if (res->get_status_code() != 200)
+        {
+            LOG_ERR("Failed to understand..");
+            return;
+        }
+
+        auto &json_res = static_cast<network::json_response &>(*res);
+        std::string intent = json_res.get_body()["intent"]["name"];
+        double confidence = json_res.get_body()["intent"]["confidence"];
+        auto &entities = json_res.get_body()["entities"].as_array();
+
+        FunctionCallBuilder *intent_builder = CreateFunctionCallBuilder(env, 5);
+        FCBAppendSymbol(intent_builder, intent.c_str());
+        FCBAppendFloat(intent_builder, confidence);
+        auto es = CreateMultifieldBuilder(env, entities.size());
+        auto vs = CreateMultifieldBuilder(env, entities.size());
+        auto cs = CreateMultifieldBuilder(env, entities.size());
+        for (const auto &entity : entities)
+        {
+            MBAppendSymbol(es, static_cast<std::string>(entity["entity"]).c_str());
+            MBAppendSymbol(vs, static_cast<std::string>(entity["value"]).c_str());
+            MBAppendFloat(cs, entity["confidence"]);
+        }
+        FCBAppendMultifield(intent_builder, MBCreate(es));
+        FCBAppendMultifield(intent_builder, MBCreate(vs));
+        FCBAppendMultifield(intent_builder, MBCreate(cs));
+        FCBCall(intent_builder, "intent", nullptr);
+        FCBDispose(intent_builder);
+    }
+    void trigger_intent(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Triggering intent..");
+
+        auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
+
+        UDFValue user;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &user))
+            return;
+
+        UDFValue intent;
+        if (!UDFNextArgument(udfc, SYMBOL_BIT, &intent))
+            return;
+
+        json::json body{{"name", intent.lexemeValue->contents}};
+
+        UDFValue entities, values;
+        if (UDFHasNextArgument(udfc))
+        {
+            if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &entities))
+                return;
+            if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &values))
+                return;
+
+            if (entities.multifieldValue->length != values.multifieldValue->length)
+                return;
+
+            json::json entities_json;
+            for (size_t i = 0; i < entities.multifieldValue->length; ++i)
+            {
+                auto &entity = entities.multifieldValue->contents[i];
+                if (entity.header->type != SYMBOL_TYPE)
+                    return;
+                auto &value = values.multifieldValue->contents[i];
+                switch (value.header->type)
+                {
+                case INTEGER_TYPE:
+                    entities_json[entity.lexemeValue->contents] = static_cast<int64_t>(value.integerValue->contents);
+                    break;
+                case FLOAT_TYPE:
+                    entities_json[entity.lexemeValue->contents] = value.floatValue->contents;
+                    break;
+                case STRING_TYPE:
+                case SYMBOL_TYPE:
+                    entities_json[entity.lexemeValue->contents] = value.lexemeValue->contents;
+                    break;
+                default:
+                    return;
+                }
+            }
+            body["entities"] = std::move(entities_json);
+        }
+
+        std::string url = "/conversations/";
+        url += user.lexemeValue->contents;
+        url += "/trigger_intent";
+        auto res = cc.client.post(std::move(url), std::move(body));
+        if (res->get_status_code() != 200)
+        {
+            LOG_ERR("Failed to trigger intent..");
+            return;
+        }
+
+        auto &json_res = static_cast<network::json_response &>(*res);
+        auto &messages = json_res.get_body()["messages"].as_array();
+        for (auto &message : messages)
+        {
+            std::string recipient_id = message["recipient_id"];
+            json::json data;
+            for (auto &[key, value] : message.as_object())
+                if (key != "recipient_id")
+                    data[key] = value;
+            cc.add_data(cc.get_item(recipient_id), data);
+        }
+    }
+    void compute_response(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Computing response..");
+
+        auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
+
+        UDFValue user;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &user))
+            return;
+
+        UDFValue message;
+        if (!UDFNextArgument(udfc, STRING_BIT, &message))
+            return;
+
+        auto res = cc.client.post("/webhooks/rest/webhook", {{"sender", user.lexemeValue->contents}, {"message", message.lexemeValue->contents}});
+        if (res->get_status_code() != 200)
+        {
+            LOG_ERR("Failed to compute response..");
+            return;
+        }
+
+        auto &json_res = static_cast<network::json_response &>(*res);
+        for (auto &response : json_res.get_body().as_array())
+        {
+            std::string recipient_id = response["recipient_id"];
+            json::json data;
+            for (auto &[key, value] : response.as_object())
+                if (key != "recipient_id")
+                    data[key] = value;
+            cc.add_data(cc.get_item(recipient_id), data);
+        }
+    }
+#endif
 } // namespace coco

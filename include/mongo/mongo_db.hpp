@@ -1,6 +1,5 @@
 #pragma once
 
-#include <mongocxx/instance.hpp>
 #include <mongocxx/client.hpp>
 #include "coco_db.hpp"
 

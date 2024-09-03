@@ -65,7 +65,7 @@ if(ENABLE_API)
     set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/coco-client CACHE STRING "Client directory")
     message(STATUS "Client directory: ${CLIENT_DIR}")
 
-    target_compile_definitions(CoCo PRIVATE ENABLE_API CLIENT_DIR="${CLIENT_DIR}")
+    target_compile_definitions(CoCo PUBLIC ENABLE_API CLIENT_DIR="${CLIENT_DIR}")
 endif()
 
 message(STATUS "CoCo transformer: ${ENABLE_TRANSFORMER}")
@@ -76,12 +76,12 @@ if(ENABLE_TRANSFORMER)
     message(STATUS "Rasa host: ${RASA_HOST}")
     message(STATUS "Rasa port: ${RASA_PORT}")
 
-    target_compile_definitions(CoCo PRIVATE ENABLE_TRANSFORMER RASA_HOST="${RASA_HOST}" RASA_PORT=${RASA_PORT})
+    target_compile_definitions(CoCo PUBLIC ENABLE_TRANSFORMER RASA_HOST="${RASA_HOST}" RASA_PORT=${RASA_PORT})
 endif()
 
 message(STATUS "CoCo authentication: ${ENABLE_AUTH}")
 if(ENABLE_AUTH)
-    target_compile_definitions(CoCo PRIVATE ENABLE_AUTH)
+    target_compile_definitions(CoCo PUBLIC ENABLE_AUTH)
 endif()
 
 if(MSVC)

@@ -25,6 +25,12 @@ namespace coco
         AddUDF(env, "understand", "v", 1, 1, "s", understand, "understand", this);
         AddUDF(env, "trigger_intent", "v", 2, 5, "yymms", trigger_intent, "trigger_intent", this);
         AddUDF(env, "compute_response", "v", 2, 3, "yss", compute_response, "compute_response", this);
+
+        auto res = client.get("/version");
+        if (res->get_status_code() != network::ok)
+            LOG_ERR("Failed to connect to the transformer server");
+        else
+            LOG_DEBUG("Connected to the transformer server " << static_cast<network::json_response &>(*res).get_body());
 #endif
 
         reset_knowledge_base();
@@ -775,7 +781,7 @@ namespace coco
             return;
 
         auto res = cc.client.post("/model/parse", {{"text", message.lexemeValue->contents}});
-        if (!res || res->get_status_code() != 200)
+        if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to understand..");
             return;
@@ -861,7 +867,7 @@ namespace coco
         url += user.lexemeValue->contents;
         url += "/trigger_intent";
         auto res = cc.client.post(std::move(url), std::move(body));
-        if (!res || res->get_status_code() != 200)
+        if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to trigger intent..");
             return;
@@ -894,10 +900,10 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &message))
             return;
 
-        LOG_DEBUG("user = " << user.lexemeValue->contents << " says: '" << message.lexemeValue->contents << "'");
+        LOG_DEBUG("user " << user.lexemeValue->contents << " says: '" << message.lexemeValue->contents << "'");
 
-        auto res = cc.client.post("/webhooks/rest/webhook", {{"sender", user.lexemeValue->contents}, {"message", message.lexemeValue->contents}});
-        if (!res || res->get_status_code() != 200)
+        auto res = cc.client.post("/webhooks/rest/webhook", {{"sender", user.lexemeValue->contents}, {"message", message.lexemeValue->contents}}, {{"Content-Type", "application/json"}, {"Connection", "keep-alive"}});
+        if (!res || res->get_status_code() != network::ok)
         {
             LOG_DEBUG(*res);
             LOG_ERR("Failed to compute response..");

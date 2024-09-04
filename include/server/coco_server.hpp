@@ -9,7 +9,7 @@ namespace coco
   class coco_server : public coco::coco_core, private network::server
   {
   public:
-    coco_server(std::unique_ptr<coco::coco_db> db = nullptr);
+    coco_server(const std::string &host = SERVER_HOST, unsigned short port = SERVER_PORT, std::unique_ptr<coco::coco_db> db = nullptr);
 
     void start() { network::server::start(); }
 

@@ -23,8 +23,8 @@ namespace coco
 
 #ifdef ENABLE_TRANSFORMER
         AddUDF(env, "understand", "v", 1, 1, "s", understand, "understand", this);
-        AddUDF(env, "trigger_intent", "v", 2, 4, "yymm", trigger_intent, "trigger_intent", this);
-        AddUDF(env, "compute_response", "v", 2, 2, "ys", compute_response, "compute_response", this);
+        AddUDF(env, "trigger_intent", "v", 2, 5, "yymms", trigger_intent, "trigger_intent", this);
+        AddUDF(env, "compute_response", "v", 2, 3, "yss", compute_response, "compute_response", this);
 #endif
 
         reset_knowledge_base();
@@ -431,7 +431,6 @@ namespace coco
 #ifdef ENABLE_TRANSFORMER
         // we build the basic knowledge base for the transformer..
         Build(env, "(deffunction intent (?intent ?confidence ?entities ?values ?confidences) (return TRUE))");
-        Build(env, "(deffunction response (?response ?confidence) (return TRUE))");
 #endif
 
         // we load the basic knowledge base..
@@ -776,7 +775,7 @@ namespace coco
             return;
 
         auto res = cc.client.post("/model/parse", {{"text", message.lexemeValue->contents}});
-        if (res->get_status_code() != 200)
+        if (!res || res->get_status_code() != 200)
         {
             LOG_ERR("Failed to understand..");
             return;
@@ -821,9 +820,9 @@ namespace coco
 
         json::json body{{"name", intent.lexemeValue->contents}};
 
-        UDFValue entities, values;
         if (UDFHasNextArgument(udfc))
         {
+            UDFValue entities, values;
             if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &entities))
                 return;
             if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &values))
@@ -862,7 +861,7 @@ namespace coco
         url += user.lexemeValue->contents;
         url += "/trigger_intent";
         auto res = cc.client.post(std::move(url), std::move(body));
-        if (res->get_status_code() != 200)
+        if (!res || res->get_status_code() != 200)
         {
             LOG_ERR("Failed to trigger intent..");
             return;
@@ -877,6 +876,7 @@ namespace coco
             for (auto &[key, value] : message.as_object())
                 if (key != "recipient_id")
                     data[key] = value;
+            data["me"] = false;
             cc.add_data(cc.get_item(recipient_id), data);
         }
     }
@@ -894,9 +894,12 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &message))
             return;
 
+        LOG_DEBUG("user = " << user.lexemeValue->contents << " says: '" << message.lexemeValue->contents << "'");
+
         auto res = cc.client.post("/webhooks/rest/webhook", {{"sender", user.lexemeValue->contents}, {"message", message.lexemeValue->contents}});
-        if (res->get_status_code() != 200)
+        if (!res || res->get_status_code() != 200)
         {
+            LOG_DEBUG(*res);
             LOG_ERR("Failed to compute response..");
             return;
         }
@@ -909,6 +912,7 @@ namespace coco
             for (auto &[key, value] : response.as_object())
                 if (key != "recipient_id")
                     data[key] = value;
+            data["me"] = false;
             cc.add_data(cc.get_item(recipient_id), data);
         }
     }

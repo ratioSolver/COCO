@@ -100,6 +100,34 @@ namespace coco
   };
 
   /**
+   * @brief Represents a boolean property.
+   *
+   * This class inherits from the base class `property` and provides functionality for handling boolean properties.
+   */
+  class boolean_property final : public property
+  {
+  public:
+    /**
+     * @brief Constructs a `boolean_property` object with the given name and description.
+     *
+     * @param name The name of the property.
+     * @param description The description of the property.
+     * @param default_value The default value for the property (default: `std::nullopt`).
+     */
+    boolean_property(const std::string &name, const std::string &description, std::optional<bool> default_value = std::nullopt) noexcept;
+
+  private:
+    bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
+    std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
+    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
+
+    json::json to_json() const noexcept override;
+
+  private:
+    std::optional<bool> default_value;
+  };
+
+  /**
    * @brief Represents an integer property.
    *
    * This class inherits from the base class `property` and provides functionality for handling integer properties.
@@ -118,24 +146,11 @@ namespace coco
      */
     integer_property(const std::string &name, const std::string &description, std::optional<long> default_value = std::nullopt, long min = std::numeric_limits<long>::min(), long max = std::numeric_limits<long>::max()) noexcept;
 
-    /**
-     * @brief Validates the given JSON object against the property's schema references.
-     *
-     * @param j The JSON object to validate.
-     * @param schema_refs The schema references to use for validation.
-     * @return `true` if the JSON object is valid, `false` otherwise.
-     */
+  private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-
     std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
-  private:
-    /**
-     * @brief Converts the `integer_property` object to a JSON object.
-     *
-     * @return The JSON representation of the `integer_property` object.
-     */
     json::json to_json() const noexcept override;
 
   private:
@@ -163,24 +178,11 @@ namespace coco
      */
     float_property(const std::string &name, const std::string &description, std::optional<double> default_value = std::nullopt, double min = -std::numeric_limits<double>::max(), double max = std::numeric_limits<double>::max()) noexcept;
 
-    /**
-     * @brief Validates the given JSON object against the property's schema references.
-     *
-     * @param j The JSON object to validate.
-     * @param schema_refs The schema references to use for validation.
-     * @return `true` if the JSON object is valid, `false` otherwise.
-     */
+  private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-
     std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
-  private:
-    /**
-     * @brief Converts the `float_property` object to a JSON object.
-     *
-     * @return The JSON representation of the `float_property` object.
-     */
     json::json to_json() const noexcept override;
 
   private:
@@ -205,28 +207,11 @@ namespace coco
      */
     string_property(const std::string &name, const std::string &description, std::optional<std::string> default_value = std::nullopt) noexcept;
 
-    /**
-     * @brief Validates the string property against the given JSON data and schema references.
-     *
-     * This function checks if the string property is valid based on the provided JSON data and schema references.
-     *
-     * @param j The JSON data to validate against.
-     * @param schema_refs The schema references to use for validation.
-     * @return `true` if the string property is valid, `false` otherwise.
-     */
+  private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-
     std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
-  private:
-    /**
-     * @brief Converts the string property to a JSON object.
-     *
-     * This function converts the string property to a JSON object.
-     *
-     * @return The JSON representation of the string property.
-     */
     json::json to_json() const noexcept override;
 
   private:
@@ -252,24 +237,11 @@ namespace coco
      */
     symbol_property(const std::string &name, const std::string &description, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
 
-    /**
-     * @brief Validates the symbol property against the given JSON data and schema references.
-     *
-     * @param j The JSON data to validate.
-     * @param schema_refs The schema references to use for validation.
-     * @return `true` if the symbol property is valid, `false` otherwise.
-     */
+  private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-
     std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
-  private:
-    /**
-     * @brief Converts the symbol property to a JSON object.
-     *
-     * @return The JSON representation of the symbol property.
-     */
     json::json to_json() const noexcept override;
 
   private:
@@ -298,38 +270,11 @@ namespace coco
      */
     item_property(const std::string &name, const std::string &description, const type &tp, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
 
-    /**
-     * @brief Validates the property value against the given JSON and schema references.
-     *
-     * @param j The JSON value to validate.
-     * @param schema_refs The schema references to validate against.
-     * @return `true` if the property value is valid, `false` otherwise.
-     */
+  private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-
-    /**
-     * @brief Converts the property to a deftemplate string representation.
-     *
-     * @param tp The type of the property.
-     * @param is_dynamic Indicates whether the property is dynamic or not.
-     * @return The deftemplate string representation of the property.
-     */
     std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
-
-    /**
-     * @brief Sets the value of the property.
-     *
-     * @param property_fact_builder The FactBuilder object to set the value on.
-     * @param value The value to set.
-     */
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
-  private:
-    /**
-     * @brief Converts the property to a JSON representation.
-     *
-     * @return The JSON representation of the property.
-     */
     json::json to_json() const noexcept override;
 
   private:
@@ -356,24 +301,11 @@ namespace coco
      */
     json_property(const std::string &name, const std::string &description, json::json &&schema, std::optional<json::json> default_value = std::nullopt) noexcept;
 
-    /**
-     * @brief Validates the given JSON object against the JSON schema.
-     *
-     * @param j The JSON object to validate.
-     * @param schema_refs The JSON schema references.
-     * @return `true` if the JSON object is valid, `false` otherwise.
-     */
+  private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-
     std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
-  private:
-    /**
-     * @brief Converts the `json_property` object to a JSON object.
-     *
-     * @return The JSON representation of the `json_property` object.
-     */
     json::json to_json() const noexcept override;
 
   private:

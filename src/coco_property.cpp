@@ -18,6 +18,34 @@ namespace coco
         return type_name + "_" + property_name;
     }
 
+    boolean_property::boolean_property(const std::string &name, const std::string &description, std::optional<bool> default_value) noexcept : property(name, description), default_value(default_value) {}
+    bool boolean_property::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::boolean; }
+    json::json boolean_property::to_json() const noexcept
+    {
+        json::json j = property::to_json();
+        j["type"] = "boolean";
+        if (default_value.has_value())
+            j["default"] = default_value.value();
+        return j;
+    }
+    std::string boolean_property::to_deftemplate(const type &tp, bool is_dynamic) const noexcept
+    {
+        std::string deftemplate = "(deftemplate " + to_deftemplate_name(tp, is_dynamic) + " (slot item_id (type SYMBOL))";
+        if (is_dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += " (slot " + get_name() + " (type SYMBOL)";
+        if (default_value.has_value())
+        {
+            if (default_value.value())
+                deftemplate += " (default TRUE)";
+            else
+                deftemplate += " (default FALSE)";
+        }
+        deftemplate += "))";
+        return deftemplate;
+    }
+    void boolean_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, get_name().c_str(), static_cast<bool>(value) ? "TRUE" : "FALSE"); }
+
     integer_property::integer_property(const std::string &name, const std::string &description, std::optional<long> default_value, long min, long max) noexcept : property(name, description), default_value(default_value), min(min), max(max) {}
     bool integer_property::validate(const json::json &j, const json::json &) const noexcept
     {
@@ -264,7 +292,15 @@ namespace coco
 
     std::unique_ptr<property> make_property(coco_core &cc, const std::string &name, const json::json &j)
     {
-        if (j["type"] == "integer")
+        if (j["type"] == "boolean")
+        {
+            std::string description = j.contains("description") ? j["description"] : "";
+            std::optional<bool> default_value;
+            if (j.contains("default"))
+                default_value = j["default"];
+            return std::make_unique<boolean_property>(name, description, default_value);
+        }
+        else if (j["type"] == "integer")
         {
             std::string description = j.contains("description") ? j["description"] : "";
             std::optional<long> default_value;
@@ -278,7 +314,7 @@ namespace coco
                 max = j["max"];
             return std::make_unique<integer_property>(name, description, default_value, min, max);
         }
-        if (j["type"] == "float")
+        else if (j["type"] == "float")
         {
             std::string description = j.contains("description") ? j["description"] : "";
             std::optional<double> default_value;
@@ -292,7 +328,7 @@ namespace coco
                 max = j["max"];
             return std::make_unique<float_property>(name, description, default_value, min, max);
         }
-        if (j["type"] == "string")
+        else if (j["type"] == "string")
         {
             std::string description = j.contains("description") ? j["description"] : "";
             std::optional<std::string> default_value;
@@ -300,7 +336,7 @@ namespace coco
                 default_value = j["default"];
             return std::make_unique<string_property>(name, description, default_value);
         }
-        if (j["type"] == "symbol")
+        else if (j["type"] == "symbol")
         {
             std::string description = j.contains("description") ? j["description"] : "";
             std::optional<std::vector<std::string>> default_value;
@@ -319,7 +355,7 @@ namespace coco
                 multiple = j["multiple"];
             return std::make_unique<symbol_property>(name, description, default_value, values, multiple);
         }
-        if (j["type"] == "item")
+        else if (j["type"] == "item")
         {
             std::string description = j.contains("description") ? j["description"] : "";
             std::optional<std::vector<std::string>> default_value;
@@ -338,7 +374,7 @@ namespace coco
                 multiple = j["multiple"];
             return std::make_unique<item_property>(name, description, cc.get_type(j["type_id"]), default_value, values, multiple);
         }
-        if (j["type"] == "json")
+        else if (j["type"] == "json")
         {
             std::string description = j.contains("description") ? j["description"] : "";
             json::json schema = j["schema"];

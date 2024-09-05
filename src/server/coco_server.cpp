@@ -5,7 +5,7 @@
 
 namespace coco
 {
-    coco_server::coco_server(std::unique_ptr<coco::coco_db> db) : coco_core(db ? std::move(db) : std::make_unique<mongo_db>())
+    coco_server::coco_server(const std::string &host, unsigned short port, std::unique_ptr<coco::coco_db> db) : coco_core(db ? std::move(db) : std::make_unique<mongo_db>()), server(host, port)
     {
         LOG_TRACE("OpenAPI: " + build_open_api().dump());
         LOG_TRACE("AsyncAPI: " + build_async_api().dump());

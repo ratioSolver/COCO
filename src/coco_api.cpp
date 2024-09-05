@@ -105,15 +105,6 @@ namespace coco
         return j;
     }
 
-    [[nodiscard]] json::json make_new_value_message(const item &itm) noexcept
-    {
-        json::json j;
-        j["type"] = "new_value";
-        j["item_id"] = itm.get_id();
-        j["value"] = {{"data", itm.get_value()}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(itm.get_timestamp().time_since_epoch()).count()}};
-        return j;
-    }
-
     [[nodiscard]] json::json make_deleted_item_message(const std::string &itm_id) noexcept
     {
         json::json j;
@@ -127,8 +118,7 @@ namespace coco
         json::json j;
         j["type"] = "new_data";
         j["item_id"] = itm.get_id();
-        j["data"] = data;
-        j["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count();
+        j["value"] = {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}};
         return j;
     }
 

@@ -450,12 +450,6 @@ namespace coco
      */
     virtual void updated_item(const item &itm);
     /**
-     * @brief Notifies when the item has new data.
-     *
-     * @param itm The item.
-     */
-    virtual void new_value(const item &itm);
-    /**
      * @brief Notifies when the item is deleted.
      *
      * @param itm_id The ID of the deleted item.

@@ -642,11 +642,6 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         broadcast(make_updated_item_message(itm));
     }
-    void coco_server::new_value(const item &itm)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        broadcast(make_new_value_message(itm));
-    }
     void coco_server::deleted_item(const std::string &itm_id)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);

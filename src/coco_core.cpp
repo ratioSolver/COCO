@@ -196,7 +196,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_item_value(itm, value, timestamp);
-        new_value(itm);
+        new_data(itm, value, timestamp);
         Run(env, -1);
     }
 
@@ -218,7 +218,6 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         set_item_value(itm, data, timestamp);
         db->add_data(itm, data, timestamp);
-        new_data(itm, data, timestamp);
     }
 
     std::vector<std::reference_wrapper<coco_executor>> coco_core::get_solvers()
@@ -381,7 +380,6 @@ namespace coco
 
     void coco_core::new_item([[maybe_unused]] const item &itm) {}
     void coco_core::updated_item([[maybe_unused]] const item &itm) {}
-    void coco_core::new_value([[maybe_unused]] const item &itm) {}
     void coco_core::deleted_item([[maybe_unused]] const std::string &itm_id) {}
 
     void coco_core::new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
@@ -487,7 +485,12 @@ namespace coco
                 break;
             case STRING_TYPE:
             case SYMBOL_TYPE:
-                data[par.lexemeValue->contents] = val.lexemeValue->contents;
+                if (std::string(val.lexemeValue->contents) == "TRUE")
+                    data[par.lexemeValue->contents] = true;
+                else if (std::string(val.lexemeValue->contents) == "FALSE")
+                    data[par.lexemeValue->contents] = false;
+                else
+                    data[par.lexemeValue->contents] = val.lexemeValue->contents;
                 break;
             default:
                 return;
@@ -818,17 +821,20 @@ namespace coco
     }
     void trigger_intent(Environment *, UDFContext *udfc, UDFValue *)
     {
-        LOG_DEBUG("Triggering intent..");
+        LOG_TRACE("Triggering intent..");
 
         auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
 
-        UDFValue user;
-        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &user))
+        UDFValue item;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item))
             return;
 
         UDFValue intent;
         if (!UDFNextArgument(udfc, SYMBOL_BIT, &intent))
             return;
+
+        auto &itm = cc.get_item(item.lexemeValue->contents);
+        LOG_DEBUG(itm.get_name() << " triggers intent: " << intent.lexemeValue->contents);
 
         json::json body{{"name", intent.lexemeValue->contents}};
 
@@ -866,11 +872,12 @@ namespace coco
                     return;
                 }
             }
+            LOG_DEBUG("Entities: " << entities_json.dump());
             body["entities"] = std::move(entities_json);
         }
 
         std::string url = "/conversations/";
-        url += user.lexemeValue->contents;
+        url += item.lexemeValue->contents;
         url += "/trigger_intent";
         auto res = cc.client.post(std::move(url), std::move(body));
         if (!res || res->get_status_code() != network::ok)
@@ -894,21 +901,22 @@ namespace coco
     }
     void compute_response(Environment *, UDFContext *udfc, UDFValue *)
     {
-        LOG_DEBUG("Computing response..");
+        LOG_TRACE("Computing response..");
 
         auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
 
-        UDFValue user;
-        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &user))
+        UDFValue item;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item))
             return;
 
         UDFValue message;
         if (!UDFNextArgument(udfc, STRING_BIT, &message))
             return;
 
-        LOG_DEBUG("user " << user.lexemeValue->contents << " says: '" << message.lexemeValue->contents << "'");
+        auto &itm = cc.get_item(item.lexemeValue->contents);
+        LOG_DEBUG(itm.get_name() << " says: '" << message.lexemeValue->contents << "'");
 
-        auto res = cc.client.post("/webhooks/rest/webhook", {{"sender", user.lexemeValue->contents}, {"message", message.lexemeValue->contents}}, {{"Content-Type", "application/json"}, {"Connection", "keep-alive"}});
+        auto res = cc.client.post("/webhooks/rest/webhook", {{"sender", item.lexemeValue->contents}, {"message", message.lexemeValue->contents}}, {{"Content-Type", "application/json"}, {"Connection", "keep-alive"}});
         if (!res || res->get_status_code() != network::ok)
         {
             LOG_DEBUG(*res);
@@ -919,13 +927,12 @@ namespace coco
         auto &json_res = static_cast<network::json_response &>(*res);
         for (auto &response : json_res.get_body().as_array())
         {
-            std::string recipient_id = response["recipient_id"];
             json::json data;
             for (auto &[key, value] : response.as_object())
                 if (key != "recipient_id")
                     data[key] = value;
             data["me"] = false;
-            cc.add_data(cc.get_item(recipient_id), data);
+            cc.add_data(itm, data);
         }
     }
 #endif

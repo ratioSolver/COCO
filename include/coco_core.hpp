@@ -46,6 +46,17 @@ namespace coco
     type &get_type(const std::string &id);
 
     /**
+     * @brief Retrieves a type with the specified name.
+     *
+     * This function retrieves the type with the specified name.
+     *
+     * @param name The name of the type.
+     * @return A reference to the type.
+     * @throws std::invalid_argument if the type does not exist.
+     */
+    type &get_type_by_name(const std::string &name);
+
+    /**
      * @brief Creates a new type.
      *
      * This function creates a new type with the specified name, description, and properties.

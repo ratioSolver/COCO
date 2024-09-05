@@ -21,11 +21,13 @@ namespace coco
         add_route(network::Get, "^/async_api$", std::bind(&coco_server::async_api, this, network::placeholders::request));
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
+        add_route(network::Get, "^/type(\\?.*)?$", std::bind(&coco_server::get_type, this, network::placeholders::request));
         add_route(network::Post, "^/type$", std::bind(&coco_server::create_type, this, network::placeholders::request));
         add_route(network::Put, "^/type/.*$", std::bind(&coco_server::update_type, this, network::placeholders::request));
         add_route(network::Delete, "^/type/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
 
         add_route(network::Get, "^/items(\\?.*)?$", std::bind(&coco_server::get_items, this, network::placeholders::request));
+        add_route(network::Get, "^/item(\\?.*)?$", std::bind(&coco_server::get_item, this, network::placeholders::request));
         add_route(network::Post, "^/item$", std::bind(&coco_server::create_item, this, network::placeholders::request));
         add_route(network::Put, "^/item/.*$", std::bind(&coco_server::update_item, this, network::placeholders::request));
         add_route(network::Delete, "^/item/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
@@ -64,6 +66,38 @@ namespace coco
         for (auto &tp : coco_core::get_types())
             sts.push_back(to_json(tp));
         return std::make_unique<network::json_response>(std::move(sts));
+    }
+    std::unique_ptr<network::response> coco_server::get_type(const network::request &req)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        if (req.get_target().find('?') == std::string::npos)
+        {
+            auto id = req.get_target().substr(6);
+            try
+            {
+                auto &tp = coco_core::get_type(id);
+                return std::make_unique<network::json_response>(to_json(tp));
+            }
+            catch (const std::exception &)
+            {
+                return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+            }
+        }
+        else
+        {
+            auto params = network::parse_query(req.get_target().substr(req.get_target().find('?') + 1));
+            if (!params.count("name"))
+                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            try
+            {
+                auto &tp = coco_core::get_type_by_name(params.at("name"));
+                return std::make_unique<network::json_response>(to_json(tp));
+            }
+            catch (const std::exception &)
+            {
+                return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+            }
+        }
     }
     std::unique_ptr<network::response> coco_server::create_type(const network::request &req)
     {
@@ -247,6 +281,20 @@ namespace coco
             for (auto &itm : coco_core::get_items())
                 ss.push_back(to_json(itm));
         return std::make_unique<network::json_response>(std::move(ss));
+    }
+    std::unique_ptr<network::response> coco_server::get_item(const network::request &req)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        auto id = req.get_target().substr(6);
+        try
+        {
+            auto &itm = coco_core::get_item(id);
+            return std::make_unique<network::json_response>(to_json(itm));
+        }
+        catch (const std::exception &)
+        {
+            return std::make_unique<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
+        }
     }
     std::unique_ptr<network::response> coco_server::create_item(const network::request &req)
     {

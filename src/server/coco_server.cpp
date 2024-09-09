@@ -263,12 +263,15 @@ namespace coco
         if (req.get_target().find('?') != std::string::npos)
         {
             auto params = network::parse_query(req.get_target().substr(req.get_target().find('?') + 1));
-            if (!params.count("type_id"))
+            if (!params.count("type_id") || !params.count("type_name"))
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             type *tp;
             try
             {
-                tp = &coco_core::get_type(params.at("type_id"));
+                if (params.count("type_id"))
+                    tp = &coco_core::get_type(params.at("type_id"));
+                else
+                    tp = &coco_core::get_type_by_name(params.at("type_name"));
             }
             catch (const std::exception &)
             {
@@ -300,7 +303,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("type") || body["type"].get_type() != json::json_type::string || !body.contains("name") || body["name"].get_type() != json::json_type::string)
+        if (body.get_type() != json::json_type::object || !body.contains("type") || body["type"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string type = body["type"];
         coco::type *tp;

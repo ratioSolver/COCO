@@ -158,25 +158,18 @@ namespace coco
         return db->get_item(id);
     }
 
-    item &coco_core::create_item(const type &tp, const std::string &name, const json::json &props)
+    item &coco_core::create_item(const type &tp, const json::json &props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &[p_name, p] : tp.get_static_properties())
             if (!props.contains(p_name))
-                LOG_WARN("Properties for new item " + name + " do not contain " + p_name + " from type " + tp.get_name());
+                LOG_WARN("Properties for new item do not contain " + p_name + " from type " + tp.get_name());
             else if (!p->validate(props[p_name], schemas))
                 LOG_WARN("Property " + p_name + " for type " + tp.get_name() + " is invalid");
 
-        auto &s = db->create_item(*this, tp, name, props);
+        auto &s = db->create_item(*this, tp, props);
         new_item(s);
         return s;
-    }
-
-    void coco_core::set_item_name(item &itm, const std::string &name)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        db->set_item_name(itm, name);
-        updated_item(itm);
     }
 
     void coco_core::set_item_properties(item &itm, const json::json &props)
@@ -426,7 +419,7 @@ namespace coco
         // we build the basic knowledge base..
         Build(env, "(deftemplate type (slot id (type SYMBOL)) (slot name (type STRING)) (slot description (type STRING)))");
         Build(env, "(deftemplate is_a (slot type_id (type SYMBOL)) (slot parent_id (type SYMBOL)))");
-        Build(env, "(deftemplate item (slot id (type SYMBOL)) (slot name (type STRING)))");
+        Build(env, "(deftemplate item (slot id (type SYMBOL)))");
         Build(env, "(deftemplate is_instance_of (slot item_id (type SYMBOL)) (slot type_id (type SYMBOL)))");
         Build(env, "(defrule inheritance (is_a (type_id ?t) (parent_id ?p)) (is_instance_of (item_id ?i) (type_id ?t)) => (assert (is_instance_of (item_id ?i) (type_id ?p))))");
         Build(env, "(deffunction get-all-instances-of (?type_id) (bind ?instances (create$)) (do-for-all-facts ((?is_instance_of is_instance_of)) (eq ?is_instance_of:type_id ?type_id) (bind ?instances (create$ ?instances ?is_instance_of:item_id))) (return ?instances))");

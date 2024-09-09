@@ -32,7 +32,7 @@ namespace coco
         return j;
     }
 
-    [[nodiscard]] json::json to_json(const item &itm) noexcept { return json::json{{"id", itm.get_id()}, {"type", itm.get_type().get_id()}, {"name", itm.get_name()}, {"properties", itm.get_properties()}, {"value", {{"data", itm.get_value()}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(itm.get_timestamp().time_since_epoch()).count()}}}}; }
+    [[nodiscard]] json::json to_json(const item &itm) noexcept { return json::json{{"id", itm.get_id()}, {"type", itm.get_type().get_id()}, {"properties", itm.get_properties()}, {"value", {{"data", itm.get_value()}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(itm.get_timestamp().time_since_epoch()).count()}}}}; }
 
     [[nodiscard]] json::json to_json(const rule &r) noexcept
     {

@@ -303,7 +303,6 @@ namespace coco
         if (body.get_type() != json::json_type::object || !body.contains("type") || body["type"].get_type() != json::json_type::string || !body.contains("name") || body["name"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string type = body["type"];
-        std::string name = body["name"];
         coco::type *tp;
         try
         {
@@ -315,7 +314,7 @@ namespace coco
         }
         try
         {
-            auto &s = coco_core::create_item(*tp, name, body.contains("properties") ? body["properties"] : json::json());
+            auto &s = coco_core::create_item(*tp, body.contains("properties") ? body["properties"] : json::json());
             return std::make_unique<network::json_response>(to_json(s));
         }
         catch (const std::exception &e)
@@ -337,18 +336,11 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
         }
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.contains("name"))
-        {
-            if (body["name"].get_type() != json::json_type::string)
-                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            set_item_name(*itm, body["name"]);
-        }
-        if (body.contains("properties"))
-        {
-            if (body["properties"].get_type() != json::json_type::object)
-                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            set_item_properties(*itm, body["properties"]);
-        }
+        if (!body.contains("properties"))
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        if (body["properties"].get_type() != json::json_type::object)
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        set_item_properties(*itm, body["properties"]);
         return std::make_unique<network::json_response>(to_json(*itm));
     }
     std::unique_ptr<network::response> coco_server::delete_item(const network::request &req)

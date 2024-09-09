@@ -5,11 +5,10 @@
 
 namespace coco
 {
-    item::item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &props, const json::json &val, const std::chrono::system_clock::time_point &timestamp) noexcept : cc(cc), id(id), tp(tp), name(name)
+    item::item(coco_core &cc, const std::string &id, const type &tp, const json::json &props, const json::json &val, const std::chrono::system_clock::time_point &timestamp) noexcept : cc(cc), id(id), tp(tp)
     {
         FactBuilder *item_fact_builder = CreateFactBuilder(cc.env, "item");
         FBPutSlotSymbol(item_fact_builder, "id", id.c_str());
-        FBPutSlotString(item_fact_builder, "name", name.c_str());
         item_fact = FBAssert(item_fact_builder);
         assert(item_fact);
         FBDispose(item_fact_builder);
@@ -20,17 +19,6 @@ namespace coco
         is_instance_of = FBAssert(is_instance_of_fact_builder);
         assert(is_instance_of);
         FBDispose(is_instance_of_fact_builder);
-
-        std::queue<const type *> q;
-        q.push(&tp);
-        while (!q.empty())
-        {
-            const type *t = q.front();
-            q.pop();
-            types.insert(t);
-            for (const auto &tp : t->get_parents())
-                q.push(&tp.second.get());
-        }
 
         set_properties(props);
         set_value(val, timestamp);
@@ -43,14 +31,6 @@ namespace coco
         Retract(item_fact);
     }
 
-    void item::set_name(const std::string &name)
-    {
-        FactModifier *fm = CreateFactModifier(cc.env, item_fact);
-        FMPutSlotString(fm, "name", name.c_str());
-        item_fact = FMModify(fm);
-        FMDispose(fm);
-    }
-
     void item::set_properties(const json::json &props)
     {
         for (auto &p : property_facts)
@@ -58,7 +38,13 @@ namespace coco
         property_facts.clear();
 
         // Set the properties
-        for (const auto &t : types)
+        std::queue<const type *> q;
+        q.push(&tp);
+        while (!q.empty())
+        {
+            const type *t = q.front();
+            q.pop();
+
             for (const auto &[p_name, p] : t->get_static_properties())
             {
                 FactBuilder *property_fact_builder = CreateFactBuilder(cc.env, p->to_deftemplate_name(*t, false).c_str());
@@ -70,21 +56,26 @@ namespace coco
                 properties[p_name] = props[p_name];
                 property_facts[p_name] = property_fact;
             }
+
+            for (const auto &tp : t->get_parents())
+                q.push(&tp.second.get());
+        }
     }
 
     void item::set_value(const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
-        for (const auto &t : types)
-            for (const auto &[p_name, p] : t->get_dynamic_properties())
-                if (!val.contains(p_name))
-                    LOG_WARN("Data for item " + name + " do not contain " + p_name);
-                else if (!p->validate(val[p_name], cc.schemas))
-                    LOG_WARN("Data " + p_name + " for item " + name + " is invalid");
+        std::queue<const type *> q;
+        q.push(&tp);
+        while (!q.empty())
+        {
+            const type *t = q.front();
+            q.pop();
 
-        for (const auto &t : types)
             for (const auto &[p_name, p] : t->get_dynamic_properties())
                 if (val.contains(p_name))
                 {
+                    if (!p->validate(val[p_name], cc.schemas))
+                        LOG_WARN("Data " + p_name + " for item " + id + " is invalid");
                     if (value_facts.find(p_name) != value_facts.end())
                         Retract(value_facts[p_name]); // Retract the old value
                     FactBuilder *value_fact_builder = CreateFactBuilder(cc.env, p->to_deftemplate_name(*t).c_str());
@@ -97,6 +88,13 @@ namespace coco
                     value[p_name] = val[p_name];
                     value_facts[p_name] = value_fact;
                 }
+                else
+                    LOG_WARN("Data for item " + id + " do not contain " + p_name);
+
+            for (const auto &tp : t->get_parents())
+                q.push(&tp.second.get());
+        }
+
         this->timestamp = timestamp;
     }
 } // namespace coco

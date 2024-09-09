@@ -22,12 +22,11 @@ namespace coco
      * @param cc The CoCo core object.
      * @param id The ID of the item.
      * @param tp The type of the item.
-     * @param name The name of the item.
      * @param props The properties of the item.
      * @param val The value of the item.
      * @param timestamp The timestamp of the value.
      */
-    item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
+    item(coco_core &cc, const std::string &id, const type &tp, const json::json &props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
     ~item() noexcept;
 
     /**
@@ -43,13 +42,6 @@ namespace coco
      * @return The type of the item.
      */
     [[nodiscard]] const type &get_type() const { return tp; }
-
-    /**
-     * @brief Gets the name of the item.
-     *
-     * @return The name of the item.
-     */
-    [[nodiscard]] const std::string &get_name() const { return name; }
 
     /**
      * @brief Gets the properties of the item.
@@ -73,15 +65,6 @@ namespace coco
     [[nodiscard]] const std::chrono::system_clock::time_point &get_timestamp() const { return timestamp; }
 
   private:
-    /**
-     * @brief Sets the name of the item.
-     *
-     * This function sets the name of the item to the specified value.
-     *
-     * @param name The new name for the item.
-     */
-    void set_name(const std::string &name);
-
     /**
      * @brief Sets the properties of the item.
      *
@@ -107,8 +90,6 @@ namespace coco
     Fact *is_instance_of = nullptr;                  // The fact representing the type of the item.
     const std::string id;                            // The ID of the item.
     const type &tp;                                  // The type of the item.
-    std::set<const type *> types;                    // The types of the item.
-    std::string name;                                // The name of the item.
     json::json properties;                           // The properties of the item.
     std::map<std::string, Fact *> property_facts;    // The facts representing the properties of the item.
     json::json value;                                // The value of the item.

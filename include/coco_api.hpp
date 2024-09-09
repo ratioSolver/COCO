@@ -318,7 +318,6 @@ namespace coco
         {"properties",
          {{"id", {{"type", "string"}, {"format", "uuid"}}},
           {"type", {{"type", "string"}, {"format", "uuid"}}},
-          {"name", {{"type", "string"}}},
           {"properties", {{"type", "object"}}},
           {"value", {{"$ref", "#/components/schemas/data"}}}}}}},
       {"data",

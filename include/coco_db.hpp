@@ -176,21 +176,13 @@ namespace coco
      *
      * @param cc The CoCo core object.
      * @param tp The type of the item.
-     * @param name The name of the item.
      * @param pars The properties of the item.
      * @param val The value of the item.
      * @param timestamp The timestamp of the value.
      * @return A reference to the created item.
      */
-    virtual item &create_item(coco_core &cc, const type &tp, const std::string &name, const json::json &pars, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
+    virtual item &create_item(coco_core &cc, const type &tp, const json::json &pars, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
 
-    /**
-     * Sets the name of an item.
-     *
-     * @param itm The item to set the name for.
-     * @param name The new name for the item.
-     */
-    virtual void set_item_name(item &itm, const std::string &name) { itm.set_name(name); }
     /**
      * @brief Sets the properties of an item.
      *
@@ -441,11 +433,11 @@ namespace coco
       types.emplace(id, std::move(tp));
       return *types[id];
     }
-    item &create_item(coco_core &cc, const std::string &id, const type &tp, const std::string &name, const json::json &pars, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now())
+    item &create_item(coco_core &cc, const std::string &id, const type &tp, const json::json &pars, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now())
     {
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
-      items.emplace(id, std::make_unique<item>(cc, id, tp, name, pars, val, timestamp));
+      items.emplace(id, std::make_unique<item>(cc, id, tp, pars, val, timestamp));
       return *items[id];
     }
     rule &create_reactive_rule(coco_core &cc, const std::string &id, const std::string &name, const std::string &content)

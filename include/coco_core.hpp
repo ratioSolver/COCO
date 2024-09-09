@@ -193,21 +193,10 @@ namespace coco
      * @brief Creates an item of the specified type with the given name and optional data.
      *
      * @param tp The type of the item.
-     * @param name The name of the item.
      * @param props The properties of the item.
      * @return A reference to the created item.
      */
-    item &create_item(const type &tp, const std::string &name, const json::json &props);
-
-    /**
-     * @brief Sets the name of the item.
-     *
-     * This function sets the name of the item with the specified ID.
-     *
-     * @param itm The item.
-     * @param name The name of the item.
-     */
-    void set_item_name(item &itm, const std::string &name);
+    item &create_item(const type &tp, const json::json &props);
 
     /**
      * @brief Sets the properties of the item.

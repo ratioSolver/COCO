@@ -101,11 +101,10 @@ namespace coco
         {
             auto id = doc["_id"].get_oid().value.to_string();
             auto type_id = doc["type_id"].get_oid().value.to_string();
-            auto name = doc["name"].get_string().value.to_string();
             auto properties = json::load(bsoncxx::to_json(doc["properties"].get_document().view()));
             auto value = json::load(bsoncxx::to_json(doc["value"]["data"].get_document().view()));
             auto timestamp = doc["value"]["timestamp"].get_date().to_int64();
-            coco_db::create_item(cc, id, get_type(type_id), name, properties, value, std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp)));
+            coco_db::create_item(cc, id, get_type(type_id), properties, value, std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp)));
         }
         LOG_DEBUG("Retrieved " << get_items().size() << " items");
     }
@@ -209,11 +208,10 @@ namespace coco
         coco_db::delete_type(tp);
     }
 
-    item &mongo_db::create_item(coco_core &cc, const type &tp, const std::string &name, const json::json &props, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
+    item &mongo_db::create_item(coco_core &cc, const type &tp, const json::json &props, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{tp.get_id()}));
-        doc.append(bsoncxx::builder::basic::kvp("name", name));
         doc.append(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())));
         bsoncxx::builder::basic::document data_doc;
         data_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(val.dump())));
@@ -221,18 +219,8 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("value", data_doc));
         auto result = items_collection.insert_one(doc.view());
         if (result)
-            return coco_db::create_item(cc, result->inserted_id().get_oid().value.to_string(), tp, name, props, val, timestamp);
-        throw std::invalid_argument("Failed to insert item: " + name);
-    }
-
-    void mongo_db::set_item_name(item &it, const std::string &name)
-    {
-        bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("name", name))));
-        auto result = items_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{it.get_id()})), doc.view());
-        if (!result)
-            throw std::invalid_argument("Failed to update item name: " + name);
-        coco_db::set_item_name(it, name);
+            return coco_db::create_item(cc, result->inserted_id().get_oid().value.to_string(), tp, props, val, timestamp);
+        throw std::invalid_argument("Failed to insert item: " + tp.get_name());
     }
 
     void mongo_db::set_item_properties(item &it, const json::json &props)
@@ -262,10 +250,10 @@ namespace coco
     {
         auto result = item_data_collection.delete_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{it.get_id()})));
         if (!result)
-            throw std::invalid_argument("Failed to delete item data for item: " + it.get_name());
+            throw std::invalid_argument("Failed to delete item data for item: " + it.get_id());
         result = items_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{it.get_id()})));
         if (!result)
-            throw std::invalid_argument("Failed to delete item: " + it.get_name());
+            throw std::invalid_argument("Failed to delete item: " + it.get_id());
         coco_db::delete_item(it);
     }
 
@@ -288,7 +276,7 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
         auto result = item_data_collection.insert_one(doc.view());
         if (!result)
-            throw std::invalid_argument("Failed to insert data for item: " + it.get_name());
+            throw std::invalid_argument("Failed to insert data for item: " + it.get_id());
     }
 
     rule &mongo_db::create_reactive_rule(coco_core &cc, const std::string &name, const std::string &content)

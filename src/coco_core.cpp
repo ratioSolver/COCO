@@ -883,13 +883,12 @@ namespace coco
         auto &messages = json_res.get_body()["messages"].as_array();
         for (auto &message : messages)
         {
-            std::string recipient_id = message["recipient_id"];
             json::json data;
             for (auto &[key, value] : message.as_object())
                 if (key != "recipient_id")
                     data[key] = value;
             data["me"] = false;
-            cc.add_data(cc.get_item(recipient_id), data);
+            cc.add_data(itm, data);
         }
     }
     void compute_response(Environment *, UDFContext *udfc, UDFValue *)

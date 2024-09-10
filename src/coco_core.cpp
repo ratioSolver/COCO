@@ -827,7 +827,7 @@ namespace coco
             return;
 
         auto &itm = cc.get_item(item.lexemeValue->contents);
-        LOG_DEBUG(itm.get_name() << " triggers intent: " << intent.lexemeValue->contents);
+        LOG_DEBUG(itm.get_id() << " triggers intent: " << intent.lexemeValue->contents);
 
         json::json body{{"name", intent.lexemeValue->contents}};
 
@@ -907,7 +907,7 @@ namespace coco
             return;
 
         auto &itm = cc.get_item(item.lexemeValue->contents);
-        LOG_DEBUG(itm.get_name() << " says: '" << message.lexemeValue->contents << "'");
+        LOG_DEBUG(itm.get_id() << " says: '" << message.lexemeValue->contents << "'");
 
         auto res = cc.client.post("/webhooks/rest/webhook", {{"sender", item.lexemeValue->contents}, {"message", message.lexemeValue->contents}}, {{"Content-Type", "application/json"}, {"Connection", "keep-alive"}});
         if (!res || res->get_status_code() != network::ok)

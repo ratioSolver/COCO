@@ -253,7 +253,7 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
         }
         coco_core::delete_type(*tp);
-        return std::make_unique<network::response>();
+        return std::make_unique<network::response>(network::status_code::no_content);
     }
 
     std::unique_ptr<network::response> coco_server::get_items(const network::request &req)
@@ -363,7 +363,7 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
         }
         coco_core::delete_item(*itm);
-        return std::make_unique<network::response>();
+        return std::make_unique<network::response>(network::status_code::no_content);
     }
 
     std::unique_ptr<network::response> coco_server::get_data(const network::request &req)
@@ -406,7 +406,7 @@ namespace coco
         if (body.get_type() != json::json_type::object)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         coco_core::add_data(*itm, body);
-        return std::make_unique<network::response>();
+        return std::make_unique<network::response>(network::status_code::no_content);
     }
 
     std::unique_ptr<network::response> coco_server::get_reactive_rules(const network::request &)
@@ -480,7 +480,7 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Reactive rule not found"}}), network::status_code::not_found);
         }
         coco_core::delete_reactive_rule(*rl);
-        return std::make_unique<network::response>();
+        return std::make_unique<network::response>(network::status_code::no_content);
     }
 
     std::unique_ptr<network::response> coco_server::get_deliberative_rules(const network::request &)
@@ -554,7 +554,7 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Deliberative rule not found"}}), network::status_code::not_found);
         }
         coco_core::delete_deliberative_rule(*rl);
-        return std::make_unique<network::response>();
+        return std::make_unique<network::response>(network::status_code::no_content);
     }
 
     void coco_server::on_ws_open(network::ws_session &ws)

@@ -27,7 +27,7 @@ namespace coco
         AddUDF(env, "compute_response", "v", 2, 3, "yss", compute_response, "compute_response", this);
 
         auto res = client.get("/version");
-        if (res->get_status_code() != network::ok)
+        if (!res || res->get_status_code() != network::ok)
             LOG_ERR("Failed to connect to the transformer server");
         else
             LOG_DEBUG("Connected to the transformer server " << static_cast<network::json_response &>(*res).get_body());

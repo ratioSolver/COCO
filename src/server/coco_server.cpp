@@ -263,7 +263,7 @@ namespace coco
         if (req.get_target().find('?') != std::string::npos)
         {
             auto params = network::parse_query(req.get_target().substr(req.get_target().find('?') + 1));
-            if (!params.count("type_id") || !params.count("type_name"))
+            if (!params.count("type_id") && !params.count("type_name"))
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             type *tp;
             try

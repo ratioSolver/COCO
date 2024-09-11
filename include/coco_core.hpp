@@ -633,7 +633,6 @@ namespace coco
 #endif
 
   private:
-    json::json schemas;                                 // the JSON schemas..
     std::set<std::unique_ptr<coco_executor>> executors; // the executors..
 #ifdef ENABLE_TRANSFORMER
     network::client client{RASA_HOST, RASA_PORT}; // the transformer client..
@@ -643,6 +642,7 @@ namespace coco
     std::unique_ptr<coco_db> db; // the database..
     Environment *env;            // the CLIPS environment..
     std::recursive_mutex mtx;    // mutex for the core..
+    json::json schemas;          // the JSON schemas..
   };
 
   void add_data(Environment *env, UDFContext *udfc, UDFValue *out);

@@ -285,7 +285,7 @@ namespace coco
         deftemplate += " (slot " + get_name() + " (type STRING)";
         if (default_value.has_value())
             deftemplate += " (default \"" + default_value.value().dump() + "\")";
-        deftemplate += ")";
+        deftemplate += "))";
         return deftemplate;
     }
     void json_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, get_name().c_str(), value.dump().c_str()); }

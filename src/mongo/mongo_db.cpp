@@ -16,27 +16,22 @@ namespace coco
         if (types_collection.list_indexes().begin() == types_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for types collection");
-            types_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
-        }
-        if (items_collection.list_indexes().begin() == items_collection.list_indexes().end())
-        {
-            LOG_DEBUG("Creating indexes for items collection");
-            items_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
+            types_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
         if (item_data_collection.list_indexes().begin() == item_data_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for item data collection");
-            item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize);
+            item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
         if (reactive_rules_collection.list_indexes().begin() == reactive_rules_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for reactive rules collection");
-            reactive_rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
+            reactive_rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
         if (deliberative_rules_collection.list_indexes().begin() == deliberative_rules_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for deliberative rules collection");
-            deliberative_rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize);
+            deliberative_rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
     }
 

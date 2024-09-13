@@ -915,7 +915,6 @@ namespace coco
         auto res = cc.client.post("/webhooks/rest/webhook", {{"sender", item.lexemeValue->contents}, {"message", message.lexemeValue->contents}}, {{"Content-Type", "application/json"}, {"Connection", "keep-alive"}});
         if (!res || res->get_status_code() != network::ok)
         {
-            LOG_DEBUG(*res);
             LOG_ERR("Failed to compute response..");
             return;
         }

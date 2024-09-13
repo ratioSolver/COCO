@@ -9,7 +9,11 @@ namespace coco
   class coco_server : public coco::coco_core, private network::server
   {
   public:
+#ifdef ENABLE_TRANSFORMER
+    coco_server(const std::string &host = SERVER_HOST, unsigned short port = SERVER_PORT, std::unique_ptr<coco::coco_db> db = nullptr, const std::string &transformer_host = TRANSFORMER_HOST, unsigned short transformer_port = TRANSFORMER_PORT);
+#else
     coco_server(const std::string &host = SERVER_HOST, unsigned short port = SERVER_PORT, std::unique_ptr<coco::coco_db> db = nullptr);
+#endif
 
     void start() { network::server::start(); }
 

@@ -22,7 +22,11 @@ namespace coco
     friend class rule;
 
   public:
+#ifdef ENABLE_TRANSFORMER
+    coco_core(std::unique_ptr<coco_db> &&db, const std::string &host = TRANSFORMER_HOST, unsigned short port = TRANSFORMER_PORT);
+#else
     coco_core(std::unique_ptr<coco_db> &&db);
+#endif
     virtual ~coco_core() = default;
 
     /**
@@ -635,7 +639,7 @@ namespace coco
   private:
     std::set<std::unique_ptr<coco_executor>> executors; // the executors..
 #ifdef ENABLE_TRANSFORMER
-    network::client client{RASA_HOST, RASA_PORT}; // the transformer client..
+    network::client client; // the transformer client..
 #endif
 
   protected:

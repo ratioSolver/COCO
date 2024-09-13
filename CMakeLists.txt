@@ -70,13 +70,13 @@ endif()
 
 message(STATUS "CoCo transformer: ${ENABLE_TRANSFORMER}")
 if(ENABLE_TRANSFORMER)
-    set(RASA_HOST "localhost" CACHE STRING "The Rasa Host")
-    set(RASA_PORT "5005" CACHE STRING "The Rasa Port")
+    set(TRANSFORMER_HOST "localhost" CACHE STRING "The transformer Host")
+    set(TRANSFORMER_PORT "5005" CACHE STRING "The transformer Port")
 
-    message(STATUS "Rasa host: ${RASA_HOST}")
-    message(STATUS "Rasa port: ${RASA_PORT}")
+    message(STATUS "transformer host: ${TRANSFORMER_HOST}")
+    message(STATUS "transformer port: ${TRANSFORMER_PORT}")
 
-    target_compile_definitions(CoCo PUBLIC ENABLE_TRANSFORMER RASA_HOST="${RASA_HOST}" RASA_PORT=${RASA_PORT})
+    target_compile_definitions(CoCo PUBLIC ENABLE_TRANSFORMER TRANSFORMER_HOST="${TRANSFORMER_HOST}" TRANSFORMER_PORT=${TRANSFORMER_PORT})
 endif()
 
 message(STATUS "CoCo authentication: ${ENABLE_AUTH}")

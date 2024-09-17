@@ -33,12 +33,13 @@ namespace coco
      * @param cc The CoCo core object.
      * @param name The name of the type.
      * @param description The description of the type.
+     * @param props The properties of the type.
      * @param parents The parent types of the type.
      * @param static_properties The static properties of the type.
      * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(coco_core &cc, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) = 0;
+    virtual type &create_type(coco_core &cc, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) = 0;
 
     /**
      * Sets the name of the given type.
@@ -57,6 +58,18 @@ namespace coco
      * @param description The description to set for the type.
      */
     virtual void set_type_description(type &tp, const std::string &description) { tp.set_description(description); }
+
+    /**
+     * @brief Sets the properties of the given type object.
+     *
+     * This function sets the properties of the provided type object using the
+     * specified JSON properties.
+     *
+     * @param tp A reference to the type object whose properties are to be set.
+     * @param props A constant reference to a JSON object containing the properties
+     * to be set on the type object.
+     */
+    virtual void set_type_properties(type &tp, const json::json &props) { tp.set_properties(props); }
 
     /**
      * @brief Adds a parent to the given type.
@@ -424,11 +437,11 @@ namespace coco
     virtual void delete_deliberative_rule(const rule &r) { deliberative_rules.erase(r.id); }
 
   protected:
-    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {})
+    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {})
     {
       if (types.find(id) != types.end())
         throw std::invalid_argument("Type already exists: " + id);
-      auto tp = std::make_unique<type>(cc, id, name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+      auto tp = std::make_unique<type>(cc, id, name, description, props, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
       types_by_name.emplace(name, *tp);
       types.emplace(id, std::move(tp));
       return *types[id];

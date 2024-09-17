@@ -4,7 +4,7 @@
 
 namespace coco
 {
-    type::type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept : cc(cc), id(id), name(name), description(description)
+    type::type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept : cc(cc), id(id), name(name), description(description), properties(props)
     {
         for (auto &p : static_properties)
             add_static_property(std::move(p));
@@ -63,6 +63,7 @@ namespace coco
         parents.erase(parent.name);
         parent_facts.erase(parent.name);
     }
+    void type::set_properties(const json::json &props) noexcept { properties = props; }
     void type::add_static_property(std::unique_ptr<property> &&prop) noexcept
     {
         Build(cc.env, prop->to_deftemplate(*this, false).c_str());

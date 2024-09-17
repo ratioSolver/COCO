@@ -111,6 +111,7 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string name = body["name"];
         std::string description = body.contains("description") ? body["description"] : "";
+        json::json props = body.contains("properties") ? body["properties"] : json::json();
         std::vector<std::reference_wrapper<const type>> parents;
         if (body.contains("parents") && body["parents"].get_type() == json::json_type::array)
             for (auto &p : body["parents"].as_array())
@@ -155,7 +156,7 @@ namespace coco
         }
         try
         {
-            auto &tp = coco_core::create_type(name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+            auto &tp = coco_core::create_type(name, description, props, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
             return std::make_unique<network::json_response>(to_json(tp));
         }
         catch (const std::exception &e)
@@ -188,6 +189,12 @@ namespace coco
             if (body["description"].get_type() != json::json_type::string)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             set_type_description(*tp, body["description"]);
+        }
+        if (body.contains("properties"))
+        {
+            if (body["properties"].get_type() != json::json_type::object)
+                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            set_type_properties(*tp, body["properties"]);
         }
         if (body.contains("parents"))
         {

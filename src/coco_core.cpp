@@ -58,10 +58,10 @@ namespace coco
         return db->get_type_by_name(name);
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
+    type &coco_core::create_type(const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &st = db->create_type(*this, name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+        auto &st = db->create_type(*this, name, description, props, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         new_type(st);
         return st;
     }
@@ -78,6 +78,14 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_type_description(tp, description);
+        Run(env, -1);
+        updated_type(tp);
+    }
+
+    void coco_core::set_type_properties(type &tp, const json::json &props)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db->set_type_properties(tp, props);
         Run(env, -1);
         updated_type(tp);
     }

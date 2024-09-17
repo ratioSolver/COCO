@@ -21,10 +21,11 @@ namespace coco
 
     void init(coco_core &cc) override;
 
-    [[nodiscard]] type &create_type(coco_core &cc, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;
+    [[nodiscard]] type &create_type(coco_core &cc, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;
 
     void set_type_name(type &tp, const std::string &name) override;
     void set_type_description(type &tp, const std::string &description) override;
+    void set_type_properties(type &tp, const json::json &props) override;
     void add_static_property(type &tp, std::unique_ptr<property> &&prop) override;
     void remove_static_property(type &tp, const property &prop) override;
     void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop) override;

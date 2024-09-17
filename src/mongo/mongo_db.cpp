@@ -45,7 +45,8 @@ namespace coco
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
-            coco_db::create_type(cc, id, name, description);
+            auto properties = json::load(bsoncxx::to_json(doc["properties"].get_document().view()));
+            coco_db::create_type(cc, id, name, description, properties);
             types.push_back(bsoncxx::document::value{doc});
         }
         for (const auto &doc : types)
@@ -104,11 +105,12 @@ namespace coco
         LOG_DEBUG("Retrieved " << get_items().size() << " items");
     }
 
-    type &mongo_db::create_type(coco_core &cc, const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
+    type &mongo_db::create_type(coco_core &cc, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", name));
         doc.append(bsoncxx::builder::basic::kvp("description", description));
+        doc.append(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())));
         if (!parents.empty())
         {
             auto parents_array = bsoncxx::builder::basic::array{};
@@ -132,7 +134,7 @@ namespace coco
         }
         auto result = types_collection.insert_one(doc.view());
         if (result)
-            return coco_db::create_type(cc, result->inserted_id().get_oid().value.to_string(), name, description, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+            return coco_db::create_type(cc, result->inserted_id().get_oid().value.to_string(), name, description, props, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         throw std::invalid_argument("Failed to insert type: " + name);
     }
 
@@ -153,6 +155,15 @@ namespace coco
         if (!result)
             throw std::invalid_argument("Failed to update type description: " + description);
         coco_db::set_type_description(tp, description);
+    }
+    void mongo_db::set_type_properties(type &tp, const json::json &props)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())))));
+        auto result = types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{tp.get_id()})), doc.view());
+        if (!result)
+            throw std::invalid_argument("Failed to update type properties: " + props.dump());
+        coco_db::set_type_properties(tp, props);
     }
     void mongo_db::add_static_property(type &tp, std::unique_ptr<property> &&prop)
     {

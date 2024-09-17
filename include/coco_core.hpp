@@ -67,12 +67,13 @@ namespace coco
      *
      * @param name The name of the type.
      * @param description The description of the type.
+     * @param props The properties of the type.
      * @param parents The parents of the type.
      * @param static_properties The static properties of the type.
      * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties);
+    type &create_type(const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties);
 
     /**
      * @brief Sets the name of the type.
@@ -93,6 +94,16 @@ namespace coco
      * @param description The description of the type.
      */
     void set_type_description(type &tp, const std::string &description);
+
+    /**
+     * @brief Sets the properties of the type.
+     *
+     * This function sets the properties of the type with the specified ID.
+     *
+     * @param tp The type.
+     * @param props The properties of the type.
+     */
+    void set_type_properties(type &tp, const json::json &props);
 
     /**
      * @brief Adds a parent to the type.

@@ -22,7 +22,7 @@ namespace coco
         AddUDF(env, "extend_task", "v", 2, 3, "llm", extend_task, "extend_task", this);
         AddUDF(env, "failure", "v", 2, 2, "lm", failure, "failure", this);
         AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", this);
-        AddUDF(env, "adapt_files", "v", 2, 2, "lm", adapt_files, "adapt_files", this);
+        AddUDF(env, "adapt_rules", "v", 2, 2, "lm", adapt_rules, "adapt_rules", this);
         AddUDF(env, "delete_solver", "v", 1, 1, "l", coco::delete_solver, "delete_solver", this);
 
 #ifdef ENABLE_TRANSFORMER
@@ -567,8 +567,8 @@ namespace coco
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        coco_exec->executor::start();
+        auto exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        exec->executor::start();
     }
 
     void pause_execution([[maybe_unused]] Environment *, UDFContext *udfc, [[maybe_unused]] UDFValue *)
@@ -578,8 +578,8 @@ namespace coco
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        coco_exec->executor::pause();
+        auto exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        exec->executor::pause();
     }
 
     void delay_task([[maybe_unused]] Environment *, UDFContext *udfc, [[maybe_unused]] UDFValue *)
@@ -594,7 +594,7 @@ namespace coco
         if (!UDFNextArgument(udfc, INTEGER_BIT, &task_id))
             return;
 
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        auto exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
 
         auto atm = reinterpret_cast<ratio::atom *>(task_id.integerValue->contents);
         utils::rational delay = utils::rational::one;
@@ -629,7 +629,7 @@ namespace coco
             }
         }
 
-        coco_exec->dont_start_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
+        exec->dont_start_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
 
     void extend_task([[maybe_unused]] Environment *, UDFContext *udfc, [[maybe_unused]] UDFValue *)
@@ -644,7 +644,7 @@ namespace coco
         if (!UDFNextArgument(udfc, INTEGER_BIT, &task_id))
             return;
 
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        auto exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
 
         auto atm = reinterpret_cast<ratio::atom *>(task_id.integerValue->contents);
         utils::rational delay = utils::rational::one;
@@ -679,7 +679,7 @@ namespace coco
             }
         }
 
-        coco_exec->dont_end_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
+        exec->dont_end_yet({std::pair<const ratio::atom *, utils::rational>(atm, delay)});
     }
 
     void failure([[maybe_unused]] Environment *, UDFContext *udfc, [[maybe_unused]] UDFValue *)
@@ -703,8 +703,8 @@ namespace coco
             atms.insert(reinterpret_cast<ratio::atom *>(atm_id.integerValue->contents));
         }
 
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
-        coco_exec->failure(atms);
+        auto exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        exec->failure(atms);
     }
 
     void adapt_script([[maybe_unused]] Environment *, UDFContext *udfc, [[maybe_unused]] UDFValue *)
@@ -714,7 +714,7 @@ namespace coco
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        auto exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
 
         UDFValue riddle;
         if (!UDFNextArgument(udfc, STRING_BIT, &riddle))
@@ -722,7 +722,7 @@ namespace coco
 
         try
         { // we adapt to the riddle script..
-            coco_exec->adapt(riddle.lexemeValue->contents);
+            exec->adapt(riddle.lexemeValue->contents);
         }
         catch (const std::invalid_argument &e)
         {
@@ -730,35 +730,38 @@ namespace coco
         }
     }
 
-    void adapt_files([[maybe_unused]] Environment *, UDFContext *udfc, [[maybe_unused]] UDFValue *)
+    void adapt_rules([[maybe_unused]] Environment *, UDFContext *udfc, [[maybe_unused]] UDFValue *)
     {
-        LOG_DEBUG("Adapting to RiDDLe files..");
+        LOG_DEBUG("Adapting to RiDDLe rules..");
+
+        auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
 
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        auto exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
 
         UDFValue riddle_files;
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &riddle_files))
             return;
 
-        std::vector<std::string> fs;
-        for (size_t i = 0; i < riddle_files.multifieldValue->length; ++i)
-        {
-            auto &file = riddle_files.multifieldValue->contents[i];
-            if (file.header->type != STRING_TYPE)
-                return;
-            fs.push_back(file.lexemeValue->contents);
-        }
+        UDFValue deliberative_rule_names;
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &deliberative_rule_names))
+            return;
 
-        try
-        { // we adapt to the riddle files..
-            coco_exec->adapt(fs);
-        }
-        catch (const std::invalid_argument &e)
+        for (size_t i = 0; i < deliberative_rule_names.multifieldValue->length; ++i)
         {
-            LOG_ERR("Invalid RiDDLe files: " + std::string(e.what()));
+            auto &rule_name = deliberative_rule_names.multifieldValue->contents[i];
+            if (rule_name.header->type != STRING_TYPE)
+                return;
+            try
+            {
+                exec->adapt(cc.db->get_reactive_rule_by_name(rule_name.lexemeValue->contents).get_content());
+            }
+            catch (const std::exception &e)
+            {
+                LOG_ERR("Invalid RiDDLe files: " + std::string(e.what()));
+            }
         }
     }
 
@@ -769,10 +772,10 @@ namespace coco
         UDFValue exec_ptr;
         if (!UDFFirstArgument(udfc, INTEGER_BIT, &exec_ptr))
             return;
-        auto coco_exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
+        auto exec = reinterpret_cast<coco_executor *>(exec_ptr.integerValue->contents);
 
         auto &cc = *reinterpret_cast<coco_core *>(udfc->context);
-        cc.delete_solver(*coco_exec);
+        cc.delete_solver(*exec);
     }
 
 #ifdef ENABLE_TRANSFORMER

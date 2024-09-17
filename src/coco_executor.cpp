@@ -152,7 +152,7 @@ namespace coco
         {
             auto task = to_task(cc.env, atm.get());
             FBPutSlotInteger(task_fact_builder, "id", get_id(atm.get()));
-            FBPutSlotSymbol(task_fact_builder, "fact_type", atm.get().get_type().get_name().c_str());
+            FBPutSlotSymbol(task_fact_builder, "task_type", atm.get().get_type().get_name().c_str());
             FBPutSlotMultifield(task_fact_builder, "pars", task.first);
             FBPutSlotMultifield(task_fact_builder, "vals", task.second);
             task_facts.emplace(&atm.get(), FBAssert(task_fact_builder));

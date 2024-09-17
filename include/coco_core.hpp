@@ -627,7 +627,7 @@ namespace coco
     friend void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void failure(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void adapt_rules(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
 
 #ifdef ENABLE_TRANSFORMER
@@ -658,7 +658,7 @@ namespace coco
   void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
   void failure(Environment *env, UDFContext *udfc, UDFValue *out);
   void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
-  void adapt_files(Environment *env, UDFContext *udfc, UDFValue *out);
+  void adapt_rules(Environment *env, UDFContext *udfc, UDFValue *out);
   void delete_solver(Environment *env, UDFContext *udfc, UDFValue *out);
 
 #ifdef ENABLE_TRANSFORMER

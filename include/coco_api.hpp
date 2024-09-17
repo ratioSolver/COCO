@@ -310,6 +310,7 @@ namespace coco
          {{"id", {{"type", "string"}, {"format", "uuid"}}},
           {"name", {{"type", "string"}}},
           {"description", {{"type", "string"}}},
+          {"properties", {{"type", "object"}}},
           {"parents", {{"type", "array"}, {"items", {{"type", "string"}, {"format", "uuid"}}}}},
           {"static_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}}},
           {"dynamic_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}}}}}}},

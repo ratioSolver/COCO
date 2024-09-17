@@ -5,7 +5,7 @@
 
 namespace coco
 {
-    item::item(coco_core &cc, const std::string &id, const type &tp, const json::json &props, const json::json &val, const std::chrono::system_clock::time_point &timestamp) noexcept : cc(cc), id(id), tp(tp)
+    item::item(coco_core &cc, const std::string &id, const type &tp, json::json &&props, const json::json &val, const std::chrono::system_clock::time_point &timestamp) noexcept : cc(cc), id(id), tp(tp)
     {
         FactBuilder *item_fact_builder = CreateFactBuilder(cc.env, "item");
         FBPutSlotSymbol(item_fact_builder, "id", id.c_str());
@@ -20,7 +20,7 @@ namespace coco
         assert(is_instance_of);
         FBDispose(is_instance_of_fact_builder);
 
-        set_properties(props);
+        set_properties(std::move(props));
         set_value(val, timestamp);
     }
     item::~item() noexcept
@@ -31,7 +31,7 @@ namespace coco
         Retract(item_fact);
     }
 
-    void item::set_properties(const json::json &props)
+    void item::set_properties(json::json &&props)
     {
         for (auto &p : property_facts)
             Retract(p.second);

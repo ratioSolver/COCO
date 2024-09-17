@@ -30,7 +30,7 @@ namespace coco
      * @param static_properties The static properties of the type.
      * @param dynamic_properties The dynamic properties of the type.
      */
-    type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, const json::json &props = json::json(), std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {}) noexcept;
+    type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, json::json &&props = json::json(), std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {}) noexcept;
     ~type() noexcept;
 
     /**
@@ -55,18 +55,18 @@ namespace coco
     std::string get_description() const noexcept { return description; }
 
     /**
-     * @brief Gets the parent types of the type.
-     *
-     * @return The parent types of the type.
-     */
-    const std::map<std::string, std::reference_wrapper<const type>> &get_parents() const noexcept { return parents; }
-
-    /**
      * @brief Gets the properties of the type.
      *
      * @return The properties of the type.
      */
     const json::json &get_properties() const noexcept { return properties; }
+
+    /**
+     * @brief Gets the parent types of the type.
+     *
+     * @return The parent types of the type.
+     */
+    const std::map<std::string, std::reference_wrapper<const type>> &get_parents() const noexcept { return parents; }
 
     /**
      * @brief Gets the static properties of the type.
@@ -85,8 +85,6 @@ namespace coco
   private:
     void set_name(const std::string &name) noexcept;
     void set_description(const std::string &description) noexcept;
-    void add_parent(const type &parent) noexcept;
-    void remove_parent(const type &parent) noexcept;
     /**
      * @brief Sets the properties of the type.
      *
@@ -94,7 +92,9 @@ namespace coco
      *
      * @param props The JSON object containing the properties.
      */
-    void set_properties(const json::json &props) noexcept;
+    void set_properties(json::json &&props) noexcept;
+    void add_parent(const type &parent) noexcept;
+    void remove_parent(const type &parent) noexcept;
     void add_static_property(std::unique_ptr<property> &&prop) noexcept;
     void remove_static_property(const property &prop) noexcept;
     void add_dynamic_property(std::unique_ptr<property> &&prop) noexcept;

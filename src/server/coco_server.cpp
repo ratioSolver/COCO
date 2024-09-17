@@ -156,7 +156,7 @@ namespace coco
         }
         try
         {
-            auto &tp = coco_core::create_type(name, description, props, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+            auto &tp = coco_core::create_type(name, description, std::move(props), std::move(parents), std::move(static_properties), std::move(dynamic_properties));
             return std::make_unique<network::json_response>(to_json(tp));
         }
         catch (const std::exception &e)
@@ -194,7 +194,8 @@ namespace coco
         {
             if (body["properties"].get_type() != json::json_type::object)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            set_type_properties(*tp, body["properties"]);
+            json::json props = body["properties"];
+            set_type_properties(*tp, std::move(props));
         }
         if (body.contains("parents"))
         {
@@ -328,7 +329,8 @@ namespace coco
         }
         try
         {
-            auto &s = coco_core::create_item(*tp, body.contains("properties") ? body["properties"] : json::json());
+            json::json props = body.contains("properties") ? body["properties"] : json::json();
+            auto &s = coco_core::create_item(*tp, std::move(props));
             return std::make_unique<network::json_response>(to_json(s));
         }
         catch (const std::exception &e)
@@ -354,7 +356,8 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         if (body["properties"].get_type() != json::json_type::object)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-        set_item_properties(*itm, body["properties"]);
+        json::json props = body["properties"];
+        set_item_properties(*itm, std::move(props));
         return std::make_unique<network::json_response>(to_json(*itm));
     }
     std::unique_ptr<network::response> coco_server::delete_item(const network::request &req)

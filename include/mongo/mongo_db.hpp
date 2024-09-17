@@ -21,20 +21,20 @@ namespace coco
 
     void init(coco_core &cc) override;
 
-    [[nodiscard]] type &create_type(coco_core &cc, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;
+    [[nodiscard]] type &create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;
 
     void set_type_name(type &tp, const std::string &name) override;
     void set_type_description(type &tp, const std::string &description) override;
-    void set_type_properties(type &tp, const json::json &props) override;
+    void set_type_properties(type &tp, json::json &&props) override;
     void add_static_property(type &tp, std::unique_ptr<property> &&prop) override;
     void remove_static_property(type &tp, const property &prop) override;
     void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop) override;
     void remove_dynamic_property(type &tp, const property &prop) override;
     void delete_type(const type &tp) override;
 
-    [[nodiscard]] item &create_item(coco_core &cc, const type &tp, const json::json &props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
+    [[nodiscard]] item &create_item(coco_core &cc, const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
 
-    void set_item_properties(item &itm, const json::json &props) override;
+    void set_item_properties(item &itm, json::json &&props) override;
     void set_item_value(item &itm, const json::json &value, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
     void delete_item(const item &itm) override;
 

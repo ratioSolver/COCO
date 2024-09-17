@@ -73,7 +73,7 @@ namespace coco
      * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties);
+    type &create_type(const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties);
 
     /**
      * @brief Sets the name of the type.
@@ -103,7 +103,7 @@ namespace coco
      * @param tp The type.
      * @param props The properties of the type.
      */
-    void set_type_properties(type &tp, const json::json &props);
+    void set_type_properties(type &tp, json::json &&props);
 
     /**
      * @brief Adds a parent to the type.
@@ -211,7 +211,7 @@ namespace coco
      * @param props The properties of the item.
      * @return A reference to the created item.
      */
-    item &create_item(const type &tp, const json::json &props);
+    item &create_item(const type &tp, json::json &&props);
 
     /**
      * @brief Sets the properties of the item.
@@ -221,7 +221,7 @@ namespace coco
      * @param itm The item.
      * @param props The properties of the item.
      */
-    void set_item_properties(item &itm, const json::json &props);
+    void set_item_properties(item &itm, json::json &&props);
 
     /**
      * @brief Sets the value of an item.

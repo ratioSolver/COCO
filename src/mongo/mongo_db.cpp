@@ -46,7 +46,7 @@ namespace coco
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
             auto properties = json::load(bsoncxx::to_json(doc["properties"].get_document().view()));
-            coco_db::create_type(cc, id, name, description, properties);
+            coco_db::create_type(cc, id, name, description, std::move(properties));
             types.push_back(bsoncxx::document::value{doc});
         }
         for (const auto &doc : types)
@@ -100,12 +100,12 @@ namespace coco
             auto properties = json::load(bsoncxx::to_json(doc["properties"].get_document().view()));
             auto value = json::load(bsoncxx::to_json(doc["value"]["data"].get_document().view()));
             auto timestamp = doc["value"]["timestamp"].get_date().to_int64();
-            coco_db::create_item(cc, id, get_type(type_id), properties, value, std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp)));
+            coco_db::create_item(cc, id, get_type(type_id), std::move(properties), value, std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp)));
         }
         LOG_DEBUG("Retrieved " << get_items().size() << " items");
     }
 
-    type &mongo_db::create_type(coco_core &cc, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
+    type &mongo_db::create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", name));
@@ -134,7 +134,7 @@ namespace coco
         }
         auto result = types_collection.insert_one(doc.view());
         if (result)
-            return coco_db::create_type(cc, result->inserted_id().get_oid().value.to_string(), name, description, props, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+            return coco_db::create_type(cc, result->inserted_id().get_oid().value.to_string(), name, description, std::move(props), std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         throw std::invalid_argument("Failed to insert type: " + name);
     }
 
@@ -156,14 +156,14 @@ namespace coco
             throw std::invalid_argument("Failed to update type description: " + description);
         coco_db::set_type_description(tp, description);
     }
-    void mongo_db::set_type_properties(type &tp, const json::json &props)
+    void mongo_db::set_type_properties(type &tp, json::json &&props)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())))));
         auto result = types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{tp.get_id()})), doc.view());
         if (!result)
             throw std::invalid_argument("Failed to update type properties: " + props.dump());
-        coco_db::set_type_properties(tp, props);
+        coco_db::set_type_properties(tp, std::move(props));
     }
     void mongo_db::add_static_property(type &tp, std::unique_ptr<property> &&prop)
     {
@@ -214,7 +214,7 @@ namespace coco
         coco_db::delete_type(tp);
     }
 
-    item &mongo_db::create_item(coco_core &cc, const type &tp, const json::json &props, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
+    item &mongo_db::create_item(coco_core &cc, const type &tp, json::json &&props, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{tp.get_id()}));
@@ -225,18 +225,18 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("value", data_doc));
         auto result = items_collection.insert_one(doc.view());
         if (result)
-            return coco_db::create_item(cc, result->inserted_id().get_oid().value.to_string(), tp, props, val, timestamp);
+            return coco_db::create_item(cc, result->inserted_id().get_oid().value.to_string(), tp, std::move(props), val, timestamp);
         throw std::invalid_argument("Failed to insert item: " + tp.get_name());
     }
 
-    void mongo_db::set_item_properties(item &it, const json::json &props)
+    void mongo_db::set_item_properties(item &it, json::json &&props)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())))));
         auto result = items_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{it.get_id()})), doc.view());
         if (!result)
             throw std::invalid_argument("Failed to update item properties: " + props.dump());
-        coco_db::set_item_properties(it, props);
+        coco_db::set_item_properties(it, std::move(props));
     }
 
     void mongo_db::set_item_value(item &it, const json::json &value, const std::chrono::system_clock::time_point &timestamp)

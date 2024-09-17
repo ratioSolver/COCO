@@ -58,10 +58,10 @@ namespace coco
         return db->get_type_by_name(name);
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
+    type &coco_core::create_type(const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &st = db->create_type(*this, name, description, props, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+        auto &st = db->create_type(*this, name, description, std::move(props), std::move(parents), std::move(static_properties), std::move(dynamic_properties));
         new_type(st);
         return st;
     }
@@ -82,10 +82,10 @@ namespace coco
         updated_type(tp);
     }
 
-    void coco_core::set_type_properties(type &tp, const json::json &props)
+    void coco_core::set_type_properties(type &tp, json::json &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db->set_type_properties(tp, props);
+        db->set_type_properties(tp, std::move(props));
         Run(env, -1);
         updated_type(tp);
     }
@@ -170,7 +170,7 @@ namespace coco
         return db->get_item(id);
     }
 
-    item &coco_core::create_item(const type &tp, const json::json &props)
+    item &coco_core::create_item(const type &tp, json::json &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &[p_name, p] : tp.get_static_properties())
@@ -179,12 +179,12 @@ namespace coco
             else if (!p->validate(props[p_name], schemas))
                 LOG_WARN("Property " + p_name + " for type " + tp.get_name() + " is invalid");
 
-        auto &s = db->create_item(*this, tp, props);
+        auto &s = db->create_item(*this, tp, std::move(props));
         new_item(s);
         return s;
     }
 
-    void coco_core::set_item_properties(item &itm, const json::json &props)
+    void coco_core::set_item_properties(item &itm, json::json &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         for (const auto &[p_name, p] : itm.get_type().get_static_properties())
@@ -193,7 +193,7 @@ namespace coco
             else if (!p->validate(props[p_name], schemas))
                 LOG_WARN("Property " + p_name + " for item " + itm.get_id() + " is invalid");
 
-        db->set_item_properties(itm, props);
+        db->set_item_properties(itm, std::move(props));
         updated_item(itm);
     }
 

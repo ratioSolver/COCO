@@ -39,7 +39,7 @@ namespace coco
      * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(coco_core &cc, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) = 0;
+    virtual type &create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) = 0;
 
     /**
      * Sets the name of the given type.
@@ -69,7 +69,7 @@ namespace coco
      * @param props A constant reference to a JSON object containing the properties
      * to be set on the type object.
      */
-    virtual void set_type_properties(type &tp, const json::json &props) { tp.set_properties(props); }
+    virtual void set_type_properties(type &tp, json::json &&props) { tp.set_properties(std::move(props)); }
 
     /**
      * @brief Adds a parent to the given type.
@@ -189,12 +189,12 @@ namespace coco
      *
      * @param cc The CoCo core object.
      * @param tp The type of the item.
-     * @param pars The properties of the item.
+     * @param props The properties of the item.
      * @param val The value of the item.
      * @param timestamp The timestamp of the value.
      * @return A reference to the created item.
      */
-    virtual item &create_item(coco_core &cc, const type &tp, const json::json &pars, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
+    virtual item &create_item(coco_core &cc, const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
 
     /**
      * @brief Sets the properties of an item.
@@ -204,7 +204,7 @@ namespace coco
      * @param itm The item to set the properties for.
      * @param props The JSON object containing the properties.
      */
-    virtual void set_item_properties(item &itm, const json::json &props) { itm.set_properties(props); }
+    virtual void set_item_properties(item &itm, json::json &&props) { itm.set_properties(std::move(props)); }
 
     /**
      * @brief Sets the value of an item.
@@ -437,20 +437,20 @@ namespace coco
     virtual void delete_deliberative_rule(const rule &r) { deliberative_rules.erase(r.id); }
 
   protected:
-    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, const json::json &props, std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {})
+    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {})
     {
       if (types.find(id) != types.end())
         throw std::invalid_argument("Type already exists: " + id);
-      auto tp = std::make_unique<type>(cc, id, name, description, props, std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+      auto tp = std::make_unique<type>(cc, id, name, description, std::move(props), std::move(parents), std::move(static_properties), std::move(dynamic_properties));
       types_by_name.emplace(name, *tp);
       types.emplace(id, std::move(tp));
       return *types[id];
     }
-    item &create_item(coco_core &cc, const std::string &id, const type &tp, const json::json &pars, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now())
+    item &create_item(coco_core &cc, const std::string &id, const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now())
     {
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
-      items.emplace(id, std::make_unique<item>(cc, id, tp, pars, val, timestamp));
+      items.emplace(id, std::make_unique<item>(cc, id, tp, std::move(props), val, timestamp));
       return *items[id];
     }
     rule &create_reactive_rule(coco_core &cc, const std::string &id, const std::string &name, const std::string &content)

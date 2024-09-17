@@ -26,7 +26,7 @@ namespace coco
      * @param val The value of the item.
      * @param timestamp The timestamp of the value.
      */
-    item(coco_core &cc, const std::string &id, const type &tp, const json::json &props = json::json(), const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
+    item(coco_core &cc, const std::string &id, const type &tp, json::json &&props = json::json(), const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
     ~item() noexcept;
 
     /**
@@ -72,7 +72,7 @@ namespace coco
      *
      * @param props The JSON object containing the properties.
      */
-    void set_properties(const json::json &props);
+    void set_properties(json::json &&props);
 
     /**
      * @brief Sets the value of the item.

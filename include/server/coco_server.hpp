@@ -6,7 +6,7 @@
 
 namespace coco
 {
-  class coco_server : public coco::coco_core, private network::server
+  class coco_server : public coco::coco_core, public network::server
   {
   public:
 #ifdef ENABLE_TRANSFORMER
@@ -14,8 +14,6 @@ namespace coco
 #else
     coco_server(const std::string &host = SERVER_HOST, unsigned short port = SERVER_PORT, std::unique_ptr<coco::coco_db> db = nullptr);
 #endif
-
-    void start() { network::server::start(); }
 
   private:
     std::unique_ptr<network::response> index(const network::request &req);

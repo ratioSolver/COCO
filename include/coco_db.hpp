@@ -9,6 +9,24 @@
 namespace coco
 {
   class coco_core;
+#ifdef ENABLE_AUTH
+  class user
+  {
+  public:
+    user(const std::string &id, const std::string &username, std::set<int32_t> &&roles) : id(id), username(username), roles(std::move(roles)) {}
+
+    [[nodiscard]] const std::string &get_id() const { return id; }
+    [[nodiscard]] const std::string &get_username() const { return username; }
+    [[nodiscard]] const std::set<int> &get_roles() const { return roles; }
+
+  private:
+    std::string id;
+    std::string username;
+    std::set<int> roles;
+  };
+
+  [[nodiscard]] inline json::json to_json(const user &u) { return {{"id", u.get_id()}, {"username", u.get_username()}}; }
+#endif
 
   class coco_db
   {
@@ -24,6 +42,88 @@ namespace coco
      * @param cc The coco_core object used for initialization.
      */
     virtual void init(coco_core &cc);
+
+#ifdef ENABLE_AUTH
+    /**
+     * @brief Creates a new user with the specified username, password, and roles.
+     *
+     * This function is responsible for creating a new user in the system.
+     * It takes a username, a password, and a set of roles as input and returns the created user object.
+     *
+     * @param username The username for the new user.
+     * @param password The password for the new user.
+     * @param roles The roles for the new user.
+     * @return user The created user object.
+     */
+    virtual user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}) = 0;
+
+    /**
+     * @brief Retrieves all users from the database.
+     *
+     * This function retrieves all users from the database and returns them as a vector of user objects.
+     *
+     * @return std::vector<user> A vector of user objects.
+     */
+    virtual std::vector<user> get_users() = 0;
+
+    /**
+     * @brief Retrieves a user by their username and password.
+     *
+     * This function retrieves a user from the database based on their username and password.
+     *
+     * @param username The username of the user to retrieve.
+     * @param password The password of the user to retrieve.
+     * @return user The user object.
+     */
+    virtual user get_user(const std::string &username, const std::string &password) = 0;
+
+    /**
+     * @brief Retrieves a user object based on the provided user ID.
+     *
+     * @param id The unique identifier of the user to be retrieved.
+     * @return user The user object corresponding to the given ID.
+     */
+    virtual user get_user(const std::string &id) = 0;
+
+    /**
+     * @brief Sets the username of the given user.
+     *
+     * This function sets the username of the given user object to the specified username.
+     *
+     * @param usr The user object to set the username for.
+     * @param username The new username for the user.
+     */
+    virtual void set_user_username(user &usr, const std::string &username) = 0;
+
+    /**
+     * @brief Sets the password of the given user.
+     *
+     * This function sets the password of the given user object to the specified password.
+     *
+     * @param usr The user object to set the password for.
+     * @param password The new password for the user.
+     */
+    virtual void set_user_password(user &usr, const std::string &password) = 0;
+
+    /**
+     * @brief Sets the roles of the given user.
+     *
+     * This function sets the roles of the given user object to the specified roles.
+     *
+     * @param usr The user object to set the roles for.
+     * @param roles The new roles for the user.
+     */
+    virtual void set_user_roles(user &usr, std::set<int> &&roles) = 0;
+
+    /**
+     * @brief Deletes a user from the database.
+     *
+     * This function deletes the specified user from the database.
+     *
+     * @param usr The user to be deleted.
+     */
+    virtual void delete_user(const user &usr) = 0;
+#endif
 
     /**
      * @brief Creates a new type.

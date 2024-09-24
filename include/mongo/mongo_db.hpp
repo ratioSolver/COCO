@@ -21,6 +21,17 @@ namespace coco
 
     void init(coco_core &cc) override;
 
+#ifdef ENABLE_AUTH
+    user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}) override;
+    std::vector<user> get_users() override;
+    user get_user(const std::string &username, const std::string &password) override;
+    user get_user(const std::string &id) override;
+    void set_user_username(user &usr, const std::string &username) override;
+    void set_user_password(user &usr, const std::string &password) override;
+    void set_user_roles(user &usr, std::set<int> &&roles) override;
+    void delete_user(const user &usr) override;
+#endif
+
     [[nodiscard]] type &create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;
 
     void set_type_name(type &tp, const std::string &name) override;
@@ -58,6 +69,9 @@ namespace coco
     mongocxx::database db;
 
   private:
+#ifdef ENABLE_AUTH
+    mongocxx::collection users_collection;
+#endif
     mongocxx::collection types_collection;
     mongocxx::collection propertys_collection;
     mongocxx::collection items_collection;

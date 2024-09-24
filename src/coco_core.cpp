@@ -40,6 +40,17 @@ namespace coco
         reset_knowledge_base();
     }
 
+#ifdef ENABLE_AUTH
+    user coco_core::create_user(const std::string &username, const std::string &password, std::set<int> &&roles) { return db->create_user(username, password, std::move(roles)); }
+    std::vector<user> coco_core::get_users() { return db->get_users(); }
+    user coco_core::get_user(const std::string &username, const std::string &password) { return db->get_user(username, password); }
+    user coco_core::get_user(const std::string &id) { return db->get_user(id); }
+    void coco_core::set_user_username(user &usr, const std::string &username) { db->set_user_username(usr, username); }
+    void coco_core::set_user_password(user &usr, const std::string &password) { db->set_user_password(usr, password); }
+    void coco_core::set_user_roles(user &usr, std::set<int> &&roles) { db->set_user_roles(usr, std::move(roles)); }
+    void coco_core::delete_user(const user &usr) { db->delete_user(usr); }
+#endif
+
     std::vector<std::reference_wrapper<type>> coco_core::get_types()
     {
         std::lock_guard<std::recursive_mutex> _(mtx);

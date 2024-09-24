@@ -4,9 +4,40 @@
 #include <bsoncxx/builder/stream/document.hpp>
 #include <cmath>
 #include <cassert>
+#ifdef ENABLE_AUTH
+#include <openssl/sha.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <iomanip>
+#endif
 
 namespace coco
 {
+#ifdef ENABLE_AUTH
+    std::string encode_password(const std::string &password, const std::string &salt)
+    {
+        int iterations = 10000;
+        unsigned char hash[32];
+        if (PKCS5_PBKDF2_HMAC(password.c_str(), password.size(), reinterpret_cast<const unsigned char *>(salt.c_str()), salt.size(), iterations, EVP_sha256(), sizeof(hash), hash) == 0)
+            throw std::runtime_error("PKCS5_PBKDF2_HMAC failed");
+
+        std::stringstream hash_stream;
+        for (unsigned char c : hash)
+            hash_stream << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
+        return hash_stream.str();
+    }
+
+    std::pair<std::string, std::string> encode_password(const std::string &password)
+    {
+        unsigned char salt[16];
+        RAND_bytes(salt, sizeof(salt));
+        std::stringstream salt_stream;
+        for (unsigned char c : salt)
+            salt_stream << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
+        return {salt_stream.str(), encode_password(password, salt_stream.str())};
+    }
+#endif
+
     mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
     {
         assert(conn);
@@ -104,6 +135,103 @@ namespace coco
         }
         LOG_DEBUG("Retrieved " << get_items().size() << " items");
     }
+
+#ifdef ENABLE_AUTH
+    user mongo_db::create_user(const std::string &username, const std::string &password, std::set<int> &&roles)
+    {
+        auto [salt, hash] = encode_password(password);
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("username", username));
+        doc.append(bsoncxx::builder::basic::kvp("salt", salt));
+        doc.append(bsoncxx::builder::basic::kvp("password", hash));
+        auto roles_array = bsoncxx::builder::basic::array{};
+        for (const auto &r : roles)
+            roles_array.append(r);
+        doc.append(bsoncxx::builder::basic::kvp("roles", roles_array));
+
+        if (auto result = users_collection.insert_one(doc.view()); result)
+            return user(result->inserted_id().get_oid().value.to_string(), username, std::move(roles));
+        throw std::runtime_error("Failed to insert user: " + username);
+    }
+
+    std::vector<user> mongo_db::get_users()
+    {
+        std::vector<user> users;
+        for (const auto &doc : users_collection.find({}))
+        {
+            auto id = doc["_id"].get_oid().value.to_string();
+            auto username = doc["username"].get_string().value.to_string();
+            std::set<int> roles;
+            for (const auto &r : doc["roles"].get_array().value)
+                roles.insert(r.get_int32().value);
+            users.push_back(user(id, username, std::move(roles)));
+        }
+        return users;
+    }
+
+    user mongo_db::get_user(const std::string &username, const std::string &password)
+    {
+        if (auto doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "username" << username << bsoncxx::builder::stream::finalize); doc)
+        {
+            if (auto salt = doc->view()["salt"].get_string().value.to_string(); encode_password(password, salt) == doc->view()["password"].get_string().value.to_string())
+            {
+                std::set<int> roles;
+                for (const auto &r : doc->view()["roles"].get_array().value)
+                    roles.insert(r.get_int32().value);
+                return user(doc->view()["_id"].get_oid().value.to_string(), username, std::move(roles));
+            }
+            throw std::runtime_error("Invalid password for user: " + username);
+        }
+        throw std::runtime_error("Failed to get user: " + username);
+    }
+
+    user mongo_db::get_user(const std::string &id)
+    {
+        if (auto doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{id} << bsoncxx::builder::stream::finalize); doc)
+        {
+            auto username = doc->view()["username"].get_string().value.to_string();
+            std::set<int> roles;
+            for (const auto &r : doc->view()["roles"].get_array().value)
+                roles.insert(r.get_int32().value);
+            return user(id, username, std::move(roles));
+        }
+        throw std::runtime_error("Failed to get user: " + id);
+    }
+
+    void mongo_db::set_user_username(user &usr, const std::string &username)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("username", username))));
+        if (auto result = users_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()})), doc.view()); !result)
+            throw std::runtime_error("Failed to update user username: " + username);
+    }
+
+    void mongo_db::set_user_password(user &usr, const std::string &password)
+    {
+        auto [salt, hash] = encode_password(password);
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("salt", salt), bsoncxx::builder::basic::kvp("password", hash))));
+        if (auto result = users_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()})), doc.view()); !result)
+            throw std::runtime_error("Failed to update user password");
+    }
+
+    void mongo_db::set_user_roles(user &usr, std::set<int> &&roles)
+    {
+        bsoncxx::builder::basic::document doc;
+        auto roles_array = bsoncxx::builder::basic::array{};
+        for (const auto &r : roles)
+            roles_array.append(r);
+        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("roles", roles_array))));
+        if (auto result = users_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()})), doc.view()); !result)
+            throw std::runtime_error("Failed to update user roles");
+    }
+
+    void mongo_db::delete_user(const user &usr)
+    {
+        if (auto result = users_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()}))); !result)
+            throw std::runtime_error("Failed to delete user: " + usr.get_username());
+    }
+#endif
 
     type &mongo_db::create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
     {

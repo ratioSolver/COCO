@@ -22,14 +22,14 @@ namespace coco
     std::unique_ptr<network::response> async_api(const network::request &req);
 
 #ifdef ENABLE_AUTH
+    std::unique_ptr<network::response> login(const network::request &req);
     std::unique_ptr<network::response> get_users(const network::request &req);
     std::unique_ptr<network::response> get_user(const network::request &req);
     std::unique_ptr<network::response> create_user(const network::request &req);
     std::unique_ptr<network::response> update_user(const network::request &req);
     std::unique_ptr<network::response> delete_user(const network::request &req);
 
-    virtual std::string generate_token(const std::string &username, const std::string &password) override;
-    virtual bool has_permission(const network::request &req, const std::string &token) override;
+    virtual std::set<int> get_roles(const std::string &token) override;
 #endif
 
     std::unique_ptr<network::response> get_types(const network::request &req);

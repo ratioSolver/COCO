@@ -38,11 +38,26 @@ namespace coco
     }
 #endif
 
+#ifdef ENABLE_AUTH
+    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), users_collection(db["users"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+#else
     mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+#endif
     {
         assert(conn);
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
             LOG_DEBUG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
+
+#ifdef ENABLE_AUTH
+        if (users_collection.list_indexes().begin() == users_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for users collection");
+            users_collection.create_index(bsoncxx::builder::stream::document{} << "username" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
+
+            LOG_WARN("Creating default admin user. Please change the password immediately.");
+            create_user("admin", "admin", {0});
+        }
+#endif
 
         if (types_collection.list_indexes().begin() == types_collection.list_indexes().end())
         {

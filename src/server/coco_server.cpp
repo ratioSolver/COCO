@@ -14,17 +14,13 @@ namespace coco
         LOG_TRACE("OpenAPI: " + build_open_api().dump());
         LOG_TRACE("AsyncAPI: " + build_async_api().dump());
 
-#ifdef ENABLE_AUTH
-        add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request), true);
-        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request), true);
-#else
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
-#endif
         add_route(network::Get, "^/open_api$", std::bind(&coco_server::open_api, this, network::placeholders::request));
         add_route(network::Get, "^/async_api$", std::bind(&coco_server::async_api, this, network::placeholders::request));
 
 #ifdef ENABLE_AUTH
+        add_route(network::Post, "^/login$", std::bind(&coco_server::login, this, network::placeholders::request));
         add_route(network::Get, "^/users$", std::bind(&coco_server::get_users, this, network::placeholders::request));
         add_route(network::Get, "^/user/.*$", std::bind(&coco_server::get_user, this, network::placeholders::request));
         add_route(network::Post, "^/user$", std::bind(&coco_server::create_user, this, network::placeholders::request));
@@ -72,6 +68,24 @@ namespace coco
     std::unique_ptr<network::response> coco_server::async_api(const network::request &) { return std::make_unique<network::json_response>(build_async_api()); }
 
 #ifdef ENABLE_AUTH
+    std::unique_ptr<network::response> coco_server::login(const network::request &req)
+    {
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (!body.contains("username") || !body.contains("password"))
+            return std::make_unique<network::json_response>(json::json{{"message", "Bad Request"}}, network::status_code::bad_request);
+        try
+        {
+            auto usr = db->get_user(body["username"], body["password"]);
+            json::json roles(json::json_type::array);
+            for (auto &r : usr.get_roles())
+                roles.push_back(r);
+            return std::make_unique<network::json_response>(json::json{{"token", usr.get_id()}, {"roles", std::move(roles)}}, network::status_code::ok);
+        }
+        catch (const std::exception &e)
+        {
+            return std::make_unique<network::json_response>(json::json{{"message", "Unauthorized"}}, network::status_code::unauthorized);
+        }
+    }
     std::unique_ptr<network::response> coco_server::get_users(const network::request &)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -112,8 +126,7 @@ namespace coco
             }
         try
         {
-            auto usr = coco_core::create_user(username, password, std::move(roles));
-            return std::make_unique<network::json_response>(to_json(usr));
+            return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(roles)).get_id()}});
         }
         catch (const std::exception &e)
         {
@@ -179,35 +192,15 @@ namespace coco
         }
     }
 
-    std::string coco_server::generate_token(const std::string &username, const std::string &password) { return db->get_user(username, password).get_id(); }
-    bool coco_server::has_permission(const network::request &req, const std::string &token)
+    std::set<int> coco_server::get_roles(const std::string &token)
     {
         try
         {
-            auto usr = coco_core::get_user(token);
-            if (usr.get_roles().count(0)) // Admins have permission to everything
-                return true;
-
-            if (req.get_target().rfind("/type", 0) == 0 || req.get_target().rfind("/item", 0) == 0 || req.get_target().rfind("/reactive_rule", 0) == 0 || req.get_target().rfind("/deliberative_rule", 0) == 0)
-                return req.get_verb() == network::Get && usr.get_roles().count(1); // Editors have permission to read everything
-
-            if (req.get_target().rfind("/data", 0) == 0)
-                switch (req.get_verb())
-                {
-                case network::Get:
-                    return usr.get_roles().count(1); // Editors have permission to read everything
-                default:
-                    return usr.get_roles().count(2); // Writers have permission to write everything
-                }
-
-            if (req.get_target().rfind("/user", 0) == 0)
-                return req.get_target().rfind("/user/" + token, 0) == 0; // Users have permission to read and write themselves
-
-            return false;
+            return coco_core::get_user(token).get_roles();
         }
         catch (const std::exception &)
         {
-            return false;
+            return {};
         }
     }
 #endif

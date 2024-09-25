@@ -13,16 +13,18 @@ namespace coco
   class user
   {
   public:
-    user(const std::string &id, const std::string &username, std::set<int32_t> &&roles) : id(id), username(username), roles(std::move(roles)) {}
+    user(const std::string &id, const std::string &username, std::set<int32_t> &&roles, json::json &&data = {}) : id(id), username(username), roles(std::move(roles)), data(std::move(data)) {}
 
     [[nodiscard]] const std::string &get_id() const { return id; }
     [[nodiscard]] const std::string &get_username() const { return username; }
-    [[nodiscard]] const std::set<int> &get_roles() const { return roles; }
+    [[nodiscard]] const std::set<int32_t> &get_roles() const { return roles; }
+    [[nodiscard]] const json::json &get_data() const { return data; }
 
   private:
     std::string id;
     std::string username;
     std::set<int> roles;
+    json::json data;
   };
 
   [[nodiscard]] inline json::json to_json(const user &u) { return {{"id", u.get_id()}, {"username", u.get_username()}}; }

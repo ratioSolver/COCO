@@ -16,6 +16,16 @@ namespace coco
 #endif
 
   private:
+    /**
+     * @brief Initializes the routes for the server.
+     *
+     * This function is responsible for setting up the various routes
+     * that the server will handle. It should be overridden by derived
+     * classes to define specific routes and their corresponding handlers.
+     */
+    virtual void init_routes();
+
+  protected:
     std::unique_ptr<network::response> index(const network::request &req);
     std::unique_ptr<network::response> assets(const network::request &req);
     std::unique_ptr<network::response> open_api(const network::request &req);
@@ -28,8 +38,6 @@ namespace coco
     std::unique_ptr<network::response> create_user(const network::request &req);
     std::unique_ptr<network::response> update_user(const network::request &req);
     std::unique_ptr<network::response> delete_user(const network::request &req);
-
-    virtual std::set<int> get_roles(const std::string &token) override;
 #endif
 
     std::unique_ptr<network::response> get_types(const network::request &req);
@@ -57,6 +65,7 @@ namespace coco
     std::unique_ptr<network::response> update_deliberative_rule(const network::request &req);
     std::unique_ptr<network::response> delete_deliberative_rule(const network::request &req);
 
+  private:
     virtual void on_ws_open(network::ws_session &ws);
     virtual void on_ws_message(network::ws_session &ws, const std::string &msg);
     virtual void on_ws_close(network::ws_session &ws);

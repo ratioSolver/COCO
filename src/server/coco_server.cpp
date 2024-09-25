@@ -14,6 +14,11 @@ namespace coco
         LOG_TRACE("OpenAPI: " + build_open_api().dump());
         LOG_TRACE("AsyncAPI: " + build_async_api().dump());
 
+        init_routes();
+    }
+
+    void coco_server::init_routes()
+    {
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
         add_route(network::Get, "^/open_api$", std::bind(&coco_server::open_api, this, network::placeholders::request));
@@ -189,18 +194,6 @@ namespace coco
         catch (const std::exception &)
         {
             return std::make_unique<network::json_response>(json::json({{"message", "User not found"}}), network::status_code::not_found);
-        }
-    }
-
-    std::set<int> coco_server::get_roles(const std::string &token)
-    {
-        try
-        {
-            return coco_core::get_user(token).get_roles();
-        }
-        catch (const std::exception &)
-        {
-            return {};
         }
     }
 #endif

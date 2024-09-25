@@ -47,17 +47,17 @@ namespace coco
 
 #ifdef ENABLE_AUTH
     /**
-     * @brief Creates a new user with the specified username, password, and roles.
+     * @brief Creates a new user with the specified username, password, roles, and data.
      *
-     * This function is responsible for creating a new user in the system.
-     * It takes a username, a password, and a set of roles as input and returns the created user object.
+     * This function creates a new user with the specified username, password, roles, and data.
      *
-     * @param username The username for the new user.
-     * @param password The password for the new user.
-     * @param roles The roles for the new user.
+     * @param username The username of the user.
+     * @param password The password of the user.
+     * @param roles The roles of the user.
+     * @param data The data of the user.
      * @return user The created user object.
      */
-    virtual user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}) = 0;
+    virtual user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}, json::json &&data = {}) = 0;
 
     /**
      * @brief Retrieves all users from the database.

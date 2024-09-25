@@ -152,7 +152,7 @@ namespace coco
     }
 
 #ifdef ENABLE_AUTH
-    user mongo_db::create_user(const std::string &username, const std::string &password, std::set<int> &&roles)
+    user mongo_db::create_user(const std::string &username, const std::string &password, std::set<int> &&roles, json::json &&data)
     {
         auto [salt, hash] = encode_password(password);
         bsoncxx::builder::basic::document doc;
@@ -163,9 +163,11 @@ namespace coco
         for (const auto &r : roles)
             roles_array.append(r);
         doc.append(bsoncxx::builder::basic::kvp("roles", roles_array));
+        if (!data.as_object().empty())
+            doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
 
         if (auto result = users_collection.insert_one(doc.view()); result)
-            return user(result->inserted_id().get_oid().value.to_string(), username, std::move(roles));
+            return user(result->inserted_id().get_oid().value.to_string(), username, std::move(roles), std::move(data));
         throw std::runtime_error("Failed to insert user: " + username);
     }
 

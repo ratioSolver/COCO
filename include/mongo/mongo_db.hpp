@@ -22,7 +22,7 @@ namespace coco
     void init(coco_core &cc) override;
 
 #ifdef ENABLE_AUTH
-    user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}) override;
+    user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}, json::json &&data = {}) override;
     std::vector<user> get_users() override;
     user get_user(const std::string &username, const std::string &password) override;
     user get_user(const std::string &id) override;

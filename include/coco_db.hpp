@@ -259,6 +259,16 @@ namespace coco
     }
 
     /**
+     * @brief Checks if a type with the given identifier exists.
+     *
+     * This function searches for the specified type identifier in the types collection.
+     *
+     * @param id The identifier of the type to check.
+     * @return true if the type exists, false otherwise.
+     */
+    bool has_type(const std::string &id) const { return types.find(id) != types.end(); }
+
+    /**
      * Retrieves the reference to a type based on its ID.
      *
      * @param id The ID of the type to retrieve.
@@ -271,6 +281,14 @@ namespace coco
         throw std::invalid_argument("Type not found: " + id);
       return *types.at(id);
     }
+
+    /**
+     * @brief Checks if a type with the given name exists in the collection.
+     *
+     * @param name The name of the type to check for.
+     * @return true if the type with the specified name exists, false otherwise.
+     */
+    bool has_type_name(const std::string &name) const { return types_by_name.find(name) != types_by_name.end(); }
 
     /**
      * Retrieves the reference to a type based on its name.
@@ -342,6 +360,16 @@ namespace coco
         res.push_back(*s.second);
       return res;
     }
+
+    /**
+     * @brief Checks if an item with the given identifier exists.
+     *
+     * This function searches for the specified item identifier in the items collection.
+     *
+     * @param id The identifier of the item to check.
+     * @return true if the item exists, false otherwise.
+     */
+    bool has_item(const std::string &id) const { return items.find(id) != items.end(); }
 
     /**
      * Retrieves the reference to an item based on its ID.

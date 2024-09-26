@@ -748,9 +748,9 @@ namespace coco
         clients.erase(&ws);
         LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
     }
-    void coco_server::on_ws_error(network::ws_session &ws, const std::error_code &)
+    void coco_server::on_ws_error(network::ws_session &ws, [[maybe_unused]] const std::error_code &ec)
     {
-        LOG_TRACE("Connection error with " << ws.remote_endpoint());
+        LOG_TRACE("Connection error with " << ws.remote_endpoint() << ": " << ec.message());
         std::lock_guard<std::recursive_mutex> _(mtx);
         clients.erase(&ws);
         LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));

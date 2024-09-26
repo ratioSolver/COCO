@@ -106,15 +106,40 @@ namespace coco
     virtual void tick(const coco_executor &exec, const utils::rational &time) override;
 
   protected:
+#ifdef ENABLE_AUTH
+    void broadcast(const json::json &msg, const std::set<int> &roles = {})
+    {
+      auto msg_str = msg.dump();
+      if (roles.empty())
+        for (auto client : clients)
+          client.first->send(msg_str);
+      else
+        for (auto client : clients)
+          if (users.find(client.second) != users.end())
+            for (auto role : roles)
+              if (users.at(client.second).first.find(role) != users.at(client.second).first.end())
+              { // User has the required role
+                client.first->send(msg_str);
+                break;
+              }
+    }
+#else
     void broadcast(const json::json &msg)
     {
       auto msg_str = msg.dump();
       for (auto client : clients)
         client->send(msg_str);
     }
+#endif
 
   private:
+#ifdef ENABLE_AUTH
+    std::unordered_map<network::ws_session *, std::string> clients;
+    std::unordered_map<std::string, std::pair<std::set<int>, std::set<network::ws_session *>>> users;
+    std::unordered_map<std::string, std::set<network::ws_session *>> devices;
+#else
     std::unordered_set<network::ws_session *> clients;
+#endif
   };
 
   [[nodiscard]] json::json build_open_api() noexcept;

@@ -706,8 +706,10 @@ namespace coco
     {
         LOG_TRACE("New connection from " << ws.remote_endpoint());
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        clients.emplace(&ws, "");
+#else
         clients.insert(&ws);
-        LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
 
         // we send the types
         ws.send(make_types_message(*this).dump());
@@ -730,6 +732,8 @@ namespace coco
             ws.send(make_solver_state_message(cc_exec.get()).dump());
             ws.send(make_solver_graph_message(cc_exec.get().get_solver().get_graph()).dump());
         }
+#endif
+        LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
     }
     void coco_server::on_ws_message(network::ws_session &ws, const std::string &msg)
     {

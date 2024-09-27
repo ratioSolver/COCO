@@ -889,151 +889,330 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto x = json::load(msg);
-        if (x.get_type() != json::json_type::object || !x.contains("type"))
+
+        if (x.get_type() != json::json_type::object || !x.contains("type") || x["type"].get_type() != json::json_type::string)
         {
             ws.close();
             return;
         }
+
+        std::string type = x["type"];
+
+#ifdef ENABLE_AUTH
+        if (type == "login")
+        {
+            if (x.get_type() != json::json_type::object || !x.contains("token") || x["token"].get_type() != json::json_type::string)
+            {
+                ws.close();
+                return;
+            }
+            std::string token = x["token"];
+            if (db->has_item(token))
+            { // if the token is an item, we send some information about it
+                clients.emplace(&ws, token);
+                devices[token].emplace(&ws);
+
+                auto &itm = db->get_item(token);
+                // we send the type
+                ws.send(make_type_message(itm.get_type()).dump());
+                // we send the item
+                ws.send(make_item_message(itm).dump());
+            }
+            else
+                try
+                {
+                    auto usr = db->get_user(token); // if the token is invalid, an exception will be thrown
+                    if (usr.get_roles().count(roles::admin) || usr.get_roles().count(roles::coordinator))
+                    {
+                        clients.emplace(&ws, token);
+                        if (auto it = users.find(token); it != users.end())
+                            it->second.second.insert(&ws);
+                        else
+                            users.emplace(token, std::pair{usr.get_roles(), std::set<network::ws_session *>{&ws}});
+
+                        // we send the types
+                        ws.send(make_types_message(*this).dump());
+
+                        // we send the items
+                        ws.send(make_items_message(*this).dump());
+
+                        if (usr.get_roles().count(roles::admin))
+                        {
+                            // we send the reactive rules
+                            ws.send(make_reactive_rules_message(*this).dump());
+
+                            // we send the deliberative rules
+                            ws.send(make_deliberative_rules_message(*this).dump());
+
+                            // we send the solvers
+                            ws.send(make_solvers_message(*this).dump());
+
+                            // we send the executors
+                            for (const auto &cc_exec : get_solvers())
+                            {
+                                ws.send(make_solver_state_message(cc_exec.get()).dump());
+                                ws.send(make_solver_graph_message(cc_exec.get().get_solver().get_graph()).dump());
+                            }
+                        }
+                    }
+                }
+                catch (const std::exception &)
+                {
+                    ws.close();
+                    return;
+                }
+        }
+#endif
     }
     void coco_server::on_ws_close(network::ws_session &ws)
     {
         LOG_TRACE("Connection closed with " << ws.remote_endpoint());
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        auto token = clients.at(&ws);
+        if (auto it = users.find(token); it != users.end())
+        {
+            it->second.second.erase(&ws);
+            if (it->second.second.empty())
+                users.erase(it);
+        }
+        if (devices.count(token))
+            devices.at(token).erase(&ws);
+#endif
         clients.erase(&ws);
         LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
     }
     void coco_server::on_ws_error(network::ws_session &ws, [[maybe_unused]] const std::error_code &ec)
     {
         LOG_TRACE("Connection error with " << ws.remote_endpoint() << ": " << ec.message());
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        clients.erase(&ws);
-        LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
+        on_ws_close(ws);
     }
 
     void coco_server::new_type(const type &tp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_new_type_message(tp), {roles::admin, roles::coordinator});
+#else
         broadcast(make_new_type_message(tp));
+#endif
     }
     void coco_server::updated_type(const type &tp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_updated_type_message(tp), {roles::admin, roles::coordinator});
+#else
         broadcast(make_updated_type_message(tp));
+#endif
     }
     void coco_server::deleted_type(const std::string &tp_id)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_deleted_type_message(tp_id), {roles::admin, roles::coordinator});
+#else
         broadcast(make_deleted_type_message(tp_id));
+#endif
     }
 
     void coco_server::new_item(const item &itm)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_new_item_message(itm), {roles::admin, roles::coordinator});
+#else
         broadcast(make_new_item_message(itm));
+#endif
     }
     void coco_server::updated_item(const item &itm)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_updated_item_message(itm), {roles::admin, roles::coordinator});
+        if (auto it = devices.find(itm.get_id()); it != devices.end()) // if the device is connected, we send the update to it
+            for (auto &ws : it->second)
+                ws->send(make_updated_item_message(itm).dump());
+#else
         broadcast(make_updated_item_message(itm));
+#endif
     }
     void coco_server::deleted_item(const std::string &itm_id)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_deleted_item_message(itm_id), {roles::admin, roles::coordinator});
+        if (auto it = devices.find(itm_id); it != devices.end()) // if the device is connected, we send the update to it
+            for (auto &ws : it->second)
+                ws->send(make_deleted_item_message(itm_id).dump());
+#else
         broadcast(make_deleted_item_message(itm_id));
+#endif
     }
 
     void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_new_data_message(itm, data, timestamp), {roles::admin, roles::coordinator});
+        if (auto it = devices.find(itm.get_id()); it != devices.end()) // if the device is connected, we send the update to it
+            for (auto &ws : it->second)
+                ws->send(make_new_data_message(itm, data, timestamp).dump());
+#else
         broadcast(make_new_data_message(itm, data, timestamp));
+#endif
     }
 
     void coco_server::new_solver(const coco_executor &exec)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_new_solver_message(exec), {roles::admin});
+#else
         broadcast(make_new_solver_message(exec));
+#endif
     }
     void coco_server::deleted_solver(const uintptr_t id)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(ratio::executor::make_deleted_solver_message(id), {roles::admin});
+#else
         broadcast(ratio::executor::make_deleted_solver_message(id));
+#endif
     }
 
     void coco_server::new_reactive_rule(const rule &r)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_new_reactive_rule_message(r), {roles::admin});
+#else
         broadcast(make_new_reactive_rule_message(r));
+#endif
     }
     void coco_server::new_deliberative_rule(const rule &r)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_new_deliberative_rule_message(r), {roles::admin});
+#else
         broadcast(make_new_deliberative_rule_message(r));
+#endif
     }
 
     void coco_server::state_changed(const coco_executor &exec)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_solver_state_message(exec), {roles::admin});
+#else
         broadcast(make_solver_state_message(exec));
+#endif
     }
 
     void coco_server::flaw_created(const coco_executor &, const ratio::flaw &f)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_flaw_created_message(f), {roles::admin});
+#else
         broadcast(make_flaw_created_message(f));
+#endif
     }
     void coco_server::flaw_state_changed(const coco_executor &, const ratio::flaw &f)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_flaw_state_changed_message(f), {roles::admin});
+#else
         broadcast(make_flaw_state_changed_message(f));
+#endif
     }
     void coco_server::flaw_cost_changed(const coco_executor &, const ratio::flaw &f)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_flaw_cost_changed_message(f), {roles::admin});
+#else
         broadcast(make_flaw_cost_changed_message(f));
+#endif
     }
     void coco_server::flaw_position_changed(const coco_executor &, const ratio::flaw &f)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_flaw_position_changed_message(f), {roles::admin});
+#else
         broadcast(make_flaw_position_changed_message(f));
+#endif
     }
     void coco_server::current_flaw(const coco_executor &, const ratio::flaw &f)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_current_flaw_message(f), {roles::admin});
+#else
         broadcast(make_current_flaw_message(f));
+#endif
     }
 
     void coco_server::resolver_created(const coco_executor &, const ratio::resolver &r)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_resolver_created_message(r), {roles::admin});
+#else
         broadcast(make_resolver_created_message(r));
+#endif
     }
     void coco_server::resolver_state_changed(const coco_executor &, const ratio::resolver &r)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_resolver_state_changed_message(r), {roles::admin});
+#else
         broadcast(make_resolver_state_changed_message(r));
+#endif
     }
     void coco_server::current_resolver(const coco_executor &, const ratio::resolver &r)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_current_resolver_message(r), {roles::admin});
+#else
         broadcast(make_current_resolver_message(r));
+#endif
     }
 
     void coco_server::causal_link_added(const coco_executor &, const ratio::flaw &f, const ratio::resolver &r)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_causal_link_added_message(f, r), {roles::admin});
+#else
         broadcast(make_causal_link_added_message(f, r));
+#endif
     }
 
     void coco_server::executor_state_changed(const coco_executor &exec, ratio::executor::executor_state)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_solver_execution_state_changed_message(exec), {roles::admin});
+#else
         broadcast(make_solver_execution_state_changed_message(exec));
+#endif
     }
 
     void coco_server::tick(const coco_executor &exec, const utils::rational &)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        broadcast(make_tick_message(exec), {roles::admin});
+#else
         broadcast(make_tick_message(exec));
+#endif
     }
 
     [[nodiscard]] json::json build_schemas() noexcept

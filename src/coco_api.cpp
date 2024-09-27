@@ -56,6 +56,14 @@ namespace coco
         return j;
     }
 
+    [[nodiscard]] json::json make_type_message(const type &tp) noexcept
+    {
+        json::json j;
+        j["type"] = "type";
+        j["type"] = to_json(tp);
+        return j;
+    }
+
     [[nodiscard]] json::json make_new_type_message(const type &tp) noexcept
     {
         json::json j;
@@ -88,6 +96,14 @@ namespace coco
         for (const auto &item : core.get_items())
             items.push_back(to_json(item));
         j["items"] = std::move(items);
+        return j;
+    }
+
+    [[nodiscard]] json::json make_item_message(const item &itm) noexcept
+    {
+        json::json j;
+        j["type"] = "item";
+        j["item"] = to_json(itm);
         return j;
     }
 

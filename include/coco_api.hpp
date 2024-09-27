@@ -55,6 +55,16 @@ namespace coco
   [[nodiscard]] json::json make_types_message(coco_core &core) noexcept;
 
   /**
+   * @brief Creates a JSON message for the given type.
+   *
+   * This function takes a `type` object as input and returns a JSON message representing the type.
+   *
+   * @param tp The type object for which the JSON message is to be created.
+   * @return A JSON message representing the given type.
+   */
+  [[nodiscard]] json::json make_type_message(const type &tp) noexcept;
+
+  /**
    * @brief Creates a new JSON message for the given type.
    *
    * This function takes a `type` object as input and returns a JSON message representing the type.
@@ -95,6 +105,17 @@ namespace coco
    * @return A JSON message containing items.
    */
   [[nodiscard]] json::json make_items_message(coco_core &core) noexcept;
+
+  /**
+   * @brief Creates a JSON message for an item.
+   *
+   * This function takes an item object and creates a JSON message representing the item.
+   * The created JSON message is returned as a `json::json` object.
+   *
+   * @param itm The item object to create the message from.
+   * @return The created JSON message as a `json::json` object.
+   */
+  [[nodiscard]] json::json make_item_message(const item &itm) noexcept;
 
   /**
    * @brief Creates a new item message.
@@ -883,6 +904,12 @@ namespace coco
           {"properties",
            {{"type", {{"type", "string"}, {"enum", {"types"}}}},
             {"types", {{"type", "array"}, {"types", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}},
+      {{"type_message",
+        {"payload",
+         {{"type", "object"},
+          {"properties",
+           {{"type", {{"type", "string"}, {"enum", {"type"}}}},
+            {"type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
       {{"new_type_message",
         {"payload",
          {{"type", "object"},
@@ -907,6 +934,12 @@ namespace coco
           {"properties",
            {{"type", {{"type", "string"}, {"enum", {"items"}}}},
             {"items", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}}}},
+      {{"item_message",
+        {"payload",
+         {{"type", "object"},
+          {"properties",
+           {{"type", {{"type", "string"}, {"enum", {"item"}}}},
+            {"item", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
       {{"new_item_message",
         {"payload",
          {{"type", "object"},

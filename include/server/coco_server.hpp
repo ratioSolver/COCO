@@ -6,6 +6,15 @@
 
 namespace coco
 {
+#ifdef ENABLE_AUTH
+  enum roles
+  {
+    admin,
+    coordinator,
+    user
+  };
+#endif
+
   class coco_server : public coco::coco_core, public network::server
   {
   public:
@@ -64,6 +73,18 @@ namespace coco
     std::unique_ptr<network::response> create_deliberative_rule(const network::request &req);
     std::unique_ptr<network::response> update_deliberative_rule(const network::request &req);
     std::unique_ptr<network::response> delete_deliberative_rule(const network::request &req);
+
+#ifdef ENABLE_AUTH
+    /**
+     * @brief Authorizes a network request based on specified roles.
+     *
+     * @param req The network request to be authorized.
+     * @param roles A set of integer roles that are allowed to authorize the request.
+     * @param exceptions A set of string exceptions that may bypass the role check (optional).
+     * @return std::unique_ptr<network::response> A unique pointer to the network response indicating the result of the authorization.
+     */
+    std::unique_ptr<network::response> authorize(const network::request &req, const std::set<int> &roles, std::set<std::string> exceptions = {});
+#endif
 
   private:
     virtual void on_ws_open(network::ws_session &ws);

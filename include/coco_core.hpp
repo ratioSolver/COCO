@@ -12,7 +12,7 @@ namespace coco
 {
   class coco_db;
 #ifdef ENABLE_AUTH
-  class user;
+  class coco_user;
 #endif
 
   class coco_core
@@ -43,7 +43,7 @@ namespace coco
      * @param roles The roles of the user.
      * @return The created user.
      */
-    user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {});
+    coco_user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {});
 
     /**
      * @brief Retrieves a vector of users.
@@ -52,7 +52,7 @@ namespace coco
      *
      * @return A vector of users.
      */
-    std::vector<user> get_users();
+    std::vector<coco_user> get_users();
 
     /**
      * @brief Retrieves a user with the specified username and password.
@@ -64,7 +64,7 @@ namespace coco
      * @return The user.
      * @throws std::invalid_argument if the user does not exist.
      */
-    user get_user(const std::string &username, const std::string &password);
+    coco_user get_user(const std::string &username, const std::string &password);
 
     /**
      * @brief Retrieves a user with the specified ID.
@@ -75,7 +75,7 @@ namespace coco
      * @return The user.
      * @throws std::invalid_argument if the user does not exist.
      */
-    user get_user(const std::string &id);
+    coco_user get_user(const std::string &id);
 
     /**
      * @brief Sets the username of the user.
@@ -85,7 +85,7 @@ namespace coco
      * @param usr The user.
      * @param username The username of the user.
      */
-    void set_user_username(user &usr, const std::string &username);
+    void set_user_username(coco_user &usr, const std::string &username);
 
     /**
      * @brief Sets the password of the user.
@@ -95,7 +95,7 @@ namespace coco
      * @param usr The user.
      * @param password The password of the user.
      */
-    void set_user_password(user &usr, const std::string &password);
+    void set_user_password(coco_user &usr, const std::string &password);
 
     /**
      * @brief Sets the roles of the user.
@@ -105,7 +105,7 @@ namespace coco
      * @param usr The user.
      * @param roles The roles of the user.
      */
-    void set_user_roles(user &usr, std::set<int> &&roles);
+    void set_user_roles(coco_user &usr, std::set<int> &&roles);
 
     /**
      * @brief Deletes the user.
@@ -114,7 +114,7 @@ namespace coco
      *
      * @param usr The user to delete.
      */
-    void delete_user(const user &usr);
+    void delete_user(const coco_user &usr);
 #endif
 
     /**

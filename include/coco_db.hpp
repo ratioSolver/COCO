@@ -10,10 +10,10 @@ namespace coco
 {
   class coco_core;
 #ifdef ENABLE_AUTH
-  class user
+  class coco_user
   {
   public:
-    user(const std::string &id, const std::string &username, std::set<int32_t> &&roles, json::json &&data = {}) : id(id), username(username), roles(std::move(roles)), data(std::move(data)) {}
+    coco_user(const std::string &id, const std::string &username, std::set<int32_t> &&roles, json::json &&data = {}) : id(id), username(username), roles(std::move(roles)), data(std::move(data)) {}
 
     [[nodiscard]] const std::string &get_id() const { return id; }
     [[nodiscard]] const std::string &get_username() const { return username; }
@@ -27,7 +27,7 @@ namespace coco
     json::json data;
   };
 
-  [[nodiscard]] inline json::json to_json(const user &u) { return {{"id", u.get_id()}, {"username", u.get_username()}}; }
+  [[nodiscard]] inline json::json to_json(const coco_user &u) { return {{"id", u.get_id()}, {"username", u.get_username()}}; }
 #endif
 
   class coco_db
@@ -57,7 +57,7 @@ namespace coco
      * @param data The data of the user.
      * @return user The created user object.
      */
-    virtual user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}, json::json &&data = {}) = 0;
+    virtual coco_user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}, json::json &&data = {}) = 0;
 
     /**
      * @brief Retrieves all users from the database.
@@ -66,7 +66,7 @@ namespace coco
      *
      * @return std::vector<user> A vector of user objects.
      */
-    virtual std::vector<user> get_users() = 0;
+    virtual std::vector<coco_user> get_users() = 0;
 
     /**
      * @brief Retrieves a user by their username and password.
@@ -77,7 +77,7 @@ namespace coco
      * @param password The password of the user to retrieve.
      * @return user The user object.
      */
-    virtual user get_user(const std::string &username, const std::string &password) = 0;
+    virtual coco_user get_user(const std::string &username, const std::string &password) = 0;
 
     /**
      * @brief Retrieves a user object based on the provided user ID.
@@ -85,7 +85,7 @@ namespace coco
      * @param id The unique identifier of the user to be retrieved.
      * @return user The user object corresponding to the given ID.
      */
-    virtual user get_user(const std::string &id) = 0;
+    virtual coco_user get_user(const std::string &id) = 0;
 
     /**
      * @brief Sets the username of the given user.
@@ -95,7 +95,7 @@ namespace coco
      * @param usr The user object to set the username for.
      * @param username The new username for the user.
      */
-    virtual void set_user_username(user &usr, const std::string &username) = 0;
+    virtual void set_user_username(coco_user &usr, const std::string &username) = 0;
 
     /**
      * @brief Sets the password of the given user.
@@ -105,7 +105,7 @@ namespace coco
      * @param usr The user object to set the password for.
      * @param password The new password for the user.
      */
-    virtual void set_user_password(user &usr, const std::string &password) = 0;
+    virtual void set_user_password(coco_user &usr, const std::string &password) = 0;
 
     /**
      * @brief Sets the roles of the given user.
@@ -115,7 +115,7 @@ namespace coco
      * @param usr The user object to set the roles for.
      * @param roles The new roles for the user.
      */
-    virtual void set_user_roles(user &usr, std::set<int> &&roles) = 0;
+    virtual void set_user_roles(coco_user &usr, std::set<int> &&roles) = 0;
 
     /**
      * @brief Deletes a user from the database.
@@ -124,7 +124,7 @@ namespace coco
      *
      * @param usr The user to be deleted.
      */
-    virtual void delete_user(const user &usr) = 0;
+    virtual void delete_user(const coco_user &usr) = 0;
 #endif
 
     /**

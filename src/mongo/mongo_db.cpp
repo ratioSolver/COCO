@@ -152,7 +152,7 @@ namespace coco
     }
 
 #ifdef ENABLE_AUTH
-    user mongo_db::create_user(const std::string &username, const std::string &password, std::set<int> &&roles, json::json &&data)
+    coco_user mongo_db::create_user(const std::string &username, const std::string &password, std::set<int> &&roles, json::json &&data)
     {
         auto [salt, hash] = encode_password(password);
         bsoncxx::builder::basic::document doc;
@@ -167,13 +167,13 @@ namespace coco
             doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
 
         if (auto result = users_collection.insert_one(doc.view()); result)
-            return user(result->inserted_id().get_oid().value.to_string(), username, std::move(roles), std::move(data));
+            return coco_user(result->inserted_id().get_oid().value.to_string(), username, std::move(roles), std::move(data));
         throw std::runtime_error("Failed to insert user: " + username);
     }
 
-    std::vector<user> mongo_db::get_users()
+    std::vector<coco_user> mongo_db::get_users()
     {
-        std::vector<user> users;
+        std::vector<coco_user> users;
         for (const auto &doc : users_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
@@ -181,12 +181,12 @@ namespace coco
             std::set<int> roles;
             for (const auto &r : doc["roles"].get_array().value)
                 roles.insert(r.get_int32().value);
-            users.push_back(user(id, username, std::move(roles)));
+            users.push_back(coco_user(id, username, std::move(roles)));
         }
         return users;
     }
 
-    user mongo_db::get_user(const std::string &username, const std::string &password)
+    coco_user mongo_db::get_user(const std::string &username, const std::string &password)
     {
         if (auto doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "username" << username << bsoncxx::builder::stream::finalize); doc)
         {
@@ -195,14 +195,14 @@ namespace coco
                 std::set<int> roles;
                 for (const auto &r : doc->view()["roles"].get_array().value)
                     roles.insert(r.get_int32().value);
-                return user(doc->view()["_id"].get_oid().value.to_string(), username, std::move(roles));
+                return coco_user(doc->view()["_id"].get_oid().value.to_string(), username, std::move(roles));
             }
             throw std::runtime_error("Invalid password for user: " + username);
         }
         throw std::runtime_error("Failed to get user: " + username);
     }
 
-    user mongo_db::get_user(const std::string &id)
+    coco_user mongo_db::get_user(const std::string &id)
     {
         if (auto doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{id} << bsoncxx::builder::stream::finalize); doc)
         {
@@ -210,12 +210,12 @@ namespace coco
             std::set<int> roles;
             for (const auto &r : doc->view()["roles"].get_array().value)
                 roles.insert(r.get_int32().value);
-            return user(id, username, std::move(roles));
+            return coco_user(id, username, std::move(roles));
         }
         throw std::runtime_error("Failed to get user: " + id);
     }
 
-    void mongo_db::set_user_username(user &usr, const std::string &username)
+    void mongo_db::set_user_username(coco_user &usr, const std::string &username)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("username", username))));
@@ -223,7 +223,7 @@ namespace coco
             throw std::runtime_error("Failed to update user username: " + username);
     }
 
-    void mongo_db::set_user_password(user &usr, const std::string &password)
+    void mongo_db::set_user_password(coco_user &usr, const std::string &password)
     {
         auto [salt, hash] = encode_password(password);
         bsoncxx::builder::basic::document doc;
@@ -232,7 +232,7 @@ namespace coco
             throw std::runtime_error("Failed to update user password");
     }
 
-    void mongo_db::set_user_roles(user &usr, std::set<int> &&roles)
+    void mongo_db::set_user_roles(coco_user &usr, std::set<int> &&roles)
     {
         bsoncxx::builder::basic::document doc;
         auto roles_array = bsoncxx::builder::basic::array{};
@@ -243,7 +243,7 @@ namespace coco
             throw std::runtime_error("Failed to update user roles");
     }
 
-    void mongo_db::delete_user(const user &usr)
+    void mongo_db::delete_user(const coco_user &usr)
     {
         if (auto result = users_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()}))); !result)
             throw std::runtime_error("Failed to delete user: " + usr.get_username());

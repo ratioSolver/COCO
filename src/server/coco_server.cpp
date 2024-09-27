@@ -69,8 +69,18 @@ namespace coco
             target = target.substr(0, target.find('?'));
         return std::make_unique<network::file_response>(CLIENT_DIR "/dist" + target);
     }
-    std::unique_ptr<network::response> coco_server::open_api(const network::request &) { return std::make_unique<network::json_response>(build_open_api()); }
-    std::unique_ptr<network::response> coco_server::async_api(const network::request &) { return std::make_unique<network::json_response>(build_async_api()); }
+    std::unique_ptr<network::response> coco_server::open_api(const network::request &req)
+    {
+        if (auto res = authorize(req, {roles::admin}); res)
+            return res;
+        return std::make_unique<network::json_response>(build_open_api());
+    }
+    std::unique_ptr<network::response> coco_server::async_api(const network::request &req)
+    {
+        if (auto res = authorize(req, {roles::admin}); res)
+            return res;
+        return std::make_unique<network::json_response>(build_async_api());
+    }
 
 #ifdef ENABLE_AUTH
     std::unique_ptr<network::response> coco_server::login(const network::request &req)
@@ -91,9 +101,11 @@ namespace coco
             return std::make_unique<network::json_response>(json::json{{"message", "Unauthorized"}}, network::status_code::unauthorized);
         }
     }
-    std::unique_ptr<network::response> coco_server::get_users(const network::request &)
+    std::unique_ptr<network::response> coco_server::get_users(const network::request &req)
     {
-        std::lock_guard<std::recursive_mutex> _(mtx);
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can get all users
+            return res;
+
         json::json usrs(json::json_type::array);
         for (auto &usr : coco_core::get_users())
             usrs.push_back(to_json(usr));
@@ -101,8 +113,10 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::get_user(const network::request &req)
     {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        std::string id = req.get_target().substr(6);
+        auto id = req.get_target().substr(6);
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only get themselves
+            return res;
+
         try
         {
             auto usr = coco_core::get_user(id);
@@ -115,7 +129,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::create_user(const network::request &req)
     {
-        std::lock_guard<std::recursive_mutex> _(mtx);
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("username") || body["username"].get_type() != json::json_type::string || !body.contains("password") || body["password"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -123,12 +136,29 @@ namespace coco
         std::string password = body["password"];
         std::set<int> roles;
         if (body.contains("roles") && body["roles"].get_type() == json::json_type::array)
+        {
+            std::set<int> allowed_roles = {roles::admin, roles::coordinator, roles::user};
             for (auto &r : body["roles"].as_array())
             {
                 if (r.get_type() != json::json_type::number)
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
                 roles.insert(r);
+                switch (static_cast<int>(r))
+                {
+                case roles::admin: // Admins can only be created by other admins
+                    allowed_roles.erase(roles::coordinator);
+                    allowed_roles.erase(roles::user);
+                    break;
+                case roles::coordinator: // Coordinators can be created by admins and coordinators
+                    allowed_roles.erase(roles::user);
+                    break;
+                }
             }
+            if (auto res = authorize(req, allowed_roles); res)
+                return res;
+        }
+        if (roles.empty()) // Default role
+            roles.insert(roles::user);
         try
         {
             return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(roles)).get_id()}});
@@ -140,8 +170,10 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::update_user(const network::request &req)
     {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        std::string id = req.get_target().substr(6);
+        auto id = req.get_target().substr(6);
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only update themselves
+            return res;
+
         try
         {
             auto usr = coco_core::get_user(id);
@@ -180,11 +212,10 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::delete_user(const network::request &req)
     {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("id") || body["id"].get_type() != json::json_type::string)
-            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-        std::string id = body["id"];
+        auto id = req.get_target().substr(6);
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only delete themselves
+            return res;
+
         try
         {
             auto usr = coco_core::get_user(id);
@@ -198,9 +229,13 @@ namespace coco
     }
 #endif
 
-    std::unique_ptr<network::response> coco_server::get_types(const network::request &)
+    std::unique_ptr<network::response> coco_server::get_types(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can get all types
+            return res;
+#endif
         json::json sts(json::json_type::array);
         for (auto &tp : coco_core::get_types())
             sts.push_back(to_json(tp));
@@ -215,10 +250,24 @@ namespace coco
             try
             {
                 auto &tp = coco_core::get_type(id);
+#ifdef ENABLE_AUTH
+                if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
+                {
+                    auto token = req.get_headers().at("authorization").substr(7);
+                    if (db->has_item(token) && db->get_item(token).get_type().is_assignable_from(tp))
+                        return std::make_unique<network::json_response>(to_json(tp));
+                    else
+                        return res;
+                }
+#endif
                 return std::make_unique<network::json_response>(to_json(tp));
             }
             catch (const std::exception &)
             {
+#ifdef ENABLE_AUTH
+                if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can get all types
+                    return res;
+#endif
                 return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
             }
         }
@@ -230,10 +279,24 @@ namespace coco
             try
             {
                 auto &tp = coco_core::get_type_by_name(params.at("name"));
+#ifdef ENABLE_AUTH
+                if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
+                {
+                    auto token = req.get_headers().at("authorization").substr(7);
+                    if (db->has_item(token) && db->get_item(token).get_type().is_assignable_from(tp))
+                        return std::make_unique<network::json_response>(to_json(tp));
+                    else
+                        return res;
+                }
+#endif
                 return std::make_unique<network::json_response>(to_json(tp));
             }
             catch (const std::exception &)
             {
+#ifdef ENABLE_AUTH
+                if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can get all types
+                    return res;
+#endif
                 return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
             }
         }
@@ -241,6 +304,10 @@ namespace coco
     std::unique_ptr<network::response> coco_server::create_type(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can create types
+            return res;
+#endif
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -302,7 +369,11 @@ namespace coco
     std::unique_ptr<network::response> coco_server::update_type(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        std::string id = req.get_target().substr(6);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can update types
+            return res;
+#endif
+        auto id = req.get_target().substr(6);
         type *tp;
         try
         {
@@ -386,10 +457,11 @@ namespace coco
     std::unique_ptr<network::response> coco_server::delete_type(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("id") || body["id"].get_type() != json::json_type::string)
-            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-        std::string id = body["id"];
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can delete types
+            return res;
+#endif
+        auto id = req.get_target().substr(6);
         try
         {
             type &tp = coco_core::get_type(id);
@@ -405,6 +477,10 @@ namespace coco
     std::unique_ptr<network::response> coco_server::get_items(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can get all items
+            return res;
+#endif
         json::json ss(json::json_type::array);
         if (req.get_target().find('?') != std::string::npos)
         {
@@ -435,6 +511,10 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto id = req.get_target().substr(6);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the client is an admin or coordinator, they can only get themselves
+            return res;
+#endif
         try
         {
             auto &itm = coco_core::get_item(id);
@@ -448,6 +528,10 @@ namespace coco
     std::unique_ptr<network::response> coco_server::create_item(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can create items
+            return res;
+#endif
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("type") || body["type"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -475,7 +559,11 @@ namespace coco
     std::unique_ptr<network::response> coco_server::update_item(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        std::string id = req.get_target().substr(6);
+        auto id = req.get_target().substr(6);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the client is an admin or coordinator, they can only update themselves
+            return res;
+#endif
         item *itm;
         try
         {
@@ -497,10 +585,11 @@ namespace coco
     std::unique_ptr<network::response> coco_server::delete_item(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("id") || body["id"].get_type() != json::json_type::string)
-            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-        std::string id = body["id"];
+        auto id = req.get_target().substr(6);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the client is an admin or coordinator, they can only delete themselves
+            return res;
+#endif
         try
         {
             item &itm = coco_core::get_item(id);
@@ -516,7 +605,11 @@ namespace coco
     std::unique_ptr<network::response> coco_server::get_data(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        std::string id = req.get_target().substr(6);
+        auto id = req.get_target().substr(6);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the client is an admin or coordinator, they can only get their own data
+            return res;
+#endif
         std::map<std::string, std::string> params;
         if (id.find('?') != std::string::npos)
         {
@@ -539,7 +632,11 @@ namespace coco
     std::unique_ptr<network::response> coco_server::add_data(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        std::string id = req.get_target().substr(6);
+        auto id = req.get_target().substr(6);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the client is an admin or coordinator, they can only add data to their own items
+            return res;
+#endif
         item *itm;
         try
         {
@@ -556,9 +653,13 @@ namespace coco
         return std::make_unique<network::response>(network::status_code::no_content);
     }
 
-    std::unique_ptr<network::response> coco_server::get_reactive_rules(const network::request &)
+    std::unique_ptr<network::response> coco_server::get_reactive_rules(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can get all reactive rules
+            return res;
+#endif
         json::json rls(json::json_type::array);
         for (auto &rl : coco_core::get_reactive_rules())
             rls.push_back(to_json(rl));
@@ -567,6 +668,10 @@ namespace coco
     std::unique_ptr<network::response> coco_server::create_reactive_rule(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can create reactive rules
+            return res;
+#endif
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("content") || body["content"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -585,7 +690,11 @@ namespace coco
     std::unique_ptr<network::response> coco_server::update_reactive_rule(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        std::string id = req.get_target().substr(15);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can update reactive rules
+            return res;
+#endif
+        auto id = req.get_target().substr(15);
         rule *rl;
         try
         {
@@ -613,6 +722,10 @@ namespace coco
     std::unique_ptr<network::response> coco_server::delete_reactive_rule(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can delete reactive rules
+            return res;
+#endif
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("id") || body["id"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -629,9 +742,13 @@ namespace coco
         }
     }
 
-    std::unique_ptr<network::response> coco_server::get_deliberative_rules(const network::request &)
+    std::unique_ptr<network::response> coco_server::get_deliberative_rules(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can get all deliberative rules
+            return res;
+#endif
         json::json rls(json::json_type::array);
         for (auto &rl : coco_core::get_deliberative_rules())
             rls.push_back(to_json(rl));
@@ -658,7 +775,11 @@ namespace coco
     std::unique_ptr<network::response> coco_server::update_deliberative_rule(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        std::string id = req.get_target().substr(19);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can update deliberative rules
+            return res;
+#endif
+        auto id = req.get_target().substr(19);
         rule *rl;
         try
         {
@@ -686,6 +807,10 @@ namespace coco
     std::unique_ptr<network::response> coco_server::delete_deliberative_rule(const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
+#ifdef ENABLE_AUTH
+        if (auto res = authorize(req, {roles::admin}); res) // Only admins can delete deliberative rules
+            return res;
+#endif
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("id") || body["id"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -701,6 +826,31 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Deliberative rule not found"}}), network::status_code::not_found);
         }
     }
+
+#ifdef ENABLE_AUTH
+    std::unique_ptr<network::response> coco_server::authorize(const network::request &req, const std::set<int> &roles, std::set<std::string> exceptions)
+    {
+        if (auto auth = req.get_headers().find("authorization"); auth != req.get_headers().end())
+            if (auth->second.size() > 7 && auth->second.substr(0, 7) == "Bearer ")
+            {
+                auto token = auth->second.substr(7);
+                if (exceptions.count(token))
+                    return nullptr; // token is valid
+                try
+                {
+                    auto usr = db->get_user(token);
+                    if (std::any_of(roles.begin(), roles.end(), [&usr](int r)
+                                    { return usr.get_roles().count(r); }))
+                        return nullptr;
+                }
+                catch (const std::exception &)
+                {
+                    return std::make_unique<network::json_response>(json::json{{"message", "Unauthorized"}}, network::status_code::unauthorized);
+                }
+            }
+        return std::make_unique<network::json_response>(json::json{{"message", "Unauthorized"}}, network::status_code::unauthorized);
+    }
+#endif
 
     void coco_server::on_ws_open(network::ws_session &ws)
     {

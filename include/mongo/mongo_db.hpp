@@ -22,14 +22,14 @@ namespace coco
     void init(coco_core &cc) override;
 
 #ifdef ENABLE_AUTH
-    user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}, json::json &&data = {}) override;
-    std::vector<user> get_users() override;
-    user get_user(const std::string &username, const std::string &password) override;
-    user get_user(const std::string &id) override;
-    void set_user_username(user &usr, const std::string &username) override;
-    void set_user_password(user &usr, const std::string &password) override;
-    void set_user_roles(user &usr, std::set<int> &&roles) override;
-    void delete_user(const user &usr) override;
+    coco_user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {}, json::json &&data = {}) override;
+    std::vector<coco_user> get_users() override;
+    coco_user get_user(const std::string &username, const std::string &password) override;
+    coco_user get_user(const std::string &id) override;
+    void set_user_username(coco_user &usr, const std::string &username) override;
+    void set_user_password(coco_user &usr, const std::string &password) override;
+    void set_user_roles(coco_user &usr, std::set<int> &&roles) override;
+    void delete_user(const coco_user &usr) override;
 #endif
 
     [[nodiscard]] type &create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;

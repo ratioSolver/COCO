@@ -28,6 +28,25 @@ namespace coco
         Retract(type_fact);
     }
 
+    bool type::is_assignable_from(const type &other) const noexcept
+    {
+        if (this == &other)
+            return true;
+        std::queue<const type *> q;
+        q.push(this);
+        while (!q.empty())
+        {
+            auto tp = q.front();
+            q.pop();
+            for (auto &p : tp->parents)
+            {
+                if (&p.second.get() == &other)
+                    return true;
+                q.push(&p.second.get());
+            }
+        }
+    }
+
     void type::set_name(const std::string &name) noexcept
     {
         this->name = name;

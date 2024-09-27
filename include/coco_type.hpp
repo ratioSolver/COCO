@@ -82,6 +82,15 @@ namespace coco
      */
     const std::map<std::string, std::unique_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
 
+    /**
+     * @brief Check if this type is assignable from another type.
+     *
+     * @param other The other type.
+     * @return true If this type is assignable from the other type.
+     * @return false If this type is not assignable from the other type.
+     */
+    [[nodiscard]] bool is_assignable_from(const type &other) const noexcept;
+
   private:
     void set_name(const std::string &name) noexcept;
     void set_description(const std::string &description) noexcept;

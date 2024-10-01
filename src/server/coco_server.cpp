@@ -135,8 +135,10 @@ namespace coco
         std::string username = body["username"];
         std::string password = body["password"];
         std::set<int> roles;
-        if (body.contains("roles") && body["roles"].get_type() == json::json_type::array)
+        if (body.contains("roles"))
         {
+            if (body["roles"].get_type() != json::json_type::array)
+                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             std::set<int> allowed_roles = {roles::admin, roles::coordinator, roles::user};
             for (auto &r : body["roles"].as_array())
             {
@@ -194,13 +196,26 @@ namespace coco
             {
                 if (body["roles"].get_type() != json::json_type::array)
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+                std::set<int> allowed_roles = {roles::admin, roles::coordinator, roles::user};
                 std::set<int> roles;
                 for (auto &r : body["roles"].as_array())
                 {
                     if (r.get_type() != json::json_type::number)
                         return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
                     roles.insert(r);
+                    switch (static_cast<int>(r))
+                    {
+                    case roles::admin: // Admins can only be created by other admins
+                        allowed_roles.erase(roles::coordinator);
+                        allowed_roles.erase(roles::user);
+                        break;
+                    case roles::coordinator: // Coordinators can be created by admins and coordinators
+                        allowed_roles.erase(roles::user);
+                        break;
+                    }
                 }
+                if (auto res = authorize(req, allowed_roles); res)
+                    return res;
                 set_user_roles(usr, std::move(roles));
             }
             return std::make_unique<network::json_response>(to_json(usr));
@@ -917,18 +932,14 @@ namespace coco
                 ws.send(make_type_message(itm.get_type()).dump());
                 // we send the item
                 ws.send(make_item_message(itm).dump());
-            }
-            else
+
                 try
                 {
                     auto usr = db->get_user(token); // if the token is invalid, an exception will be thrown
                     if (usr.get_roles().count(roles::admin) || usr.get_roles().count(roles::coordinator))
                     {
-                        clients.emplace(&ws, token);
-                        if (auto it = users.find(token); it != users.end())
-                            it->second.second.insert(&ws);
-                        else
-                            users.emplace(token, std::pair{usr.get_roles(), std::set<network::ws_session *>{&ws}});
+                        if (auto it = users.find(token); it == users.end())
+                            users.emplace(token, usr.get_roles());
 
                         // we send the types
                         ws.send(make_types_message(*this).dump());
@@ -958,9 +969,13 @@ namespace coco
                 }
                 catch (const std::exception &)
                 {
-                    ws.close();
-                    return;
                 }
+            }
+            else
+            {
+                ws.close();
+                return;
+            }
         }
 #endif
     }
@@ -970,14 +985,12 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
 #ifdef ENABLE_AUTH
         auto token = clients.at(&ws);
-        if (auto it = users.find(token); it != users.end())
+        if (devices.count(token))
         {
-            it->second.second.erase(&ws);
-            if (it->second.second.empty())
+            devices.at(token).erase(&ws);
+            if (auto it = users.find(token); it != users.end())
                 users.erase(it);
         }
-        if (devices.count(token))
-            devices.at(token).erase(&ws);
 #endif
         clients.erase(&ws);
         LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));

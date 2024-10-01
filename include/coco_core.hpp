@@ -13,6 +13,13 @@ namespace coco
   class coco_db;
 #ifdef ENABLE_AUTH
   class coco_user;
+
+  enum roles
+  {
+    admin,
+    coordinator,
+    user
+  };
 #endif
 
   class coco_core
@@ -33,88 +40,10 @@ namespace coco
     virtual ~coco_core() = default;
 
 #ifdef ENABLE_AUTH
-    /**
-     * @brief Creates a new user.
-     *
-     * This function creates a new user with the specified username, password, and roles.
-     *
-     * @param username The username of the user.
-     * @param password The password of the user.
-     * @param roles The roles of the user.
-     * @return The created user.
-     */
-    coco_user create_user(const std::string &username, const std::string &password, std::set<int> &&roles = {});
-
-    /**
-     * @brief Retrieves a vector of users.
-     *
-     * This function retrieves all the users stored in the database and returns them as a vector of `user` objects.
-     *
-     * @return A vector of users.
-     */
-    std::vector<coco_user> get_users();
-
-    /**
-     * @brief Retrieves a user with the specified username and password.
-     *
-     * This function retrieves the user with the specified username and password.
-     *
-     * @param username The username of the user.
-     * @param password The password of the user.
-     * @return The user.
-     * @throws std::invalid_argument if the user does not exist.
-     */
-    coco_user get_user(const std::string &username, const std::string &password);
-
-    /**
-     * @brief Retrieves a user with the specified ID.
-     *
-     * This function retrieves the user with the specified ID.
-     *
-     * @param id The ID of the user.
-     * @return The user.
-     * @throws std::invalid_argument if the user does not exist.
-     */
-    coco_user get_user(const std::string &id);
-
-    /**
-     * @brief Sets the username of the user.
-     *
-     * This function sets the username of the user with the specified ID.
-     *
-     * @param usr The user.
-     * @param username The username of the user.
-     */
-    void set_user_username(coco_user &usr, const std::string &username);
-
-    /**
-     * @brief Sets the password of the user.
-     *
-     * This function sets the password of the user with the specified ID.
-     *
-     * @param usr The user.
-     * @param password The password of the user.
-     */
-    void set_user_password(coco_user &usr, const std::string &password);
-
-    /**
-     * @brief Sets the roles of the user.
-     *
-     * This function sets the roles of the user with the specified ID.
-     *
-     * @param usr The user.
-     * @param roles The roles of the user.
-     */
-    void set_user_roles(coco_user &usr, std::set<int> &&roles);
-
-    /**
-     * @brief Deletes the user.
-     *
-     * This function deletes the user with the specified ID.
-     *
-     * @param usr The user to delete.
-     */
-    void delete_user(const coco_user &usr);
+    [[nodiscard]] item &create_user(const std::string &username, const std::string &password, json::json &&data = {});
+    [[nodiscard]] std::optional<std::reference_wrapper<item>> get_user(const std::string &username, const std::string &password);
+    void set_user_username(item &usr, const std::string &username);
+    void set_user_password(item &usr, const std::string &password);
 #endif
 
     /**

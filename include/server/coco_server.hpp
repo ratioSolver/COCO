@@ -6,15 +6,6 @@
 
 namespace coco
 {
-#ifdef ENABLE_AUTH
-  enum roles
-  {
-    admin,
-    coordinator,
-    user
-  };
-#endif
-
   class coco_server : public coco::coco_core, public network::server
   {
   public:
@@ -42,11 +33,8 @@ namespace coco
 
 #ifdef ENABLE_AUTH
     std::unique_ptr<network::response> login(const network::request &req);
-    std::unique_ptr<network::response> get_users(const network::request &req);
-    std::unique_ptr<network::response> get_user(const network::request &req);
     std::unique_ptr<network::response> create_user(const network::request &req);
     std::unique_ptr<network::response> update_user(const network::request &req);
-    std::unique_ptr<network::response> delete_user(const network::request &req);
 #endif
 
     std::unique_ptr<network::response> get_types(const network::request &req);
@@ -138,7 +126,7 @@ namespace coco
         for (auto client : clients)
           if (users.find(client.second) != users.end())
             for (auto role : roles)
-              if (users.at(client.second).first.find(role) != users.at(client.second).first.end())
+              if (users.at(client.second) == role)
               { // User has the required role
                 client.first->send(msg_str);
                 break;
@@ -156,8 +144,8 @@ namespace coco
   private:
 #ifdef ENABLE_AUTH
     std::unordered_map<network::ws_session *, std::string> clients;
-    std::unordered_map<std::string, std::pair<std::set<int>, std::set<network::ws_session *>>> users;
     std::unordered_map<std::string, std::set<network::ws_session *>> devices;
+    std::unordered_map<std::string, int> users;
 #else
     std::unordered_set<network::ws_session *> clients;
 #endif

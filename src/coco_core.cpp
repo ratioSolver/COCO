@@ -41,14 +41,10 @@ namespace coco
     }
 
 #ifdef ENABLE_AUTH
-    coco_user coco_core::create_user(const std::string &username, const std::string &password, std::set<int> &&roles) { return db->create_user(username, password, std::move(roles)); }
-    std::vector<coco_user> coco_core::get_users() { return db->get_users(); }
-    coco_user coco_core::get_user(const std::string &username, const std::string &password) { return db->get_user(username, password); }
-    coco_user coco_core::get_user(const std::string &id) { return db->get_user(id); }
-    void coco_core::set_user_username(coco_user &usr, const std::string &username) { db->set_user_username(usr, username); }
-    void coco_core::set_user_password(coco_user &usr, const std::string &password) { db->set_user_password(usr, password); }
-    void coco_core::set_user_roles(coco_user &usr, std::set<int> &&roles) { db->set_user_roles(usr, std::move(roles)); }
-    void coco_core::delete_user(const coco_user &usr) { db->delete_user(usr); }
+    [[nodiscard]] item &coco_core::create_user(const std::string &username, const std::string &password, json::json &&data) { return db->create_user(*this, username, password, std::move(data)); }
+    [[nodiscard]] std::optional<std::reference_wrapper<item>> coco_core::get_user(const std::string &username, const std::string &password) { return db->get_user(username, password); }
+    void coco_core::set_user_username(item &usr, const std::string &username) { db->set_user_username(usr, username); }
+    void coco_core::set_user_password(item &usr, const std::string &password) { db->set_user_password(usr, password); }
 #endif
 
     std::vector<std::reference_wrapper<type>> coco_core::get_types()
@@ -457,6 +453,19 @@ namespace coco
 #ifdef ENABLE_TRANSFORMER
         // we build the basic knowledge base for the transformer..
         Build(env, "(deffunction intent (?intent ?confidence ?entities ?values ?confidences) (return TRUE))");
+#endif
+
+#ifdef ENABLE_AUTH
+        // we build the basic knowledge base for the users..
+        if (!db->has_type_name("User"))
+        {
+            std::vector<std::unique_ptr<property>> props;
+            props.push_back(std::make_unique<integer_property>("role", "The role of the user", 0));
+            create_type("User", "A CoCo user", {}, {}, std::move(props), {});
+
+            LOG_WARN("Creating default admin user. Please change the password immediately.");
+            db->create_user(*this, "admin", "admin", {{"role", roles::admin}});
+        }
 #endif
 
         // we load the basic knowledge base..

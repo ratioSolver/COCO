@@ -26,11 +26,8 @@ namespace coco
 
 #ifdef ENABLE_AUTH
         add_route(network::Post, "^/login$", std::bind(&coco_server::login, this, network::placeholders::request));
-        add_route(network::Get, "^/users$", std::bind(&coco_server::get_users, this, network::placeholders::request));
-        add_route(network::Get, "^/user/.*$", std::bind(&coco_server::get_user, this, network::placeholders::request));
         add_route(network::Post, "^/user$", std::bind(&coco_server::create_user, this, network::placeholders::request));
         add_route(network::Put, "^/user/.*$", std::bind(&coco_server::update_user, this, network::placeholders::request));
-        add_route(network::Delete, "^/user/.*$", std::bind(&coco_server::delete_user, this, network::placeholders::request));
 #endif
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
@@ -88,44 +85,10 @@ namespace coco
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (!body.contains("username") || !body.contains("password"))
             return std::make_unique<network::json_response>(json::json{{"message", "Bad Request"}}, network::status_code::bad_request);
-        try
-        {
-            auto usr = db->get_user(body["username"], body["password"]);
-            json::json roles(json::json_type::array);
-            for (auto &r : usr.get_roles())
-                roles.push_back(r);
-            return std::make_unique<network::json_response>(json::json{{"token", usr.get_id()}, {"roles", std::move(roles)}}, network::status_code::ok);
-        }
-        catch (const std::exception &e)
-        {
+        if (auto usr = db->get_user(body["username"], body["password"]); usr)
+            return std::make_unique<network::json_response>(json::json{{"token", usr.value().get().get_id()}});
+        else
             return std::make_unique<network::json_response>(json::json{{"message", "Unauthorized"}}, network::status_code::unauthorized);
-        }
-    }
-    std::unique_ptr<network::response> coco_server::get_users(const network::request &req)
-    {
-        if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can get all users
-            return res;
-
-        json::json usrs(json::json_type::array);
-        for (auto &usr : coco_core::get_users())
-            usrs.push_back(to_json(usr));
-        return std::make_unique<network::json_response>(std::move(usrs));
-    }
-    std::unique_ptr<network::response> coco_server::get_user(const network::request &req)
-    {
-        auto id = req.get_target().substr(6);
-        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only get themselves
-            return res;
-
-        try
-        {
-            auto usr = coco_core::get_user(id);
-            return std::make_unique<network::json_response>(to_json(usr));
-        }
-        catch (const std::exception &)
-        {
-            return std::make_unique<network::json_response>(json::json({{"message", "User not found"}}), network::status_code::not_found);
-        }
     }
     std::unique_ptr<network::response> coco_server::create_user(const network::request &req)
     {
@@ -134,41 +97,28 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string username = body["username"];
         std::string password = body["password"];
-        std::set<int> roles;
-        if (body.contains("roles"))
+        int role = roles::user;
+        if (body.contains("properties") && body["properties"].contains("role"))
         {
-            if (body["roles"].get_type() != json::json_type::array)
+            if (body["properties"]["role"].get_type() != json::json_type::number)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            std::set<int> allowed_roles = {roles::admin, roles::coordinator, roles::user};
-            for (auto &r : body["roles"].as_array())
+            role = body["properties"]["role"];
+            switch (role)
             {
-                if (r.get_type() != json::json_type::number)
-                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                roles.insert(r);
-                switch (static_cast<int>(r))
-                {
-                case roles::admin: // Admins can only be created by other admins
-                    allowed_roles.erase(roles::coordinator);
-                    allowed_roles.erase(roles::user);
-                    break;
-                case roles::coordinator: // Coordinators can be created by admins and coordinators
-                    allowed_roles.erase(roles::user);
-                    break;
-                }
+            case roles::admin: // Admins can only be created by other admins
+                if (auto res = authorize(req, {roles::admin}); res)
+                    return res;
+                break;
+            case roles::coordinator: // Coordinators can be created by admins and coordinators
+                if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
+                    return res;
+                break;
             }
-            if (auto res = authorize(req, allowed_roles); res)
-                return res;
         }
-        if (roles.empty()) // Default role
-            roles.insert(roles::user);
-        try
-        {
-            return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(roles)).get_id()}});
-        }
-        catch (const std::exception &e)
-        {
-            return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
-        }
+        json::json props = body["properties"];
+        if (!props.contains("role"))
+            props["role"] = role;
+        return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(props)).get_id()}});
     }
     std::unique_ptr<network::response> coco_server::update_user(const network::request &req)
     {
@@ -176,71 +126,43 @@ namespace coco
         if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only update themselves
             return res;
 
-        try
-        {
-            auto usr = coco_core::get_user(id);
-            auto &body = static_cast<const network::json_request &>(req).get_body();
-            if (body.contains("username"))
-            {
-                if (body["username"].get_type() != json::json_type::string)
-                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                set_user_username(usr, body["username"]);
-            }
-            if (body.contains("password"))
-            {
-                if (body["password"].get_type() != json::json_type::string)
-                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                set_user_password(usr, body["password"]);
-            }
-            if (body.contains("roles"))
-            {
-                if (body["roles"].get_type() != json::json_type::array)
-                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                std::set<int> allowed_roles = {roles::admin, roles::coordinator, roles::user};
-                std::set<int> roles;
-                for (auto &r : body["roles"].as_array())
-                {
-                    if (r.get_type() != json::json_type::number)
-                        return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                    roles.insert(r);
-                    switch (static_cast<int>(r))
-                    {
-                    case roles::admin: // Admins can only be created by other admins
-                        allowed_roles.erase(roles::coordinator);
-                        allowed_roles.erase(roles::user);
-                        break;
-                    case roles::coordinator: // Coordinators can be created by admins and coordinators
-                        allowed_roles.erase(roles::user);
-                        break;
-                    }
-                }
-                if (auto res = authorize(req, allowed_roles); res)
-                    return res;
-                set_user_roles(usr, std::move(roles));
-            }
-            return std::make_unique<network::json_response>(to_json(usr));
-        }
-        catch (const std::exception &)
-        {
+        if (!db->has_item(id))
             return std::make_unique<network::json_response>(json::json({{"message", "User not found"}}), network::status_code::not_found);
-        }
-    }
-    std::unique_ptr<network::response> coco_server::delete_user(const network::request &req)
-    {
-        auto id = req.get_target().substr(6);
-        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only delete themselves
-            return res;
 
-        try
+        auto &usr = db->get_item(id);
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (body.contains("username"))
         {
-            auto usr = coco_core::get_user(id);
-            coco_core::delete_user(usr);
-            return std::make_unique<network::response>(network::status_code::no_content);
+            if (body["username"].get_type() != json::json_type::string)
+                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            set_user_username(usr, body["username"]);
         }
-        catch (const std::exception &)
+        if (body.contains("password"))
         {
-            return std::make_unique<network::json_response>(json::json({{"message", "User not found"}}), network::status_code::not_found);
+            if (body["password"].get_type() != json::json_type::string)
+                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            set_user_password(usr, body["password"]);
         }
+        if (body.contains("properties") && body["properties"].contains("role"))
+        {
+            if (body["properties"]["role"].get_type() != json::json_type::number)
+                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            int role = body["properties"]["role"];
+            switch (role)
+            {
+            case roles::admin: // Admins can only be created by other admins
+                if (auto res = authorize(req, {roles::admin}); res)
+                    return res;
+                break;
+            case roles::coordinator: // Coordinators can be created by admins and coordinators
+                if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
+                    return res;
+                break;
+            }
+            json::json props = body["properties"];
+            set_item_properties(usr, std::move(props));
+        }
+        return std::make_unique<network::json_response>(to_json(usr));
     }
 #endif
 
@@ -851,17 +773,12 @@ namespace coco
                 auto token = auth->second.substr(7);
                 if (exceptions.count(token))
                     return nullptr; // token is valid
-                try
-                {
-                    auto usr = db->get_user(token);
-                    if (std::any_of(roles.begin(), roles.end(), [&usr](int r)
-                                    { return usr.get_roles().count(r); }))
-                        return nullptr;
-                }
-                catch (const std::exception &)
-                {
+                if (!db->has_item(token))
                     return std::make_unique<network::json_response>(json::json{{"message", "Unauthorized"}}, network::status_code::unauthorized);
-                }
+                auto &itm = db->get_item(token);
+                if (!roles.count(static_cast<int>(itm.get_properties()["role"])))
+                    return std::make_unique<network::json_response>(json::json{{"message", "Unauthorized"}}, network::status_code::unauthorized);
+                return nullptr; // token is valid
             }
         return std::make_unique<network::json_response>(json::json{{"message", "Unauthorized"}}, network::status_code::unauthorized);
     }
@@ -928,47 +845,41 @@ namespace coco
                 devices[token].emplace(&ws);
 
                 auto &itm = db->get_item(token);
-                // we send the type
+                // we send the (user) type
                 ws.send(make_type_message(itm.get_type()).dump());
-                // we send the item
+                // we send the (user) item
                 ws.send(make_item_message(itm).dump());
 
-                try
+                int role = static_cast<int>(itm.get_properties()["role"]);
+                if (role == static_cast<int>(roles::admin) || role == static_cast<int>(roles::coordinator))
                 {
-                    auto usr = db->get_user(token); // if the token is invalid, an exception will be thrown
-                    if (usr.get_roles().count(roles::admin) || usr.get_roles().count(roles::coordinator))
+                    if (auto it = users.find(token); it == users.end())
+                        users.emplace(token, role);
+
+                    // we send the types
+                    ws.send(make_types_message(*this).dump());
+
+                    // we send the items
+                    ws.send(make_items_message(*this).dump());
+
+                    if (role == static_cast<int>(roles::admin))
                     {
-                        if (auto it = users.find(token); it == users.end())
-                            users.emplace(token, usr.get_roles());
+                        // we send the reactive rules
+                        ws.send(make_reactive_rules_message(*this).dump());
 
-                        // we send the types
-                        ws.send(make_types_message(*this).dump());
+                        // we send the deliberative rules
+                        ws.send(make_deliberative_rules_message(*this).dump());
 
-                        // we send the items
-                        ws.send(make_items_message(*this).dump());
+                        // we send the solvers
+                        ws.send(make_solvers_message(*this).dump());
 
-                        if (usr.get_roles().count(roles::admin))
+                        // we send the executors
+                        for (const auto &cc_exec : get_solvers())
                         {
-                            // we send the reactive rules
-                            ws.send(make_reactive_rules_message(*this).dump());
-
-                            // we send the deliberative rules
-                            ws.send(make_deliberative_rules_message(*this).dump());
-
-                            // we send the solvers
-                            ws.send(make_solvers_message(*this).dump());
-
-                            // we send the executors
-                            for (const auto &cc_exec : get_solvers())
-                            {
-                                ws.send(make_solver_state_message(cc_exec.get()).dump());
-                                ws.send(make_solver_graph_message(cc_exec.get().get_solver().get_graph()).dump());
-                            }
+                            ws.send(make_solver_state_message(cc_exec.get()).dump());
+                            ws.send(make_solver_graph_message(cc_exec.get().get_solver().get_graph()).dump());
                         }
                     }
-                }
-                catch (const std::exception &)
-                {
                 }
             }
             else

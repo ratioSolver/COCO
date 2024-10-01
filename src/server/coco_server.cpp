@@ -28,6 +28,7 @@ namespace coco
         add_route(network::Post, "^/login$", std::bind(&coco_server::login, this, network::placeholders::request));
         add_route(network::Post, "^/user$", std::bind(&coco_server::create_user, this, network::placeholders::request));
         add_route(network::Put, "^/user/.*$", std::bind(&coco_server::update_user, this, network::placeholders::request));
+        add_route(network::Delete, "^/user/.*$", std::bind(&coco_server::delete_user, this, network::placeholders::request));
 #endif
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
@@ -97,12 +98,14 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string username = body["username"];
         std::string password = body["password"];
+        json::json personal_data;
+        json::json data;
         int role = roles::user;
-        if (body.contains("properties") && body["properties"].contains("role"))
+        if (body.contains("data") && body["data"].contains("role"))
         {
-            if (body["properties"]["role"].get_type() != json::json_type::number)
+            if (body["data"]["role"].get_type() != json::json_type::number)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            role = body["properties"]["role"];
+            role = body["data"]["role"];
             switch (role)
             {
             case roles::admin: // Admins can only be created by other admins
@@ -114,11 +117,13 @@ namespace coco
                     return res;
                 break;
             }
+            data = body["data"];
         }
-        json::json props = body["properties"];
-        if (!props.contains("role"))
-            props["role"] = role;
-        return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(props)).get_id()}});
+        if (!data.contains("role"))
+            data["role"] = role;
+        if (body.contains("personal_data"))
+            personal_data = body["personal_data"];
+        return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(personal_data), std::move(data)).get_id()}});
     }
     std::unique_ptr<network::response> coco_server::update_user(const network::request &req)
     {
@@ -143,11 +148,18 @@ namespace coco
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             set_user_password(usr, body["password"]);
         }
-        if (body.contains("properties") && body["properties"].contains("role"))
+        if (body.contains("personal_data"))
         {
-            if (body["properties"]["role"].get_type() != json::json_type::number)
+            if (body["personal_data"].get_type() != json::json_type::object)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            int role = body["properties"]["role"];
+            json::json personal_data = body["personal_data"];
+            set_user_personal_data(usr, std::move(personal_data));
+        }
+        if (body.contains("data") && body["data"].contains("role"))
+        {
+            if (body["data"]["role"].get_type() != json::json_type::number)
+                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            int role = body["data"]["role"];
             switch (role)
             {
             case roles::admin: // Admins can only be created by other admins
@@ -159,10 +171,22 @@ namespace coco
                     return res;
                 break;
             }
-            json::json props = body["properties"];
+            json::json props = body["data"];
             set_item_properties(usr, std::move(props));
         }
         return std::make_unique<network::json_response>(to_json(usr));
+    }
+    std::unique_ptr<network::response> coco_server::delete_user(const network::request &req)
+    {
+        auto id = req.get_target().substr(6);
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only delete themselves
+            return res;
+
+        if (!db->has_item(id))
+            return std::make_unique<network::json_response>(json::json({{"message", "User not found"}}), network::status_code::not_found);
+
+        db->delete_user(db->get_item(id));
+        return std::make_unique<network::json_response>(json::json({{"message", "User deleted"}}));
     }
 #endif
 

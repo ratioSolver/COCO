@@ -33,8 +33,9 @@ namespace coco
 
 #ifdef ENABLE_AUTH
     std::unique_ptr<network::response> login(const network::request &req);
-    std::unique_ptr<network::response> create_user(const network::request &req);
-    std::unique_ptr<network::response> update_user(const network::request &req);
+    virtual std::unique_ptr<network::response> create_user(const network::request &req);
+    virtual std::unique_ptr<network::response> update_user(const network::request &req);
+    std::unique_ptr<network::response> delete_user(const network::request &req);
 #endif
 
     std::unique_ptr<network::response> get_types(const network::request &req);

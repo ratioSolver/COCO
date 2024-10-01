@@ -29,15 +29,16 @@ namespace coco
     /**
      * @brief Creates a new user.
      *
-     * This function creates a new user with the specified username, password, and data.
+     * This function creates a new user with the specified username, password, personal data, and data.
      *
      * @param cc The CoCo core object.
      * @param username The username of the user.
      * @param password The password of the user.
+     * @param personal_data The personal data associated with the user.
      * @param data The data associated with the user.
      * @return The created user object.
      */
-    virtual item &create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&data = {}) = 0;
+    virtual item &create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&personal_data = {}, json::json &&data = {}) = 0;
 
     /**
      * @brief Retrieves a user item based on the provided username and password.
@@ -72,6 +73,25 @@ namespace coco
      * @param password The new password for the user.
      */
     virtual void set_user_password(item &usr, const std::string &password) = 0;
+
+    /**
+     * @brief Sets the personal data of the given user.
+     *
+     * This function sets the personal data of the given user object to the specified personal data.
+     *
+     * @param usr The user object to set the personal data for.
+     * @param personal_data The new personal data for the user.
+     */
+    virtual void set_user_personal_data(item &usr, json::json &&personal_data) = 0;
+
+    /**
+     * @brief Deletes the specified user.
+     *
+     * This function deletes the specified user from the database.
+     *
+     * @param usr The user to be deleted.
+     */
+    virtual void delete_user(const item &usr) = 0;
 #endif
 
     /**

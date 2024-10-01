@@ -41,10 +41,11 @@ namespace coco
     }
 
 #ifdef ENABLE_AUTH
-    [[nodiscard]] item &coco_core::create_user(const std::string &username, const std::string &password, json::json &&data) { return db->create_user(*this, username, password, std::move(data)); }
+    [[nodiscard]] item &coco_core::create_user(const std::string &username, const std::string &password, json::json &&personal_data, json::json &&data) { return db->create_user(*this, username, password, std::move(personal_data), std::move(data)); }
     [[nodiscard]] std::optional<std::reference_wrapper<item>> coco_core::get_user(const std::string &username, const std::string &password) { return db->get_user(username, password); }
     void coco_core::set_user_username(item &usr, const std::string &username) { db->set_user_username(usr, username); }
     void coco_core::set_user_password(item &usr, const std::string &password) { db->set_user_password(usr, password); }
+    void coco_core::set_user_personal_data(item &usr, json::json &&personal_data) { db->set_user_personal_data(usr, std::move(personal_data)); }
 #endif
 
     std::vector<std::reference_wrapper<type>> coco_core::get_types()
@@ -467,7 +468,7 @@ namespace coco
             create_type("User", "A CoCo user", {}, {}, std::move(props), {});
 
             LOG_WARN("Creating default admin user. Please change the password immediately.");
-            db->create_user(*this, "admin", "admin", {{"role", roles::admin}});
+            db->create_user(*this, "admin", "admin", {}, {{"role", roles::admin}});
         }
 #endif
 

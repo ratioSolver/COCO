@@ -40,10 +40,11 @@ namespace coco
     virtual ~coco_core() = default;
 
 #ifdef ENABLE_AUTH
-    [[nodiscard]] item &create_user(const std::string &username, const std::string &password, json::json &&data = {});
+    [[nodiscard]] item &create_user(const std::string &username, const std::string &password, json::json &&personal_data = {}, json::json &&data = {});
     [[nodiscard]] std::optional<std::reference_wrapper<item>> get_user(const std::string &username, const std::string &password);
     void set_user_username(item &usr, const std::string &username);
     void set_user_password(item &usr, const std::string &password);
+    void set_user_personal_data(item &usr, json::json &&personal_data);
 #endif
 
     /**

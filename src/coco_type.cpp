@@ -45,6 +45,7 @@ namespace coco
                 q.push(&p.second.get());
             }
         }
+        return false;
     }
 
     void type::set_name(const std::string &name) noexcept

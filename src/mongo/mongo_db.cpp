@@ -40,7 +40,7 @@ namespace coco
 #endif
 
 #ifdef ENABLE_AUTH
-    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), users_collection(db["users"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+    mongo_db::mongo_db(const json::json &config, const std::string &mongodb_users_uri, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), users_conn(mongocxx::uri(mongodb_users_uri)), users_db(conn[static_cast<std::string>(config["name"]) + "_users"]), users_collection(users_db["users"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
 #else
     mongo_db::mongo_db(const json::json &config, const std::string &mongodb_uri) : coco_db(config), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
 #endif
@@ -50,6 +50,10 @@ namespace coco
             LOG_DEBUG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
 
 #ifdef ENABLE_AUTH
+        assert(users_conn);
+        for ([[maybe_unused]] const auto &c : users_conn.uri().hosts())
+            LOG_DEBUG("Connected to MongoDB users server at " + c.name + ":" + std::to_string(c.port));
+
         if (users_collection.list_indexes().begin() == users_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for users collection");
@@ -89,7 +93,9 @@ namespace coco
             auto id = doc["_id"].get_oid().value.to_string();
             auto name = doc["name"].get_string().value.to_string();
             auto description = doc["description"].get_string().value.to_string();
-            auto properties = json::load(bsoncxx::to_json(doc["properties"].get_document().view()));
+            json::json properties;
+            if (doc.find("properties") != doc.end())
+                properties = json::load(bsoncxx::to_json(doc["properties"].get_document().view()));
             coco_db::create_type(cc, id, name, description, std::move(properties));
             types.push_back(bsoncxx::document::value{doc});
         }
@@ -150,15 +156,17 @@ namespace coco
     }
 
 #ifdef ENABLE_AUTH
-    item &mongo_db::create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&data)
+    item &mongo_db::create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&personal_data, json::json &&data)
     {
         auto &itm = create_item(cc, cc.get_type_by_name("User"), std::move(data));
         auto [salt, hash] = encode_password(password);
         bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm.get_id()}));
         doc.append(bsoncxx::builder::basic::kvp("username", username));
         doc.append(bsoncxx::builder::basic::kvp("salt", salt));
         doc.append(bsoncxx::builder::basic::kvp("password", hash));
-        doc.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm.get_id()}));
+        if (!personal_data.as_object().empty())
+            doc.append(bsoncxx::builder::basic::kvp("personal_data", bsoncxx::from_json(personal_data.dump())));
         if (auto result = users_collection.insert_one(doc.view()); result)
             return itm;
         throw std::runtime_error("Failed to insert user: " + username);
@@ -168,7 +176,7 @@ namespace coco
         if (auto doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "username" << username << bsoncxx::builder::stream::finalize); doc)
         {
             if (auto salt = doc->view()["salt"].get_string().value.to_string(); encode_password(password, salt) == doc->view()["password"].get_string().value.to_string())
-                return get_item(doc->view()["item_id"].get_oid().value.to_string());
+                return get_item(doc->view()["_id"].get_oid().value.to_string());
             throw std::runtime_error("Invalid password for user: " + username);
         }
         return std::nullopt;
@@ -177,7 +185,7 @@ namespace coco
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("username", username))));
-        if (auto result = users_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{usr.get_id()})), doc.view()); !result)
+        if (auto result = users_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()})), doc.view()); !result)
             throw std::runtime_error("Failed to update user username: " + username);
     }
     void mongo_db::set_user_password(item &usr, const std::string &password)
@@ -185,8 +193,24 @@ namespace coco
         auto [salt, hash] = encode_password(password);
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("salt", salt), bsoncxx::builder::basic::kvp("password", hash))));
-        if (auto result = users_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{usr.get_id()})), doc.view()); !result)
+        if (auto result = users_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()})), doc.view()); !result)
             throw std::runtime_error("Failed to update user password");
+    }
+    void mongo_db::set_user_personal_data(item &usr, json::json &&personal_data)
+    {
+        bsoncxx::builder::basic::document doc;
+        if (personal_data.as_object().empty())
+            doc.append(bsoncxx::builder::basic::kvp("$unset", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("personal_data", ""))));
+        else
+            doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("personal_data", bsoncxx::from_json(personal_data.dump())))));
+        if (auto result = users_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()})), doc.view()); !result)
+            throw std::runtime_error("Failed to update user personal data");
+    }
+    void mongo_db::delete_user(const item &usr)
+    {
+        if (auto result = users_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{usr.get_id()}))); !result)
+            throw std::runtime_error("Failed to delete user: " + usr.get_id());
+        delete_item(usr);
     }
 #endif
 
@@ -195,7 +219,8 @@ namespace coco
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", name));
         doc.append(bsoncxx::builder::basic::kvp("description", description));
-        doc.append(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())));
+        if (!props.as_object().empty())
+            doc.append(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())));
         if (!parents.empty())
         {
             auto parents_array = bsoncxx::builder::basic::array{};
@@ -244,7 +269,10 @@ namespace coco
     void mongo_db::set_type_properties(type &tp, json::json &&props)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())))));
+        if (props.as_object().empty())
+            doc.append(bsoncxx::builder::basic::kvp("$unset", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("properties", ""))));
+        else
+            doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())))));
         auto result = types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{tp.get_id()})), doc.view());
         if (!result)
             throw std::invalid_argument("Failed to update type properties: " + props.dump());

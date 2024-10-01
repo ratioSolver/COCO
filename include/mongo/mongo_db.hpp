@@ -17,15 +17,21 @@ namespace coco
     friend class bson_property_converter;
 
   public:
+#ifdef ENABLE_AUTH
+    mongo_db(const json::json &config = {{"name", COCO_NAME}}, const std::string &mongodb_users_uri = MONGODB_URI(MONGODB_USERS_HOST, MONGODB_USERS_PORT), const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
+#else
     mongo_db(const json::json &config = {{"name", COCO_NAME}}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT));
+#endif
 
     void init(coco_core &cc) override;
 
 #ifdef ENABLE_AUTH
-    [[nodiscard]] item &create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&data = {}) override;
+    [[nodiscard]] item &create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&personal_data = {}, json::json &&data = {}) override;
     [[nodiscard]] std::optional<std::reference_wrapper<item>> get_user(const std::string &username, const std::string &password) override;
     void set_user_username(item &usr, const std::string &username) override;
     void set_user_password(item &usr, const std::string &password) override;
+    void set_user_personal_data(item &usr, json::json &&personal_data) override;
+    void delete_user(const item &usr) override;
 #endif
 
     [[nodiscard]] type &create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) override;
@@ -66,6 +72,8 @@ namespace coco
 
   private:
 #ifdef ENABLE_AUTH
+    mongocxx::client users_conn;
+    mongocxx::database users_db;
     mongocxx::collection users_collection;
 #endif
     mongocxx::collection types_collection;

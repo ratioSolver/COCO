@@ -81,7 +81,13 @@ endif()
 
 message(STATUS "CoCo authentication: ${ENABLE_AUTH}")
 if(ENABLE_AUTH)
-    target_compile_definitions(CoCo PUBLIC ENABLE_AUTH)
+    set(MONGODB_USERS_HOST "localhost" CACHE STRING "The MongoDB Users Host")
+    set(MONGODB_USERS_PORT "27017" CACHE STRING "The MongoDB Users Port")
+
+    message(STATUS "MongoDB users host: ${MONGODB_USERS_HOST}")
+    message(STATUS "MongoDB users port: ${MONGODB_USERS_PORT}")
+
+    target_compile_definitions(CoCo PUBLIC ENABLE_AUTH MONGODB_USERS_HOST="${MONGODB_USERS_HOST}" MONGODB_USERS_PORT="${MONGODB_USERS_PORT}")
 endif()
 
 if(MSVC)

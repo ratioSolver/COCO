@@ -455,21 +455,21 @@ namespace coco
         Build(env, "(deffunction intent (?intent ?confidence ?entities ?values ?confidences) (return TRUE))");
 #endif
 
+        // we load the basic knowledge base..
+        db->init(*this);
+
 #ifdef ENABLE_AUTH
         // we build the basic knowledge base for the users..
         if (!db->has_type_name("User"))
         {
             std::vector<std::unique_ptr<property>> props;
-            props.push_back(std::make_unique<integer_property>("role", "The role of the user", 0));
+            props.push_back(std::make_unique<integer_property>("role", "The role of the user", roles::user, roles::admin, roles::user));
             create_type("User", "A CoCo user", {}, {}, std::move(props), {});
 
             LOG_WARN("Creating default admin user. Please change the password immediately.");
             db->create_user(*this, "admin", "admin", {{"role", roles::admin}});
         }
 #endif
-
-        // we load the basic knowledge base..
-        db->init(*this);
 
         Run(env, -1);
     }

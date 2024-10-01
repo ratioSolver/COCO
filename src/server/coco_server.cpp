@@ -846,12 +846,12 @@ namespace coco
 
                 auto &itm = db->get_item(token);
                 // we send the (user) type
-                ws.send(make_type_message(itm.get_type()).dump());
+                ws.send(make_user_type_message(itm.get_type()).dump());
                 // we send the (user) item
-                ws.send(make_item_message(itm).dump());
+                ws.send(make_user_message(itm).dump());
 
                 int role = static_cast<int>(itm.get_properties()["role"]);
-                if (role == static_cast<int>(roles::admin) || role == static_cast<int>(roles::coordinator))
+                if (role == roles::admin || role == roles::coordinator)
                 {
                     if (auto it = users.find(token); it == users.end())
                         users.emplace(token, role);
@@ -862,7 +862,7 @@ namespace coco
                     // we send the items
                     ws.send(make_items_message(*this).dump());
 
-                    if (role == static_cast<int>(roles::admin))
+                    if (role == roles::admin)
                     {
                         // we send the reactive rules
                         ws.send(make_reactive_rules_message(*this).dump());

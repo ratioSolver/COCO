@@ -43,6 +43,29 @@ namespace coco
    */
   [[nodiscard]] json::json to_json(const rule &r) noexcept;
 
+#ifdef ENABLE_AUTH
+  /**
+   * @brief Creates a JSON message for the given user type.
+   *
+   * This function generates a JSON representation of the provided user type.
+   *
+   * @param tp The user type to be converted into a JSON message.
+   * @return A JSON object representing the user type.
+   */
+  [[nodiscard]] json::json make_user_type_message(const type &tp) noexcept;
+
+  /**
+   * @brief Creates a user message from the given item.
+   *
+   * This function generates a JSON object representing a user message
+   * based on the provided item.
+   *
+   * @param itm The item from which to create the user message.
+   * @return A JSON object representing the user message.
+   */
+  [[nodiscard]] json::json make_user_message(const item &itm) noexcept;
+#endif
+
   /**
    * @brief Creates a JSON message containing all types.
    *
@@ -53,16 +76,6 @@ namespace coco
    * @return A `json::json` object containing all types.
    */
   [[nodiscard]] json::json make_types_message(coco_core &core) noexcept;
-
-  /**
-   * @brief Creates a JSON message for the given type.
-   *
-   * This function takes a `type` object as input and returns a JSON message representing the type.
-   *
-   * @param tp The type object for which the JSON message is to be created.
-   * @return A JSON message representing the given type.
-   */
-  [[nodiscard]] json::json make_type_message(const type &tp) noexcept;
 
   /**
    * @brief Creates a new JSON message for the given type.
@@ -105,17 +118,6 @@ namespace coco
    * @return A JSON message containing items.
    */
   [[nodiscard]] json::json make_items_message(coco_core &core) noexcept;
-
-  /**
-   * @brief Creates a JSON message for an item.
-   *
-   * This function takes an item object and creates a JSON message representing the item.
-   * The created JSON message is returned as a `json::json` object.
-   *
-   * @param itm The item object to create the message from.
-   * @return The created JSON message as a `json::json` object.
-   */
-  [[nodiscard]] json::json make_item_message(const item &itm) noexcept;
 
   /**
    * @brief Creates a new item message.
@@ -892,79 +894,81 @@ namespace coco
               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/error"}}}}}}}}}}}}}}}};
 
   const json::json coco_messages{
+#ifdef ENABLE_AUTH
+      {"user_type_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"user_type"}}}},
+           {"user_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}},
+      {"user_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"user"}}}},
+           {"user", {{"$ref", "#/components/schemas/coco_item"}}}}}}}},
+#endif
       {"solvers_message",
        {"payload",
         {{"type", "object"},
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"solvers"}}}},
            {"solvers", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/solver"}}}}}}}}}},
-      {{"types_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"types"}}}},
-            {"types", {{"type", "array"}, {"types", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}}},
-      {{"type_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"type"}}}},
-            {"type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
-      {{"new_type_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"new_type"}}}},
-            {"new_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
-      {{"updated_type_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"updated_type"}}}},
-            {"updated_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}},
+      {"types_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"types"}}}},
+           {"types", {{"type", "array"}, {"types", {{"$ref", "#/components/schemas/coco_type"}}}}}}}}}},
+      {"new_type_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"new_type"}}}},
+           {"new_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}},
+      {"updated_type_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"updated_type"}}}},
+           {"updated_type", {{"$ref", "#/components/schemas/coco_type"}}}}}}}},
       {"deleted_type_message",
        {"payload",
         {{"type", "object"},
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"deleted_type"}}}},
            {"deleted_type", {{"type", "string"}, {"format", "uuid"}}}}}}}},
-      {{"items_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"items"}}}},
-            {"items", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}}}},
-      {{"item_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"item"}}}},
-            {"item", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
-      {{"new_item_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"new_item"}}}},
-            {"new_item", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
-      {{"updated_item_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"updated_item"}}}},
-            {"updated_item", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}},
+      {"items_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"items"}}}},
+           {"items", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/coco_item"}}}}}}}}}},
+      {"new_item_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"new_item"}}}},
+           {"new_item", {{"$ref", "#/components/schemas/coco_item"}}}}}}}},
+      {"updated_item_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"updated_item"}}}},
+           {"updated_item", {{"$ref", "#/components/schemas/coco_item"}}}}}}}},
       {"deleted_item_message",
        {"payload",
         {{"type", "object"},
          {"properties",
           {{"type", {{"type", "string"}, {"enum", {"deleted_item"}}}},
            {"deleted_item", {{"type", "string"}, {"format", "uuid"}}}}}}}},
-      {{"new_data_message",
-        {"payload",
-         {{"type", "object"},
-          {"properties",
-           {{"type", {{"type", "string"}, {"enum", {"new_data"}}}},
-            {"item_id", {{"type", "string"}, {"format", "uuid"}}},
-            {"value", {{"$ref", "#/components/schemas/data"}}}}}}}}},
+      {"new_data_message",
+       {"payload",
+        {{"type", "object"},
+         {"properties",
+          {{"type", {{"type", "string"}, {"enum", {"new_data"}}}},
+           {"item_id", {{"type", "string"}, {"format", "uuid"}}},
+           {"value", {{"$ref", "#/components/schemas/data"}}}}}}}},
       {"reactive_rules_message",
        {"payload",
         {{"type", "object"},

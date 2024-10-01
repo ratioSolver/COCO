@@ -45,6 +45,24 @@ namespace coco
         return j;
     }
 
+#ifdef ENABLE_AUTH
+    [[nodiscard]] json::json make_user_type_message(const type &tp) noexcept
+    {
+        json::json j;
+        j["type"] = "user_type";
+        j["user_type"] = to_json(tp);
+        return j;
+    }
+
+    [[nodiscard]] json::json make_user_message(const item &itm) noexcept
+    {
+        json::json j;
+        j["type"] = "user";
+        j["user"] = to_json(itm);
+        return j;
+    }
+#endif
+
     [[nodiscard]] json::json make_types_message(coco_core &core) noexcept
     {
         json::json j;
@@ -53,14 +71,6 @@ namespace coco
         for (const auto &type : core.get_types())
             types.push_back(to_json(type));
         j["types"] = std::move(types);
-        return j;
-    }
-
-    [[nodiscard]] json::json make_type_message(const type &tp) noexcept
-    {
-        json::json j;
-        j["type"] = "type";
-        j["type"] = to_json(tp);
         return j;
     }
 
@@ -96,14 +106,6 @@ namespace coco
         for (const auto &item : core.get_items())
             items.push_back(to_json(item));
         j["items"] = std::move(items);
-        return j;
-    }
-
-    [[nodiscard]] json::json make_item_message(const item &itm) noexcept
-    {
-        json::json j;
-        j["type"] = "item";
-        j["item"] = to_json(itm);
         return j;
     }
 

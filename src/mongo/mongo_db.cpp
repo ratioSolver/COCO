@@ -152,7 +152,7 @@ namespace coco
 #ifdef ENABLE_AUTH
     item &mongo_db::create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&data)
     {
-        auto &itm = create_item(cc, cc.get_type_by_name("user"), std::move(data));
+        auto &itm = create_item(cc, cc.get_type_by_name("User"), std::move(data));
         auto [salt, hash] = encode_password(password);
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("username", username));

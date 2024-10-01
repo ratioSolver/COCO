@@ -67,16 +67,20 @@ namespace coco
             target = target.substr(0, target.find('?'));
         return std::make_unique<network::file_response>(CLIENT_DIR "/dist" + target);
     }
-    std::unique_ptr<network::response> coco_server::open_api(const network::request &req)
+    std::unique_ptr<network::response> coco_server::open_api([[maybe_unused]] const network::request &req)
     {
+#ifdef ENABLE_AUTH
         if (auto res = authorize(req, {roles::admin}); res)
             return res;
+#endif
         return std::make_unique<network::json_response>(build_open_api());
     }
-    std::unique_ptr<network::response> coco_server::async_api(const network::request &req)
+    std::unique_ptr<network::response> coco_server::async_api([[maybe_unused]] const network::request &req)
     {
+#ifdef ENABLE_AUTH
         if (auto res = authorize(req, {roles::admin}); res)
             return res;
+#endif
         return std::make_unique<network::json_response>(build_async_api());
     }
 
@@ -190,7 +194,7 @@ namespace coco
     }
 #endif
 
-    std::unique_ptr<network::response> coco_server::get_types(const network::request &req)
+    std::unique_ptr<network::response> coco_server::get_types([[maybe_unused]] const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
 #ifdef ENABLE_AUTH
@@ -614,7 +618,7 @@ namespace coco
         return std::make_unique<network::response>(network::status_code::no_content);
     }
 
-    std::unique_ptr<network::response> coco_server::get_reactive_rules(const network::request &req)
+    std::unique_ptr<network::response> coco_server::get_reactive_rules([[maybe_unused]] const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
 #ifdef ENABLE_AUTH
@@ -703,7 +707,7 @@ namespace coco
         }
     }
 
-    std::unique_ptr<network::response> coco_server::get_deliberative_rules(const network::request &req)
+    std::unique_ptr<network::response> coco_server::get_deliberative_rules([[maybe_unused]] const network::request &req)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
 #ifdef ENABLE_AUTH

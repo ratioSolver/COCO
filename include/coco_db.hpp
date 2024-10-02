@@ -246,16 +246,15 @@ namespace coco
     }
 
     /**
-     * @brief Creates an item of the specified type with the given name and optional data.
+     * @brief Creates a new item with the specified type, properties, and value.
      *
-     * @param cc The CoCo core object.
-     * @param tp The type of the item.
-     * @param props The properties of the item.
-     * @param val The value of the item.
-     * @param timestamp The timestamp of the value.
+     * @param tp The type of the item to be created.
+     * @param props The properties of the item in JSON format.
+     * @param val The value of the item in JSON format. Defaults to an empty JSON object.
+     * @param timestamp The timestamp for the item creation. Defaults to the current system time.
      * @return A reference to the created item.
      */
-    virtual item &create_item(coco_core &cc, const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
+    virtual item &create_item(const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) = 0;
 
     /**
      * @brief Sets the properties of an item.
@@ -517,11 +516,11 @@ namespace coco
       types.emplace(id, std::move(tp));
       return *types[id];
     }
-    item &create_item(coco_core &cc, const std::string &id, const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now())
+    item &create_item(const std::string &id, const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now())
     {
       if (items.find(id) != items.end())
         throw std::invalid_argument("item already exists: " + id);
-      items.emplace(id, std::make_unique<item>(cc, id, tp, std::move(props), val, timestamp));
+      items.emplace(id, std::make_unique<item>(id, tp, std::move(props), val, timestamp));
       return *items[id];
     }
     rule &create_reactive_rule(coco_core &cc, const std::string &id, const std::string &name, const std::string &content)

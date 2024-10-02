@@ -159,26 +159,14 @@ namespace coco
     item &coco_core::create_item(const type &tp, json::json &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        for (const auto &[p_name, p] : tp.get_static_properties())
-            if (!props.contains(p_name))
-                LOG_WARN("Properties for new item do not contain " + p_name + " from type " + tp.get_name());
-            else if (!p->validate(props[p_name], schemas))
-                LOG_WARN("Property " + p_name + " for type " + tp.get_name() + " is invalid");
-
-        auto &s = db->create_item(*this, tp, std::move(props));
-        new_item(s);
-        return s;
+        auto &itm = db->create_item(tp, std::move(props));
+        new_item(itm);
+        return itm;
     }
 
     void coco_core::set_item_properties(item &itm, json::json &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        for (const auto &[p_name, p] : itm.get_type().get_static_properties())
-            if (!props.contains(p_name))
-                LOG_WARN("Properties for item " + itm.get_id() + " do not contain " + p_name);
-            else if (!p->validate(props[p_name], schemas))
-                LOG_WARN("Property " + p_name + " for item " + itm.get_id() + " is invalid");
-
         db->set_item_properties(itm, std::move(props));
         updated_item(itm);
     }

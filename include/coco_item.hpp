@@ -19,14 +19,13 @@ namespace coco
     /**
      * @brief Constructs an item object.
      *
-     * @param cc The CoCo core object.
      * @param id The ID of the item.
      * @param tp The type of the item.
      * @param props The properties of the item.
      * @param val The value of the item.
      * @param timestamp The timestamp of the value.
      */
-    item(coco_core &cc, const std::string &id, const type &tp, json::json &&props = json::json(), const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
+    item(const std::string &id, const type &tp, json::json &&props = json::json(), const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
     ~item() noexcept;
 
     /**
@@ -85,7 +84,6 @@ namespace coco
     void set_value(const json::json &val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
 
   private:
-    coco_core &cc;                                   // The CoCo core object.
     Fact *item_fact = nullptr;                       // The fact representing the item.
     Fact *is_instance_of = nullptr;                  // The fact representing the type of the item.
     const std::string id;                            // The ID of the item.

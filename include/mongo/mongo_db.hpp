@@ -46,7 +46,7 @@ namespace coco
     void set_type_dynamic_properties(type &tp, std::vector<std::unique_ptr<property>> &&props) override;
     void delete_type(const type &tp) override;
 
-    [[nodiscard]] item &create_item(coco_core &cc, const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
+    [[nodiscard]] item &create_item(const type &tp, json::json &&props, const json::json &val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
 
     void set_item_properties(item &itm, json::json &&props) override;
     void set_item_value(item &itm, const json::json &value, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;

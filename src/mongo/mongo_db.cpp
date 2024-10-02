@@ -156,7 +156,7 @@ namespace coco
             auto properties = json::load(bsoncxx::to_json(doc["properties"].get_document().view()));
             auto value = json::load(bsoncxx::to_json(doc["value"]["data"].get_document().view()));
             auto timestamp = doc["value"]["timestamp"].get_date().to_int64();
-            coco_db::create_item(cc, id, get_type(type_id), std::move(properties), value, std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp)));
+            coco_db::create_item(id, get_type(type_id), std::move(properties), value, std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp)));
         }
         LOG_DEBUG("Retrieved " << get_items().size() << " items");
     }
@@ -164,7 +164,7 @@ namespace coco
 #ifdef ENABLE_AUTH
     item &mongo_db::create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&personal_data, json::json &&data)
     {
-        auto &itm = create_item(cc, cc.get_type_by_name("User"), std::move(data));
+        auto &itm = create_item(cc.get_type_by_name("User"), std::move(data));
         auto [salt, hash] = encode_password(password);
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm.get_id()}));
@@ -327,7 +327,7 @@ namespace coco
         coco_db::delete_type(tp);
     }
 
-    item &mongo_db::create_item(coco_core &cc, const type &tp, json::json &&props, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
+    item &mongo_db::create_item(const type &tp, json::json &&props, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("type_id", bsoncxx::oid{tp.get_id()}));
@@ -338,7 +338,7 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("value", data_doc));
         auto result = items_collection.insert_one(doc.view());
         if (result)
-            return coco_db::create_item(cc, result->inserted_id().get_oid().value.to_string(), tp, std::move(props), val, timestamp);
+            return coco_db::create_item(result->inserted_id().get_oid().value.to_string(), tp, std::move(props), val, timestamp);
         throw std::invalid_argument("Failed to insert item: " + tp.get_name());
     }
 

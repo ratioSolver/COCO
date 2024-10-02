@@ -460,9 +460,8 @@ namespace coco
         db->init(*this);
 
 #ifdef ENABLE_AUTH
-        // we build the basic knowledge base for the users..
         if (!db->has_type_name("User"))
-        {
+        { // we build the basic knowledge base for the users..
             std::vector<std::unique_ptr<property>> props;
             props.push_back(std::make_unique<integer_property>("role", "The role of the user", roles::user, roles::admin, roles::user));
             create_type("User", "A CoCo user", {}, {}, std::move(props), {});

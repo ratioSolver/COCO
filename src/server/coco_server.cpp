@@ -210,11 +210,9 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         if (req.get_target().find('?') == std::string::npos)
-        {
-            auto id = req.get_target().substr(6);
-            try
+            try // get type by id in the path
             {
-                auto &tp = coco_core::get_type(id);
+                auto &tp = coco_core::get_type(req.get_target().substr(6));
 #ifdef ENABLE_AUTH
                 if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
                 {
@@ -235,9 +233,8 @@ namespace coco
 #endif
                 return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
             }
-        }
         else
-        {
+        { // get type by name
             auto params = network::parse_query(req.get_target().substr(req.get_target().find('?') + 1));
             if (!params.count("name"))
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);

@@ -25,6 +25,8 @@ namespace coco
     }
     item::~item() noexcept
     {
+        for (auto &v : value_facts)
+            Retract(v.second);
         for (auto &p : property_facts)
             Retract(p.second);
         Retract(is_instance_of);
@@ -77,6 +79,12 @@ namespace coco
                 LOG_WARN("Type " + tp.get_name() + " does not have static property " + p_name);
     }
 
+    void item::retract_properties()
+    {
+        for (auto &p : property_facts)
+            Retract(p.second);
+    }
+
     void item::set_value(const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
         std::map<std::string, std::reference_wrapper<const property>> dynamic_properties;
@@ -124,5 +132,11 @@ namespace coco
                 LOG_WARN("Type " + tp.get_name() + " does not have dynamic property " + p_name);
 
         this->timestamp = timestamp;
+    }
+
+    void item::retract_value()
+    {
+        for (auto &v : value_facts)
+            Retract(v.second);
     }
 } // namespace coco

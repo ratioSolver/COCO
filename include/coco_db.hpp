@@ -158,7 +158,7 @@ namespace coco
      * @param tp The type to which the static properties will be assigned.
      * @param props A vector of unique pointers to property objects that will be set as static properties for the type.
      */
-    virtual void set_type_static_properties(type &tp, std::vector<std::unique_ptr<property>> &&props) { tp.set_static_properties(std::move(props)); }
+    virtual void set_type_static_properties(type &tp, std::vector<std::unique_ptr<property>> &&props);
 
     /**
      * @brief Sets the dynamic properties of a given type.
@@ -169,7 +169,7 @@ namespace coco
      * @param tp The type to which the dynamic properties will be assigned.
      * @param props A vector of unique pointers to properties that will be set as dynamic properties of the type.
      */
-    virtual void set_type_dynamic_properties(type &tp, std::vector<std::unique_ptr<property>> &&props) { tp.set_dynamic_properties(std::move(props)); }
+    virtual void set_type_dynamic_properties(type &tp, std::vector<std::unique_ptr<property>> &&props);
 
     /**
      * @brief Removes a type from the database.

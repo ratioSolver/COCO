@@ -95,7 +95,7 @@ namespace coco
     void type::set_dynamic_properties(std::vector<std::unique_ptr<property>> &&props) noexcept
     {
         for (auto &p : dynamic_properties)
-            Undeftemplate(FindDeftemplate(cc.env, p.second->to_deftemplate_name(true).c_str()), cc.env);
+            Undeftemplate(FindDeftemplate(cc.env, p.second->to_deftemplate_name().c_str()), cc.env);
         dynamic_properties.clear();
         for (auto &p : props)
         {

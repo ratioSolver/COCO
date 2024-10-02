@@ -74,6 +74,13 @@ namespace coco
     void set_properties(json::json &&props);
 
     /**
+     * @brief Retracts the properties of the current item.
+     *
+     * This function is responsible for retracting the facts representing the properties of the item.
+     */
+    void retract_properties();
+
+    /**
      * @brief Sets the value of the item.
      *
      * This function sets the value of the item using the provided JSON value.
@@ -82,6 +89,13 @@ namespace coco
      * @param timestamp The timestamp of the value.
      */
     void set_value(const json::json &val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
+
+    /**
+     * @brief Retracts the value of the current item.
+     *
+     * This function is responsible for retracting the facts representing the value of the item.
+     */
+    void retract_value();
 
   private:
     Fact *item_fact = nullptr;                       // The fact representing the item.

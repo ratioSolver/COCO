@@ -83,7 +83,12 @@ namespace coco
     void type::set_static_properties(std::vector<std::unique_ptr<property>> &&props) noexcept
     {
         for (auto &p : static_properties)
-            Undeftemplate(FindDeftemplate(cc.env, p.second->to_deftemplate_name(false).c_str()), cc.env);
+        {
+            auto deftemplate = FindDeftemplate(cc.env, p.second->to_deftemplate_name(false).c_str());
+            assert(deftemplate);
+            [[maybe_unused]] auto success = Undeftemplate(deftemplate, cc.env);
+            assert(success);
+        }
         static_properties.clear();
         for (auto &p : props)
         {
@@ -95,7 +100,12 @@ namespace coco
     void type::set_dynamic_properties(std::vector<std::unique_ptr<property>> &&props) noexcept
     {
         for (auto &p : dynamic_properties)
-            Undeftemplate(FindDeftemplate(cc.env, p.second->to_deftemplate_name().c_str()), cc.env);
+        {
+            auto deftemplate = FindDeftemplate(cc.env, p.second->to_deftemplate_name().c_str());
+            assert(deftemplate);
+            [[maybe_unused]] auto success = Undeftemplate(deftemplate, cc.env);
+            assert(success);
+        }
         dynamic_properties.clear();
         for (auto &p : props)
         {

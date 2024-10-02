@@ -47,7 +47,7 @@ namespace coco
 
             for (const auto &[p_name, p] : t->get_static_properties())
             {
-                FactBuilder *property_fact_builder = CreateFactBuilder(cc.env, p->to_deftemplate_name(*t, false).c_str());
+                FactBuilder *property_fact_builder = CreateFactBuilder(cc.env, p->to_deftemplate_name(false).c_str());
                 FBPutSlotSymbol(property_fact_builder, "item_id", id.c_str());
                 p->set_value(property_fact_builder, props[p_name]);
                 auto property_fact = FBAssert(property_fact_builder);
@@ -78,7 +78,7 @@ namespace coco
                         LOG_WARN("Data " + p_name + " for item " + id + " is invalid");
                     if (value_facts.find(p_name) != value_facts.end())
                         Retract(value_facts[p_name]); // Retract the old value
-                    FactBuilder *value_fact_builder = CreateFactBuilder(cc.env, p->to_deftemplate_name(*t).c_str());
+                    FactBuilder *value_fact_builder = CreateFactBuilder(cc.env, p->to_deftemplate_name().c_str());
                     FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
                     p->set_value(value_fact_builder, val[p_name]);
                     FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());

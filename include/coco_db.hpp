@@ -108,7 +108,7 @@ namespace coco
      * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    virtual type &create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) = 0;
+    virtual type &create_type(coco_core &cc, const std::string &name, const std::string &description, json::json &&props) = 0;
 
     /**
      * Sets the name of the given type.
@@ -141,61 +141,35 @@ namespace coco
     virtual void set_type_properties(type &tp, json::json &&props) { tp.set_properties(std::move(props)); }
 
     /**
-     * @brief Adds a parent to the given type.
+     * @brief Sets the parents of the given type object.
      *
-     * This function adds the specified parent to the given type. The parent is added to the `parents` map of the type,
-     * using the parent's name as the key and the parent object as the value.
+     * This function assigns a list of parent objects to the specified type object.
      *
-     * @param tp The type to which the parent will be added.
-     * @param parent The parent type to be added.
+     * @param tp The type object whose parents are to be set.
+     * @param parents A vector of references to the parent objects.
      */
-    virtual void add_parent(type &tp, const type &parent) { tp.add_parent(parent); }
+    virtual void set_type_parents(type &tp, std::vector<std::reference_wrapper<const type>> &&parents) { tp.set_parents(parents); }
 
     /**
-     * @brief Removes a parent from the given type.
+     * @brief Sets the static properties of a given type.
      *
-     * This function removes the specified parent from the given type.
+     * This function assigns a set of static properties to the specified type.
      *
-     * @param tp The type from which to remove the parent.
-     * @param parent The parent to be removed.
+     * @param tp The type to which the static properties will be assigned.
+     * @param props A vector of unique pointers to property objects that will be set as static properties for the type.
      */
-    virtual void remove_parent(type &tp, const type &parent) { tp.parents.erase(parent.name); }
+    virtual void set_type_static_properties(type &tp, std::vector<std::unique_ptr<property>> &&props) { tp.set_static_properties(std::move(props)); }
 
     /**
-     * Adds a static property to the given type.
+     * @brief Sets the dynamic properties of a given type.
      *
-     * @param tp The type to which the static property will be added.
-     * @param prop The static property to add.
+     * This function assigns a set of dynamic properties to the specified type.
+     * It takes ownership of the properties by moving them.
+     *
+     * @param tp The type to which the dynamic properties will be assigned.
+     * @param props A vector of unique pointers to properties that will be set as dynamic properties of the type.
      */
-    virtual void add_static_property(type &tp, std::unique_ptr<property> &&prop) { tp.add_static_property(std::move(prop)); }
-
-    /**
-     * @brief Removes a static property from the given type.
-     *
-     * This function removes the static property with the specified id from the given type.
-     *
-     * @param tp The type from which to remove the static property.
-     * @param prop The static property to remove.
-     */
-    virtual void remove_static_property(type &tp, const property &prop) { tp.static_properties.erase(prop.get_name()); }
-
-    /**
-     * Adds a dynamic property to the given type.
-     *
-     * @param tp The type to which the dynamic property will be added.
-     * @param prop The dynamic property to add.
-     */
-    virtual void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop) { tp.add_dynamic_property(std::move(prop)); }
-
-    /**
-     * @brief Removes a dynamic property from the given type.
-     *
-     * This function removes the dynamic property with the specified id from the given type.
-     *
-     * @param tp The type from which to remove the dynamic property.
-     * @param prop The dynamic property to remove.
-     */
-    virtual void remove_dynamic_property(type &tp, const property &prop) { tp.dynamic_properties.erase(prop.get_name()); }
+    virtual void set_type_dynamic_properties(type &tp, std::vector<std::unique_ptr<property>> &&props) { tp.set_dynamic_properties(std::move(props)); }
 
     /**
      * @brief Removes a type from the database.
@@ -534,11 +508,11 @@ namespace coco
     virtual void delete_deliberative_rule(const rule &r) { deliberative_rules.erase(r.id); }
 
   protected:
-    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {})
+    type &create_type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, json::json &&props)
     {
       if (types.find(id) != types.end())
         throw std::invalid_argument("Type already exists: " + id);
-      auto tp = std::make_unique<type>(cc, id, name, description, std::move(props), std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+      auto tp = std::make_unique<type>(cc, id, name, description, std::move(props));
       types_by_name.emplace(name, *tp);
       types.emplace(id, std::move(tp));
       return *types[id];

@@ -4,13 +4,8 @@
 
 namespace coco
 {
-    type::type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties) noexcept : cc(cc), id(id), name(name), description(description), properties(std::move(props))
+    type::type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, json::json &&props) noexcept : cc(cc), id(id), name(name), description(description), properties(std::move(props))
     {
-        for (auto &p : static_properties)
-            add_static_property(std::move(p));
-        for (auto &p : dynamic_properties)
-            add_dynamic_property(std::move(p));
-
         FactBuilder *type_fact_builder = CreateFactBuilder(cc.env, "type");
         FBPutSlotSymbol(type_fact_builder, "id", id.c_str());
         FBPutSlotString(type_fact_builder, "name", name.c_str());
@@ -18,8 +13,6 @@ namespace coco
         type_fact = FBAssert(type_fact_builder);
         assert(type_fact);
         FBDispose(type_fact_builder);
-        for (auto &p : parents)
-            add_parent(p.get());
     }
     type::~type() noexcept
     {
@@ -68,33 +61,46 @@ namespace coco
 
     void type::set_properties(json::json &&props) noexcept { properties = props; }
 
-    void type::add_parent(const type &parent) noexcept
+    void type::set_parents(const std::vector<std::reference_wrapper<const type>> &parents) noexcept
     {
-        FactBuilder *is_a_fact_builder = CreateFactBuilder(cc.env, "is_a");
-        FBPutSlotSymbol(is_a_fact_builder, "type_id", get_id().c_str());
-        FBPutSlotSymbol(is_a_fact_builder, "parent_id", parent.get_id().c_str());
-        auto parent_fact = FBAssert(is_a_fact_builder);
-        assert(parent_fact);
-        FBDispose(is_a_fact_builder);
-        parents.emplace(parent.name, parent);
-        parent_facts.emplace(parent.name, parent_fact);
+        for (auto &p : parent_facts)
+            Retract(p.second);
+        parent_facts.clear();
+        this->parents.clear();
+        for (auto &p : parents)
+        {
+            FactBuilder *is_a_fact_builder = CreateFactBuilder(cc.env, "is_a");
+            FBPutSlotSymbol(is_a_fact_builder, "type_id", get_id().c_str());
+            FBPutSlotSymbol(is_a_fact_builder, "parent_id", p.get().get_id().c_str());
+            auto parent_fact = FBAssert(is_a_fact_builder);
+            assert(parent_fact);
+            FBDispose(is_a_fact_builder);
+            this->parents.emplace(p.get().name, p);
+            parent_facts.emplace(p.get().name, parent_fact);
+        }
     }
-    void type::remove_parent(const type &parent) noexcept
+
+    void type::set_static_properties(std::vector<std::unique_ptr<property>> &&props) noexcept
     {
-        Retract(parent_facts.at(parent.name));
-        parents.erase(parent.name);
-        parent_facts.erase(parent.name);
+        for (auto &p : static_properties)
+            Undeftemplate(FindDeftemplate(cc.env, p.second->to_deftemplate_name(false).c_str()), cc.env);
+        static_properties.clear();
+        for (auto &p : props)
+        {
+            Build(cc.env, p->to_deftemplate(false).c_str());
+            static_properties.emplace(p->get_name(), std::move(p));
+        }
     }
-    void type::add_static_property(std::unique_ptr<property> &&prop) noexcept
+
+    void type::set_dynamic_properties(std::vector<std::unique_ptr<property>> &&props) noexcept
     {
-        Build(cc.env, prop->to_deftemplate(*this, false).c_str());
-        static_properties.emplace(prop->get_name(), std::move(prop));
+        for (auto &p : dynamic_properties)
+            Undeftemplate(FindDeftemplate(cc.env, p.second->to_deftemplate_name(true).c_str()), cc.env);
+        dynamic_properties.clear();
+        for (auto &p : props)
+        {
+            Build(cc.env, p->to_deftemplate(true).c_str());
+            dynamic_properties.emplace(p->get_name(), std::move(p));
+        }
     }
-    void type::remove_static_property(const property &prop) noexcept { static_properties.erase(prop.get_name()); }
-    void type::add_dynamic_property(std::unique_ptr<property> &&prop) noexcept
-    {
-        Build(cc.env, prop->to_deftemplate(*this, true).c_str());
-        dynamic_properties.emplace(prop->get_name(), std::move(prop));
-    }
-    void type::remove_dynamic_property(const property &prop) noexcept { dynamic_properties.erase(prop.get_name()); }
 } // namespace coco

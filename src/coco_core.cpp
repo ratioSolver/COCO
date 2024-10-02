@@ -66,10 +66,10 @@ namespace coco
         return db->get_type_by_name(name);
     }
 
-    type &coco_core::create_type(const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties)
+    type &coco_core::create_type(const std::string &name, const std::string &description, json::json &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &st = db->create_type(*this, name, description, std::move(props), std::move(parents), std::move(static_properties), std::move(dynamic_properties));
+        auto &st = db->create_type(*this, name, description, std::move(props));
         new_type(st);
         return st;
     }
@@ -98,49 +98,27 @@ namespace coco
         updated_type(tp);
     }
 
-    void coco_core::add_parent(type &tp, const type &parent)
+    void coco_core::set_type_parents(type &tp, std::vector<std::reference_wrapper<const type>> &&parents)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db->add_parent(tp, parent);
+        db->set_type_parents(tp, std::move(parents));
         Run(env, -1);
         updated_type(tp);
     }
 
-    void coco_core::remove_parent(type &tp, const type &parent)
+    void coco_core::set_type_static_properties(type &tp, std::vector<std::unique_ptr<property>> &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db->remove_parent(tp, parent);
+        db->set_type_static_properties(tp, std::move(props));
         Run(env, -1);
         updated_type(tp);
     }
 
-    void coco_core::add_static_property(type &tp, std::unique_ptr<property> &&prop)
+    void coco_core::set_type_dynamic_properties(type &tp, std::vector<std::unique_ptr<property>> &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db->add_static_property(tp, std::move(prop));
+        db->set_type_dynamic_properties(tp, std::move(props));
         Run(env, -1);
-        updated_type(tp);
-    }
-
-    void coco_core::remove_static_property(type &tp, const property &prop)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        db->remove_static_property(tp, prop);
-        updated_type(tp);
-    }
-
-    void coco_core::add_dynamic_property(type &tp, std::unique_ptr<property> &&prop)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        db->add_dynamic_property(tp, std::move(prop));
-        Run(env, -1);
-        updated_type(tp);
-    }
-
-    void coco_core::remove_dynamic_property(type &tp, const property &prop)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        db->remove_dynamic_property(tp, prop);
         updated_type(tp);
     }
 
@@ -462,9 +440,10 @@ namespace coco
 #ifdef ENABLE_AUTH
         if (!db->has_type_name("User"))
         { // we build the basic knowledge base for the users..
+            auto &tp = create_type("User", "A CoCo user", {});
             std::vector<std::unique_ptr<property>> props;
-            props.push_back(std::make_unique<integer_property>("role", "The role of the user", roles::user, roles::admin, roles::user));
-            create_type("User", "A CoCo user", {}, {}, std::move(props), {});
+            props.push_back(std::make_unique<integer_property>(tp, "role", "The role of the user", roles::user, roles::admin, roles::user));
+            set_type_static_properties(tp, std::move(props));
 
             LOG_WARN("Creating default admin user. Please change the password immediately.");
             db->create_user(*this, "admin", "admin", {}, {{"role", roles::admin}});

@@ -24,10 +24,12 @@ namespace coco
   public:
     /**
      * @brief Constructs a property with the given name and description.
+     *
+     * @param tp The type the property belongs to.
      * @param name The name of the property.
      * @param description The description of the property.
      */
-    property(const std::string &name, const std::string &description) noexcept;
+    property(const type &tp, const std::string &name, const std::string &description) noexcept;
 
     /**
      * @brief Default destructor.
@@ -72,7 +74,7 @@ namespace coco
      * @param is_dynamic A flag indicating whether the property is dynamic or static.
      * @return The deftemplate string representation of the property.
      */
-    virtual std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept = 0;
+    virtual std::string to_deftemplate(bool is_dynamic) const noexcept = 0;
 
     /**
      * @brief Converts the given type to a deftemplate name.
@@ -84,7 +86,7 @@ namespace coco
      * @param is_dynamic Whether the type is dynamic or not. Default is true.
      * @return The deftemplate name corresponding to the given type.
      */
-    std::string to_deftemplate_name(const type &tp, bool is_dynamic = true) const noexcept;
+    std::string to_deftemplate_name(bool is_dynamic = true) const noexcept;
 
     /**
      * @brief Converts the property to a JSON object.
@@ -95,6 +97,7 @@ namespace coco
     friend json::json to_json(const property &p) noexcept;
 
   private:
+    const type &tp;          // The type the property belongs to.
     std::string name;        // The name of the property.
     std::string description; // The description of the property.
   };
@@ -110,15 +113,16 @@ namespace coco
     /**
      * @brief Constructs a `boolean_property` object with the given name and description.
      *
+     * @param tp The type the property belongs to.
      * @param name The name of the property.
      * @param description The description of the property.
      * @param default_value The default value for the property (default: `std::nullopt`).
      */
-    boolean_property(const std::string &name, const std::string &description, std::optional<bool> default_value = std::nullopt) noexcept;
+    boolean_property(const type &tp, const std::string &name, const std::string &description, std::optional<bool> default_value = std::nullopt) noexcept;
 
   private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-    std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
+    std::string to_deftemplate(bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
     json::json to_json() const noexcept override;
@@ -138,17 +142,18 @@ namespace coco
     /**
      * @brief Constructs an `integer_property` object with the given name, description, minimum and maximum values.
      *
+     * @param tp The type the property belongs to.
      * @param name The name of the property.
      * @param description The description of the property.
      * @param default_value The default value for the property (default: `std::nullopt`).
      * @param min The minimum value allowed for the property (default: `std::numeric_limits<long>::min()`).
      * @param max The maximum value allowed for the property (default: `std::numeric_limits<long>::max()`).
      */
-    integer_property(const std::string &name, const std::string &description, std::optional<long> default_value = std::nullopt, long min = std::numeric_limits<long>::min(), long max = std::numeric_limits<long>::max()) noexcept;
+    integer_property(const type &tp, const std::string &name, const std::string &description, std::optional<long> default_value = std::nullopt, long min = std::numeric_limits<long>::min(), long max = std::numeric_limits<long>::max()) noexcept;
 
   private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-    std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
+    std::string to_deftemplate(bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
     json::json to_json() const noexcept override;
@@ -170,17 +175,18 @@ namespace coco
     /**
      * @brief Constructs a `float_property` object with the given name, description, minimum value, and maximum value.
      *
+     * @param tp The type the property belongs to.
      * @param name The name of the property.
      * @param description The description of the property.
      * @param default_value The default value for the property. Defaults to `std::nullopt`.
      * @param min The minimum value allowed for the property. Defaults to `-std::numeric_limits<double>::max()`.
      * @param max The maximum value allowed for the property. Defaults to `std::numeric_limits<double>::max()`.
      */
-    float_property(const std::string &name, const std::string &description, std::optional<double> default_value = std::nullopt, double min = -std::numeric_limits<double>::max(), double max = std::numeric_limits<double>::max()) noexcept;
+    float_property(const type &tp, const std::string &name, const std::string &description, std::optional<double> default_value = std::nullopt, double min = -std::numeric_limits<double>::max(), double max = std::numeric_limits<double>::max()) noexcept;
 
   private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-    std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
+    std::string to_deftemplate(bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
     json::json to_json() const noexcept override;
@@ -202,14 +208,16 @@ namespace coco
     /**
      * @brief Constructs a `string_property` object with the given name and description.
      *
+     * @param tp The type the property belongs to.
      * @param name The name of the string property.
      * @param description The description of the string property.
+     * @param default_value The default value for the property (default: `std::nullopt`).
      */
-    string_property(const std::string &name, const std::string &description, std::optional<std::string> default_value = std::nullopt) noexcept;
+    string_property(const type &tp, const std::string &name, const std::string &description, std::optional<std::string> default_value = std::nullopt) noexcept;
 
   private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-    std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
+    std::string to_deftemplate(bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
     json::json to_json() const noexcept override;
@@ -229,17 +237,18 @@ namespace coco
     /**
      * @brief Constructs a `symbol_property` object with the given name and description.
      *
+     * @param tp The type the property belongs to.
      * @param name The name of the symbol property.
      * @param description The description of the symbol property.
      * @param default_value The default value for the property.
      * @param values The possible values for the property.
      * @param multiple Indicates whether the property can have multiple values.
      */
-    symbol_property(const std::string &name, const std::string &description, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
+    symbol_property(const type &tp, const std::string &name, const std::string &description, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
 
   private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-    std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
+    std::string to_deftemplate(bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
     json::json to_json() const noexcept override;
@@ -261,24 +270,25 @@ namespace coco
     /**
      * @brief Constructs an `item_property` object.
      *
+     * @param tp The type the property belongs to.
      * @param name The name of the property.
      * @param description The description of the property.
-     * @param tp The type of the property.
+     * @param domain The type of the property.
      * @param default_value The default value of the property (optional).
      * @param values The possible values for the property.
      * @param multiple Indicates whether the property can have multiple values.
      */
-    item_property(const std::string &name, const std::string &description, const type &tp, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
+    item_property(const type &tp, const std::string &name, const std::string &description, const type &domain, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
 
   private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-    std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
+    std::string to_deftemplate(bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
     json::json to_json() const noexcept override;
 
   private:
-    const type &tp;                                        // The type of the property.
+    const type &domain;                                    // The domain of the property.
     std::optional<std::vector<std::string>> default_value; // The default value for the property.
     std::vector<std::string> values;                       // The possible values for the property.
     bool multiple;                                         // Indicates whether the property can have multiple values.
@@ -295,15 +305,16 @@ namespace coco
     /**
      * @brief Constructs a `json_property` object.
      *
+     * @param tp The type the property belongs to.
      * @param name The name of the property.
      * @param description The description of the property.
      * @param schema The JSON schema for the property.
      */
-    json_property(const std::string &name, const std::string &description, json::json &&schema, std::optional<json::json> default_value = std::nullopt) noexcept;
+    json_property(const type &tp, const std::string &name, const std::string &description, json::json &&schema, std::optional<json::json> default_value = std::nullopt) noexcept;
 
   private:
     bool validate(const json::json &j, const json::json &schema_refs) const noexcept override;
-    std::string to_deftemplate(const type &tp, bool is_dynamic) const noexcept override;
+    std::string to_deftemplate(bool is_dynamic) const noexcept override;
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
 
     json::json to_json() const noexcept override;
@@ -318,10 +329,10 @@ namespace coco
    *
    * This function takes a JSON object as input and creates a property object based on its contents.
    *
-   * @param cc The CoCo core object.
+   * @param tp The type the property belongs to.
    * @param name The name of the property.
    * @param j The JSON object containing the property data.
    * @return A unique pointer to the created property object.
    */
-  std::unique_ptr<property> make_property(coco_core &cc, const std::string &name, const json::json &j);
+  std::unique_ptr<property> make_property(const type &tp, const std::string &name, const json::json &j);
 } // namespace coco

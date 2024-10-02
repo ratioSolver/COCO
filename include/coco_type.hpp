@@ -26,12 +26,11 @@ namespace coco
      * @param name The name of the type.
      * @param description The description of the type.
      * @param props The properties of the type.
-     * @param parents The parent types of the type.
-     * @param static_properties The static properties of the type.
-     * @param dynamic_properties The dynamic properties of the type.
      */
-    type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, json::json &&props = json::json(), std::vector<std::reference_wrapper<const type>> &&parents = {}, std::vector<std::unique_ptr<property>> &&static_properties = {}, std::vector<std::unique_ptr<property>> &&dynamic_properties = {}) noexcept;
+    type(coco_core &cc, const std::string &id, const std::string &name, const std::string &description, json::json &&props = json::json()) noexcept;
     ~type() noexcept;
+
+    coco_core &get_core() const noexcept { return cc; }
 
     /**
      * @brief Gets the ID of the type.
@@ -102,12 +101,10 @@ namespace coco
      * @param props The JSON object containing the properties.
      */
     void set_properties(json::json &&props) noexcept;
-    void add_parent(const type &parent) noexcept;
-    void remove_parent(const type &parent) noexcept;
-    void add_static_property(std::unique_ptr<property> &&prop) noexcept;
-    void remove_static_property(const property &prop) noexcept;
-    void add_dynamic_property(std::unique_ptr<property> &&prop) noexcept;
-    void remove_dynamic_property(const property &prop) noexcept;
+
+    void set_parents(const std::vector<std::reference_wrapper<const type>> &parents) noexcept;
+    void set_static_properties(std::vector<std::unique_ptr<property>> &&props) noexcept;
+    void set_dynamic_properties(std::vector<std::unique_ptr<property>> &&props) noexcept;
 
   private:
     coco_core &cc;                                                       // The CoCo core object.

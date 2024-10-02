@@ -86,12 +86,9 @@ namespace coco
      * @param name The name of the type.
      * @param description The description of the type.
      * @param props The properties of the type.
-     * @param parents The parents of the type.
-     * @param static_properties The static properties of the type.
-     * @param dynamic_properties The dynamic properties of the type.
      * @return A reference to the created type.
      */
-    type &create_type(const std::string &name, const std::string &description, json::json &&props, std::vector<std::reference_wrapper<const type>> &&parents, std::vector<std::unique_ptr<property>> &&static_properties, std::vector<std::unique_ptr<property>> &&dynamic_properties);
+    type &create_type(const std::string &name, const std::string &description, json::json &&props);
 
     /**
      * @brief Sets the name of the type.
@@ -124,64 +121,35 @@ namespace coco
     void set_type_properties(type &tp, json::json &&props);
 
     /**
-     * @brief Adds a parent to the type.
+     * @brief Sets the parents for the given type.
      *
-     * This function adds a parent to the type with the specified ID.
+     * This function assigns a list of parent references to the specified type.
      *
-     * @param tp The type.
-     * @param parent The parent to add.
+     * @param tp The type for which the parents are to be set.
+     * @param parents A vector of references to the parent types.
      */
-    void add_parent(type &tp, const type &parent);
+    void set_type_parents(type &tp, std::vector<std::reference_wrapper<const type>> &&parents);
 
     /**
-     * @brief Removes a parent from the type.
-     *
-     * This function removes a parent from the type with the specified ID.
-     *
-     * @param tp The type.
-     * @param parent The parent to remove.
+     * @brief Sets the static properties for a given type.
+     * 
+     * This function assigns a set of static properties to the specified type.
+     * 
+     * @param tp A reference to the type for which the properties are being set.
+     * @param props A vector of unique pointers to property objects that will be assigned to the type.
      */
-    void remove_parent(type &tp, const type &parent);
+    void set_type_static_properties(type &tp, std::vector<std::unique_ptr<property>> &&props);
 
     /**
-     * @brief Adds a static property to the type.
-     *
-     * This function adds a static property to the type with the specified ID.
-     *
-     * @param tp The type.
-     * @param prop The property to add.
+     * @brief Sets the dynamic properties for a given type.
+     * 
+     * This function assigns a set of dynamic properties to the specified type.
+     * 
+     * @param tp A reference to the type for which the properties are being set.
+     * @param props A vector of unique pointers to property objects that will be 
+     *              assigned to the type.
      */
-    void add_static_property(type &tp, std::unique_ptr<property> &&prop);
-
-    /**
-     * @brief Removes a static property from the type.
-     *
-     * This function removes a static property from the type with the specified ID.
-     *
-     * @param tp The type.
-     * @param prop The property to remove.
-     */
-    void remove_static_property(type &tp, const property &prop);
-
-    /**
-     * @brief Adds a dynamic property to the type.
-     *
-     * This function adds a dynamic property to the type with the specified ID.
-     *
-     * @param tp The type.
-     * @param prop The property to add.
-     */
-    void add_dynamic_property(type &tp, std::unique_ptr<property> &&prop);
-
-    /**
-     * @brief Removes a dynamic property from the type.
-     *
-     * This function removes a dynamic property from the type with the specified ID.
-     *
-     * @param tp The type.
-     * @param prop The property to remove.
-     */
-    void remove_dynamic_property(type &tp, const property &prop);
+    void set_type_dynamic_properties(type &tp, std::vector<std::unique_ptr<property>> &&props);
 
     /**
      * @brief Deletes the type with the specified ID.

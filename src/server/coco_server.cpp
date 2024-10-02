@@ -276,11 +276,15 @@ namespace coco
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string)
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+
         std::string name = body["name"];
         std::string description = body.contains("description") ? body["description"] : "";
         json::json props = body.contains("properties") ? body["properties"] : json::json();
-        std::vector<std::reference_wrapper<const type>> parents;
+        auto &tp = coco_core::create_type(name, description, std::move(props));
+
         if (body.contains("parents") && body["parents"].get_type() == json::json_type::array)
+        {
+            std::vector<std::reference_wrapper<const type>> parents;
             for (auto &p : body["parents"].as_array())
             {
                 if (p.get_type() != json::json_type::string)
@@ -295,41 +299,40 @@ namespace coco
                     return std::make_unique<network::json_response>(json::json({{"message", "Parent type not found"}}), network::status_code::not_found);
                 }
             }
-        std::vector<std::unique_ptr<property>> static_properties;
+            set_type_parents(tp, std::move(parents));
+        }
+
         if (body.contains("static_properties"))
         {
+            std::vector<std::unique_ptr<property>> static_properties;
             if (body["static_properties"].get_type() != json::json_type::object)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             for (auto &p : body["static_properties"].as_object())
             {
                 if (p.second.get_type() != json::json_type::object)
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                auto prop = make_property(*this, p.first, p.second);
+                auto prop = make_property(tp, p.first, p.second);
                 static_properties.emplace_back(std::move(prop));
             }
+            set_type_static_properties(tp, std::move(static_properties));
         }
-        std::vector<std::unique_ptr<property>> dynamic_properties;
+
         if (body.contains("dynamic_properties"))
         {
+            std::vector<std::unique_ptr<property>> dynamic_properties;
             if (body["dynamic_properties"].get_type() != json::json_type::object)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             for (auto &p : body["dynamic_properties"].as_object())
             {
                 if (p.second.get_type() != json::json_type::object)
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                auto prop = make_property(*this, p.first, p.second);
+                auto prop = make_property(tp, p.first, p.second);
                 dynamic_properties.emplace_back(std::move(prop));
             }
+            set_type_dynamic_properties(tp, std::move(dynamic_properties));
         }
-        try
-        {
-            auto &tp = coco_core::create_type(name, description, std::move(props), std::move(parents), std::move(static_properties), std::move(dynamic_properties));
-            return std::make_unique<network::json_response>(to_json(tp));
-        }
-        catch (const std::exception &e)
-        {
-            return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
-        }
+
+        return std::make_unique<network::json_response>(to_json(tp));
     }
     std::unique_ptr<network::response> coco_server::update_type(const network::request &req)
     {
@@ -372,50 +375,44 @@ namespace coco
         {
             if (body["parents"].get_type() != json::json_type::array)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            for (auto &p : tp->get_parents())
-                remove_parent(*tp, p.second.get());
             for (auto &p : body["parents"].as_array())
             {
                 if (p.get_type() != json::json_type::string)
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                try
-                {
-                    auto &parent = coco_core::get_type(p);
-                    add_parent(*tp, parent);
-                }
-                catch (const std::exception &)
-                {
+                if (!db->has_type(p))
                     return std::make_unique<network::json_response>(json::json({{"message", "Parent type not found"}}), network::status_code::not_found);
-                }
             }
+
+            std::vector<std::reference_wrapper<const type>> parents;
+            for (auto &p : body["parents"].as_array())
+                parents.emplace_back(coco_core::get_type(p));
+            set_type_parents(*tp, std::move(parents));
         }
         if (body.contains("static_properties"))
         {
             if (body["static_properties"].get_type() != json::json_type::object)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            for (auto &p : tp->get_static_properties())
-                remove_static_property(*tp, *p.second);
             for (auto &p : body["static_properties"].as_object())
-            {
                 if (p.second.get_type() != json::json_type::object)
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                auto prop = make_property(*this, p.first, p.second);
-                add_static_property(*tp, std::move(prop));
-            }
+
+            std::vector<std::unique_ptr<property>> static_properties;
+            for (auto &[name, prop] : body["static_properties"].as_object())
+                static_properties.emplace_back(make_property(*tp, name, prop));
+            set_type_static_properties(*tp, std::move(static_properties));
         }
         if (body.contains("dynamic_properties"))
         {
             if (body["dynamic_properties"].get_type() != json::json_type::object)
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            for (auto &p : tp->get_dynamic_properties())
-                remove_dynamic_property(*tp, *p.second);
             for (auto &p : body["dynamic_properties"].as_object())
-            {
                 if (p.second.get_type() != json::json_type::object)
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                auto prop = make_property(*this, p.first, p.second);
-                add_dynamic_property(*tp, std::move(prop));
-            }
+
+            std::vector<std::unique_ptr<property>> dynamic_properties;
+            for (auto &[name, prop] : body["dynamic_properties"].as_object())
+                dynamic_properties.emplace_back(make_property(*tp, name, prop));
+            set_type_dynamic_properties(*tp, std::move(dynamic_properties));
         }
         return std::make_unique<network::json_response>(to_json(*tp));
     }

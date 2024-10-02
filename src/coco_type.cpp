@@ -25,20 +25,14 @@ namespace coco
     {
         if (this == &other)
             return true;
-        std::queue<const type *> q;
-        q.push(this);
-        while (!q.empty())
-        {
-            auto tp = q.front();
-            q.pop();
-            for (auto &p : tp->parents)
-            {
-                if (&p.second.get() == &other)
-                    return true;
-                q.push(&p.second.get());
-            }
-        }
-        return false;
+
+        FunctionCallBuilder *is_a_builder = CreateFunctionCallBuilder(cc.env, 2);
+        FCBAppendSymbol(is_a_builder, get_id().c_str());
+        FCBAppendSymbol(is_a_builder, other.get_id().c_str());
+        CLIPSValue res;
+        FCBCall(is_a_builder, "is-a", &res);
+        FCBDispose(is_a_builder);
+        return res.lexemeValue && std::strcmp(res.lexemeValue->contents, "TRUE") == 0;
     }
 
     void type::set_name(const std::string &name) noexcept

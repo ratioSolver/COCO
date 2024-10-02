@@ -117,12 +117,12 @@ namespace coco
                 {
                     FactBuilder *value_fact_builder = CreateFactBuilder(tp.get_core().env, dynamic_properties.at(p_name).get().to_deftemplate_name().c_str());
                     FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
-                    dynamic_properties.at(p_name).get().set_value(value_fact_builder, val[p_name]);
+                    dynamic_properties.at(p_name).get().set_value(value_fact_builder, val);
                     FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
                     auto value_fact = FBAssert(value_fact_builder);
                     assert(value_fact);
                     FBDispose(value_fact_builder);
-                    value[p_name] = val[p_name];
+                    value[p_name] = val;
                     value_facts.emplace(p_name, value_fact);
                 }
                 else

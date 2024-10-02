@@ -408,6 +408,7 @@ namespace coco
         Build(env, "(deftemplate item (slot id (type SYMBOL)))");
         Build(env, "(deftemplate is_instance_of (slot item_id (type SYMBOL)) (slot type_id (type SYMBOL)))");
         Build(env, "(defrule inheritance (is_a (type_id ?t) (parent_id ?p)) (is_instance_of (item_id ?i) (type_id ?t)) => (assert (is_instance_of (item_id ?i) (type_id ?p))))");
+        Build(env, "(deffunction is-a (?type_id ?parent_id) (any-factp ((?is_a is_a)) (and (eq ?is_a:type_id ?type_id) (eq ?is_a:parent_id ?parent_id))))");
         Build(env, "(deffunction get-all-instances-of (?type_id) (bind ?instances (create$)) (do-for-all-facts ((?is_instance_of is_instance_of)) (eq ?is_instance_of:type_id ?type_id) (bind ?instances (create$ ?instances ?is_instance_of:item_id))) (return ?instances))");
 
         // we build the basic knowledge base for the solvers..

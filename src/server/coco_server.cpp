@@ -616,7 +616,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
 #ifdef ENABLE_AUTH
-        if (auto res = authorize(req, {roles::admin}); res) // Only admins can get all reactive rules
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can get all reactive rules
             return res;
 #endif
         json::json rls(json::json_type::array);
@@ -705,7 +705,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
 #ifdef ENABLE_AUTH
-        if (auto res = authorize(req, {roles::admin}); res) // Only admins can get all deliberative rules
+        if (auto res = authorize(req, {roles::admin, roles::coordinator}); res) // Only admins and coordinators can get all deliberative rules
             return res;
 #endif
         json::json rls(json::json_type::array);
@@ -863,7 +863,7 @@ namespace coco
             std::string token = x["token"];
             if (db->has_item(token))
             { // if the token is an item, we send some information about it
-                clients.emplace(&ws, token);
+                clients.at(&ws) = token;
                 devices[token].emplace(&ws);
 
                 auto &itm = db->get_item(token);

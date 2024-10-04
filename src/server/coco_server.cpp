@@ -1170,9 +1170,6 @@ namespace coco
             components[s.first] = s.second;
         for (const auto &s : ratio::executor::executor_schemas.as_object())
             components[s.first] = s.second;
-#ifdef ENABLE_AUTH
-        components["securitySchemes"] = {{"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}};
-#endif
         return components;
     }
     [[nodiscard]] json::json build_messages() noexcept
@@ -1205,12 +1202,18 @@ namespace coco
                           {{"get",
                             {{"summary", "Retrieve OpenAPI Specification"},
                              {"description", "Endpoint to fetch the OpenAPI Specification document"},
+#ifdef ENABLE_AUTH
+                             {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                              {"responses",
                               {{"200", {{"description", "Successful response with OpenAPI Specification document"}}}}}}}}},
                          {"/async_api",
                           {{"get",
                             {{"summary", "Retrieve AsyncAPI Specification"},
                              {"description", "Endpoint to fetch the AsyncAPI Specification document"},
+#ifdef ENABLE_AUTH
+                             {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                              {"responses",
                               {{"200", {{"description", "Successful response with AsyncAPI Specification document"}}}}}}}}}};
         for (const auto &p : coco_paths.as_object())
@@ -1225,7 +1228,11 @@ namespace coco
              {{"title", "CoCo API"},
               {"description", "The combined deduCtiOn and abduCtiOn (CoCo) API"},
               {"version", "1.0"}}},
-            {"components", {"schemas", build_schemas()}},
+            {"components", {
+#ifdef ENABLE_AUTH
+                               {"securitySchemes", {"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}},
+#endif
+                               {"schemas", build_schemas()}}},
             {"paths", build_paths()},
             {"servers", std::vector<json::json>{{"url", "http://" SERVER_HOST ":" + std::to_string(SERVER_PORT)}}}};
         return open_api;
@@ -1240,9 +1247,12 @@ namespace coco
               {"version", "1.0"}}},
             {"servers", {"coco", {{"host", SERVER_HOST ":" + std::to_string(SERVER_PORT)}, {"pathname", "/coco"}, {"protocol", "ws"}}}},
             {"channels", {{"coco", {{"address", "/"}}}}},
-            {"components",
-             {{"messages", build_messages()},
-              {"schemas", build_schemas()}}}};
+            {"components", {
+#ifdef ENABLE_AUTH
+                               {"securitySchemes", {"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}},
+#endif
+                               {"messages", build_messages()},
+                               {"schemas", build_schemas()}}}};
         return async_api;
     }
 } // namespace coco

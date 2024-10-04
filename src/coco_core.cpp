@@ -7,9 +7,9 @@
 namespace coco
 {
 #ifdef ENABLE_TRANSFORMER
-    coco_core::coco_core(std::unique_ptr<coco_db> &&db, const std::string &host, unsigned short port) : client(host, port), db(std::move(db)), env(CreateEnvironment())
+    coco_core::coco_core(std::unique_ptr<coco_db> &&db, json::json &&schemas, const std::string &host, unsigned short port) : client(host, port), db(std::move(db)), env(CreateEnvironment()), schemas(std::move(schemas))
 #else
-    coco_core::coco_core(std::unique_ptr<coco_db> &&db) : db(std::move(db)), env(CreateEnvironment())
+    coco_core::coco_core(std::unique_ptr<coco_db> &&db, json::json &&schemas) : db(std::move(db)), env(CreateEnvironment()), schemas(std::move(schemas))
 #endif
     {
         assert(env != nullptr);

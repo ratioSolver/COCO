@@ -33,9 +33,9 @@ namespace coco
 
   public:
 #ifdef ENABLE_TRANSFORMER
-    coco_core(std::unique_ptr<coco_db> &&db, const std::string &host = TRANSFORMER_HOST, unsigned short port = TRANSFORMER_PORT);
+    coco_core(std::unique_ptr<coco_db> &&db, json::json &&schemas = {}, const std::string &host = TRANSFORMER_HOST, unsigned short port = TRANSFORMER_PORT);
 #else
-    coco_core(std::unique_ptr<coco_db> &&db);
+    coco_core(std::unique_ptr<coco_db> &&db, json::json &&schemas);
 #endif
     virtual ~coco_core() = default;
 
@@ -132,9 +132,9 @@ namespace coco
 
     /**
      * @brief Sets the static properties for a given type.
-     * 
+     *
      * This function assigns a set of static properties to the specified type.
-     * 
+     *
      * @param tp A reference to the type for which the properties are being set.
      * @param props A vector of unique pointers to property objects that will be assigned to the type.
      */
@@ -142,11 +142,11 @@ namespace coco
 
     /**
      * @brief Sets the dynamic properties for a given type.
-     * 
+     *
      * This function assigns a set of dynamic properties to the specified type.
-     * 
+     *
      * @param tp A reference to the type for which the properties are being set.
-     * @param props A vector of unique pointers to property objects that will be 
+     * @param props A vector of unique pointers to property objects that will be
      *              assigned to the type.
      */
     void set_type_dynamic_properties(type &tp, std::vector<std::unique_ptr<property>> &&props);

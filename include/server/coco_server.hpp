@@ -10,9 +10,9 @@ namespace coco
   {
   public:
 #ifdef ENABLE_TRANSFORMER
-    coco_server(const std::string &host = SERVER_HOST, unsigned short port = SERVER_PORT, std::unique_ptr<coco::coco_db> db = nullptr, const std::string &transformer_host = TRANSFORMER_HOST, unsigned short transformer_port = TRANSFORMER_PORT);
+    coco_server(const std::string &host = SERVER_HOST, unsigned short port = SERVER_PORT, std::unique_ptr<coco::coco_db> db = nullptr, json::json &&schemas = {}, const std::string &transformer_host = TRANSFORMER_HOST, unsigned short transformer_port = TRANSFORMER_PORT);
 #else
-    coco_server(const std::string &host = SERVER_HOST, unsigned short port = SERVER_PORT, std::unique_ptr<coco::coco_db> db = nullptr);
+    coco_server(const std::string &host = SERVER_HOST, unsigned short port = SERVER_PORT, std::unique_ptr<coco::coco_db> db = nullptr, json::json &&schemas = {});
 #endif
 
   private:

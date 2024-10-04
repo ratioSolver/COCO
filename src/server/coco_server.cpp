@@ -6,9 +6,9 @@
 namespace coco
 {
 #ifdef ENABLE_TRANSFORMER
-    coco_server::coco_server(const std::string &host, unsigned short port, std::unique_ptr<coco::coco_db> db, const std::string &transformer_host, unsigned short transformer_port) : coco_core(db ? std::move(db) : std::make_unique<mongo_db>(), transformer_host, transformer_port), server(host, port)
+    coco_server::coco_server(const std::string &host, unsigned short port, std::unique_ptr<coco::coco_db> db, json::json &&schemas, const std::string &transformer_host, unsigned short transformer_port) : coco_core(db ? std::move(db) : std::make_unique<mongo_db>(), std::move(schemas), transformer_host, transformer_port), server(host, port)
 #else
-    coco_server::coco_server(const std::string &host, unsigned short port, std::unique_ptr<coco::coco_db> db) : coco_core(db ? std::move(db) : std::make_unique<mongo_db>()), server(host, port)
+    coco_server::coco_server(const std::string &host, unsigned short port, std::unique_ptr<coco::coco_db> db, json::json &&schemas) : coco_core(db ? std::move(db) : std::make_unique<mongo_db>(), std::move(schemas)), server(host, port)
 #endif
     {
         LOG_TRACE("OpenAPI: " + build_open_api().dump());
@@ -73,7 +73,10 @@ namespace coco
         if (auto res = authorize(req, {roles::admin}); res)
             return res;
 #endif
-        return std::make_unique<network::json_response>(build_open_api());
+        auto api = build_open_api();
+        for (auto &schema : schemas.as_object())
+            api["components"]["schemas"][schema.first] = schema.second;
+        return std::make_unique<network::json_response>(api);
     }
     std::unique_ptr<network::response> coco_server::async_api([[maybe_unused]] const network::request &req)
     {
@@ -81,7 +84,10 @@ namespace coco
         if (auto res = authorize(req, {roles::admin}); res)
             return res;
 #endif
-        return std::make_unique<network::json_response>(build_async_api());
+        auto api = build_async_api();
+        for (auto &schema : schemas.as_object())
+            api["components"]["schemas"][schema.first] = schema.second;
+        return std::make_unique<network::json_response>(api);
     }
 
 #ifdef ENABLE_AUTH

@@ -1,5 +1,6 @@
 #include "coco_type.hpp"
 #include "coco_core.hpp"
+#include <cstring>
 #include <cassert>
 
 namespace coco

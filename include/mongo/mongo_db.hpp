@@ -28,7 +28,8 @@ namespace coco
     void init(coco_core &cc) override;
 
 #ifdef ENABLE_AUTH
-    [[nodiscard]] item &create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&personal_data = {}, json::json &&data = {}) override;
+    [[nodiscard]] bool has_user(const std::string &username) override;
+    void create_user(const item &itm, const std::string &username, const std::string &password, json::json &&personal_data = {}) override;
     [[nodiscard]] std::optional<std::reference_wrapper<item>> get_user(const std::string &username, const std::string &password) override;
     void set_user_username(item &usr, const std::string &username) override;
     void set_user_password(item &usr, const std::string &password) override;

@@ -162,9 +162,9 @@ namespace coco
     }
 
 #ifdef ENABLE_AUTH
-    item &mongo_db::create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&personal_data, json::json &&data)
+    bool mongo_db::has_user(const std::string &username) { return users_collection.count_documents(bsoncxx::builder::stream::document{} << "username" << username << bsoncxx::builder::stream::finalize) > 0; }
+    void mongo_db::create_user(const item &itm, const std::string &username, const std::string &password, json::json &&personal_data)
     {
-        auto &itm = create_item(cc.get_type_by_name("User"), std::move(data));
         auto [salt, hash] = encode_password(password);
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm.get_id()}));
@@ -173,9 +173,8 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("password", hash));
         if (!personal_data.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("personal_data", bsoncxx::from_json(personal_data.dump())));
-        if (auto result = users_collection.insert_one(doc.view()); result)
-            return itm;
-        throw std::runtime_error("Failed to insert user: " + username);
+        if (auto result = users_collection.insert_one(doc.view()); !result)
+            throw std::runtime_error("Failed to insert user: " + username);
     }
     std::optional<std::reference_wrapper<item>> mongo_db::get_user(const std::string &username, const std::string &password)
     {

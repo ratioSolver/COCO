@@ -109,30 +109,33 @@ namespace coco
         std::string username = body["username"];
         std::string password = body["password"];
         json::json personal_data;
-        json::json data;
-        int role = roles::user;
-        if (body.contains("data") && body["data"].contains("role"))
-        {
-            if (body["data"]["role"].get_type() != json::json_type::number)
-                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            role = body["data"]["role"];
-            switch (role)
-            {
-            case roles::admin: // Admins can only be created by other admins
-                if (auto res = authorize(req, {roles::admin}); res)
-                    return res;
-                break;
-            case roles::coordinator: // Coordinators can be created by admins and coordinators
-                if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
-                    return res;
-                break;
-            }
-            data = body["data"];
-        }
-        if (!data.contains("role"))
-            data["role"] = role;
         if (body.contains("personal_data"))
             personal_data = body["personal_data"];
+        json::json data;
+        int role = roles::user;
+        if (body.contains("data"))
+        {
+            data = body["data"];
+            if (data.contains("role"))
+            {
+                if (data["role"].get_type() != json::json_type::number)
+                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+                role = data["role"];
+                switch (role)
+                {
+                case roles::admin: // Admins can only be created by other admins
+                    if (auto res = authorize(req, {roles::admin}); res)
+                        return res;
+                    break;
+                case roles::coordinator: // Coordinators can be created by admins and coordinators
+                    if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
+                        return res;
+                    break;
+                }
+            }
+            else
+                data["role"] = role;
+        }
         return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(personal_data), std::move(data)).get_id()}});
     }
     std::unique_ptr<network::response> coco_server::update_user(const network::request &req)

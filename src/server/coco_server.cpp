@@ -26,6 +26,7 @@ namespace coco
 
 #ifdef ENABLE_AUTH
         add_route(network::Post, "^/login$", std::bind(&coco_server::login, this, network::placeholders::request));
+        add_route(network::Get, "^/user/.*$", std::bind(&coco_server::get_user, this, network::placeholders::request));
         add_route(network::Post, "^/user$", std::bind(&coco_server::create_user, this, network::placeholders::request));
         add_route(network::Put, "^/user/.*$", std::bind(&coco_server::update_user, this, network::placeholders::request));
         add_route(network::Delete, "^/user/.*$", std::bind(&coco_server::delete_user, this, network::placeholders::request));
@@ -137,6 +138,18 @@ namespace coco
                 data["role"] = role;
         }
         return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(personal_data), std::move(data)).get_id()}});
+    }
+    std::unique_ptr<network::response> coco_server::get_user(const network::request &req)
+    {
+        auto id = req.get_target().substr(6);
+        if (auto res = authorize(req, {roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only get themselves
+            return res;
+
+        auto usr = db->get_user_personal_data(id);
+        if (usr)
+            return std::make_unique<network::json_response>(std::move(usr.value()));
+        else
+            return std::make_unique<network::json_response>(json::json({{"message", "User not found"}}), network::status_code::not_found);
     }
     std::unique_ptr<network::response> coco_server::update_user(const network::request &req)
     {

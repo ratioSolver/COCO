@@ -65,6 +65,20 @@ namespace coco
     virtual std::optional<std::reference_wrapper<item>> get_user(const std::string &username, const std::string &password) = 0;
 
     /**
+     * @brief Retrieves the personal data of a user based on their ID.
+     * 
+     * This function is a pure virtual method that, when implemented, should
+     * query the database or data source to fetch the personal data associated
+     * with the provided user ID. The data is returned as a JSON object wrapped
+     * in a std::optional, which will be empty if no data is found for the given ID.
+     * 
+     * @param id The unique identifier of the user whose personal data is to be retrieved.
+     * @return std::optional<json::json> A JSON object containing the user's personal data,
+     *         or an empty std::optional if no data is found.
+     */
+    virtual std::optional<json::json> get_user_personal_data(const std::string &id) = 0;
+
+    /**
      * @brief Sets the username of the given user.
      *
      * This function sets the username of the given user object to the specified username.

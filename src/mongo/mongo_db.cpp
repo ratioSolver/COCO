@@ -186,6 +186,12 @@ namespace coco
         }
         return std::nullopt;
     }
+    std::optional<json::json> mongo_db::get_user_personal_data(const std::string &id)
+    {
+        if (auto doc = users_collection.find_one(bsoncxx::builder::stream::document{} << "_id" << bsoncxx::oid{id} << bsoncxx::builder::stream::finalize); doc)
+            return json::load(bsoncxx::to_json(doc->view()["personal_data"].get_document().view()));
+        return std::nullopt;
+    }
     void mongo_db::set_user_username(item &usr, const std::string &username)
     {
         bsoncxx::builder::basic::document doc;

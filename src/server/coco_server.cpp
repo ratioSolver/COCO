@@ -33,7 +33,7 @@ namespace coco
 #endif
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
-        add_route(network::Get, "^/type(\\?.*)?$", std::bind(&coco_server::get_type, this, network::placeholders::request));
+        add_route(network::Get, "^/type(/.*|\\?.*)$", std::bind(&coco_server::get_type, this, network::placeholders::request));
         add_route(network::Post, "^/type$", std::bind(&coco_server::create_type, this, network::placeholders::request));
         add_route(network::Put, "^/type/.*$", std::bind(&coco_server::update_type, this, network::placeholders::request));
         add_route(network::Delete, "^/type/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));

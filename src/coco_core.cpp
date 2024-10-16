@@ -203,7 +203,8 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         set_item_value(itm, data, timestamp);
-        db->add_data(itm, data, timestamp);
+        if (!cold_start)
+            db->add_data(itm, data, timestamp);
     }
 
     std::vector<std::reference_wrapper<coco_executor>> coco_core::get_solvers()
@@ -447,6 +448,7 @@ namespace coco
 #endif
 
         Run(env, -1);
+        cold_start = false; // we are done with the cold start..
     }
 
     void add_data(Environment *, UDFContext *udfc, UDFValue *)

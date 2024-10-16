@@ -640,6 +640,9 @@ namespace coco
     network::client client; // the transformer client..
 #endif
 
+  private:
+    bool cold_start = true;
+
   protected:
     std::unique_ptr<coco_db> db; // the database..
     Environment *env;            // the CLIPS environment..

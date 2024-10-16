@@ -1256,7 +1256,11 @@ namespace coco
 #endif
                                {"schemas", build_schemas()}}},
             {"paths", build_paths()},
+#ifdef ENABLE_AUTH
+            {"servers", std::vector<json::json>{{"url", "https://" SERVER_HOST ":" + std::to_string(SERVER_PORT)}}}};
+#else
             {"servers", std::vector<json::json>{{"url", "http://" SERVER_HOST ":" + std::to_string(SERVER_PORT)}}}};
+#endif
         return open_api;
     }
     [[nodiscard]] json::json build_async_api() noexcept
@@ -1267,7 +1271,11 @@ namespace coco
              {{"title", "CoCo API"},
               {"description", "The combined deduCtiOn and abduCtiOn (CoCo) WebSocket API"},
               {"version", "1.0"}}},
+#ifdef ENABLE_AUTH
+            {"servers", {"coco", {{"host", SERVER_HOST ":" + std::to_string(SERVER_PORT)}, {"pathname", "/coco"}, {"protocol", "wss"}}}},
+#else
             {"servers", {"coco", {{"host", SERVER_HOST ":" + std::to_string(SERVER_PORT)}, {"pathname", "/coco"}, {"protocol", "ws"}}}},
+#endif
             {"channels", {{"coco", {{"address", "/"}}}}},
             {"components", {
 #ifdef ENABLE_AUTH

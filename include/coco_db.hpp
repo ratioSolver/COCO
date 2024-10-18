@@ -27,18 +27,28 @@ namespace coco
 
 #ifdef ENABLE_AUTH
     /**
-     * @brief Creates a new user.
+     * @brief Checks if a user exists in the database.
      *
-     * This function creates a new user with the specified username, password, personal data, and data.
+     * This pure virtual function must be implemented by derived classes to
+     * determine whether a user with the specified username exists in the database.
      *
-     * @param cc The CoCo core object.
-     * @param username The username of the user.
-     * @param password The password of the user.
-     * @param personal_data The personal data associated with the user.
-     * @param data The data associated with the user.
-     * @return The created user object.
+     * @param username The username to check for existence in the database.
+     * @return true if the user exists, false otherwise.
      */
-    virtual item &create_user(coco_core &cc, const std::string &username, const std::string &password, json::json &&personal_data = {}, json::json &&data = {}) = 0;
+    virtual bool has_user(const std::string &username) = 0;
+
+    /**
+     * @brief Creates a new user in the database.
+     *
+     * This pure virtual function must be implemented by derived classes to create
+     * a new user in the database with the specified username, password, and personal data.
+     *
+     * @param itm The item to be associated with the new user.
+     * @param username The username of the new user.
+     * @param password The password of the new user.
+     * @param personal_data The personal data of the new user.
+     */
+    virtual void create_user(const item &itm, const std::string &username, const std::string &password, json::json &&personal_data = {}) = 0;
 
     /**
      * @brief Retrieves a user item based on the provided username and password.
@@ -53,6 +63,20 @@ namespace coco
      *         to the user item if found, otherwise an empty optional.
      */
     virtual std::optional<std::reference_wrapper<item>> get_user(const std::string &username, const std::string &password) = 0;
+
+    /**
+     * @brief Retrieves the personal data of a user based on their ID.
+     * 
+     * This function is a pure virtual method that, when implemented, should
+     * query the database or data source to fetch the personal data associated
+     * with the provided user ID. The data is returned as a JSON object wrapped
+     * in a std::optional, which will be empty if no data is found for the given ID.
+     * 
+     * @param id The unique identifier of the user whose personal data is to be retrieved.
+     * @return std::optional<json::json> A JSON object containing the user's personal data,
+     *         or an empty std::optional if no data is found.
+     */
+    virtual std::optional<json::json> get_user_personal_data(const std::string &id) = 0;
 
     /**
      * @brief Sets the username of the given user.

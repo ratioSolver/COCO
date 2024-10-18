@@ -42,6 +42,7 @@ namespace coco
 #ifdef ENABLE_AUTH
     [[nodiscard]] item &create_user(const std::string &username, const std::string &password, json::json &&personal_data = {}, json::json &&data = {});
     [[nodiscard]] std::optional<std::reference_wrapper<item>> get_user(const std::string &username, const std::string &password);
+    [[nodiscard]] std::optional<json::json> get_user_personal_data(const std::string &id);
     void set_user_username(item &usr, const std::string &username);
     void set_user_password(item &usr, const std::string &password);
     void set_user_personal_data(item &usr, json::json &&personal_data);
@@ -638,6 +639,9 @@ namespace coco
 #ifdef ENABLE_TRANSFORMER
     network::client client; // the transformer client..
 #endif
+
+  private:
+    bool cold_start = true;
 
   protected:
     std::unique_ptr<coco_db> db; // the database..

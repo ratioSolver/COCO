@@ -26,13 +26,14 @@ namespace coco
 
 #ifdef ENABLE_AUTH
         add_route(network::Post, "^/login$", std::bind(&coco_server::login, this, network::placeholders::request));
+        add_route(network::Get, "^/user/.*$", std::bind(&coco_server::get_user, this, network::placeholders::request));
         add_route(network::Post, "^/user$", std::bind(&coco_server::create_user, this, network::placeholders::request));
         add_route(network::Put, "^/user/.*$", std::bind(&coco_server::update_user, this, network::placeholders::request));
         add_route(network::Delete, "^/user/.*$", std::bind(&coco_server::delete_user, this, network::placeholders::request));
 #endif
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
-        add_route(network::Get, "^/type(\\?.*)?$", std::bind(&coco_server::get_type, this, network::placeholders::request));
+        add_route(network::Get, "^/type(/.*|\\?.*)$", std::bind(&coco_server::get_type, this, network::placeholders::request));
         add_route(network::Post, "^/type$", std::bind(&coco_server::create_type, this, network::placeholders::request));
         add_route(network::Put, "^/type/.*$", std::bind(&coco_server::update_type, this, network::placeholders::request));
         add_route(network::Delete, "^/type/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
@@ -109,31 +110,46 @@ namespace coco
         std::string username = body["username"];
         std::string password = body["password"];
         json::json personal_data;
-        json::json data;
-        int role = roles::user;
-        if (body.contains("data") && body["data"].contains("role"))
-        {
-            if (body["data"]["role"].get_type() != json::json_type::number)
-                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            role = body["data"]["role"];
-            switch (role)
-            {
-            case roles::admin: // Admins can only be created by other admins
-                if (auto res = authorize(req, {roles::admin}); res)
-                    return res;
-                break;
-            case roles::coordinator: // Coordinators can be created by admins and coordinators
-                if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
-                    return res;
-                break;
-            }
-            data = body["data"];
-        }
-        if (!data.contains("role"))
-            data["role"] = role;
         if (body.contains("personal_data"))
             personal_data = body["personal_data"];
+        json::json data;
+        int role = roles::user;
+        if (body.contains("data"))
+        {
+            data = body["data"];
+            if (data.contains("role"))
+            {
+                if (data["role"].get_type() != json::json_type::number)
+                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+                role = data["role"];
+                switch (role)
+                {
+                case roles::admin: // Admins can only be created by other admins
+                    if (auto res = authorize(req, {roles::admin}); res)
+                        return res;
+                    break;
+                case roles::coordinator: // Coordinators can be created by admins and coordinators
+                    if (auto res = authorize(req, {roles::admin, roles::coordinator}); res)
+                        return res;
+                    break;
+                }
+            }
+            else
+                data["role"] = role;
+        }
         return std::make_unique<network::json_response>(json::json{{"token", coco_core::create_user(username, password, std::move(personal_data), std::move(data)).get_id()}});
+    }
+    std::unique_ptr<network::response> coco_server::get_user(const network::request &req)
+    {
+        auto id = req.get_target().substr(6);
+        if (auto res = authorize(req, {roles::coordinator}, {id}); res) // Unless the user is an admin or coordinator, they can only get themselves
+            return res;
+
+        auto usr = db->get_user_personal_data(id);
+        if (usr)
+            return std::make_unique<network::json_response>(std::move(usr.value()));
+        else
+            return std::make_unique<network::json_response>(json::json({{"message", "User not found"}}), network::status_code::not_found);
     }
     std::unique_ptr<network::response> coco_server::update_user(const network::request &req)
     {
@@ -1240,7 +1256,11 @@ namespace coco
 #endif
                                {"schemas", build_schemas()}}},
             {"paths", build_paths()},
+#ifdef ENABLE_AUTH
+            {"servers", std::vector<json::json>{{"url", "https://" SERVER_HOST ":" + std::to_string(SERVER_PORT)}}}};
+#else
             {"servers", std::vector<json::json>{{"url", "http://" SERVER_HOST ":" + std::to_string(SERVER_PORT)}}}};
+#endif
         return open_api;
     }
     [[nodiscard]] json::json build_async_api() noexcept
@@ -1251,7 +1271,11 @@ namespace coco
              {{"title", "CoCo API"},
               {"description", "The combined deduCtiOn and abduCtiOn (CoCo) WebSocket API"},
               {"version", "1.0"}}},
+#ifdef ENABLE_AUTH
+            {"servers", {"coco", {{"host", SERVER_HOST ":" + std::to_string(SERVER_PORT)}, {"pathname", "/coco"}, {"protocol", "wss"}}}},
+#else
             {"servers", {"coco", {{"host", SERVER_HOST ":" + std::to_string(SERVER_PORT)}, {"pathname", "/coco"}, {"protocol", "ws"}}}},
+#endif
             {"channels", {{"coco", {{"address", "/"}}}}},
             {"components", {
 #ifdef ENABLE_AUTH

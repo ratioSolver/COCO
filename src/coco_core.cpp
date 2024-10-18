@@ -41,7 +41,14 @@ namespace coco
     }
 
 #ifdef ENABLE_AUTH
-    [[nodiscard]] item &coco_core::create_user(const std::string &username, const std::string &password, json::json &&personal_data, json::json &&data) { return db->create_user(*this, username, password, std::move(personal_data), std::move(data)); }
+    [[nodiscard]] item &coco_core::create_user(const std::string &username, const std::string &password, json::json &&personal_data, json::json &&data)
+    {
+        if (db->has_user(username))
+            throw std::runtime_error("User already exists");
+        auto &itm = create_item(get_type_by_name("User"), std::move(data));
+        db->create_user(itm, username, password, std::move(personal_data));
+        return itm;
+    }
     [[nodiscard]] std::optional<std::reference_wrapper<item>> coco_core::get_user(const std::string &username, const std::string &password) { return db->get_user(username, password); }
     void coco_core::set_user_username(item &usr, const std::string &username) { db->set_user_username(usr, username); }
     void coco_core::set_user_password(item &usr, const std::string &password) { db->set_user_password(usr, password); }
@@ -196,7 +203,8 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         set_item_value(itm, data, timestamp);
-        db->add_data(itm, data, timestamp);
+        if (!cold_start)
+            db->add_data(itm, data, timestamp);
     }
 
     std::vector<std::reference_wrapper<coco_executor>> coco_core::get_solvers()
@@ -435,11 +443,12 @@ namespace coco
             set_type_static_properties(tp, std::move(props));
 
             LOG_WARN("Creating default admin user. Please change the password immediately.");
-            db->create_user(*this, "admin", "admin", {}, {{"role", roles::admin}});
+            [[maybe_unused]] auto &admin = create_user("admin", "admin", {}, {{"role", roles::admin}});
         }
 #endif
 
         Run(env, -1);
+        cold_start = false; // we are done with the cold start..
     }
 
     void add_data(Environment *, UDFContext *udfc, UDFValue *)

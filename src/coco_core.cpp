@@ -78,6 +78,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &st = db->create_type(*this, name, description, std::move(props));
         new_type(st);
+        Run(env, -1);
         return st;
     }
 
@@ -85,48 +86,48 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_type_name(tp, name);
-        Run(env, -1);
         updated_type(tp);
+        Run(env, -1);
     }
 
     void coco_core::set_type_description(type &tp, const std::string &description)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_type_description(tp, description);
-        Run(env, -1);
         updated_type(tp);
+        Run(env, -1);
     }
 
     void coco_core::set_type_properties(type &tp, json::json &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_type_properties(tp, std::move(props));
-        Run(env, -1);
         updated_type(tp);
+        Run(env, -1);
     }
 
     void coco_core::set_type_parents(type &tp, std::vector<std::reference_wrapper<const type>> &&parents)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_type_parents(tp, std::move(parents));
-        Run(env, -1);
         updated_type(tp);
+        Run(env, -1);
     }
 
     void coco_core::set_type_static_properties(type &tp, std::vector<std::unique_ptr<property>> &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_type_static_properties(tp, std::move(props));
-        Run(env, -1);
         updated_type(tp);
+        Run(env, -1);
     }
 
     void coco_core::set_type_dynamic_properties(type &tp, std::vector<std::unique_ptr<property>> &&props)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_type_dynamic_properties(tp, std::move(props));
-        Run(env, -1);
         updated_type(tp);
+        Run(env, -1);
     }
 
     void coco_core::delete_type(const type &tp)
@@ -134,6 +135,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->delete_type(tp);
         deleted_type(tp.get_id());
+        Run(env, -1);
     }
 
     std::vector<std::reference_wrapper<item>> coco_core::get_items_by_type(const type &tp)
@@ -168,6 +170,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &itm = db->create_item(tp, std::move(props));
         new_item(itm);
+        Run(env, -1);
         return itm;
     }
 
@@ -176,6 +179,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_item_properties(itm, std::move(props));
         updated_item(itm);
+        Run(env, -1);
     }
 
     void coco_core::set_item_value(item &itm, const json::json &value, const std::chrono::system_clock::time_point &timestamp)
@@ -191,6 +195,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->delete_item(itm);
         deleted_item(itm.get_id());
+        Run(env, -1);
     }
 
     json::json coco_core::get_data(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
@@ -252,6 +257,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto &r = db->create_reactive_rule(*this, name, content);
         new_reactive_rule(r);
+        Run(env, -1);
         return r;
     }
 
@@ -259,16 +265,16 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_reactive_rule_name(r, name);
-        Run(env, -1);
         updated_reactive_rule(r);
+        Run(env, -1);
     }
 
     void coco_core::set_reactive_rule_content(rule &r, const std::string &content)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_reactive_rule_content(r, content);
-        Run(env, -1);
         updated_reactive_rule(r);
+        Run(env, -1);
     }
 
     void coco_core::delete_reactive_rule(rule &r)
@@ -276,6 +282,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->delete_reactive_rule(r);
         deleted_reactive_rule(r);
+        Run(env, -1);
     }
 
     std::vector<std::reference_wrapper<rule>> coco_core::get_deliberative_rules()
@@ -302,16 +309,16 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_deliberative_rule_name(r, name);
-        Run(env, -1);
         updated_deliberative_rule(r);
+        Run(env, -1);
     }
 
     void coco_core::set_deliberative_rule_content(rule &r, const std::string &content)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->set_deliberative_rule_content(r, content);
-        Run(env, -1);
         updated_deliberative_rule(r);
+        Run(env, -1);
     }
 
     void coco_core::delete_deliberative_rule(rule &r)
@@ -319,6 +326,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         db->delete_deliberative_rule(r);
         deleted_deliberative_rule(r);
+        Run(env, -1);
     }
 
     std::vector<Deftemplate *> coco_core::get_deftemplates()
@@ -897,7 +905,10 @@ namespace coco
         {
             json::json data;
             for (auto &[key, value] : message.as_object())
-                if (key != "recipient_id")
+                if (key == "custom")
+                    for (auto &[k, v] : value.as_object())
+                        data[k] = v;
+                else if (key != "recipient_id")
                     data[key] = value;
             data["me"] = false;
             cc.add_data(itm, data);
@@ -932,7 +943,10 @@ namespace coco
         {
             json::json data;
             for (auto &[key, value] : response.as_object())
-                if (key != "recipient_id")
+                if (key == "custom")
+                    for (auto &[k, v] : value.as_object())
+                        data[k] = v;
+                else if (key != "recipient_id")
                     data[key] = value;
             data["me"] = false;
             cc.add_data(itm, data);

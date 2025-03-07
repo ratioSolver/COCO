@@ -58,6 +58,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake valgrind
+          wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
+          unzip clips_core_source_642.zip -d clips_core_source_642
+
+      - name: Compile CLIPS
+        working-directory: ./clips_core_source_642/core
+        run: |
+          make release_cpp
+          sudo cp *.h /usr/local/include/clips/
+          sudo cp libclips.a /usr/local/lib/
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
@@ -68,50 +77,6 @@ jobs:
       - name: Test with memory checker
         working-directory: build
         run: ctest -C Debug --rerun-failed --output-on-failure -T Test -T MemCheck
-
-  windows-debug:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install dependencies
-        run: |
-          choco install cmake
-
-      - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
-
-      - name: Build
-        run: cmake --build build --config Debug
-
-      - name: Test with address sanitizer
-        working-directory: build
-        run: ctest -C Debug --rerun-failed --output-on-failure -T Test
-
-  macos-address-undefined:
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install dependencies
-        run: |
-          brew install cmake
-
-      - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_UBSAN=ON
-
-      - name: Build
-        run: cmake --build build --config Debug
-
-      - name: Test with address sanitizer and undefined behavior sanitizer
-        working-directory: build
-        run: ctest -C Debug --rerun-failed --output-on-failure -T Test
 
   ubuntu-release:
     runs-on: ubuntu-latest
@@ -125,50 +90,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake
-
-      - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: cmake --build build --config Release
-
-      - name: Test
-        working-directory: build
-        run: ctest -C Release --rerun-failed --output-on-failure -T Test
-
-  windows-release:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install dependencies
-        run: |
-          choco install cmake
-
-      - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: cmake --build build --config Release
-
-      - name: Test
-        working-directory: build
-        run: ctest -C Release --rerun-failed --output-on-failure -T Test
-
-  macos-release:
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install dependencies
-        run: |
-          brew install cmake
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release

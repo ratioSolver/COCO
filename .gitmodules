@@ -1,3 +1,4 @@
 [submodule "extern/rationet"]
 	path = extern/rationet
 	url = https://github.com/ratioSolver/ratioNet
+	branch = test_asio

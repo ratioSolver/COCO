@@ -17,6 +17,8 @@ jobs:
           sudo apt-get install -y cmake lcov
           wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
           unzip clips_core_source_642.zip
+          curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.0.0/mongo-cxx-driver-r4.0.0.tar.gz
+          tar -xzf mongo-cxx-driver-r4.0.0.tar.gz
 
       - name: Compile CLIPS
         working-directory: clips_core_source_642/core
@@ -25,6 +27,13 @@ jobs:
           sudo mkdir /usr/local/include/clips
           sudo cp *.h /usr/local/include/clips/
           sudo cp libclips.a /usr/local/lib/
+
+      - name: Compile Mongo C++ driver
+        working-directory: mongo-cxx-driver-r4.0.0/build
+        run: |
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+          cmake --build .
+          sudo cmake --build . --target install
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_UBSAN=ON -DENABLE_COV=ON
@@ -61,6 +70,8 @@ jobs:
           sudo apt-get install -y cmake valgrind
           wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
           unzip clips_core_source_642.zip
+          curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.0.0/mongo-cxx-driver-r4.0.0.tar.gz
+          tar -xzf mongo-cxx-driver-r4.0.0.tar.gz
 
       - name: Compile CLIPS
         working-directory: clips_core_source_642/core
@@ -69,6 +80,13 @@ jobs:
           sudo mkdir /usr/local/include/clips
           sudo cp *.h /usr/local/include/clips/
           sudo cp libclips.a /usr/local/lib/
+
+      - name: Compile Mongo C++ driver
+        working-directory: mongo-cxx-driver-r4.0.0/build
+        run: |
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+          cmake --build .
+          sudo cmake --build . --target install
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
@@ -94,6 +112,8 @@ jobs:
           sudo apt-get install -y cmake
           wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
           unzip clips_core_source_642.zip
+          curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.0.0/mongo-cxx-driver-r4.0.0.tar.gz
+          tar -xzf mongo-cxx-driver-r4.0.0.tar.gz
 
       - name: Compile CLIPS
         working-directory: clips_core_source_642/core
@@ -102,6 +122,13 @@ jobs:
           sudo mkdir /usr/local/include/clips
           sudo cp *.h /usr/local/include/clips/
           sudo cp libclips.a /usr/local/lib/
+
+      - name: Compile Mongo C++ driver
+        working-directory: mongo-cxx-driver-r4.0.0/build
+        run: |
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+          cmake --build .
+          sudo cmake --build . --target install
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release

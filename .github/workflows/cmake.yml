@@ -19,7 +19,7 @@ jobs:
           unzip clips_core_source_642.zip -d clips_core_source_642
 
       - name: Compile CLIPS
-        working-directory: ./clips_core_source_642/core
+        working-directory: clips_core_source_642/core
         run: |
           make release_cpp
           sudo cp *.h /usr/local/include/clips/
@@ -62,7 +62,7 @@ jobs:
           unzip clips_core_source_642.zip -d clips_core_source_642
 
       - name: Compile CLIPS
-        working-directory: ./clips_core_source_642/core
+        working-directory: clips_core_source_642/core
         run: |
           make release_cpp
           sudo cp *.h /usr/local/include/clips/
@@ -90,6 +90,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake
+          wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
+          unzip clips_core_source_642.zip -d clips_core_source_642
+
+      - name: Compile CLIPS
+        working-directory: clips_core_source_642/core
+        run: |
+          make release_cpp
+          sudo cp *.h /usr/local/include/clips/
+          sudo cp libclips.a /usr/local/lib/
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release

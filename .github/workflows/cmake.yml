@@ -16,7 +16,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake lcov
           wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
-          unzip clips_core_source_642.zip -d
+          unzip clips_core_source_642.zip
 
       - name: Compile CLIPS
         working-directory: clips_core_source_642/core
@@ -59,7 +59,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake valgrind
           wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
-          unzip clips_core_source_642.zip -d
+          unzip clips_core_source_642.zip
 
       - name: Compile CLIPS
         working-directory: clips_core_source_642/core
@@ -91,7 +91,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake
           wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
-          unzip clips_core_source_642.zip -d
+          unzip clips_core_source_642.zip
 
       - name: Compile CLIPS
         working-directory: clips_core_source_642/core

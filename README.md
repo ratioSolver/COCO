@@ -59,8 +59,8 @@ class my_listener : public coco::coco_listener
 ### CLIPS
 
 COCO relies on [CLIPS](https://www.clipsrules.net) for reacting to the dynamic changes which happen into the urban environment.
- - Download [CLIPS v6.4.1](https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.1/clips_core_source_641.zip/download) and unzip the zip file into the `clips_core_source_641` folder.
- - Reach the `clips_core_source_641/core` folder and compile CLIPS through `make release_cpp`.
+ - Download [CLIPS v6.4.2](https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download) and unzip the zip file into the `clips_core_source_642` folder.
+ - Reach the `clips_core_source_642/core` folder and compile CLIPS through `make release_cpp`.
  - Copy all the header files into the `/usr/local/include/clips` folder through `sudo cp *.h /usr/local/include/clips/`.
  - Copy the library into the `/usr/local/lib` folder through `sudo cp libclips.a /usr/local/lib/`.
 

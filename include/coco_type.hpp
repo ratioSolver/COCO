@@ -18,10 +18,11 @@ namespace coco
      *
      * @param cc The CoCo object.
      * @param name The name of the type.
-     * @param props The properties of the type.
+     * @param static_props The static properties of the type.
+     * @param dynamic_props The dynamic properties of the type.
      * @param data The (optional) data of the type.
      */
-    type(coco &cc, const std::string &name, const json::json &props, json::json &&data = json::json()) noexcept;
+    type(coco &cc, const std::string &name, const json::json &static_props, const json::json &dynamic_props, json::json &&data = json::json()) noexcept;
 
     /**
      * @brief Gets the name of the type.

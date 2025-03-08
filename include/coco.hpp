@@ -24,10 +24,12 @@ namespace coco
      * This function takes a JSON object as input and creates a property object for the given type based on the JSON's contents.
      *
      * @param tp The type the property belongs to.
+     * @param dynamic The dynamicity of the property.
      * @param name The name of the property.
      * @param j The JSON object containing the property data.
+     * @return A unique pointer to the created property object.
      */
-    void make_property(const type &tp, const std::string &name, const json::json &j);
+    utils::u_ptr<property> make_property(const type &tp, bool dynamic, const std::string &name, const json::json &j);
 
   protected:
     coco_db &db;      // the database..

@@ -17,6 +17,8 @@ namespace coco
    */
   class property
   {
+    friend class type;
+
   public:
     /**
      * @brief Constructs a property with the given name.

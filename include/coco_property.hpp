@@ -2,10 +2,15 @@
 
 #include "json.hpp"
 #include "clips.h"
+#include <optional>
 
 namespace coco
 {
   class type;
+
+  constexpr const char *bool_kw = "bool";
+  constexpr const char *int_kw = "int";
+  constexpr const char *real_kw = "real";
 
   /**
    * @brief Represents a property with a name and description.
@@ -35,6 +40,12 @@ namespace coco
      */
     const std::string &get_description() const noexcept { return description; }
 
+    /**
+     * @brief Converts the property to a JSON object.
+     * @return The JSON representation of the property.
+     */
+    virtual json::json to_json() const noexcept;
+
   private:
     /**
      * Sets the value of the property.
@@ -50,5 +61,29 @@ namespace coco
     const type &tp;                // The type the property belongs to.
     const std::string name;        // The name of the property.
     const std::string description; // The description of the property.
+  };
+
+  /**
+   * @brief Represents a boolean property.
+   *
+   * This class inherits from the base class `property` and provides functionality for handling boolean properties.
+   */
+  class boolean_property final : public property
+  {
+  public:
+    /**
+     * @brief Constructs a `boolean_property` object with the given name and a JSON object containing the property data.
+     *
+     * @param tp The type the property belongs to.
+     * @param name The name of the property.
+     * @param j The JSON object containing the property data (i.e., an optional description and an optional default value).
+     */
+    boolean_property(const type &tp, const std::string &name, const json::json &j) noexcept;
+
+  private:
+    json::json to_json() const noexcept override;
+
+  private:
+    std::optional<bool> default_value;
   };
 } // namespace coco

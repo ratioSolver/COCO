@@ -1,0 +1,19 @@
+{
+  "name": "coco-gui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0"
+  },
+  "dependencies": {
+    "ratio-core": "^0.0.7",
+    "ratio-lib": "^0.0.24"
+  }
+}

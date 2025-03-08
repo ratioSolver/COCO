@@ -13,38 +13,49 @@ namespace coco
   constexpr const char *real_kw = "real";
 
   /**
-   * @brief Represents a property with a name and description.
+   * @brief Represents a property with a name.
    */
   class property
   {
   public:
     /**
-     * @brief Constructs a property with the given name and description.
+     * @brief Constructs a property with the given name.
      *
      * @param tp The type the property belongs to.
      * @param name The name of the property.
-     * @param description The description of the property.
+     * @param dynamic Whether the property is dynamic or not.
      */
-    property(const type &tp, const std::string &name, const std::string &description) noexcept;
+    property(const type &tp, const std::string &name, bool dynamic) noexcept;
     virtual ~property() = default;
 
     /**
      * @brief Gets the name of the property.
+     *
      * @return The name of the property.
      */
     const std::string &get_name() const noexcept { return name; }
 
     /**
-     * @brief Gets the description of the property.
-     * @return The description of the property.
+     * @brief Gets the dynamicity of the property.
+     *
+     * @return The dynamicity of the property.
      */
-    const std::string &get_description() const noexcept { return description; }
+    bool is_dynamic() const noexcept { return dynamic; }
 
     /**
      * @brief Converts the property to a JSON object.
+     *
      * @return The JSON representation of the property.
      */
-    virtual json::json to_json() const noexcept;
+    virtual json::json to_json() const noexcept { return json::json(); }
+
+  protected:
+    /**
+     * @brief Converts the property to a deftemplate representation.
+     *
+     * @return The deftemplate representation representation of the property.
+     */
+    std::string to_deftemplate() const noexcept;
 
   private:
     /**
@@ -57,10 +68,17 @@ namespace coco
      */
     virtual void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept = 0;
 
+    /**
+     * @brief Gets the deftemplate slot.
+     *
+     * @return The deftemplate slot.
+     */
+    virtual std::string get_deftemplate_slot() const noexcept = 0;
+
   private:
-    const type &tp;                // The type the property belongs to.
-    const std::string name;        // The name of the property.
-    const std::string description; // The description of the property.
+    const type &tp;         // The type the property belongs to.
+    const std::string name; // The name of the property.
+    const bool dynamic;     // The dynamicity of the property.
   };
 
   /**
@@ -80,8 +98,12 @@ namespace coco
      */
     boolean_property(const type &tp, const std::string &name, const json::json &j) noexcept;
 
-  private:
     json::json to_json() const noexcept override;
+
+  private:
+    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
+
+    std::string get_deftemplate_slot() const noexcept override;
 
   private:
     std::optional<bool> default_value;

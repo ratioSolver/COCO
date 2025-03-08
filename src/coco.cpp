@@ -2,5 +2,5 @@
 
 namespace coco
 {
-    coco::coco() noexcept {}
+    coco::coco(coco_db &db) noexcept : db(db) {}
 } // namespace coco

@@ -31,9 +31,13 @@ jobs:
       - name: Compile Mongo C++ driver
         working-directory: mongo-cxx-driver-r4.0.0/build
         run: |
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF
           cmake --build .
           sudo cmake --build . --target install
+
+      - name: Update library cache
+        run: |
+          sudo ldconfig
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_UBSAN=ON -DENABLE_COV=ON
@@ -84,9 +88,13 @@ jobs:
       - name: Compile Mongo C++ driver
         working-directory: mongo-cxx-driver-r4.0.0/build
         run: |
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF
           cmake --build .
           sudo cmake --build . --target install
+
+      - name: Update library cache
+        run: |
+          sudo ldconfig
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
@@ -126,9 +134,13 @@ jobs:
       - name: Compile Mongo C++ driver
         working-directory: mongo-cxx-driver-r4.0.0/build
         run: |
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF
           cmake --build .
           sudo cmake --build . --target install
+
+      - name: Update library cache
+        run: |
+          sudo ldconfig
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release

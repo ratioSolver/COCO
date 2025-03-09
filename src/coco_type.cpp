@@ -1,6 +1,7 @@
 #include "coco_type.hpp"
 #include "coco.hpp"
 #include "coco_property.hpp"
+#include "coco_item.hpp"
 #include "logging.hpp"
 #include <cassert>
 
@@ -26,5 +27,13 @@ namespace coco
             Undeftemplate(FindDeftemplate(cc.env, (name + '_' + p_name).c_str()), cc.env);
         for (auto &[p_name, _] : dynamic_properties.as_object())
             Undeftemplate(FindDeftemplate(cc.env, (name + "_has_" + p_name).c_str()), cc.env);
+    }
+
+    item &type::new_item(std::string_view id, const type &tp, json::json &&props, json::json &&val, const std::chrono::system_clock::time_point &timestamp) noexcept
+    {
+        auto itm_ptr = utils::make_u_ptr<item>(id, tp, std::move(props), std::move(val), timestamp);
+        auto &itm = *itm_ptr;
+        instances.emplace(id.data(), std::move(itm_ptr));
+        return itm;
     }
 } // namespace coco

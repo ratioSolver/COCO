@@ -3,11 +3,13 @@
 #include "json.hpp"
 #include "memory.hpp"
 #include "clips.h"
-#include <string>
+#include <chrono>
+#include <unordered_map>
 
 namespace coco
 {
   class coco;
+  class item;
 
   class type
   {
@@ -38,12 +40,15 @@ namespace coco
      */
     const json::json &get_data() const noexcept { return data; }
 
+    item &new_item(std::string_view id, const type &tp, json::json &&props = json::json(), json::json &&val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
+
   private:
-    coco &cc;                            // The CoCo object..
-    Fact *type_fact = nullptr;           // The type fact..
-    std::string name;                    // The name of the type..
-    const json::json static_properties;  // The static properties..
-    const json::json dynamic_properties; // The dynamic properties..
-    const json::json data;               // The data of the type..
+    coco &cc;                                                      // The CoCo object..
+    Fact *type_fact = nullptr;                                     // The type fact..
+    std::string name;                                              // The name of the type..
+    const json::json static_properties;                            // The static properties..
+    const json::json dynamic_properties;                           // The dynamic properties..
+    const json::json data;                                         // The data of the type..
+    std::unordered_map<std::string, utils::u_ptr<item>> instances; // the instances of the type..
   };
 } // namespace coco

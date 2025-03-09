@@ -8,7 +8,6 @@
 namespace coco
 {
   class coco;
-  class property;
 
   class type
   {
@@ -22,7 +21,8 @@ namespace coco
      * @param dynamic_props The dynamic properties of the type.
      * @param data The (optional) data of the type.
      */
-    type(coco &cc, const std::string &name, const json::json &static_props, const json::json &dynamic_props, json::json &&data = json::json()) noexcept;
+    type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+    ~type();
 
     /**
      * @brief Gets the name of the type.
@@ -39,10 +39,11 @@ namespace coco
     const json::json &get_data() const noexcept { return data; }
 
   private:
-    coco &cc;                                                 // The CoCo object.
-    Fact *type_fact = nullptr;                                // The type fact.
-    std::string name;                                         // The name of the type.
-    std::map<std::string, utils::u_ptr<property>> properties; // The properties of the type.
-    json::json data;                                          // The data of the type.
+    coco &cc;                            // The CoCo object..
+    Fact *type_fact = nullptr;           // The type fact..
+    std::string name;                    // The name of the type..
+    const json::json static_properties;  // The static properties..
+    const json::json dynamic_properties; // The dynamic properties..
+    const json::json data;               // The data of the type..
   };
 } // namespace coco

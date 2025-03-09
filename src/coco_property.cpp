@@ -1,42 +1,33 @@
 #include "coco_property.hpp"
 #include "coco_type.hpp"
+#include "coco.hpp"
+#include "logging.hpp"
 
 namespace coco
 {
-    property::property(const type &tp, const std::string &name, bool dynamic) noexcept : tp(tp), name(name), dynamic(dynamic) {}
-    std::string property::to_deftemplate() const noexcept
-    {
-        std::string deftemplate = "(deftemplate ";
-        if (dynamic)
-            deftemplate += tp.get_name() + "_has_" + name;
-        else
-            deftemplate += tp.get_name() + '_' + name;
-        deftemplate += " (slot item_id (type SYMBOL))";
-        deftemplate += '_' + get_deftemplate_slot();
-        deftemplate += ')';
-        return deftemplate;
-    }
+    property_type::property_type(coco &cc, std::string_view name) noexcept : cc(cc), name(name) {}
+    Environment *property_type::get_env() { return cc.env; }
 
-    boolean_property::boolean_property(const type &tp, const std::string &name, const json::json &j) noexcept : property(tp, name, j.contains("description") ? j["description"] : "")
+    bool_property_type::bool_property_type(coco &cc) noexcept : property_type(cc, bool_kw) {}
+    void bool_property_type::make_static_property(type &tp, std::string_view name, const json::json &j) noexcept
     {
+        std::string deftemplate = "(deftemplate " + tp.get_name() + '_' + name.data() + " (slot item_id (type SYMBOL)) (slot " + name.data() + " (type SYMBOL)";
         if (j.contains("default"))
-            default_value = j["default"];
+            deftemplate += static_cast<bool>(j["default"]) ? " (default TRUE)" : " (default FALSE)";
+        deftemplate += ')';
+        deftemplate += ')';
+        LOG_TRACE(deftemplate);
+        Build(get_env(), deftemplate.c_str());
     }
-    json::json boolean_property::to_json() const noexcept
+    void bool_property_type::make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept
     {
-        json::json j = property::to_json();
-        j["type"] = bool_kw;
-        if (default_value.has_value())
-            j["default"] = default_value.value();
-        return j;
+        std::string deftemplate = "(deftemplate " + tp.get_name() + "_has_" + name.data() + " (slot item_id (type SYMBOL)) (slot timestamp (type INTEGER)) (slot " + name.data() + " (type SYMBOL)";
+        if (j.contains("default"))
+            deftemplate += static_cast<bool>(j["default"]) ? " (default TRUE)" : " (default FALSE)";
+        deftemplate += ')';
+        deftemplate += ')';
+        LOG_TRACE(deftemplate);
+        Build(get_env(), deftemplate.c_str());
     }
-    void boolean_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, get_name().c_str(), static_cast<bool>(value) ? "TRUE" : "FALSE"); }
-    std::string boolean_property::get_deftemplate_slot() const noexcept
-    {
-        std::string slot = "(slot " + get_name() + " (type SYMBOL)";
-        if (default_value.has_value())
-            slot += default_value.value() ? " (default TRUE)" : " (default FALSE)";
-        slot += ")";
-        return slot;
-    }
+    void bool_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, name.data(), static_cast<bool>(value) ? "TRUE" : "FALSE"); }
 } // namespace coco

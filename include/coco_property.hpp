@@ -1,63 +1,37 @@
 #pragma once
 
 #include "json.hpp"
+#include "memory.hpp"
 #include "clips.h"
 #include <optional>
 
 namespace coco
 {
-  class type;
-
   constexpr const char *bool_kw = "bool";
   constexpr const char *int_kw = "int";
   constexpr const char *real_kw = "real";
 
-  /**
-   * @brief Represents a property with a name.
-   */
-  class property
+  class coco;
+  class type;
+
+  class property_type
   {
-    friend class type;
-
   public:
-    /**
-     * @brief Constructs a property with the given name.
-     *
-     * @param tp The type the property belongs to.
-     * @param name The name of the property.
-     * @param dynamic Whether the property is dynamic or not.
-     */
-    property(const type &tp, const std::string &name, bool dynamic) noexcept;
-    virtual ~property() = default;
+    property_type(coco &cc, std::string_view name) noexcept;
+    virtual ~property_type() = default;
 
     /**
-     * @brief Gets the name of the property.
+     * @brief Gets the name of the property type.
      *
-     * @return The name of the property.
+     * @return The name of the property type.
      */
     const std::string &get_name() const noexcept { return name; }
 
-    /**
-     * @brief Gets the dynamicity of the property.
-     *
-     * @return The dynamicity of the property.
-     */
-    bool is_dynamic() const noexcept { return dynamic; }
-
-    /**
-     * @brief Converts the property to a JSON object.
-     *
-     * @return The JSON representation of the property.
-     */
-    virtual json::json to_json() const noexcept { return json::json(); }
+    virtual void make_static_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
+    virtual void make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
 
   protected:
-    /**
-     * @brief Converts the property to a deftemplate representation.
-     *
-     * @return The deftemplate representation representation of the property.
-     */
-    std::string to_deftemplate() const noexcept;
+    Environment *get_env();
 
   private:
     /**
@@ -66,48 +40,25 @@ namespace coco
      * This function is responsible for setting the value of the property based on the provided `value`.
      *
      * @param property_fact_builder A pointer to the FactBuilder object.
+     * @param name The name of the property to be set.
      * @param value The value to be set for the property.
      */
-    virtual void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept = 0;
+    virtual void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept = 0;
 
-    /**
-     * @brief Gets the deftemplate slot.
-     *
-     * @return The deftemplate slot.
-     */
-    virtual std::string get_deftemplate_slot() const noexcept = 0;
-
-  private:
-    const type &tp;         // The type the property belongs to.
-    const std::string name; // The name of the property.
-    const bool dynamic;     // The dynamicity of the property.
+  protected:
+    coco &cc;
+    const std::string name;
   };
 
-  /**
-   * @brief Represents a boolean property.
-   *
-   * This class inherits from the base class `property` and provides functionality for handling boolean properties.
-   */
-  class boolean_property final : public property
+  class bool_property_type final : public property_type
   {
   public:
-    /**
-     * @brief Constructs a `boolean_property` object with the given name and a JSON object containing the property data.
-     *
-     * @param tp The type the property belongs to.
-     * @param name The name of the property.
-     * @param j The JSON object containing the property data (i.e., an optional description and an optional default value).
-     */
-    boolean_property(const type &tp, const std::string &name, const json::json &j) noexcept;
+    bool_property_type(coco &cc) noexcept;
 
-    json::json to_json() const noexcept override;
+    void make_static_property(type &tp, std::string_view name, const json::json &j) noexcept override;
+    void make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept override;
 
   private:
-    void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
-
-    std::string get_deftemplate_slot() const noexcept override;
-
-  private:
-    std::optional<bool> default_value;
+    void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
 } // namespace coco

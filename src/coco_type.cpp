@@ -29,9 +29,9 @@ namespace coco
             Undeftemplate(FindDeftemplate(cc.env, (name + "_has_" + p_name).c_str()), cc.env);
     }
 
-    item &type::new_item(std::string_view id, const type &tp, json::json &&props, json::json &&val, const std::chrono::system_clock::time_point &timestamp) noexcept
+    item &type::new_instance(std::string_view id, json::json &&props, json::json &&val, const std::chrono::system_clock::time_point &timestamp) noexcept
     {
-        auto itm_ptr = utils::make_u_ptr<item>(id, tp, std::move(props), std::move(val), timestamp);
+        auto itm_ptr = utils::make_u_ptr<item>(*this, id, std::move(props), std::move(val), timestamp);
         auto &itm = *itm_ptr;
         instances.emplace(id.data(), std::move(itm_ptr));
         return itm;

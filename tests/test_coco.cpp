@@ -9,6 +9,7 @@ int main()
     mongocxx::instance inst{}; // This should be done only once.
     coco::mongo_db db;
 #endif
+    coco::coco cc(db);
 
     return 0;
 }

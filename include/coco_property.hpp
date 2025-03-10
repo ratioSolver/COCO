@@ -25,7 +25,7 @@ namespace coco
      *
      * @return The name of the property type.
      */
-    const std::string &get_name() const noexcept { return name; }
+    [[nodiscard]] const std::string &get_name() const noexcept { return name; }
 
     virtual void make_static_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
     virtual void make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;

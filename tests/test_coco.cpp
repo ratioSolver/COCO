@@ -15,6 +15,7 @@ int main()
 
     auto &tp = cc.create_type("NewType", json::json(), json::json{{"online", {"type", "bool"}}});
     auto &itm = tp.new_instance("0");
+    itm.set_value(json::json{{"online", true}});
 
     return 0;
 }

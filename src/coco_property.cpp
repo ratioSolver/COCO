@@ -2,6 +2,7 @@
 #include "coco_type.hpp"
 #include "coco.hpp"
 #include "logging.hpp"
+#include <cassert>
 
 namespace coco
 {
@@ -18,11 +19,16 @@ namespace coco
     void bool_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, name.data(), static_cast<bool>(value) ? "TRUE" : "FALSE"); }
 
     property::property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept : pt(pt), tp(tp), dynamic(dynamic), name(name) {}
-    property::~property() { Undeftemplate(FindDeftemplate(pt.get_coco().env, get_deftemplate_name().c_str()), pt.get_coco().env); }
+    property::~property()
+    {
+        auto dt = FindDeftemplate(pt.get_coco().env, get_deftemplate_name().c_str());
+        assert(dt);
+        Undeftemplate(dt, pt.get_coco().env);
+    }
 
     std::string property::get_deftemplate_name()
     {
-        std::string deftemplate = "(deftemplate " + tp.get_name();
+        std::string deftemplate = tp.get_name();
         if (dynamic)
             deftemplate += "_has_";
         else
@@ -35,7 +41,7 @@ namespace coco
 
     bool_property::bool_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<bool> default_value) noexcept : property(pt, tp, dynamic, name), default_value(default_value)
     {
-        std::string deftemplate = get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
         deftemplate += " (type SYMBOL)";
         if (default_value.has_value())
             deftemplate += default_value.value() ? " (default TRUE)" : " (default FALSE)";

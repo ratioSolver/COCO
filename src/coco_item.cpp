@@ -17,8 +17,8 @@ namespace coco
         LOG_TRACE(tp.get_coco().to_string(item_fact));
         FBDispose(item_fact_builder);
 
-        FactBuilder *is_instance_of_fact_builder = CreateFactBuilder(tp.get_coco().env, "is_instance_of");
-        FBPutSlotSymbol(is_instance_of_fact_builder, "item_id", id.data());
+        FactBuilder *is_instance_of_fact_builder = CreateFactBuilder(tp.get_coco().env, "instance_of");
+        FBPutSlotSymbol(is_instance_of_fact_builder, "id", id.data());
         FBPutSlotSymbol(is_instance_of_fact_builder, "type", tp.get_name().c_str());
         is_instance_of = FBAssert(is_instance_of_fact_builder);
         assert(is_instance_of);
@@ -28,7 +28,15 @@ namespace coco
         set_properties(std::move(props));
         set_value(val, timestamp);
     }
-    item::~item() noexcept {}
+    item::~item() noexcept
+    {
+        for (auto &v : value_facts)
+            Retract(v.second);
+        for (auto &p : properties_facts)
+            Retract(p.second);
+        Retract(is_instance_of);
+        Retract(item_fact);
+    }
 
     void item::set_properties(json::json &&props)
     {
@@ -115,5 +123,7 @@ namespace coco
             for (const auto &tp : t->get_parents())
                 q.push(&*tp.second);
         }
+
+        this->timestamp = timestamp;
     }
 } // namespace coco

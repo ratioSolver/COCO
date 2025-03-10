@@ -23,7 +23,11 @@ namespace coco
         LOG_TRACE(all_instances_of_function);
         Build(env, all_instances_of_function);
     }
-    coco::~coco() { DestroyEnvironment(env); }
+    coco::~coco()
+    {
+        types.clear();
+        DestroyEnvironment(env);
+    }
 
     std::vector<utils::ref_wrapper<type>> coco::get_types() noexcept
     {

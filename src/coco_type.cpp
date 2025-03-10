@@ -10,7 +10,7 @@ namespace coco
     type::type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data))
     {
         FactBuilder *type_fact_builder = CreateFactBuilder(cc.env, "type");
-        FBPutSlotString(type_fact_builder, "name", name.data());
+        FBPutSlotSymbol(type_fact_builder, "name", name.data());
         type_fact = FBAssert(type_fact_builder);
         assert(type_fact);
         LOG_TRACE(cc.to_string(type_fact));
@@ -22,6 +22,7 @@ namespace coco
     }
     type::~type()
     {
+        instances.clear();
         for (auto &p : parent_facts)
             Retract(p.second);
         Retract(type_fact);

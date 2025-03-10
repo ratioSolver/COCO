@@ -4,6 +4,12 @@
 #include "logging.hpp"
 #include <cassert>
 
+#ifdef BUILD_LISTENERS
+#define NEW_TYPE(tp) new_type(tp)
+#else
+#define NEW_TYPE(tp)
+#endif
+
 namespace coco
 {
     coco::coco(coco_db &db) noexcept : db(db), env(CreateEnvironment())
@@ -49,6 +55,7 @@ namespace coco
         auto tp_ptr = utils::make_u_ptr<type>(*this, name, std::move(static_props), std::move(dynamic_props), std::move(data));
         auto &tp = *tp_ptr;
         types.emplace(name, std::move(tp_ptr));
+        NEW_TYPE(tp);
         return tp;
     }
 
@@ -65,6 +72,10 @@ namespace coco
             return *it->second;
         throw std::out_of_range("property type `" + std::string(name) + "` not found");
     }
+
+    void coco::new_type([[maybe_unused]] const type &tp) {}
+
+    void coco::new_item([[maybe_unused]] const item &itm) {}
 
     std::string coco::to_string(Fact *f, std::size_t buff_size) const noexcept
     {

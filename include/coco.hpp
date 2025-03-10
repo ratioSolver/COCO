@@ -59,6 +59,21 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
+  private:
+    /**
+     * @brief Notifies when the type is created.
+     *
+     * @param tp The created type.
+     */
+    virtual void new_type(const type &tp);
+
+    /**
+     * @brief Notifies when the item is created.
+     *
+     * @param itm The created item.
+     */
+    virtual void new_item(const item &itm);
+
   protected:
     coco_db &db;                                                       // the database..
     json::json schemas;                                                // the JSON schemas..

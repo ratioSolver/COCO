@@ -47,6 +47,7 @@ if(BUILD_COCO_SERVER)
 
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS)
 endif()
 
 message(STATUS "Build MQTT middleware: ${BUILD_MQTT}")
@@ -61,7 +62,7 @@ if(BUILD_MQTT)
 
     target_include_directories(CoCo PUBLIC ${PAHO_MQTT_CPP_INCLUDE_DIR})
     target_link_libraries(CoCo PUBLIC ${PAHO_MQTT_CPP_LIBRARIES})
-    target_compile_definitions(CoCo PUBLIC BUILD_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
 endif()
 
 if(BUILD_TESTING)

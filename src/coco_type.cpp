@@ -5,6 +5,12 @@
 #include "logging.hpp"
 #include <cassert>
 
+#ifdef BUILD_LISTENERS
+#define NEW_ITEM(itm) cc.new_item(itm)
+#else
+#define NEW_ITEM(itm)
+#endif
+
 namespace coco
 {
     type::type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data))
@@ -54,6 +60,7 @@ namespace coco
         auto itm_ptr = utils::make_u_ptr<item>(*this, id, std::move(props), std::move(val), timestamp);
         auto &itm = *itm_ptr;
         instances.emplace(id.data(), std::move(itm_ptr));
+        NEW_ITEM(itm);
         return itm;
     }
 } // namespace coco

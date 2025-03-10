@@ -16,6 +16,8 @@ namespace coco
 
   class property_type
   {
+    friend class type;
+
   public:
     property_type(coco &cc, std::string_view name) noexcept;
     virtual ~property_type() = default;
@@ -27,13 +29,21 @@ namespace coco
      */
     [[nodiscard]] const std::string &get_name() const noexcept { return name; }
 
-    virtual void make_static_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
-    virtual void make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
+    /**
+     * @brief Validates the property against a JSON object and schema references.
+     * @param j The JSON object to validate.
+     * @param schema_refs The schema references to use for validation.
+     * @return True if the property is valid, false otherwise.
+     */
+    virtual bool validate(const json::json &j, const json::json &schema_refs) const noexcept = 0;
 
   protected:
     Environment *get_env();
 
   private:
+    virtual void make_static_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
+    virtual void make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
+
     /**
      * Sets the value of the property.
      *
@@ -55,10 +65,12 @@ namespace coco
   public:
     bool_property_type(coco &cc) noexcept;
 
+    bool validate(const json::json &j, const json::json &schema_refs) const noexcept;
+
+  private:
     void make_static_property(type &tp, std::string_view name, const json::json &j) noexcept override;
     void make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept override;
 
-  private:
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
 } // namespace coco

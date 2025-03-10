@@ -1,4 +1,5 @@
 #include "coco.hpp"
+#include "coco_type.hpp"
 #include "coco_property.hpp"
 #include "logging.hpp"
 #include <cassert>
@@ -23,6 +24,29 @@ namespace coco
         Build(env, all_instances_of_function);
     }
     coco::~coco() { DestroyEnvironment(env); }
+
+    std::vector<utils::ref_wrapper<type>> coco::get_types() noexcept
+    {
+        std::vector<utils::ref_wrapper<type>> res;
+        for (auto &s : types)
+            res.push_back(*s.second);
+        return res;
+    }
+
+    type &coco::get_type(const std::string &name)
+    {
+        if (types.find(name) == types.end())
+            throw std::invalid_argument("Type not found: " + name);
+        return *types.at(name);
+    }
+
+    type &coco::create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept
+    {
+        auto tp_ptr = utils::make_u_ptr<type>(*this, name, std::move(static_props), std::move(dynamic_props), std::move(data));
+        auto &tp = *tp_ptr;
+        types.emplace(name, std::move(tp_ptr));
+        return tp;
+    }
 
     void coco::add_property_type(utils::u_ptr<property_type> pt)
     {

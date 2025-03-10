@@ -9,6 +9,8 @@ namespace coco
     Environment *property_type::get_env() { return cc.env; }
 
     bool_property_type::bool_property_type(coco &cc) noexcept : property_type(cc, bool_kw) {}
+    bool bool_property_type::validate(const json::json &j, const json::json &) const noexcept { return j.get_type() == json::json_type::boolean; }
+
     void bool_property_type::make_static_property(type &tp, std::string_view name, const json::json &j) noexcept
     {
         std::string deftemplate = "(deftemplate " + tp.get_name() + '_' + name.data() + " (slot item_id (type SYMBOL)) (slot " + name.data() + " (type SYMBOL)";

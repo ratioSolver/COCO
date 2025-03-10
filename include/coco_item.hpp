@@ -64,7 +64,6 @@ namespace coco
      */
     [[nodiscard]] const std::chrono::system_clock::time_point &get_timestamp() const { return timestamp; }
 
-  private:
     /**
      * @brief Sets the properties of the item.
      *

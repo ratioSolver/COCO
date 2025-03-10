@@ -1,4 +1,6 @@
 #include "coco.hpp"
+#include "coco_type.hpp"
+#include "coco_item.hpp"
 #ifdef BUILD_MONGODB
 #include "mongo_db.hpp"
 #endif
@@ -10,6 +12,9 @@ int main()
     coco::mongo_db db;
 #endif
     coco::coco cc(db);
+
+    auto &tp = cc.create_type("NewType", json::json(), json::json());
+    auto &itm = tp.new_instance("0");
 
     return 0;
 }

@@ -28,6 +28,28 @@ namespace coco
     coco(coco_db &db) noexcept;
     ~coco();
 
+    /**
+     * @brief Returns a vector of references to the types.
+     *
+     * This function retrieves all the types stored in the database and returns them as a vector of `type` objects. The returned vector contains references to the actual types stored in the `types` map.
+     *
+     * @return A vector of types.
+     */
+    [[nodiscard]] std::vector<utils::ref_wrapper<type>> get_types() noexcept;
+
+    /**
+     * @brief Retrieves a type with the specified name.
+     *
+     * This function retrieves the type with the specified name.
+     *
+     * @param name The name of the type.
+     * @return A reference to the type.
+     * @throws std::invalid_argument if the type does not exist.
+     */
+    [[nodiscard]] type &get_type(const std::string &name);
+
+    [[nodiscard]] type &create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+
   protected:
     void add_property_type(utils::u_ptr<property_type> pt);
 
@@ -40,5 +62,6 @@ namespace coco
     coco_db &db;                                                       // the database..
     std::map<std::string, utils::u_ptr<property_type>> property_types; // the property types..
     Environment *env;                                                  // the CLIPS environment..
+    std::map<std::string, utils::u_ptr<type>> types;                   // The types managed by CoCo by name.
   };
 } // namespace coco

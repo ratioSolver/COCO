@@ -75,9 +75,19 @@ namespace coco
         throw std::out_of_range("property type `" + std::string(name) + "` not found");
     }
 
-    void coco::new_type([[maybe_unused]] const type &tp) {}
+#ifdef BUILD_LISTENERS
+    void coco::new_type(const type &tp)
+    {
+        for (auto &l : listeners)
+            l->new_type(tp);
+    }
 
-    void coco::new_item([[maybe_unused]] const item &itm) {}
+    void coco::new_item(const item &itm)
+    {
+        for (auto &l : listeners)
+            l->new_item(itm);
+    }
+#endif
 
     std::string coco::to_string(Fact *f, std::size_t buff_size) const noexcept
     {

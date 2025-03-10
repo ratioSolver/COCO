@@ -18,12 +18,18 @@ namespace coco
   class item;
   class property_type;
   class property;
+#ifdef BUILD_LISTENERS
+  class listener;
+#endif
 
   class coco
   {
     friend class type;
     friend class item;
     friend class property;
+#ifdef BUILD_LISTENERS
+    friend class listener;
+#endif
 
   public:
     coco(coco_db &db) noexcept;
@@ -59,20 +65,22 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
+#ifdef BUILD_LISTENERS
   private:
     /**
      * @brief Notifies when the type is created.
      *
      * @param tp The created type.
      */
-    virtual void new_type(const type &tp);
+    void new_type(const type &tp);
 
     /**
      * @brief Notifies when the item is created.
      *
      * @param itm The created item.
      */
-    virtual void new_item(const item &itm);
+    void new_item(const item &itm);
+#endif
 
   protected:
     coco_db &db;                                                       // the database..
@@ -80,5 +88,36 @@ namespace coco
     std::map<std::string, utils::u_ptr<property_type>> property_types; // the property types..
     Environment *env;                                                  // the CLIPS environment..
     std::map<std::string, utils::u_ptr<type>> types;                   // The types managed by CoCo by name.
+#ifdef BUILD_LISTENERS
+    std::vector<listener *> listeners; // The CoCo listeners..
+#endif
   };
+
+#ifdef BUILD_LISTENERS
+  class listener
+  {
+    friend class coco;
+
+  public:
+    listener(coco &cc) noexcept : cc(cc) {}
+
+  private:
+    /**
+     * @brief Notifies when the type is created.
+     *
+     * @param tp The created type.
+     */
+    virtual void new_type([[maybe_unused]] const type &tp) {}
+
+    /**
+     * @brief Notifies when the item is created.
+     *
+     * @param itm The created item.
+     */
+    virtual void new_item([[maybe_unused]] const item &itm) {}
+
+  protected:
+    coco &cc;
+  };
+#endif
 } // namespace coco

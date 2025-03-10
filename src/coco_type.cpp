@@ -13,7 +13,7 @@
 
 namespace coco
 {
-    type::type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data))
+    type::type(coco &cc, std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data))
     {
         FactBuilder *type_fact_builder = CreateFactBuilder(cc.env, "type");
         FBPutSlotSymbol(type_fact_builder, "name", name.data());
@@ -21,6 +21,7 @@ namespace coco
         assert(type_fact);
         LOG_TRACE(cc.to_string(type_fact));
         FBDispose(type_fact_builder);
+        set_parents(std::move(parents));
         for (auto &[name, prop] : static_props.as_object())
             static_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, false, name, prop));
         for (auto &[name, prop] : dynamic_props.as_object())

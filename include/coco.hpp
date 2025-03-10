@@ -55,7 +55,8 @@ namespace coco
      */
     [[nodiscard]] type &get_type(const std::string &name);
 
-    [[nodiscard]] type &create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+    [[nodiscard]] type &create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+    void set_parents(type &tp, const std::vector<utils::ref_wrapper<const type>> &parents);
 
   protected:
     void add_property_type(utils::u_ptr<property_type> pt);
@@ -65,7 +66,7 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
-    [[nodiscard]] type &make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+    [[nodiscard]] type &make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
 
 #ifdef BUILD_LISTENERS
   private:

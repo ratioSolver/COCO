@@ -14,12 +14,11 @@ int main()
 #endif
     coco::coco cc(db);
 
-    auto &tp = cc.create_type("ParentType", json::json(), json::json{{"online", {"type", "bool"}}});
+    auto &tp = cc.create_type("ParentType", {}, json::json(), json::json{{"online", {"type", "bool"}}});
     auto &itm = tp.new_instance("0");
     itm.set_value(json::json{{"online", true}});
 
-    auto &ch_tp = cc.create_type("ChildType", json::json(), json::json{{"count", {{"type", "int"}, {"min", 0}}}, {"temp", {{"type", "float"}, {"max", 50}}}});
-    ch_tp.set_parents({tp});
+    auto &ch_tp = cc.create_type("ChildType", {tp}, json::json(), json::json{{"count", {{"type", "int"}, {"min", 0}}}, {"temp", {{"type", "float"}, {"max", 50}}}});
     auto &ch_itm = ch_tp.new_instance("1");
     ch_itm.set_value(json::json{{"online", true}, {"count", 1}, {"temp", 22.5}});
 

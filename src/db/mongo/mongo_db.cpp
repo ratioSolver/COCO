@@ -19,10 +19,22 @@ namespace coco
         db.drop();
     }
 
-    void mongo_db::create_type(std::string_view name, const json::json &data, const json::json &static_props, const json::json &dynamic_props)
+    std::vector<db_type> mongo_db::get_types() noexcept
+    {
+        std::vector<db_type> types;
+        return types;
+    }
+    void mongo_db::create_type(std::string_view name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("_id", name.data()));
+        if (!parents.empty())
+        {
+            bsoncxx::builder::basic::array parents_builder;
+            for (const auto &parent : parents)
+                parents_builder.append(parent);
+            doc.append(bsoncxx::builder::basic::kvp("parents", parents_builder));
+        }
         if (!data.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
         if (!static_props.as_object().empty())
@@ -31,5 +43,20 @@ namespace coco
             doc.append(bsoncxx::builder::basic::kvp("dynamic_properties", bsoncxx::from_json(dynamic_props.dump())));
         if (!types_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert type: " + std::string(name));
+    }
+    void mongo_db::set_parents(std::string_view name, const std::vector<std::string> &parents)
+    {
+        bsoncxx::builder::basic::document doc;
+        if (parents.empty())
+            doc.append(bsoncxx::builder::basic::kvp("$unset", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("parents", ""))));
+        else
+        {
+            bsoncxx::builder::basic::array arr;
+            for (const auto &p : parents)
+                arr.append(p);
+            doc.append(bsoncxx::builder::basic::kvp("$set", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("parents", arr))));
+        }
+        if (!types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", name.data())), doc.view()))
+            throw std::invalid_argument("Failed to update type parents");
     }
 } // namespace coco

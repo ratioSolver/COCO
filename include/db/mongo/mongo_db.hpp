@@ -14,7 +14,9 @@ namespace coco
 
     void drop() noexcept override;
 
-    void create_type(std::string_view name, const json::json &data, const json::json &static_props, const json::json &dynamic_props) override;
+    std::vector<db_type> get_types() noexcept override;
+    void create_type(std::string_view name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props) override;
+    void set_parents(std::string_view name, const std::vector<std::string> &parents) override;
 
   private:
     mongocxx::client conn;

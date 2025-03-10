@@ -54,10 +54,20 @@ namespace coco
         return *types.at(name);
     }
 
-    type &coco::create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept
+    type &coco::create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept
     {
-        db.create_type(name, data, static_props, dynamic_props);
-        return make_type(name, std::move(static_props), std::move(dynamic_props), std::move(data));
+        std::vector<std::string> parents_names;
+        for (const auto &parent : parents)
+            parents_names.emplace_back(parent->get_name());
+        db.create_type(name, parents_names, data, static_props, dynamic_props);
+        return make_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
+    }
+    void coco::set_parents(type &tp, const std::vector<utils::ref_wrapper<const type>> &parents)
+    {
+        std::vector<std::string> parents_names;
+        for (const auto &parent : parents)
+            parents_names.emplace_back(parent->get_name());
+        db.set_parents(tp.get_name(), parents_names);
     }
 
     void coco::add_property_type(utils::u_ptr<property_type> pt)
@@ -74,9 +84,9 @@ namespace coco
         throw std::out_of_range("property type `" + std::string(name) + "` not found");
     }
 
-    type &coco::make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept
+    type &coco::make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept
     {
-        auto tp_ptr = utils::make_u_ptr<type>(*this, name, std::move(static_props), std::move(dynamic_props), std::move(data));
+        auto tp_ptr = utils::make_u_ptr<type>(*this, name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
         auto &tp = *tp_ptr;
         types.emplace(name, std::move(tp_ptr));
         NEW_TYPE(tp);

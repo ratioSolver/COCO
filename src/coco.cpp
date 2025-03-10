@@ -15,6 +15,7 @@ namespace coco
     coco::coco(coco_db &db) noexcept : db(db), env(CreateEnvironment())
     {
         add_property_type(utils::make_u_ptr<bool_property_type>(*this));
+        add_property_type(utils::make_u_ptr<int_property_type>(*this));
 
         LOG_TRACE(type_deftemplate);
         Build(env, type_deftemplate);

@@ -69,6 +69,17 @@ namespace coco
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
 
+  class int_property_type final : public property_type
+  {
+  public:
+    int_property_type(coco &cc) noexcept;
+
+  private:
+    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+
+    void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
+  };
+
   class property
   {
     friend class item;
@@ -113,7 +124,7 @@ namespace coco
     [[nodiscard]] virtual bool validate(const json::json &j) const noexcept = 0;
 
   protected:
-    std::string get_deftemplate_name();
+    [[nodiscard]] std::string get_deftemplate_name() const noexcept;
 
     Environment *get_env() const noexcept;
     const json::json &get_schemas() const noexcept;
@@ -134,5 +145,16 @@ namespace coco
 
   private:
     std::optional<bool> default_value;
+  };
+
+  class int_property final : public property
+  {
+  public:
+    int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<INT_TYPE> default_value = std::nullopt, std::optional<INT_TYPE> min = std::nullopt, std::optional<INT_TYPE> max = std::nullopt) noexcept;
+
+    [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+  private:
+    std::optional<INT_TYPE> default_value, min, max;
   };
 } // namespace coco

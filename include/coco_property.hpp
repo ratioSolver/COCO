@@ -9,7 +9,7 @@ namespace coco
 {
   constexpr const char *bool_kw = "bool";
   constexpr const char *int_kw = "int";
-  constexpr const char *real_kw = "real";
+  constexpr const char *float_kw = "float";
 
   class coco;
   class type;
@@ -73,6 +73,17 @@ namespace coco
   {
   public:
     int_property_type(coco &cc) noexcept;
+
+  private:
+    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+
+    void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
+  };
+
+  class float_property_type final : public property_type
+  {
+  public:
+    float_property_type(coco &cc) noexcept;
 
   private:
     [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
@@ -150,11 +161,22 @@ namespace coco
   class int_property final : public property
   {
   public:
-    int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<INT_TYPE> default_value = std::nullopt, std::optional<INT_TYPE> min = std::nullopt, std::optional<INT_TYPE> max = std::nullopt) noexcept;
+    int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<long> default_value = std::nullopt, std::optional<long> min = std::nullopt, std::optional<long> max = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
   private:
-    std::optional<INT_TYPE> default_value, min, max;
+    std::optional<long> default_value, min, max;
+  };
+
+  class float_property final : public property
+  {
+  public:
+    float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<double> default_value = std::nullopt, std::optional<double> min = std::nullopt, std::optional<double> max = std::nullopt) noexcept;
+
+    [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+  private:
+    std::optional<double> default_value, min, max;
   };
 } // namespace coco

@@ -21,18 +21,34 @@ namespace coco
     int_property_type::int_property_type(coco &cc) noexcept : property_type(cc, int_kw) {}
     utils::u_ptr<property> int_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
-        std::optional<INT_TYPE> default_value;
+        std::optional<long> default_value;
         if (j.contains("default"))
-            default_value = static_cast<INT_TYPE>(j["default"]);
-        std::optional<INT_TYPE> min;
+            default_value = static_cast<long>(j["default"]);
+        std::optional<long> min;
         if (j.contains("min"))
-            min = static_cast<INT_TYPE>(j["min"]);
-        std::optional<INT_TYPE> max;
+            min = static_cast<long>(j["min"]);
+        std::optional<long> max;
         if (j.contains("max"))
-            max = static_cast<INT_TYPE>(j["max"]);
+            max = static_cast<long>(j["max"]);
         return utils::make_u_ptr<int_property>(*this, tp, dynamic, name, default_value, min, max);
     }
-    void int_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotInteger(property_fact_builder, name.data(), static_cast<INT_TYPE>(value)); }
+    void int_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotInteger(property_fact_builder, name.data(), static_cast<long>(value)); }
+
+    float_property_type::float_property_type(coco &cc) noexcept : property_type(cc, float_kw) {}
+    utils::u_ptr<property> float_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    {
+        std::optional<double> default_value;
+        if (j.contains("default"))
+            default_value = static_cast<double>(j["default"]);
+        std::optional<double> min;
+        if (j.contains("min"))
+            min = static_cast<double>(j["min"]);
+        std::optional<double> max;
+        if (j.contains("max"))
+            max = static_cast<double>(j["max"]);
+        return utils::make_u_ptr<float_property>(*this, tp, dynamic, name, default_value, min, max);
+    }
+    void float_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotFloat(property_fact_builder, name.data(), static_cast<double>(value)); }
 
     property::property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept : pt(pt), tp(tp), dynamic(dynamic), name(name) {}
     property::~property()
@@ -70,7 +86,7 @@ namespace coco
     }
     bool bool_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::boolean; }
 
-    int_property::int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<INT_TYPE> default_value, std::optional<INT_TYPE> min, std::optional<INT_TYPE> max) noexcept : property(pt, tp, dynamic, name), default_value(default_value), min(min), max(max)
+    int_property::int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<long> default_value, std::optional<long> min, std::optional<long> max) noexcept : property(pt, tp, dynamic, name), default_value(default_value), min(min), max(max)
     {
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
         deftemplate += " (type INTEGER)";
@@ -95,7 +111,38 @@ namespace coco
     {
         if (j.get_type() != json::json_type::number)
             return false;
-        INT_TYPE value = j;
+        long value = j;
+        if ((min.has_value() && min.value() > value) || (max.has_value() && max.value() < value))
+            return false;
+        return true;
+    }
+
+    float_property::float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<double> default_value, std::optional<double> min, std::optional<double> max) noexcept : property(pt, tp, dynamic, name), default_value(default_value), min(min), max(max)
+    {
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
+        deftemplate += " (type FLOAT)";
+        if (default_value.has_value())
+            deftemplate += " (default " + std::to_string(default_value.value()) + ")";
+        if (min.has_value() || max.has_value())
+        {
+            deftemplate += " (range ";
+            deftemplate += min.has_value() ? std::to_string(min.value()) : "?VARIABLE";
+            deftemplate += ' ';
+            deftemplate += max.has_value() ? std::to_string(max.value()) : "?VARIABLE";
+            deftemplate += ')';
+        }
+        deftemplate += ')';
+        if (dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += ')';
+        LOG_TRACE(deftemplate);
+        Build(get_env(), deftemplate.c_str());
+    }
+    bool float_property::validate(const json::json &j) const noexcept
+    {
+        if (j.get_type() != json::json_type::number)
+            return false;
+        long value = j;
         if ((min.has_value() && min.value() > value) || (max.has_value() && max.value() < value))
             return false;
         return true;

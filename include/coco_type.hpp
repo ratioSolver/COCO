@@ -86,7 +86,7 @@ namespace coco
      * @param timestamp The timestamp of the value.
      * @return The new instance of the type.
      */
-    [[nodiscard]] item &new_instance(std::string_view id, json::json &&props = json::json(), json::json &&val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
+    item &make_item(std::string_view id, json::json &&props = json::json(), json::json &&val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
 
   private:
     coco &cc;                                                                   // The CoCo object..

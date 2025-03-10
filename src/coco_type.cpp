@@ -56,7 +56,7 @@ namespace coco
         }
     }
 
-    item &type::new_instance(std::string_view id, json::json &&props, json::json &&val, const std::chrono::system_clock::time_point &timestamp) noexcept
+    item &type::make_item(std::string_view id, json::json &&props, json::json &&val, const std::chrono::system_clock::time_point &timestamp) noexcept
     {
         auto itm_ptr = utils::make_u_ptr<item>(*this, id, std::move(props), std::move(val), timestamp);
         auto &itm = *itm_ptr;

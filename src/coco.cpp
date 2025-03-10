@@ -32,6 +32,27 @@ namespace coco
         Build(env, inheritance_rule);
         LOG_TRACE(all_instances_of_function);
         Build(env, all_instances_of_function);
+
+        LOG_DEBUG("Retrieving all types");
+        auto tps = db.get_types();
+        LOG_DEBUG("Retrieved " << tps.size() << " types");
+        for (auto &tp : tps)
+            make_type(tp.name, {}, tp.static_props.has_value() ? std::move(tp.static_props.value()) : json::json{}, tp.static_props.has_value() ? std::move(tp.static_props.value()) : json::json{}, tp.static_props.has_value() ? std::move(tp.static_props.value()) : json::json{});
+
+        for (auto &tp : tps)
+            if (!tp.parents.empty())
+            {
+                std::vector<utils::ref_wrapper<const type>> parents;
+                for (auto &parent : tp.parents)
+                    parents.emplace_back(get_type(parent));
+                get_type(tp.name).set_parents(std::move(parents));
+            }
+
+        LOG_DEBUG("Retrieving all items");
+        for (auto &itm : db.get_items())
+            get_type(itm.type).make_item(itm.id, itm.props.has_value() ? std::move(itm.props.value()) : json::json{});
+
+        Run(env, -1);
     }
     coco::~coco()
     {
@@ -62,12 +83,24 @@ namespace coco
         db.create_type(name, parents_names, data, static_props, dynamic_props);
         return make_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
     }
-    void coco::set_parents(type &tp, const std::vector<utils::ref_wrapper<const type>> &parents)
+    void coco::set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents) noexcept
     {
         std::vector<std::string> parents_names;
         for (const auto &parent : parents)
             parents_names.emplace_back(parent->get_name());
         db.set_parents(tp.get_name(), parents_names);
+        tp.set_parents(std::move(parents));
+    }
+    void coco::delete_type(type &tp) noexcept
+    {
+        types.erase(tp.get_name());
+        db.delete_type(tp.get_name());
+    }
+
+    item &coco::create_item(type &tp, json::json &&props, json::json &&val, const std::chrono::system_clock::time_point &timestamp) noexcept
+    {
+        auto id = db.create_item(tp.get_name(), props, val, timestamp);
+        return tp.make_item(id, std::move(props), std::move(val), timestamp);
     }
 
     void coco::add_property_type(utils::u_ptr<property_type> pt)

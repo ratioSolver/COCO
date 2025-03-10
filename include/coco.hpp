@@ -3,6 +3,7 @@
 #include "json.hpp"
 #include "memory.hpp"
 #include "clips.h"
+#include <chrono>
 
 namespace coco
 {
@@ -56,7 +57,10 @@ namespace coco
     [[nodiscard]] type &get_type(const std::string &name);
 
     [[nodiscard]] type &create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
-    void set_parents(type &tp, const std::vector<utils::ref_wrapper<const type>> &parents);
+    void set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents) noexcept;
+    void delete_type(type &tp) noexcept;
+
+    [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), json::json &&val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
 
   protected:
     void add_property_type(utils::u_ptr<property_type> pt);
@@ -66,7 +70,7 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
-    [[nodiscard]] type &make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+    type &make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
 
 #ifdef BUILD_LISTENERS
   private:

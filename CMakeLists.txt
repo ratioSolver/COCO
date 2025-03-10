@@ -4,12 +4,16 @@ project(CoCo VERSION 0.2.0 LANGUAGES CXX)
 include(CTest)
 enable_testing()
 
+set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
+
 set(CLIPS_INCLUDE_DIR /usr/local/include/clips CACHE PATH "CLIPS include directory")
 set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 
 option(BUILD_MONGODB "Build MongoDB drivers" ON)
 option(BUILD_COCO_SERVER "Build the CoCo server" OFF)
 option(BUILD_MQTT "Build MQTT middleware" OFF)
+
+message(STATUS "CoCo name: ${COCO_NAME}")
 
 add_library(CoCo src/coco.cpp src/coco_property.cpp src/coco_type.cpp src/coco_item.cpp src/coco_db.cpp)
 target_compile_features(CoCo PUBLIC cxx_std_17)
@@ -20,6 +24,7 @@ endif()
 add_dependencies(CoCo json)
 target_link_directories(CoCo PUBLIC ${CLIPS_LIB_DIR})
 target_link_libraries(CoCo PUBLIC json clips)
+target_compile_definitions(CoCo PUBLIC COCO_NAME="${COCO_NAME}")
 setup_sanitizers(CoCo)
 
 message(STATUS "Build MongoDB drivers: ${BUILD_MONGODB}")

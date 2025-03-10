@@ -3,6 +3,7 @@
 #include "coco_item.hpp"
 #ifdef BUILD_MONGODB
 #include "mongo_db.hpp"
+#include <mongocxx/instance.hpp>
 #endif
 
 int main()
@@ -21,6 +22,8 @@ int main()
     ch_tp.set_parents({tp});
     auto &ch_itm = ch_tp.new_instance("1");
     ch_itm.set_value(json::json{{"online", true}, {"count", 1}, {"temp", 22.5}});
+
+    db.drop();
 
     return 0;
 }

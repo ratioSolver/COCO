@@ -1,7 +1,9 @@
 #include "coco.hpp"
 #include "coco_type.hpp"
 #include "coco_property.hpp"
+#include "coco_db.hpp"
 #include "logging.hpp"
+#include <algorithm>
 #include <cassert>
 
 #ifdef BUILD_LISTENERS
@@ -54,11 +56,8 @@ namespace coco
 
     type &coco::create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept
     {
-        auto tp_ptr = utils::make_u_ptr<type>(*this, name, std::move(static_props), std::move(dynamic_props), std::move(data));
-        auto &tp = *tp_ptr;
-        types.emplace(name, std::move(tp_ptr));
-        NEW_TYPE(tp);
-        return tp;
+        db.create_type(name, data, static_props, dynamic_props);
+        return make_type(name, std::move(static_props), std::move(dynamic_props), std::move(data));
     }
 
     void coco::add_property_type(utils::u_ptr<property_type> pt)
@@ -75,6 +74,15 @@ namespace coco
         throw std::out_of_range("property type `" + std::string(name) + "` not found");
     }
 
+    type &coco::make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept
+    {
+        auto tp_ptr = utils::make_u_ptr<type>(*this, name, std::move(static_props), std::move(dynamic_props), std::move(data));
+        auto &tp = *tp_ptr;
+        types.emplace(name, std::move(tp_ptr));
+        NEW_TYPE(tp);
+        return tp;
+    }
+
 #ifdef BUILD_LISTENERS
     void coco::new_type(const type &tp)
     {
@@ -87,6 +95,9 @@ namespace coco
         for (auto &l : listeners)
             l->new_item(itm);
     }
+
+    listener::listener(coco &cc) noexcept : cc(cc) { cc.listeners.emplace_back(this); }
+    listener::~listener() { cc.listeners.erase(std::remove(cc.listeners.begin(), cc.listeners.end(), this), cc.listeners.end()); }
 #endif
 
     std::string coco::to_string(Fact *f, std::size_t buff_size) const noexcept

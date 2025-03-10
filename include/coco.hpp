@@ -65,6 +65,8 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
+    [[nodiscard]] type &make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+
 #ifdef BUILD_LISTENERS
   private:
     /**
@@ -99,7 +101,8 @@ namespace coco
     friend class coco;
 
   public:
-    listener(coco &cc) noexcept : cc(cc) {}
+    listener(coco &cc) noexcept;
+    virtual ~listener();
 
   private:
     /**

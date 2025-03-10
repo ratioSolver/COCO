@@ -13,7 +13,7 @@ int main()
 #endif
     coco::coco cc(db);
 
-    auto &tp = cc.create_type("NewType", json::json(), json::json());
+    auto &tp = cc.create_type("NewType", json::json(), json::json{{"online", {"type", "bool"}}});
     auto &itm = tp.new_instance("0");
 
     return 0;

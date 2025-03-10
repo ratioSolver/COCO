@@ -1,5 +1,6 @@
 #include "coco_item.hpp"
 #include "coco_type.hpp"
+#include "coco_property.hpp"
 #include "coco.hpp"
 #include "logging.hpp"
 #include <queue>
@@ -13,6 +14,7 @@ namespace coco
         FBPutSlotSymbol(item_fact_builder, "id", id.data());
         item_fact = FBAssert(item_fact_builder);
         assert(item_fact);
+        LOG_TRACE(tp.get_coco().to_string(item_fact));
         FBDispose(item_fact_builder);
 
         FactBuilder *is_instance_of_fact_builder = CreateFactBuilder(tp.get_coco().env, "is_instance_of");
@@ -20,6 +22,7 @@ namespace coco
         FBPutSlotSymbol(is_instance_of_fact_builder, "type", tp.get_name().c_str());
         is_instance_of = FBAssert(is_instance_of_fact_builder);
         assert(is_instance_of);
+        LOG_TRACE(tp.get_coco().to_string(is_instance_of));
         FBDispose(is_instance_of_fact_builder);
 
         set_properties(std::move(props));
@@ -37,7 +40,7 @@ namespace coco
             const type *t = q.front();
             q.pop();
             for (const auto &[p_name, val] : props.as_object())
-                if (auto prop = t->get_static_properties().as_object().find(p_name); prop != t->get_static_properties().as_object().end())
+                if (auto prop = t->get_static_properties().find(p_name); prop != t->get_static_properties().end())
                 {
                     if (auto f = properties_facts.find(p_name); f != properties_facts.end())
                     { // we retract the old property
@@ -47,11 +50,70 @@ namespace coco
 
                     if (val.get_type() == json::json_type::null)
                         this->properties.erase(p_name); // we remove the property
+                    else if (prop->second->validate(val))
+                    {
+                        FactBuilder *property_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second->get_deftemplate_name().c_str());
+                        FBPutSlotSymbol(property_fact_builder, "item_id", id.c_str());
+                        prop->second->get_property_type().set_value(property_fact_builder, p_name, val);
+                        auto property_fact = FBAssert(property_fact_builder);
+                        assert(property_fact);
+                        LOG_TRACE(tp.get_coco().to_string(property_fact));
+                        FBDispose(property_fact_builder);
+                        this->properties[p_name] = val;
+                        properties_facts.emplace(p_name, property_fact);
+                    }
+                    else
+                        LOG_WARN("Property " + p_name + " for item " + id + " is not valid");
                 }
+                else
+                    LOG_WARN("Type " + tp.get_name() + " does not have static property " + p_name);
+
+            for (const auto &tp : t->get_parents())
+                q.push(&*tp.second);
         }
     }
 
-    void item::set_value(const json::json &val, const std::chrono::system_clock::time_point &timestamp)
+    void item::set_value(const json::json &vals, const std::chrono::system_clock::time_point &timestamp)
     {
+        std::queue<const type *> q;
+        q.push(&tp);
+
+        while (!q.empty())
+        {
+            const type *t = q.front();
+            q.pop();
+            for (const auto &[p_name, val] : vals.as_object())
+                if (auto prop = t->get_dynamic_properties().find(p_name); prop != t->get_dynamic_properties().end())
+                {
+                    if (auto f = properties_facts.find(p_name); f != properties_facts.end())
+                    { // we retract the old property
+                        Retract(f->second);
+                        properties_facts.erase(f);
+                    }
+
+                    if (val.get_type() == json::json_type::null)
+                        this->properties.erase(p_name); // we remove the property
+                    else if (prop->second->validate(val))
+                    {
+                        FactBuilder *value_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second->get_deftemplate_name().c_str());
+                        FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
+                        prop->second->get_property_type().set_value(value_fact_builder, p_name, val);
+                        FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
+                        auto property_fact = FBAssert(value_fact_builder);
+                        assert(property_fact);
+                        LOG_TRACE(tp.get_coco().to_string(property_fact));
+                        FBDispose(value_fact_builder);
+                        this->properties[p_name] = val;
+                        properties_facts.emplace(p_name, property_fact);
+                    }
+                    else
+                        LOG_WARN("Data " + p_name + " for item " + id + " is not valid");
+                }
+                else
+                    LOG_WARN("Type " + tp.get_name() + " does not have dynamic property " + p_name);
+
+            for (const auto &tp : t->get_parents())
+                q.push(&*tp.second);
+        }
     }
 } // namespace coco

@@ -7,7 +7,7 @@
 
 namespace coco
 {
-    type::type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data)), static_properties(std::move(static_props)), dynamic_properties(std::move(dynamic_props))
+    type::type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data))
     {
         FactBuilder *type_fact_builder = CreateFactBuilder(cc.env, "type");
         FBPutSlotString(type_fact_builder, "name", name.data());
@@ -15,20 +15,16 @@ namespace coco
         assert(type_fact);
         LOG_TRACE(cc.to_string(type_fact));
         FBDispose(type_fact_builder);
-        for (auto &[name, prop] : static_properties.as_object())
-            cc.get_property_type(static_cast<std::string>(prop["type"])).make_static_property(*this, name, prop);
-        for (auto &[name, prop] : dynamic_properties.as_object())
-            cc.get_property_type(static_cast<std::string>(prop["type"])).make_dynamic_property(*this, name, prop);
+        for (auto &[name, prop] : static_props.as_object())
+            static_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, false, name, prop));
+        for (auto &[name, prop] : dynamic_props.as_object())
+            dynamic_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, true, name, prop));
     }
     type::~type()
     {
         for (auto &p : parent_facts)
             Retract(p.second);
         Retract(type_fact);
-        for (auto &[p_name, _] : static_properties.as_object())
-            Undeftemplate(FindDeftemplate(cc.env, (name + '_' + p_name).c_str()), cc.env);
-        for (auto &[p_name, _] : dynamic_properties.as_object())
-            Undeftemplate(FindDeftemplate(cc.env, (name + "_has_" + p_name).c_str()), cc.env);
     }
 
     void type::set_parents(std::vector<utils::ref_wrapper<const type>> &&parents) noexcept

@@ -13,14 +13,24 @@ namespace coco
 
   class coco;
   class type;
+  class property;
+  class item;
 
   class property_type
   {
     friend class type;
+    friend class item;
 
   public:
     property_type(coco &cc, std::string_view name) noexcept;
     virtual ~property_type() = default;
+
+    /**
+     * @brief Gets the CoCo environment of the property type.
+     *
+     * @return The CoCo environment of the property type.
+     */
+    [[nodiscard]] coco &get_coco() const noexcept { return cc; }
 
     /**
      * @brief Gets the name of the property type.
@@ -29,20 +39,8 @@ namespace coco
      */
     [[nodiscard]] const std::string &get_name() const noexcept { return name; }
 
-    /**
-     * @brief Validates the property against a JSON object and schema references.
-     * @param j The JSON object to validate.
-     * @param schema_refs The schema references to use for validation.
-     * @return True if the property is valid, false otherwise.
-     */
-    virtual bool validate(const json::json &j, const json::json &schema_refs) const noexcept = 0;
-
-  protected:
-    Environment *get_env();
-
   private:
-    virtual void make_static_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
-    virtual void make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept = 0;
+    [[nodiscard]] virtual utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept = 0;
 
     /**
      * Sets the value of the property.
@@ -65,12 +63,76 @@ namespace coco
   public:
     bool_property_type(coco &cc) noexcept;
 
-    bool validate(const json::json &j, const json::json &schema_refs) const noexcept;
-
   private:
-    void make_static_property(type &tp, std::string_view name, const json::json &j) noexcept override;
-    void make_dynamic_property(type &tp, std::string_view name, const json::json &j) noexcept override;
+    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
 
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
+  };
+
+  class property
+  {
+    friend class item;
+
+  public:
+    property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept;
+    virtual ~property();
+
+    /**
+     * @brief Gets the type of the property.
+     *
+     * @return The type of the property.
+     */
+    [[nodiscard]] const property_type &get_property_type() const noexcept { return pt; }
+
+    /**
+     * @brief Gets the type this property belongs to.
+     *
+     * @return The type this property belongs to.
+     */
+    [[nodiscard]] const type &get_type() const noexcept { return tp; }
+
+    /**
+     * @brief Gets the dynamicity of the property.
+     *
+     * @return The dynamicity of the property.
+     */
+    [[nodiscard]] bool is_dynamic() const noexcept { return dynamic; }
+
+    /**
+     * @brief Gets the name of the property.
+     *
+     * @return The name of the property.
+     */
+    [[nodiscard]] const std::string &get_name() const noexcept { return name; }
+
+    /**
+     * @brief Validates the property against a JSON object and schema references.
+     * @param j The JSON object to validate.
+     * @return True if the property is valid, false otherwise.
+     */
+    [[nodiscard]] virtual bool validate(const json::json &j) const noexcept = 0;
+
+  protected:
+    std::string get_deftemplate_name();
+
+    Environment *get_env() const noexcept;
+    const json::json &get_schemas() const noexcept;
+
+  protected:
+    const property_type &pt;
+    const type &tp;
+    const bool dynamic;
+    const std::string name;
+  };
+
+  class bool_property final : public property
+  {
+  public:
+    bool_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<bool> default_value = std::nullopt) noexcept;
+
+    [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+  private:
+    std::optional<bool> default_value;
   };
 } // namespace coco

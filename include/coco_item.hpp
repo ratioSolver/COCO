@@ -78,10 +78,10 @@ namespace coco
      *
      * This function sets the value of the item using the provided JSON value.
      *
-     * @param val The JSON value to set as the item's value.
+     * @param vals The JSON value to set as the item's value.
      * @param timestamp The timestamp of the value.
      */
-    void set_value(const json::json &val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
+    void set_value(const json::json &vals, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
 
   private:
     const type &tp;                                  // The type of the item.

@@ -87,4 +87,25 @@ namespace coco
         LOG_WARN(std::string("Timestamp: ") + oss.str());
     }
     void coco_db::delete_item(std::string_view itm_id) { LOG_WARN(std::string("Deleting item ") + itm_id.data()); }
+
+    std::vector<db_rule> coco_db::get_reactive_rules() noexcept
+    {
+        LOG_WARN("Retrieving all the reactive rules..");
+        return std::vector<db_rule>();
+    }
+    void coco_db::create_reactive_rule(std::string_view rule_name, std::string_view rule_content)
+    {
+        LOG_WARN(std::string("Creating new reactive rule: ") + rule_name.data());
+        LOG_WARN(std::string("Content: ") + rule_content.data());
+    }
+    std::vector<db_rule> coco_db::get_deliberative_rules() noexcept
+    {
+        LOG_WARN("Retrieving all the deliberative rules..");
+        return std::vector<db_rule>();
+    }
+    void coco_db::create_deliberative_rule(std::string_view rule_name, std::string_view rule_content)
+    {
+        LOG_WARN(std::string("Creating new deliberative rule: ") + rule_name.data());
+        LOG_WARN(std::string("Content: ") + rule_content.data());
+    }
 } // namespace coco

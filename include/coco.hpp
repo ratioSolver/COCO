@@ -20,6 +20,8 @@ namespace coco
   class item;
   class property_type;
   class property;
+  class reactive_rule;
+  class deliberative_rule;
 #ifdef BUILD_LISTENERS
   class listener;
 #endif
@@ -29,6 +31,7 @@ namespace coco
     friend class type;
     friend class item;
     friend class property;
+    friend class reactive_rule;
 #ifdef BUILD_LISTENERS
     friend class listener;
 #endif

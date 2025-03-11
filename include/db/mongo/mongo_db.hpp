@@ -24,6 +24,11 @@ namespace coco
     void set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
     void delete_item(std::string_view itm_id) override;
 
+    [[nodiscard]] std::vector<db_rule> get_reactive_rules() noexcept override;
+    void create_reactive_rule(std::string_view rule_name, std::string_view rule_content) override;
+    [[nodiscard]] std::vector<db_rule> get_deliberative_rules() noexcept override;
+    void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content) override;
+
   private:
     mongocxx::client conn;
 
@@ -31,6 +36,6 @@ namespace coco
     mongocxx::database db;
 
   private:
-    mongocxx::collection types_collection, items_collection, item_data_collection;
+    mongocxx::collection types_collection, items_collection, item_data_collection, reactive_rules_collection, deliberative_rules_collection;
   };
 } // namespace coco

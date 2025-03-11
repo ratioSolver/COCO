@@ -6,7 +6,7 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(json::json &&cnfg, const std::string &mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"])
+    mongo_db::mongo_db(json::json &&cnfg, const std::string &mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
     {
         assert(conn);
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
@@ -151,5 +151,44 @@ namespace coco
             throw std::invalid_argument("Failed to delete item data for item: " + std::string(itm_id));
         if (!items_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}))))
             throw std::invalid_argument("Failed to delete item: " + std::string(itm_id));
+    }
+
+    std::vector<db_rule> mongo_db::get_reactive_rules() noexcept
+    {
+        std::vector<db_rule> rules;
+        for (const auto &doc : reactive_rules_collection.find({}))
+        {
+            auto name = doc["_id"].get_string().value;
+            auto content = doc["content"].get_string().value;
+            rules.push_back({std::string(name), std::string(content)});
+        }
+        return rules;
+    }
+    void mongo_db::create_reactive_rule(std::string_view rule_name, std::string_view rule_content)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", rule_name.data()));
+        doc.append(bsoncxx::builder::basic::kvp("content", rule_content.data()));
+        if (!reactive_rules_collection.insert_one(doc.view()))
+            throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
+    }
+    std::vector<db_rule> mongo_db::get_deliberative_rules() noexcept
+    {
+        std::vector<db_rule> rules;
+        for (const auto &doc : deliberative_rules_collection.find({}))
+        {
+            auto name = doc["_id"].get_string().value;
+            auto content = doc["content"].get_string().value;
+            rules.push_back({std::string(name), std::string(content)});
+        }
+        return rules;
+    }
+    void mongo_db::create_deliberative_rule(std::string_view rule_name, std::string_view rule_content)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("name", rule_name.data()));
+        doc.append(bsoncxx::builder::basic::kvp("content", rule_content.data()));
+        if (!deliberative_rules_collection.insert_one(doc.view()))
+            throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
     }
 } // namespace coco

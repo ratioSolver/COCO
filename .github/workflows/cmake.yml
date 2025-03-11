@@ -44,7 +44,7 @@ jobs:
           sudo ldconfig
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_UBSAN=ON -DENABLE_COV=ON
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_UBSAN=ON -DENABLE_COV=ON -DBUILD_MONGODB
 
       - name: Build
         run: cmake --build build --config Debug
@@ -105,7 +105,7 @@ jobs:
           sudo ldconfig
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_MONGODB
 
       - name: Build
         run: cmake --build build --config Debug
@@ -155,7 +155,7 @@ jobs:
           sudo ldconfig
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_MONGODB
 
       - name: Build
         run: cmake --build build --config Release

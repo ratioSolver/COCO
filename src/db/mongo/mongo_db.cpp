@@ -24,7 +24,7 @@ namespace coco
         std::vector<db_type> types;
         for (const auto &doc : types_collection.find({}))
         {
-            auto name = doc["_id"].get_string().value.to_string();
+            auto name = doc["_id"].get_string().value;
             std::vector<std::string> parents;
             if (doc.find("parents") != doc.end())
                 for (const auto &p : doc["parents"].get_array().value)
@@ -38,7 +38,7 @@ namespace coco
             if (doc.find("dynamic_properties") != doc.end())
                 dynamic_props = json::load(bsoncxx::to_json(doc["dynamic_properties"].get_document().view()));
 
-            types.push_back({std::move(name), std::move(parents), std::move(data), std::move(static_props), std::move(dynamic_props)});
+            types.push_back({std::string(name), std::move(parents), std::move(data), std::move(static_props), std::move(dynamic_props)});
         }
         return types;
     }
@@ -89,7 +89,7 @@ namespace coco
         for (const auto &doc : types_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
-            auto type = doc["type"].get_string().value.to_string();
+            auto type = doc["type"].get_string().value;
 
             std::optional<json::json> props;
             if (doc.find("properties") != doc.end())
@@ -99,7 +99,7 @@ namespace coco
             if (doc.find("value") != doc.end())
                 value = {json::load(bsoncxx::to_json(doc["value"]["data"].get_document().view())), doc["value"]["timestamp"].get_date()};
 
-            items.push_back({std::move(id), std::move(type), std::move(props), std::move(value)});
+            items.push_back({std::move(id), std::string(type), std::move(props), std::move(value)});
         }
         return items;
     }

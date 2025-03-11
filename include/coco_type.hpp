@@ -90,6 +90,8 @@ namespace coco
      */
     item &make_item(std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt);
 
+    [[nodiscard]] json::json to_json() const noexcept;
+
   private:
     coco &cc;                                                                   // The CoCo object..
     std::string name;                                                           // The name of the type..

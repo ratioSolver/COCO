@@ -1,4 +1,7 @@
 #include "coco_server.hpp"
+#include "coco_type.hpp"
+#include "coco_item.hpp"
+#include "logging.hpp"
 
 namespace coco
 {
@@ -6,6 +9,13 @@ namespace coco
     {
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
+
+        add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
+        add_route(network::Get, "^/type/.*$", std::bind(&coco_server::get_type, this, network::placeholders::request));
+        add_route(network::Post, "^/type$", std::bind(&coco_server::create_type, this, network::placeholders::request));
+        add_route(network::Delete, "^/type/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
+
+        add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
 
     utils::u_ptr<network::response> coco_server::index(const network::request &) { return utils::make_u_ptr<network::file_response>(CLIENT_DIR "/dist/index.html"); }
@@ -17,10 +27,137 @@ namespace coco
         return utils::make_u_ptr<network::file_response>(CLIENT_DIR "/dist" + target);
     }
 
+    utils::u_ptr<network::response> coco_server::get_types([[maybe_unused]] const network::request &req)
+    {
+        json::json ts(json::json_type::array);
+        for (auto &tp : cc.get_types())
+        {
+            auto j_tp = tp->to_json();
+            j_tp["name"] = tp->get_name();
+            ts.push_back(std::move(j_tp));
+        }
+        return utils::make_u_ptr<network::json_response>(std::move(ts));
+    }
+    utils::u_ptr<network::response> coco_server::get_type(const network::request &req)
+    {
+        try
+        { // get type by id in the path
+            auto &tp = cc.get_type(req.get_target().substr(6));
+            auto j_tp = tp.to_json();
+            j_tp["name"] = tp.get_name();
+            return utils::make_u_ptr<network::json_response>(std::move(j_tp));
+        }
+        catch (const std::exception &)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+        }
+    }
+    utils::u_ptr<network::response> coco_server::create_type(const network::request &req)
+    {
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string)
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+
+        std::string name = body["name"];
+
+        std::vector<utils::ref_wrapper<const type>> parents;
+        if (body.contains("parents"))
+        {
+            if (body["parents"].get_type() != json::json_type::array)
+                return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            for (auto &p : body["parents"].as_array())
+            {
+                if (p.get_type() != json::json_type::string)
+                    return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+                try
+                {
+                    auto &tp = cc.get_type(static_cast<std::string>(p));
+                    parents.emplace_back(tp);
+                }
+                catch (const std::exception &)
+                {
+                    return utils::make_u_ptr<network::json_response>(json::json({{"message", "Parent type not found"}}), network::status_code::not_found);
+                }
+            }
+        }
+
+        json::json static_props;
+        if (body.contains("static_properties"))
+            static_props = std::move(body["static_properties"]);
+
+        json::json dynamic_props;
+        if (body.contains("dynamic_properties"))
+            dynamic_props = std::move(body["dynamic_properties"]);
+
+        json::json data;
+        if (body.contains("data"))
+            data = std::move(body["data"]);
+
+        [[maybe_unused]] auto &tp = cc.create_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
+        return utils::make_u_ptr<network::response>(network::status_code::no_content);
+    }
+    utils::u_ptr<network::response> coco_server::delete_type(const network::request &req)
+    {
+        try
+        { // get type by id in the path
+            cc.delete_type(cc.get_type(req.get_target().substr(6)));
+            return utils::make_u_ptr<network::response>(network::status_code::no_content);
+        }
+        catch (const std::exception &)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+        }
+    }
+
+    void coco_server::on_ws_open(network::ws_session &ws)
+    {
+        LOG_TRACE("New connection from " << ws.remote_endpoint());
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+
+        auto jc = cc.to_json();
+        jc["type"] = "coco";
+        ws.send(jc.dump());
+    }
+    void coco_server::on_ws_message(network::ws_session &ws, std::string_view msg)
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        auto x = json::load(msg);
+        if (x.get_type() != json::json_type::object || !x.contains("type") || x["type"].get_type() != json::json_type::string)
+        {
+            ws.close();
+            return;
+        }
+    }
+    void coco_server::on_ws_close(network::ws_session &ws)
+    {
+        LOG_TRACE("Connection closed with " << ws.remote_endpoint());
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        clients.erase(&ws);
+        LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
+    }
+    void coco_server::on_ws_error(network::ws_session &ws, [[maybe_unused]] const std::error_code &ec)
+    {
+        LOG_TRACE("Connection error with " << ws.remote_endpoint() << ": " << ec.message());
+        on_ws_close(ws);
+    }
+
     void coco_server::new_type(const type &tp)
     {
+        auto j_tp = tp.to_json();
+        j_tp["name"] = tp.get_name();
+        broadcast(std::move(j_tp));
     }
     void coco_server::new_item(const item &itm)
     {
+        auto j_itm = itm.to_json();
+        j_itm["id"] = itm.get_id();
+        broadcast(std::move(j_itm));
+    }
+
+    void coco_server::broadcast(json::json &&msg)
+    {
+        auto msg_str = msg.dump();
+        for (auto client : clients)
+            client->send(msg_str);
     }
 } // namespace coco

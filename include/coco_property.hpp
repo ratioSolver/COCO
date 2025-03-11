@@ -182,6 +182,8 @@ namespace coco
      */
     [[nodiscard]] virtual bool validate(const json::json &j) const noexcept = 0;
 
+    [[nodiscard]] virtual json::json to_json() const noexcept = 0;
+
   protected:
     [[nodiscard]] std::string get_deftemplate_name() const noexcept;
 
@@ -202,6 +204,8 @@ namespace coco
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
+    [[nodiscard]] json::json to_json() const noexcept override;
+
   private:
     std::optional<bool> default_value; // The default value for the property.
   };
@@ -212,6 +216,8 @@ namespace coco
     int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<long> default_value = std::nullopt, std::optional<long> min = std::nullopt, std::optional<long> max = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+    [[nodiscard]] json::json to_json() const noexcept override;
 
   private:
     std::optional<long> default_value; // The default value for the property.
@@ -226,6 +232,8 @@ namespace coco
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
+    [[nodiscard]] json::json to_json() const noexcept override;
+
   private:
     std::optional<double> default_value; // The default value for the property.
     std::optional<double> min;           // The minimum value allowed for the property.
@@ -239,6 +247,8 @@ namespace coco
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
+    [[nodiscard]] json::json to_json() const noexcept override;
+
   private:
     std::optional<std::string> default_value; // The default value for the property.
   };
@@ -249,6 +259,8 @@ namespace coco
     symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple = false, std::vector<std::string> &&values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+    [[nodiscard]] json::json to_json() const noexcept override;
 
   private:
     bool multiple;                                         // Indicates whether the property can have multiple values.
@@ -263,6 +275,8 @@ namespace coco
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
+    [[nodiscard]] json::json to_json() const noexcept override;
+
   private:
     const type &domain;                                    // The domain of the property.
     bool multiple;                                         // Indicates whether the property can have multiple values.
@@ -276,6 +290,8 @@ namespace coco
     json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema = std::nullopt, std::optional<json::json> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+    [[nodiscard]] json::json to_json() const noexcept override;
 
   private:
     std::optional<json::json> schema;        // The validation schema..

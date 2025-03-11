@@ -105,6 +105,11 @@ namespace coco
                 q.push(&*tp.second);
         }
 
+        if (!value.has_value())
+            value = std::make_pair(json::json(), val.second);
+        else
+            value->second = val.second;
+
         for (const auto &[p_name, j_val] : val.first.as_object())
             if (auto prop = dynamic_properties.find(p_name); prop != dynamic_properties.end())
             {
@@ -126,7 +131,7 @@ namespace coco
                     assert(property_fact);
                     LOG_TRACE(tp.get_coco().to_string(property_fact));
                     FBDispose(value_fact_builder);
-                    this->properties[p_name] = j_val;
+                    value->first[p_name] = j_val;
                     properties_facts.emplace(p_name, property_fact);
                 }
                 else
@@ -134,7 +139,15 @@ namespace coco
             }
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have dynamic property " + p_name);
+    }
 
-        value = std::move(val);
+    json::json item::to_json() const noexcept
+    {
+        json::json j_itm{{"type", tp.get_name().c_str()}};
+        if (!properties.as_object().empty())
+            j_itm["properties"] = properties;
+        if (value.has_value())
+            j_itm["value"] = json::json{{"data", value->first}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(value->second.time_since_epoch()).count()}};
+        return j_itm;
     }
 } // namespace coco

@@ -76,6 +76,8 @@ namespace coco
      */
     void set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val);
 
+    [[nodiscard]] json::json to_json() const noexcept;
+
   private:
     type &tp;                                                                          // The type of the item.
     const std::string id;                                                              // The ID of the item.

@@ -154,6 +154,14 @@ namespace coco
         Build(get_env(), deftemplate.c_str());
     }
     bool bool_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::boolean; }
+    json::json bool_property::to_json() const noexcept
+    {
+        json::json j;
+        j["type"] = bool_kw;
+        if (default_value.has_value())
+            j["default"] = default_value.value();
+        return j;
+    }
 
     int_property::int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<long> default_value, std::optional<long> min, std::optional<long> max) noexcept : property(pt, tp, dynamic, name), default_value(default_value), min(min), max(max)
     {
@@ -184,6 +192,18 @@ namespace coco
         if ((min.has_value() && min.value() > value) || (max.has_value() && max.value() < value))
             return false;
         return true;
+    }
+    json::json int_property::to_json() const noexcept
+    {
+        json::json j;
+        j["type"] = int_kw;
+        if (default_value.has_value())
+            j["default"] = default_value.value();
+        if (min.has_value())
+            j["max"] = min.value();
+        if (min.has_value())
+            j["max"] = min.value();
+        return j;
     }
 
     float_property::float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<double> default_value, std::optional<double> min, std::optional<double> max) noexcept : property(pt, tp, dynamic, name), default_value(default_value), min(min), max(max)
@@ -216,6 +236,18 @@ namespace coco
             return false;
         return true;
     }
+    json::json float_property::to_json() const noexcept
+    {
+        json::json j;
+        j["type"] = float_kw;
+        if (default_value.has_value())
+            j["default"] = default_value.value();
+        if (min.has_value())
+            j["max"] = min.value();
+        if (min.has_value())
+            j["max"] = min.value();
+        return j;
+    }
 
     string_property::string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<std::string> default_value) noexcept : property(pt, tp, dynamic, name), default_value(default_value)
     {
@@ -231,6 +263,14 @@ namespace coco
         Build(get_env(), deftemplate.c_str());
     }
     bool string_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::string; }
+    json::json string_property::to_json() const noexcept
+    {
+        json::json j;
+        j["type"] = string_kw;
+        if (default_value.has_value())
+            j["default"] = default_value.value();
+        return j;
+    }
 
     symbol_property::symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::vector<std::string> &&values, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), values(values), default_value(default_value)
     {
@@ -270,6 +310,27 @@ namespace coco
         }
         else
             return j.get_type() == json::json_type::string;
+    }
+    json::json symbol_property::to_json() const noexcept
+    {
+        json::json j;
+        j["type"] = symbol_kw;
+        j["multiple"] = multiple;
+        if (!values.empty())
+        {
+            auto j_vals = json::json(json::json_type::array);
+            for (const auto &val : values)
+                j_vals.push_back(val.c_str());
+            j["values"] = j_vals;
+        }
+        if (default_value.has_value())
+        {
+            auto j_def_vals = json::json(json::json_type::array);
+            for (const auto &val : default_value.value())
+                j_def_vals.push_back(val.c_str());
+            j["default"] = j_def_vals;
+        }
+        return j;
     }
 
     item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple, std::vector<std::string> &&values, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), domain(domain), multiple(multiple), values(values), default_value(default_value)
@@ -311,6 +372,28 @@ namespace coco
         else
             return j.get_type() == json::json_type::string;
     }
+    json::json item_property::to_json() const noexcept
+    {
+        json::json j;
+        j["type"] = item_kw;
+        j["domain"] = domain.get_name();
+        j["multiple"] = multiple;
+        if (!values.empty())
+        {
+            auto j_vals = json::json(json::json_type::array);
+            for (const auto &val : values)
+                j_vals.push_back(val.c_str());
+            j["values"] = j_vals;
+        }
+        if (default_value.has_value())
+        {
+            auto j_def_vals = json::json(json::json_type::array);
+            for (const auto &val : default_value.value())
+                j_def_vals.push_back(val.c_str());
+            j["default"] = j_def_vals;
+        }
+        return j;
+    }
 
     json_property::json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema, std::optional<json::json> default_value) noexcept : property(pt, tp, dynamic, name), schema(schema), default_value(default_value)
     {
@@ -336,4 +419,14 @@ namespace coco
         Build(get_env(), deftemplate.c_str());
     }
     bool json_property::validate(const json::json &j) const noexcept { return schema.has_value() ? json::validate(j, schema.value(), get_schemas()) : true; }
+    json::json json_property::to_json() const noexcept
+    {
+        json::json j;
+        j["type"] = json_kw;
+        if (schema.has_value())
+            j["schema"] = schema.value();
+        if (default_value.has_value())
+            j["default"] = default_value.value();
+        return j;
+    }
 } // namespace coco

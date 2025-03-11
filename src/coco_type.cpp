@@ -65,4 +65,33 @@ namespace coco
         NEW_ITEM(itm);
         return itm;
     }
+
+    [[nodiscard]] json::json type::to_json() const noexcept
+    {
+        json::json j = json::json{{"name", name.c_str()}};
+        if (!data.as_object().empty())
+            j["data"] = data;
+        if (!parents.empty())
+        {
+            json::json j_pars(json::json_type::array);
+            for (const auto &p : parents)
+                j_pars.push_back(p.second->name.c_str());
+            j["parents"] = j_pars;
+        }
+        if (!static_properties.empty())
+        {
+            json::json static_properties_json;
+            for (const auto &[name, p] : static_properties)
+                static_properties_json[name] = p->to_json();
+            j["static_properties"] = std::move(static_properties_json);
+        }
+        if (!dynamic_properties.empty())
+        {
+            json::json dynamic_properties_json;
+            for (const auto &[name, p] : dynamic_properties)
+                dynamic_properties_json[name] = p->to_json();
+            j["dynamic_properties"] = std::move(dynamic_properties_json);
+        }
+        return j;
+    }
 } // namespace coco

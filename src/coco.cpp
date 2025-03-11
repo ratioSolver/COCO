@@ -181,6 +181,19 @@ namespace coco
         return tp;
     }
 
+    [[nodiscard]] json::json coco::to_json() const noexcept
+    {
+        json::json jc;
+        if (!types.empty())
+        {
+            json::json jtps;
+            for (auto &[name, tp] : types)
+                jtps[name] = tp->to_json();
+            jc["types"] = std::move(jtps);
+        }
+        return jc;
+    }
+
 #ifdef BUILD_LISTENERS
     void coco::new_type(const type &tp)
     {

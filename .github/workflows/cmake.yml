@@ -6,6 +6,10 @@ jobs:
   ubuntu-address-undefined-coverage:
     runs-on: ubuntu-latest
 
+    services:
+      mongo:
+        image: mongo
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,6 +67,10 @@ jobs:
   ubuntu-memcheck:
     runs-on: ubuntu-latest
 
+    services:
+      mongo:
+        image: mongo
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -108,6 +116,10 @@ jobs:
 
   ubuntu-release:
     runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo
 
     steps:
       - uses: actions/checkout@v4

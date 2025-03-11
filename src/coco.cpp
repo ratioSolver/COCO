@@ -53,8 +53,22 @@ namespace coco
                 get_type(tp.name).set_parents(std::move(parents));
             }
 
+        LOG_DEBUG("Retrieving all reactive rules");
+        auto rrs = db.get_reactive_rules();
+        LOG_DEBUG("Retrieved " << rrs.size() << " reactive rules");
+        for (auto &rule : rrs)
+            reactive_rules.emplace(rule.name, utils::make_u_ptr<reactive_rule>(*this, rule.name, rule.content));
+
+        LOG_DEBUG("Retrieving all deliberative rules");
+        auto drs = db.get_deliberative_rules();
+        LOG_DEBUG("Retrieved " << drs.size() << " deliberative rules");
+        for (auto &rule : drs)
+            deliberative_rules.emplace(rule.name, utils::make_u_ptr<deliberative_rule>(*this, rule.name, rule.content));
+
         LOG_DEBUG("Retrieving all items");
-        for (auto &itm : db.get_items())
+        auto itms = db.get_items();
+        LOG_DEBUG("Retrieved " << itms.size() << " items");
+        for (auto &itm : itms)
             get_type(itm.type).make_item(itm.id, itm.props.has_value() ? std::move(itm.props.value()) : json::json{});
 
         Run(env, -1);

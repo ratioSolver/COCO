@@ -11,6 +11,8 @@ namespace coco
   constexpr const char *int_kw = "int";
   constexpr const char *float_kw = "float";
   constexpr const char *string_kw = "string";
+  constexpr const char *symbol_kw = "symbol";
+  constexpr const char *item_kw = "item";
 
   class coco;
   class type;
@@ -107,6 +109,17 @@ namespace coco
   {
   public:
     symbol_property_type(coco &cc) noexcept;
+
+  private:
+    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+
+    void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
+  };
+
+  class item_property_type final : public property_type
+  {
+  public:
+    item_property_type(coco &cc) noexcept;
 
   private:
     [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
@@ -221,13 +234,27 @@ namespace coco
   class symbol_property final : public property
   {
   public:
-    symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
+    symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple = false, std::vector<std::string> &&values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
   private:
-    std::optional<std::vector<std::string>> default_value; // The default value for the property.
-    std::vector<std::string> values;                       // The possible values for the property.
     bool multiple;                                         // Indicates whether the property can have multiple values.
+    std::vector<std::string> values;                       // The possible values for the property.
+    std::optional<std::vector<std::string>> default_value; // The default value for the property.
+  };
+
+  class item_property final : public property
+  {
+  public:
+    item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple = false, std::vector<std::string> &&values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
+
+    [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+  private:
+    const type &domain;                                    // The domain of the property.
+    bool multiple;                                         // Indicates whether the property can have multiple values.
+    std::vector<std::string> values;                       // The possible values for the property.
+    std::optional<std::vector<std::string>> default_value; // The default value for the property.
   };
 } // namespace coco

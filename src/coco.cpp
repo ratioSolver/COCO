@@ -21,6 +21,8 @@ namespace coco
         add_property_type(utils::make_u_ptr<int_property_type>(*this));
         add_property_type(utils::make_u_ptr<float_property_type>(*this));
         add_property_type(utils::make_u_ptr<string_property_type>(*this));
+        add_property_type(utils::make_u_ptr<symbol_property_type>(*this));
+        add_property_type(utils::make_u_ptr<item_property_type>(*this));
 
         LOG_TRACE(type_deftemplate);
         Build(env, type_deftemplate);

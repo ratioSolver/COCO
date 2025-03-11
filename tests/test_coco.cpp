@@ -26,6 +26,10 @@ int main()
     auto &ch_itm = cc.create_item(ch_tp);
     cc.set_value(ch_itm, json::json{{"online", true}, {"count", 1}, {"temp", 22.5}});
 
+    auto &s_tp = cc.create_type("SourceType", {}, json::json(), json::json{{"parent", {{"type", "item"}, {"domain", "ParentType"}}}});
+    auto &s_itm = cc.create_item(s_tp);
+    cc.set_value(s_itm, json::json{{"parent", ch_itm.get_id().c_str()}});
+
     db.delete_type(tp.get_name());
 
     db.drop();

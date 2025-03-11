@@ -103,6 +103,17 @@ namespace coco
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
 
+  class symbol_property_type final : public property_type
+  {
+  public:
+    symbol_property_type(coco &cc) noexcept;
+
+  private:
+    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+
+    void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
+  };
+
   class property
   {
     friend class item;
@@ -167,7 +178,7 @@ namespace coco
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
   private:
-    std::optional<bool> default_value;
+    std::optional<bool> default_value; // The default value for the property.
   };
 
   class int_property final : public property
@@ -178,7 +189,9 @@ namespace coco
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
   private:
-    std::optional<long> default_value, min, max;
+    std::optional<long> default_value; // The default value for the property.
+    std::optional<long> min;           // The minimum value allowed for the property.
+    std::optional<long> max;           // The maximum value allowed for the property.
   };
 
   class float_property final : public property
@@ -189,7 +202,9 @@ namespace coco
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
   private:
-    std::optional<double> default_value, min, max;
+    std::optional<double> default_value; // The default value for the property.
+    std::optional<double> min;           // The minimum value allowed for the property.
+    std::optional<double> max;           // The maximum value allowed for the property.
   };
 
   class string_property final : public property
@@ -200,6 +215,19 @@ namespace coco
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
   private:
-    std::optional<std::string> default_value;
+    std::optional<std::string> default_value; // The default value for the property.
+  };
+
+  class symbol_property final : public property
+  {
+  public:
+    symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<std::vector<std::string>> default_value = std::nullopt, std::vector<std::string> values = {}, bool multiple = false) noexcept;
+
+    [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+  private:
+    std::optional<std::vector<std::string>> default_value; // The default value for the property.
+    std::vector<std::string> values;                       // The possible values for the property.
+    bool multiple;                                         // Indicates whether the property can have multiple values.
   };
 } // namespace coco

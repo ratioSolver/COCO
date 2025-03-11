@@ -2,6 +2,7 @@
 #include "coco_type.hpp"
 #include "coco.hpp"
 #include "logging.hpp"
+#include <algorithm>
 #include <cassert>
 
 namespace coco
@@ -59,6 +60,16 @@ namespace coco
         return utils::make_u_ptr<string_property>(*this, tp, dynamic, name, default_value);
     }
     void string_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str()); }
+
+    symbol_property_type::symbol_property_type(coco &cc) noexcept : property_type(cc, string_kw) {}
+    utils::u_ptr<property> symbol_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    {
+        std::optional<std::string> default_value;
+        if (j.contains("default"))
+            default_value = static_cast<std::string>(j["default"]);
+        return utils::make_u_ptr<string_property>(*this, tp, dynamic, name, default_value);
+    }
+    void symbol_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str()); }
 
     property::property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept : pt(pt), tp(tp), dynamic(dynamic), name(name) {}
     property::~property()
@@ -163,7 +174,7 @@ namespace coco
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
         deftemplate += " (type STRING)";
         if (default_value.has_value())
-            deftemplate += default_value.value();
+            deftemplate += " (default " + default_value.value() + ")";
         deftemplate += ')';
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
@@ -172,4 +183,44 @@ namespace coco
         Build(get_env(), deftemplate.c_str());
     }
     bool string_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::string; }
+
+    symbol_property::symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<std::vector<std::string>> default_value, std::vector<std::string> values, bool multiple) noexcept : property(pt, tp, dynamic, name), default_value(default_value), values(values), multiple(multiple)
+    {
+        assert(!default_value.has_value() || values.empty() || std::all_of(default_value.value().begin(), default_value.value().end(), [this](const std::string &val)
+                                                                           { return std::find(this->values.begin(), this->values.end(), val) != this->values.end(); }));
+        assert(!default_value.has_value() || !multiple || default_value.value().size() <= 1);
+
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
+        if (multiple)
+            deftemplate += "multislot ";
+        else
+            deftemplate += "slot ";
+        deftemplate += name.data();
+        deftemplate += " (type SYMBOL)";
+        if (default_value.has_value())
+        {
+            deftemplate += " (default";
+            for (const auto &val : default_value.value())
+                deftemplate += " " + val;
+            deftemplate += ")";
+        }
+        deftemplate += ')';
+        if (dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += ')';
+        LOG_TRACE(deftemplate);
+        Build(get_env(), deftemplate.c_str());
+    }
+    bool symbol_property::validate(const json::json &j) const noexcept
+    {
+        if (multiple)
+        {
+            if (j.get_type() != json::json_type::array)
+                return false;
+            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const auto &val)
+                               { return val.get_type() == json::json_type::string; });
+        }
+        else
+            return j.get_type() == json::json_type::string;
+    }
 } // namespace coco

@@ -26,6 +26,8 @@ int main()
     auto &ch_itm = cc.create_item(ch_tp);
     cc.set_value(ch_itm, json::json{{"online", true}, {"count", 1}, {"temp", 22.5}});
 
+    db.delete_type(tp.get_name());
+
     db.drop();
 
     return 0;

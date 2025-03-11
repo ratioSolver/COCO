@@ -6,11 +6,17 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(json::json &&cnfg, const std::string &mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"])
+    mongo_db::mongo_db(json::json &&cnfg, const std::string &mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"])
     {
         assert(conn);
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
             LOG_DEBUG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
+
+        if (item_data_collection.list_indexes().begin() == item_data_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for item data collection");
+            item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
+        }
     }
 
     void mongo_db::drop() noexcept
@@ -79,14 +85,23 @@ namespace coco
     }
     void mongo_db::delete_type(std::string_view name)
     {
+        bsoncxx::builder::basic::array ids_builder;
+        for (const auto &item : items_collection.find(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("type", name.data())), mongocxx::options::find{}.projection(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", 1)))))
+            ids_builder.append(item["_id"].get_value());
+        if (!item_data_collection.delete_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$in", ids_builder))))))
+            throw std::invalid_argument("Failed to delete item data of items of type: " + std::string(name));
+        if (!items_collection.delete_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("type", name.data()))))
+            throw std::invalid_argument("Failed to delete items of type: " + std::string(name));
         if (!types_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", name.data()))))
             throw std::invalid_argument("Failed to delete type: " + std::string(name));
+        for (const auto &other_type : types_collection.find(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("parents", name.data())))) // Remove the type from the "parents" array of these types
+            types_collection.update_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", other_type["_id"].get_value())), bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("parents", name.data())))));
     }
 
     [[nodiscard]] std::vector<db_item> mongo_db::get_items() noexcept
     {
         std::vector<db_item> items;
-        for (const auto &doc : types_collection.find({}))
+        for (const auto &doc : items_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
             auto type = doc["type"].get_string().value;
@@ -103,22 +118,38 @@ namespace coco
         }
         return items;
     }
-    std::string mongo_db::create_item(std::string_view type, const json::json &props, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
+    std::string mongo_db::create_item(std::string_view type, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("type", type.data()));
         if (!props.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())));
-        if (!val.as_object().empty())
+        if (val.has_value())
         {
             bsoncxx::builder::basic::document data_doc;
-            data_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(val.dump())));
-            data_doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
+            data_doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(val->first.dump())));
+            data_doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{val->second}));
             doc.append(bsoncxx::builder::basic::kvp("value", data_doc));
         }
         auto result = items_collection.insert_one(doc.view());
         if (!result)
             throw std::invalid_argument("Failed to insert " + std::string(type) + " item");
         return result->inserted_id().get_oid().value.to_string();
+    }
+    void mongo_db::set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}));
+        doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(val.dump())));
+        doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
+        if (!item_data_collection.insert_one(doc.view()))
+            throw std::invalid_argument("Failed to insert data for item: " + std::string(itm_id));
+    }
+    void mongo_db::delete_item(std::string_view itm_id)
+    {
+        if (!item_data_collection.delete_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}))))
+            throw std::invalid_argument("Failed to delete item data for item: " + std::string(itm_id));
+        if (!items_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}))))
+            throw std::invalid_argument("Failed to delete item: " + std::string(itm_id));
     }
 } // namespace coco

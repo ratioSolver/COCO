@@ -28,13 +28,14 @@ namespace coco
     virtual void drop() noexcept;
 
     [[nodiscard]] virtual std::vector<db_type> get_types() noexcept;
-    virtual void create_type(std::string_view name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props);
-    virtual void set_parents(std::string_view name, const std::vector<std::string> &parents);
-    virtual void delete_type(std::string_view name);
+    virtual void create_type(std::string_view tp_name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props);
+    virtual void set_parents(std::string_view tp_name, const std::vector<std::string> &parents);
+    virtual void delete_type(std::string_view tp_name);
 
     [[nodiscard]] virtual std::vector<db_item> get_items() noexcept;
     virtual std::string create_item(std::string_view type, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val = std::nullopt);
     virtual void set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
+    virtual void delete_item(std::string_view itm_id);
 
   protected:
     const json::json config;

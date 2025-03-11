@@ -15,12 +15,14 @@ namespace coco
     void drop() noexcept override;
 
     [[nodiscard]] std::vector<db_type> get_types() noexcept override;
-    void create_type(std::string_view name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props) override;
-    void set_parents(std::string_view name, const std::vector<std::string> &parents) override;
-    void delete_type(std::string_view name) override;
+    void create_type(std::string_view tp_name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props) override;
+    void set_parents(std::string_view tp_name, const std::vector<std::string> &parents) override;
+    void delete_type(std::string_view tp_name) override;
 
     [[nodiscard]] std::vector<db_item> get_items() noexcept override;
-    std::string create_item(std::string_view type, const json::json &props, const json::json &val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
+    std::string create_item(std::string_view type, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val = std::nullopt) override;
+    void set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) override;
+    void delete_item(std::string_view itm_id) override;
 
   private:
     mongocxx::client conn;
@@ -29,6 +31,6 @@ namespace coco
     mongocxx::database db;
 
   private:
-    mongocxx::collection types_collection, items_collection;
+    mongocxx::collection types_collection, items_collection, item_data_collection;
   };
 } // namespace coco

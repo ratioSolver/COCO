@@ -13,6 +13,7 @@ namespace coco
   constexpr const char *string_kw = "string";
   constexpr const char *symbol_kw = "symbol";
   constexpr const char *item_kw = "item";
+  constexpr const char *json_kw = "json";
 
   class coco;
   class type;
@@ -120,6 +121,17 @@ namespace coco
   {
   public:
     item_property_type(coco &cc) noexcept;
+
+  private:
+    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+
+    void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
+  };
+
+  class json_property_type final : public property_type
+  {
+  public:
+    json_property_type(coco &cc) noexcept;
 
   private:
     [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
@@ -256,5 +268,17 @@ namespace coco
     bool multiple;                                         // Indicates whether the property can have multiple values.
     std::vector<std::string> values;                       // The possible values for the property.
     std::optional<std::vector<std::string>> default_value; // The default value for the property.
+  };
+
+  class json_property final : public property
+  {
+  public:
+    json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema = std::nullopt, std::optional<json::json> default_value = std::nullopt) noexcept;
+
+    [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+  private:
+    std::optional<json::json> schema;        // The validation schema..
+    std::optional<json::json> default_value; // The default value for the property.
   };
 } // namespace coco

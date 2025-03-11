@@ -9,9 +9,10 @@
 #endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
+#include <thread>
 #endif
 
-int main()
+void test_basic_core()
 {
 #ifdef BUILD_MONGODB
     mongocxx::instance inst{}; // This should be done only once.
@@ -23,6 +24,9 @@ int main()
 
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);
+    auto srv_ft = std::async(std::launch::async, [&srv]
+                             { srv.start(); });
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 #endif
 
     auto &tp = cc.create_type("ParentType", {}, json::json(), json::json{{"online", {"type", "bool"}}});
@@ -37,9 +41,14 @@ int main()
     auto &s_itm = cc.create_item(s_tp);
     cc.set_value(s_itm, json::json{{"parent", ch_itm.get_id().c_str()}});
 
-    db.delete_type(tp.get_name());
-
     db.drop();
+
+    srv.stop();
+}
+
+int main()
+{
+    test_basic_core();
 
     return 0;
 }

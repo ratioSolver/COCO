@@ -50,9 +50,17 @@ if(BUILD_COCO_SERVER)
         add_subdirectory(extern/rationet)
     endif()
 
+    set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gui CACHE STRING "Client directory")
+    message(STATUS "Client directory: ${CLIENT_DIR}")
+
+    target_sources(CoCo PRIVATE src/server/coco_server.cpp)
+    target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/server>)
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
-    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS)
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_SERVER CLIENT_DIR="${CLIENT_DIR}")
+
+    add_custom_target(npm_gui_install ALL COMMAND npm install WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Installing the TypeScript framework" VERBATIM)
+    add_custom_target(npm_gui_build ALL COMMAND npm run build WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Building the TypeScript framework" VERBATIM DEPENDS npm_gui_install)
 endif()
 
 message(STATUS "Build MQTT middleware: ${BUILD_MQTT}")

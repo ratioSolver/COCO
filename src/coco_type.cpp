@@ -56,11 +56,12 @@ namespace coco
         }
     }
 
-    item &type::make_item(std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept
+    item &type::make_item(std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val)
     {
         auto itm_ptr = utils::make_u_ptr<item>(*this, id, std::move(props), std::move(val));
         auto &itm = *itm_ptr;
-        instances.emplace(id.data(), std::move(itm_ptr));
+        if (!instances.emplace(id.data(), std::move(itm_ptr)).second)
+            throw std::invalid_argument("item `" + std::string(id) + "` already exists");
         NEW_ITEM(itm);
         return itm;
     }

@@ -15,6 +15,8 @@ namespace coco
 
   class type
   {
+    friend class coco;
+
   public:
     /**
      * @brief Constructs a new `type` object.
@@ -86,7 +88,7 @@ namespace coco
      * @param val The current value of the new instance and the timestamp of the value.
      * @return The new instance of the type.
      */
-    item &make_item(std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
+    item &make_item(std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt);
 
   private:
     coco &cc;                                                                   // The CoCo object..

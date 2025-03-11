@@ -5,6 +5,7 @@
 #include "clips.h"
 #include <chrono>
 #include <optional>
+#include <mutex>
 
 namespace coco
 {
@@ -58,7 +59,7 @@ namespace coco
      * @return A reference to the type.
      * @throws std::invalid_argument if the type does not exist.
      */
-    [[nodiscard]] type &get_type(const std::string &name);
+    [[nodiscard]] type &get_type(std::string_view name);
 
     [[nodiscard]] type &create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
     void set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents) noexcept;
@@ -66,6 +67,10 @@ namespace coco
 
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
     void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
+    void delete_item(item &itm) noexcept;
+
+    void create_reactive_rule(std::string_view rule_name, std::string_view rule_content);
+    void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content);
 
   protected:
     void add_property_type(utils::u_ptr<property_type> pt);
@@ -75,7 +80,7 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
-    type &make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+    type &make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
 
 #ifdef BUILD_LISTENERS
   private:
@@ -95,11 +100,14 @@ namespace coco
 #endif
 
   protected:
-    coco_db &db;                                                       // the database..
-    json::json schemas;                                                // the JSON schemas..
-    std::map<std::string, utils::u_ptr<property_type>> property_types; // the property types..
-    Environment *env;                                                  // the CLIPS environment..
-    std::map<std::string, utils::u_ptr<type>> types;                   // The types managed by CoCo by name.
+    coco_db &db;                                                                            // The database..
+    json::json schemas;                                                                     // The JSON schemas..
+    std::map<std::string, utils::u_ptr<property_type>, std::less<>> property_types;         // The property types..
+    std::recursive_mutex mtx;                                                               // The mutex for the core..
+    Environment *env;                                                                       // The CLIPS environment..
+    std::map<std::string, utils::u_ptr<type>, std::less<>> types;                           // The types managed by CoCo by name.
+    std::map<std::string, utils::u_ptr<reactive_rule>, std::less<>> reactive_rules;         // The reactive rules..
+    std::map<std::string, utils::u_ptr<deliberative_rule>, std::less<>> deliberative_rules; // The deliberative rules..
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif

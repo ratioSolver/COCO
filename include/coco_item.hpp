@@ -27,7 +27,7 @@ namespace coco
      * @param val The value of the item.
      * @param timestamp The timestamp of the value.
      */
-    item(const type &tp, std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
+    item(type &tp, std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
     ~item() noexcept;
 
     /**
@@ -42,7 +42,7 @@ namespace coco
      *
      * @return The type of the item.
      */
-    [[nodiscard]] const type &get_type() const { return tp; }
+    [[nodiscard]] type &get_type() const { return tp; }
 
     /**
      * @brief Gets the properties of the item.
@@ -77,7 +77,7 @@ namespace coco
     void set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val);
 
   private:
-    const type &tp;                                                                    // The type of the item.
+    type &tp;                                                                          // The type of the item.
     const std::string id;                                                              // The ID of the item.
     Fact *item_fact = nullptr;                                                         // The fact representing the item.
     Fact *is_instance_of = nullptr;                                                    // The fact representing the type of the item.

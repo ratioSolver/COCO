@@ -8,7 +8,7 @@
 
 namespace coco
 {
-    item::item(const type &tp, std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept : tp(tp), id(id), properties(props)
+    item::item(type &tp, std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept : tp(tp), id(id), properties(props)
     {
         FactBuilder *item_fact_builder = CreateFactBuilder(tp.get_coco().env, "item");
         FBPutSlotSymbol(item_fact_builder, "id", id.data());

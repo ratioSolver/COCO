@@ -7,6 +7,9 @@
 #else
 #include "coco_db.hpp"
 #endif
+#ifdef BUILD_SERVER
+#include "coco_server.hpp"
+#endif
 
 int main()
 {
@@ -17,6 +20,10 @@ int main()
     coco::coco_db db;
 #endif
     coco::coco cc(db);
+
+#ifdef BUILD_SERVER
+    coco::coco_server srv(cc);
+#endif
 
     auto &tp = cc.create_type("ParentType", {}, json::json(), json::json{{"online", {"type", "bool"}}});
     auto &itm = cc.create_item(tp);

@@ -97,10 +97,13 @@ namespace coco
         db.delete_type(tp.get_name());
     }
 
-    item &coco::create_item(type &tp, json::json &&props, json::json &&val, const std::chrono::system_clock::time_point &timestamp) noexcept
+    item &coco::create_item(type &tp, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept
     {
-        auto id = db.create_item(tp.get_name(), props, val, timestamp);
-        return tp.make_item(id, std::move(props), std::move(val), timestamp);
+        auto id = db.create_item(tp.get_name(), props, val);
+        return tp.make_item(id, std::move(props), std::move(val));
+    }
+    void coco::set_value(item &itm, json::json &&vals, const std::chrono::system_clock::time_point &timestamp)
+    {
     }
 
     void coco::add_property_type(utils::u_ptr<property_type> pt)

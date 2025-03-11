@@ -4,6 +4,7 @@
 #include "memory.hpp"
 #include "clips.h"
 #include <chrono>
+#include <optional>
 #include <unordered_map>
 
 namespace coco
@@ -82,11 +83,10 @@ namespace coco
      *
      * @param id The id of the instance.
      * @param props The properties of the new instance.
-     * @param val The current value of the new instance.
-     * @param timestamp The timestamp of the value.
+     * @param val The current value of the new instance and the timestamp of the value.
      * @return The new instance of the type.
      */
-    item &make_item(std::string_view id, json::json &&props = json::json(), json::json &&val = json::json(), const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now()) noexcept;
+    item &make_item(std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
 
   private:
     coco &cc;                                                                   // The CoCo object..

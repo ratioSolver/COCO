@@ -8,7 +8,7 @@
 
 namespace coco
 {
-    item::item(const type &tp, std::string_view id, json::json &&props, json::json &&val, const std::chrono::system_clock::time_point &timestamp) noexcept : tp(tp), id(id), properties(props), value(val), timestamp(timestamp)
+    item::item(const type &tp, std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept : tp(tp), id(id), properties(props)
     {
         FactBuilder *item_fact_builder = CreateFactBuilder(tp.get_coco().env, "item");
         FBPutSlotSymbol(item_fact_builder, "id", id.data());
@@ -26,7 +26,8 @@ namespace coco
         FBDispose(is_instance_of_fact_builder);
 
         set_properties(std::move(props));
-        set_value(val, timestamp);
+        if (val.has_value())
+            set_value(std::move(val.value()));
     }
     item::~item() noexcept
     {
@@ -86,7 +87,7 @@ namespace coco
                 LOG_WARN("Type " + tp.get_name() + " does not have static property " + p_name);
     }
 
-    void item::set_value(const json::json &vals, const std::chrono::system_clock::time_point &timestamp)
+    void item::set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val)
     {
         std::map<std::string, utils::ref_wrapper<const property>> dynamic_properties;
         std::queue<const type *> q;
@@ -104,7 +105,7 @@ namespace coco
                 q.push(&*tp.second);
         }
 
-        for (const auto &[p_name, val] : vals.as_object())
+        for (const auto &[p_name, j_val] : val.first.as_object())
             if (auto prop = dynamic_properties.find(p_name); prop != dynamic_properties.end())
             {
                 if (auto f = properties_facts.find(p_name); f != properties_facts.end())
@@ -113,19 +114,19 @@ namespace coco
                     properties_facts.erase(f);
                 }
 
-                if (val.get_type() == json::json_type::null)
+                if (j_val.get_type() == json::json_type::null)
                     this->properties.erase(p_name); // we remove the property
-                else if (prop->second->validate(val))
+                else if (prop->second->validate(j_val))
                 {
                     FactBuilder *value_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second->get_deftemplate_name().c_str());
                     FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
-                    prop->second->get_property_type().set_value(value_fact_builder, p_name, val);
-                    FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count());
+                    prop->second->get_property_type().set_value(value_fact_builder, p_name, j_val);
+                    FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
                     auto property_fact = FBAssert(value_fact_builder);
                     assert(property_fact);
                     LOG_TRACE(tp.get_coco().to_string(property_fact));
                     FBDispose(value_fact_builder);
-                    this->properties[p_name] = val;
+                    this->properties[p_name] = j_val;
                     properties_facts.emplace(p_name, property_fact);
                 }
                 else
@@ -134,6 +135,6 @@ namespace coco
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have dynamic property " + p_name);
 
-        this->timestamp = timestamp;
+        value = std::move(val);
     }
 } // namespace coco

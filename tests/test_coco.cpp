@@ -4,6 +4,8 @@
 #ifdef BUILD_MONGODB
 #include "mongo_db.hpp"
 #include <mongocxx/instance.hpp>
+#else
+#include "coco_db.hpp"
 #endif
 
 int main()
@@ -11,16 +13,18 @@ int main()
 #ifdef BUILD_MONGODB
     mongocxx::instance inst{}; // This should be done only once.
     coco::mongo_db db;
+#else
+    coco::coco_db db;
 #endif
     coco::coco cc(db);
 
     auto &tp = cc.create_type("ParentType", {}, json::json(), json::json{{"online", {"type", "bool"}}});
     auto &itm = cc.create_item(tp);
-    itm.set_value(json::json{{"online", true}});
+    cc.set_value(itm, json::json{{"online", true}});
 
     auto &ch_tp = cc.create_type("ChildType", {tp}, json::json(), json::json{{"count", {{"type", "int"}, {"min", 0}}}, {"temp", {{"type", "float"}, {"max", 50}}}});
     auto &ch_itm = cc.create_item(ch_tp);
-    ch_itm.set_value(json::json{{"online", true}, {"count", 1}, {"temp", 22.5}});
+    cc.set_value(ch_itm, json::json{{"online", true}, {"count", 1}, {"temp", 22.5}});
 
     db.drop();
 

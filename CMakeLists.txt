@@ -9,7 +9,7 @@ set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
 set(CLIPS_INCLUDE_DIR /usr/local/include/clips CACHE PATH "CLIPS include directory")
 set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 
-option(BUILD_MONGODB "Build MongoDB drivers" ON)
+option(BUILD_MONGODB "Build MongoDB drivers" OFF)
 option(BUILD_COCO_SERVER "Build the CoCo server" OFF)
 option(BUILD_MQTT "Build MQTT middleware" OFF)
 

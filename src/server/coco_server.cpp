@@ -144,15 +144,18 @@ namespace coco
     void coco_server::new_type(const type &tp)
     {
         auto j_tp = tp.to_json();
+        j_tp["type"] = "new_type";
         j_tp["name"] = tp.get_name();
         broadcast(std::move(j_tp));
     }
     void coco_server::new_item(const item &itm)
     {
         auto j_itm = itm.to_json();
+        j_itm["type"] = "new_item";
         j_itm["id"] = itm.get_id();
         broadcast(std::move(j_itm));
     }
+    void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
 
     void coco_server::broadcast(json::json &&msg)
     {

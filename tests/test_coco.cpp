@@ -12,7 +12,7 @@
 #include <thread>
 #endif
 
-void test_basic_core()
+int main()
 {
 #ifdef BUILD_MONGODB
     mongocxx::instance inst{}; // This should be done only once.
@@ -43,12 +43,9 @@ void test_basic_core()
 
     db.drop();
 
+#ifdef BUILD_SERVER
     srv.stop();
-}
-
-int main()
-{
-    test_basic_core();
+#endif
 
     return 0;
 }

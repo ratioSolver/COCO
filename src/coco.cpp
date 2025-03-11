@@ -10,8 +10,12 @@
 
 #ifdef BUILD_LISTENERS
 #define NEW_TYPE(tp) new_type(tp)
+#define NEW_ITEM(itm) new_item(itm)
+#define NEW_DATA(itm, data, timestamp) new_data(itm, data, timestamp)
 #else
 #define NEW_TYPE(tp)
+#define NEW_ITEM(itm)
+#define NEW_DATA(itm, data, timestamp)
 #endif
 
 namespace coco
@@ -126,13 +130,16 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto id = db.create_item(tp.get_name(), props, val);
-        return tp.make_item(id, std::move(props), std::move(val));
+        auto &itm = tp.make_item(id, std::move(props), std::move(val));
+        NEW_ITEM(itm);
+        return itm;
     }
     void coco::set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.set_value(itm.get_id(), val, timestamp);
         itm.set_value(std::make_pair(std::move(val), timestamp));
+        NEW_DATA(itm, itm.get_value()->first, itm.get_value()->second);
     }
     void coco::delete_item(item &itm) noexcept
     {
@@ -195,16 +202,20 @@ namespace coco
     }
 
 #ifdef BUILD_LISTENERS
-    void coco::new_type(const type &tp)
+    void coco::new_type(const type &tp) const
     {
         for (auto &l : listeners)
             l->new_type(tp);
     }
-
-    void coco::new_item(const item &itm)
+    void coco::new_item(const item &itm) const
     {
         for (auto &l : listeners)
             l->new_item(itm);
+    }
+    void coco::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) const
+    {
+        for (auto &l : listeners)
+            l->new_data(itm, data, timestamp);
     }
 
     listener::listener(coco &cc) noexcept : cc(cc) { cc.listeners.emplace_back(this); }

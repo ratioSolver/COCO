@@ -50,6 +50,16 @@ namespace coco
     }
     void float_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotFloat(property_fact_builder, name.data(), static_cast<double>(value)); }
 
+    string_property_type::string_property_type(coco &cc) noexcept : property_type(cc, string_kw) {}
+    utils::u_ptr<property> string_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    {
+        std::optional<std::string> default_value;
+        if (j.contains("default"))
+            default_value = static_cast<std::string>(j["default"]);
+        return utils::make_u_ptr<string_property>(*this, tp, dynamic, name, default_value);
+    }
+    void string_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str()); }
+
     property::property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept : pt(pt), tp(tp), dynamic(dynamic), name(name) {}
     property::~property()
     {
@@ -147,4 +157,19 @@ namespace coco
             return false;
         return true;
     }
+
+    string_property::string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<std::string> default_value) noexcept : property(pt, tp, dynamic, name), default_value(default_value)
+    {
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
+        deftemplate += " (type STRING)";
+        if (default_value.has_value())
+            deftemplate += default_value.value();
+        deftemplate += ')';
+        if (dynamic)
+            deftemplate += " (slot timestamp (type INTEGER))";
+        deftemplate += ')';
+        LOG_TRACE(deftemplate);
+        Build(get_env(), deftemplate.c_str());
+    }
+    bool string_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::string; }
 } // namespace coco

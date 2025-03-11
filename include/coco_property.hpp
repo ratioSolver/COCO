@@ -10,6 +10,7 @@ namespace coco
   constexpr const char *bool_kw = "bool";
   constexpr const char *int_kw = "int";
   constexpr const char *float_kw = "float";
+  constexpr const char *string_kw = "string";
 
   class coco;
   class type;
@@ -84,6 +85,17 @@ namespace coco
   {
   public:
     float_property_type(coco &cc) noexcept;
+
+  private:
+    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+
+    void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
+  };
+
+  class string_property_type final : public property_type
+  {
+  public:
+    string_property_type(coco &cc) noexcept;
 
   private:
     [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
@@ -178,5 +190,16 @@ namespace coco
 
   private:
     std::optional<double> default_value, min, max;
+  };
+
+  class string_property final : public property
+  {
+  public:
+    string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<std::string> default_value = std::nullopt) noexcept;
+
+    [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+  private:
+    std::optional<std::string> default_value;
   };
 } // namespace coco

@@ -1,6 +1,7 @@
 #include "coco.hpp"
 #include "coco_type.hpp"
 #include "coco_property.hpp"
+#include "coco_item.hpp"
 #include "coco_db.hpp"
 #include "logging.hpp"
 #include <algorithm>
@@ -19,6 +20,7 @@ namespace coco
         add_property_type(utils::make_u_ptr<bool_property_type>(*this));
         add_property_type(utils::make_u_ptr<int_property_type>(*this));
         add_property_type(utils::make_u_ptr<float_property_type>(*this));
+        add_property_type(utils::make_u_ptr<string_property_type>(*this));
 
         LOG_TRACE(type_deftemplate);
         Build(env, type_deftemplate);
@@ -102,8 +104,10 @@ namespace coco
         auto id = db.create_item(tp.get_name(), props, val);
         return tp.make_item(id, std::move(props), std::move(val));
     }
-    void coco::set_value(item &itm, json::json &&vals, const std::chrono::system_clock::time_point &timestamp)
+    void coco::set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp)
     {
+        db.set_value(itm.get_id(), val, timestamp);
+        itm.set_value(std::make_pair(std::move(val), timestamp));
     }
 
     void coco::add_property_type(utils::u_ptr<property_type> pt)

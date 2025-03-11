@@ -62,7 +62,7 @@ namespace coco
     void delete_type(type &tp) noexcept;
 
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
-    void set_value(item &itm, json::json &&vals, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
+    void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
 
   protected:
     void add_property_type(utils::u_ptr<property_type> pt);

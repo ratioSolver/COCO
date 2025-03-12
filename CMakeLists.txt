@@ -51,7 +51,7 @@ if(BUILD_COCO_SERVER)
         add_subdirectory(extern/rationet)
     endif()
 
-    set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gui CACHE STRING "Client directory")
+    set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gui/app CACHE STRING "Client directory")
     message(STATUS "Client directory: ${CLIENT_DIR}")
 
     target_sources(CoCo PRIVATE src/server/coco_server.cpp)
@@ -60,8 +60,10 @@ if(BUILD_COCO_SERVER)
     target_link_libraries(CoCo PUBLIC ratioNet)
     target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_SERVER CLIENT_DIR="${CLIENT_DIR}")
 
-    add_custom_target(npm_gui_install ALL COMMAND npm install WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Installing the TypeScript framework" VERBATIM)
-    add_custom_target(npm_gui_build ALL COMMAND npm run build WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Building the TypeScript framework" VERBATIM DEPENDS npm_gui_install)
+    add_custom_target(npm_lib_install ALL COMMAND npm install WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/lib COMMENT "Installing the TypeScript library" VERBATIM)
+    add_custom_target(npm_lib_build ALL COMMAND npm run build WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/lib COMMENT "Building the TypeScript library" VERBATIM DEPENDS npm_lib_install)
+    add_custom_target(npm_gui_install ALL COMMAND npm install WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Installing the TypeScript application" VERBATIM DEPENDS npm_lib_build)
+    add_custom_target(npm_gui_build ALL COMMAND npm run build WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Building the TypeScript application" VERBATIM DEPENDS npm_gui_install)
 endif()
 
 message(STATUS "Build MQTT middleware: ${BUILD_MQTT}")

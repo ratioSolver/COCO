@@ -1,5 +1,6 @@
 #include "coco_property.hpp"
 #include "coco_type.hpp"
+#include "coco_item.hpp"
 #include "coco.hpp"
 #include "logging.hpp"
 #include <algorithm>
@@ -88,21 +89,22 @@ namespace coco
     {
         type &domain = cc.get_type(static_cast<std::string>(j["domain"]));
         bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
-        std::vector<std::string> values;
-        if (j.contains("values"))
-            for (const auto &v : j["values"].as_array())
-                values.emplace_back(static_cast<std::string>(v));
-        std::optional<std::vector<std::string>> default_value;
+        std::vector<utils::ref_wrapper<item>> items;
+        if (j.contains("items"))
+            for (const auto &v : j["items"].as_array())
+                items.emplace_back(cc.get_item(static_cast<std::string>(v)));
+        std::optional<std::vector<utils::ref_wrapper<item>>> default_value;
         if (j.contains("default"))
         {
-            std::vector<std::string> def_v;
+            std::vector<utils::ref_wrapper<item>> def_v;
             if (multiple)
                 for (const auto &v : j["default"].as_array())
-                    def_v.emplace_back(static_cast<std::string>(v));
-            def_v.emplace_back(static_cast<std::string>(j["default"]));
+                    def_v.emplace_back(cc.get_item(static_cast<std::string>(v)));
+            else
+                def_v.emplace_back(cc.get_item(static_cast<std::string>(j["default"])));
             default_value = std::move(def_v);
         }
-        return utils::make_u_ptr<item_property>(*this, tp, dynamic, name, domain, multiple, std::move(values), default_value);
+        return utils::make_u_ptr<item_property>(*this, tp, dynamic, name, domain, multiple, std::move(items), default_value);
     }
     void item_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str()); }
 
@@ -333,10 +335,10 @@ namespace coco
         return j;
     }
 
-    item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple, std::vector<std::string> &&values, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), domain(domain), multiple(multiple), values(values), default_value(default_value)
+    item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple, std::vector<utils::ref_wrapper<item>> &&items, std::optional<std::vector<utils::ref_wrapper<item>>> default_value) noexcept : property(pt, tp, dynamic, name), domain(domain), multiple(multiple), items(items), default_value(default_value)
     {
-        assert(!default_value.has_value() || values.empty() || std::all_of(default_value.value().begin(), default_value.value().end(), [this](const std::string &val)
-                                                                           { return std::find(this->values.begin(), this->values.end(), val) != this->values.end(); }));
+        assert(!default_value.has_value() || items.empty() || std::all_of(default_value.value().begin(), default_value.value().end(), [this](const auto &val)
+                                                                          { return std::find(this->items.begin(), this->items.end(), val) != this->items.end(); }));
         assert(!default_value.has_value() || !multiple || default_value.value().size() <= 1);
 
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
@@ -350,7 +352,7 @@ namespace coco
         {
             deftemplate += " (default";
             for (const auto &val : default_value.value())
-                deftemplate += " " + val;
+                deftemplate += " " + val->get_id();
             deftemplate += ")";
         }
         deftemplate += ')';
@@ -378,18 +380,18 @@ namespace coco
         j["type"] = item_kw;
         j["domain"] = domain.get_name();
         j["multiple"] = multiple;
-        if (!values.empty())
+        if (!items.empty())
         {
-            auto j_vals = json::json(json::json_type::array);
-            for (const auto &val : values)
-                j_vals.push_back(val.c_str());
-            j["values"] = j_vals;
+            auto j_itms = json::json(json::json_type::array);
+            for (const auto &val : items)
+                j_itms.push_back(val->get_id().c_str());
+            j["items"] = j_itms;
         }
         if (default_value.has_value())
         {
             auto j_def_vals = json::json(json::json_type::array);
             for (const auto &val : default_value.value())
-                j_def_vals.push_back(val.c_str());
+                j_def_vals.push_back(val->get_id().c_str());
             j["default"] = j_def_vals;
         }
         return j;

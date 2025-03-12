@@ -271,17 +271,17 @@ namespace coco
   class item_property final : public property
   {
   public:
-    item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple = false, std::vector<std::string> &&values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
+    item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple = false, std::vector<utils::ref_wrapper<item>> &&items = {}, std::optional<std::vector<utils::ref_wrapper<item>>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
     [[nodiscard]] json::json to_json() const noexcept override;
 
   private:
-    const type &domain;                                    // The domain of the property.
-    bool multiple;                                         // Indicates whether the property can have multiple values.
-    std::vector<std::string> values;                       // The possible values for the property.
-    std::optional<std::vector<std::string>> default_value; // The default value for the property.
+    const type &domain;                                                 // The domain of the property.
+    bool multiple;                                                      // Indicates whether the property can have multiple values.
+    std::vector<utils::ref_wrapper<item>> items;                        // The possible values for the property.
+    std::optional<std::vector<utils::ref_wrapper<item>>> default_value; // The default value for the property.
   };
 
   class json_property final : public property

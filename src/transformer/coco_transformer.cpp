@@ -38,13 +38,12 @@ namespace coco
         }
 
         auto &json_res = static_cast<network::json_response &>(*res);
-        std::string intent = json_res.get_body()["intent"]["name"];
-        double confidence = json_res.get_body()["intent"]["confidence"];
         auto &entities = json_res.get_body()["entities"].as_array();
 
-        FunctionCallBuilder *intent_builder = CreateFunctionCallBuilder(env, 5);
-        FCBAppendSymbol(intent_builder, intent.c_str());
-        FCBAppendFloat(intent_builder, confidence);
+        FactBuilder *intent_fact_builder = CreateFactBuilder(env, "intent");
+        FBPutSlotSymbol(intent_fact_builder, "intent", static_cast<std::string>(json_res.get_body()["intent"]["name"]).c_str());
+        FBPutSlotFloat(intent_fact_builder, "confidence", static_cast<double>(json_res.get_body()["intent"]["confidence"]));
+
         auto es = CreateMultifieldBuilder(env, entities.size());
         auto vs = CreateMultifieldBuilder(env, entities.size());
         auto cs = CreateMultifieldBuilder(env, entities.size());
@@ -54,11 +53,15 @@ namespace coco
             MBAppendSymbol(vs, static_cast<std::string>(entity["value"]).c_str());
             MBAppendFloat(cs, entity["confidence"]);
         }
-        FCBAppendMultifield(intent_builder, MBCreate(es));
-        FCBAppendMultifield(intent_builder, MBCreate(vs));
-        FCBAppendMultifield(intent_builder, MBCreate(cs));
-        FCBCall(intent_builder, "intent", nullptr);
-        FCBDispose(intent_builder);
+
+        FBPutSlotMultifield(intent_fact_builder, "entities", MBCreate(es));
+        FBPutSlotMultifield(intent_fact_builder, "values", MBCreate(vs));
+        FBPutSlotMultifield(intent_fact_builder, "confidences", MBCreate(cs));
+
+        auto intent_fact = FBAssert(intent_fact_builder);
+        assert(intent_fact);
+        LOG_TRACE(t.to_string(intent_fact));
+        FBDispose(intent_fact_builder);
     }
     void trigger_intent(Environment *, UDFContext *udfc, UDFValue *)
     {

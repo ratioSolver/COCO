@@ -7,6 +7,9 @@
 #else
 #include "coco_db.hpp"
 #endif
+#ifdef BUILD_TRANSFORMER
+#include "coco_transformer.hpp"
+#endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
 #include <thread>
@@ -21,6 +24,10 @@ int main()
     coco::coco_db db;
 #endif
     coco::coco cc(db);
+
+#ifdef BUILD_TRANSFORMER
+    coco::transformer t(cc);
+#endif
 
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);

@@ -5,6 +5,7 @@
 #include "clips.h"
 #include <chrono>
 #include <optional>
+#include <unordered_map>
 #include <mutex>
 
 namespace coco
@@ -60,11 +61,11 @@ namespace coco
      * @throws std::invalid_argument if the type does not exist.
      */
     [[nodiscard]] type &get_type(std::string_view name);
-
     [[nodiscard]] type &create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
     void set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents) noexcept;
     void delete_type(type &tp) noexcept;
 
+    [[nodiscard]] item &get_item(std::string_view id);
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
     void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
     void delete_item(item &itm) noexcept;
@@ -83,6 +84,8 @@ namespace coco
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
     type &make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
+
+    friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
 #ifdef BUILD_LISTENERS
   private:
@@ -117,12 +120,15 @@ namespace coco
     std::recursive_mutex mtx;                                                               // The mutex for the core..
     Environment *env;                                                                       // The CLIPS environment..
     std::map<std::string, utils::u_ptr<type>, std::less<>> types;                           // The types managed by CoCo by name.
+    std::unordered_map<std::string, utils::u_ptr<item>> items;                              // The items by their ID..
     std::map<std::string, utils::u_ptr<reactive_rule>, std::less<>> reactive_rules;         // The reactive rules..
     std::map<std::string, utils::u_ptr<deliberative_rule>, std::less<>> deliberative_rules; // The deliberative rules..
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif
   };
+
+  void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
 #ifdef BUILD_LISTENERS
   class listener
@@ -151,7 +157,9 @@ namespace coco
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
   protected:
-    std::recursive_mutex &get_mtx() { return cc.mtx; }
+    std::recursive_mutex &get_mtx() const { return cc.mtx; }
+
+    Environment *get_env() const { return cc.env; }
 
   protected:
     coco &cc;

@@ -30,6 +30,8 @@ namespace coco
         add_property_type(utils::make_u_ptr<item_property_type>(*this));
         add_property_type(utils::make_u_ptr<json_property_type>(*this));
 
+        AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
+
         LOG_TRACE(type_deftemplate);
         Build(env, type_deftemplate);
         LOG_TRACE(is_a_deftemplate);
@@ -126,6 +128,13 @@ namespace coco
         types.erase(tp.get_name());
     }
 
+    [[nodiscard]] item &coco::get_item(std::string_view id)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        if (items.find(id.data()) == items.end())
+            throw std::invalid_argument("Type not found: " + std::string(id));
+        return *items.at(id.data());
+    }
     item &coco::create_item(type &tp, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -146,7 +155,7 @@ namespace coco
         auto id = itm.get_id();
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.delete_item(id);
-        itm.get_type().instances.erase(id);
+        items.erase(id);
     }
 
     void coco::create_reactive_rule(std::string_view rule_name, std::string_view rule_content)
@@ -199,6 +208,65 @@ namespace coco
             jc["types"] = std::move(jtps);
         }
         return jc;
+    }
+
+    void add_data(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Adding data..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue item_id; // we get the item id..
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
+            return;
+        auto &itm = *cc.items.at(item_id.lexemeValue->contents);
+
+        UDFValue pars; // we get the parameters..
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &pars))
+            return;
+
+        UDFValue vals; // we get the values..
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &vals))
+            return;
+
+        json::json data;
+        for (size_t i = 0; i < pars.multifieldValue->length; ++i)
+        {
+            auto &par = pars.multifieldValue->contents[i];
+            if (par.header->type != SYMBOL_TYPE)
+                return;
+            auto &val = vals.multifieldValue->contents[i];
+            switch (val.header->type)
+            {
+            case INTEGER_TYPE:
+                data[par.lexemeValue->contents] = static_cast<int64_t>(val.integerValue->contents);
+                break;
+            case FLOAT_TYPE:
+                data[par.lexemeValue->contents] = val.floatValue->contents;
+                break;
+            case STRING_TYPE:
+            case SYMBOL_TYPE:
+                if (std::string(val.lexemeValue->contents) == "TRUE")
+                    data[par.lexemeValue->contents] = true;
+                else if (std::string(val.lexemeValue->contents) == "FALSE")
+                    data[par.lexemeValue->contents] = false;
+                else
+                    data[par.lexemeValue->contents] = val.lexemeValue->contents;
+                break;
+            default:
+                return;
+            }
+        }
+
+        UDFValue timestamp; // we get the timestamp..
+        if (UDFHasNextArgument(udfc))
+        {
+            if (!UDFNextArgument(udfc, INTEGER_BIT, &timestamp))
+                return;
+            cc.set_value(itm, std::move(data), std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp.integerValue->contents)));
+        }
+        else
+            cc.set_value(itm, std::move(data));
     }
 
 #ifdef BUILD_LISTENERS

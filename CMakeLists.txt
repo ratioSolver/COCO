@@ -12,6 +12,7 @@ set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 option(BUILD_MONGODB "Build MongoDB drivers" OFF)
 option(BUILD_COCO_SERVER "Build the CoCo server" OFF)
 option(BUILD_MQTT "Build MQTT middleware" OFF)
+option(BUILD_TRANSFORMER "Build CoCo transformer" OFF)
 
 message(STATUS "CoCo name: ${COCO_NAME}")
 
@@ -76,6 +77,24 @@ if(BUILD_MQTT)
     target_include_directories(CoCo PUBLIC ${PAHO_MQTT_CPP_INCLUDE_DIR})
     target_link_libraries(CoCo PUBLIC ${PAHO_MQTT_CPP_LIBRARIES})
     target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
+endif()
+
+message(STATUS "CoCo transformer: ${BUILD_TRANSFORMER}")
+if(BUILD_TRANSFORMER)
+    if(NOT TARGET ratioNet)
+        add_subdirectory(extern/rationet)
+    endif()
+
+    set(TRANSFORMER_HOST "localhost" CACHE STRING "The transformer Host")
+    set(TRANSFORMER_PORT "5005" CACHE STRING "The transformer Port")
+
+    message(STATUS "transformer host: ${TRANSFORMER_HOST}")
+    message(STATUS "transformer port: ${TRANSFORMER_PORT}")
+
+    target_sources(CoCo PRIVATE src/transformer/coco_transformer.cpp)
+    target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/transformer>)
+    add_dependencies(CoCo ratioNet)
+    target_compile_definitions(CoCo PUBLIC BUILD_TRANSFORMER TRANSFORMER_HOST="${TRANSFORMER_HOST}" TRANSFORMER_PORT=${TRANSFORMER_PORT})
 endif()
 
 if(BUILD_TESTING)

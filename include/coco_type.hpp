@@ -6,6 +6,7 @@
 #include <chrono>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace coco
 {
@@ -101,6 +102,6 @@ namespace coco
     std::map<std::string, Fact *> parent_facts;                                 // The parent facts of the type.
     std::unordered_map<std::string, utils::u_ptr<property>> static_properties;  // The static properties..
     std::unordered_map<std::string, utils::u_ptr<property>> dynamic_properties; // The dynamic properties..
-    std::unordered_map<std::string, utils::u_ptr<item>> instances;              // The instances of the type by their ID..
+    std::unordered_set<std::string> instances;                                  // The IDs of the instances of the type..
   };
 } // namespace coco

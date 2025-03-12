@@ -29,7 +29,8 @@ namespace coco
     }
     type::~type()
     {
-        instances.clear();
+        for (const auto &id : instances)
+            cc.items.erase(id);
         for (auto &p : parent_facts)
             Retract(p.second);
         Retract(type_fact);
@@ -60,8 +61,9 @@ namespace coco
     {
         auto itm_ptr = utils::make_u_ptr<item>(*this, id, std::move(props), std::move(val));
         auto &itm = *itm_ptr;
-        if (!instances.emplace(id.data(), std::move(itm_ptr)).second)
+        if (!cc.items.emplace(id.data(), std::move(itm_ptr)).second)
             throw std::invalid_argument("item `" + std::string(id) + "` already exists");
+        instances.emplace(id);
         NEW_ITEM(itm);
         return itm;
     }

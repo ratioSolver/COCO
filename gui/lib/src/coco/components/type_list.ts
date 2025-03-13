@@ -24,6 +24,7 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 		const te = new TypeElement(type);
 		this.add_child(te);
 	}
+	type_updated(_: coco.taxonomy.Type): void { }
 
 	new_item(_: coco.taxonomy.Item): void { }
 }

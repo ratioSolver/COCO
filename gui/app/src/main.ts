@@ -1,5 +1,6 @@
 import { AppComponent, Connection, Settings } from 'ratio-core';
 import { coco, Offcanvas, TaxonomyGraph } from 'coco-lib';
+import { Offcanvas as BootstrapOffcanvas } from 'bootstrap';
 import './styles.css'
 
 Settings.get_instance().load_settings({ hostname: location.host, port: 8080, ws_path: 'coco' });
@@ -23,12 +24,14 @@ class CoCoApp extends AppComponent {
     Connection.get_instance().connect();
   }
 
-  populate_navbar(container: HTMLDivElement): void {
+  override populate_navbar(container: HTMLDivElement): void {
     const brand = document.createElement('a');
     brand.classList.add('navbar-brand');
     brand.text = " CoCo";
-    brand.setAttribute('data-bs-toggle', 'offcanvas');
-    brand.href = '#' + offcanvas_id;
+    brand.addEventListener('click', (event) => {
+      event.preventDefault();
+      BootstrapOffcanvas.getOrCreateInstance(document.getElementById(offcanvas_id)!).show();
+    });
 
     const brand_icon = document.createElement('img');
     brand_icon.src = 'favicon.ico';

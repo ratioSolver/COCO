@@ -9,12 +9,12 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
     "typescript": "~5.7.2",
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "ratio-core": "^0.0.8",
-    "ratio-lib": "^0.0.24",
-    "coco-lib": "file:../lib"
+    "coco-lib": "file:../lib",
+    "ratio-core": "^0.0.9"
   }
 }

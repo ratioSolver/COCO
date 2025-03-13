@@ -21,6 +21,7 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 	}
 
 	new_type(_: coco.taxonomy.Type): void { }
+	type_updated(_: coco.taxonomy.Type): void { }
 
 	new_item(item: coco.taxonomy.Item): void {
 		const te = new ItemElement(item);

@@ -8,7 +8,14 @@ class OffcanvasBody extends Component<App, HTMLDivElement> {
     super(App.get_instance(), document.createElement('div'));
     this.element.classList.add('offcanvas-body', 'flex-column', 'flex-shrink-0', 'p-3', 'bg-light');
 
+    const types_lab = document.createElement('label');
+    types_lab.innerText = "Types";
+    this.element.append(types_lab);
     this.add_child(type_list);
+
+    const items_lab = document.createElement('label');
+    items_lab.innerText = "Items";
+    this.element.append(items_lab);
     this.add_child(item_list);
   }
 }

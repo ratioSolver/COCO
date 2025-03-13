@@ -3,12 +3,13 @@ export namespace coco {
   export class CoCo implements CoCoListener {
 
     private static instance: CoCo;
-    private types: Map<string, taxonomy.Type>;
-    private items: Map<string, taxonomy.Item>;
+    _types: Map<string, taxonomy.Type>;
+    _items: Map<string, taxonomy.Item>;
+    private coco_listeners: Set<CoCoListener> = new Set();
 
     private constructor() {
-      this.types = new Map();
-      this.items = new Map();
+      this._types = new Map();
+      this._items = new Map();
     }
 
     static get_instance() {
@@ -17,13 +18,23 @@ export namespace coco {
       return CoCo.instance;
     }
 
+    new_type(type: taxonomy.Type): void {
+      this._types.set(type.get_name(), type);
+      for (const listener of this.coco_listeners) listener.new_type(type);
+    }
+
+    new_item(item: taxonomy.Item): void {
+      this._items.set(item.get_id(), item);
+      for (const listener of this.coco_listeners) listener.new_item(item);
+    }
+
     _init(coco_message: CoCoMessage) {
       if (coco_message.types) {
-        this.types.clear();
+        this._types.clear();
         for (const [name, tp] of Object.entries(coco_message.types)) {
           let parents = undefined;
           if (tp.parents)
-            parents = tp.parents.map(p => this.types.get(p)!);
+            parents = tp.parents.map(p => this._types.get(p)!);
           let static_props = undefined;
           if (tp.static_properties) {
             static_props = new Map<string, taxonomy.Property<unknown>>();
@@ -36,25 +47,28 @@ export namespace coco {
             for (const [name, prop] of Object.entries(tp.dynamic_properties))
               dynamic_props.set(name, taxonomy.make_property(this, prop));
           }
-          this.types.set(name, new taxonomy.Type(name, parents, static_props, dynamic_props));
+          this.new_type(new taxonomy.Type(name, parents, static_props, dynamic_props));
         }
       }
       if (coco_message.items) {
-        this.items.clear();
+        this._items.clear();
         for (const [id, itm] of Object.entries(coco_message.items)) {
           let value = undefined;
           if (itm.value)
             value = { data: itm.value.data, timestamp: new Date(itm.value.timestamp) };
-          this.items.set(id, new taxonomy.Item(id, this.types.get(itm.type)!, itm.properties, value));
+          this._items.set(id, new taxonomy.Item(id, this._types.get(itm.type)!, itm.properties, value));
         }
       }
     }
 
-    get_type(name: string): taxonomy.Type { return this.types.get(name)!; }
-    get_item(id: string): taxonomy.Item { return this.items.get(id)!; }
+    get_type(name: string): taxonomy.Type { return this._types.get(name)!; }
+    get_item(id: string): taxonomy.Item { return this._items.get(id)!; }
   }
 
   export interface CoCoListener {
+
+    new_type(type: taxonomy.Type): void;
+    new_item(item: taxonomy.Item): void;
   }
 
   export namespace taxonomy {
@@ -68,6 +82,8 @@ export namespace coco {
         this.name = name;
         this.default_value = default_value;
       }
+
+      to_string(): string { return "<em>" + this.name + "</em>" + (this.default_value ? ` (${this.default_value})` : ""); }
     }
 
     export class BoolProperty extends Property<boolean> {
@@ -182,6 +198,21 @@ export namespace coco {
       get_data(): Record<string, any> | undefined { return this.data; }
       get_static_properties(): Map<string, Property<unknown>> | undefined { return this.static_properties; }
       get_dynamic_properties(): Map<string, Property<unknown>> | undefined { return this.dynamic_properties; }
+
+      to_string(): string {
+        let tp_str = "<html>";
+        if (this.static_properties) {
+          tp_str += "<br><b>Static Properties:</b>";
+          for (const [_, prop] of Object.entries(this.static_properties))
+            tp_str += `<br>${prop.to_string()}`;
+        }
+        if (this.dynamic_properties) {
+          tp_str += "<br><b>Dynamic Properties:</b>";
+          for (const [_, prop] of Object.entries(this.dynamic_properties))
+            tp_str += `<br>${prop.to_string()}`;
+        }
+        return tp_str + "</html>";
+      }
     }
 
     export interface Value { data: Record<string, unknown>, timestamp: Date }

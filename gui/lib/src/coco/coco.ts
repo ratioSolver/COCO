@@ -28,37 +28,59 @@ export namespace coco {
       for (const listener of this.coco_listeners) listener.new_item(item);
     }
 
-    _init(coco_message: CoCoMessage) {
+    update_coco(message: UpdateCoCoMessage | any): void {
+      switch (message.type) {
+        case 'coco':
+          this.init(message as CoCoMessage);
+          break;
+        case 'new_type':
+          const ntm = message as NewTypeMessage;
+          this.new_type(this.make_type(ntm.name, ntm));
+          break;
+        case 'new_item':
+          const nim = message as NewItemMessage;
+          this.new_item(this.make_item(nim.id, nim));
+          break;
+      }
+    }
+
+    private init(coco_message: CoCoMessage): void {
       if (coco_message.types) {
         this._types.clear();
-        for (const [name, tp] of Object.entries(coco_message.types)) {
-          let parents = undefined;
-          if (tp.parents)
-            parents = tp.parents.map(p => this._types.get(p)!);
-          let static_props = undefined;
-          if (tp.static_properties) {
-            static_props = new Map<string, taxonomy.Property<unknown>>();
-            for (const [name, prop] of Object.entries(tp.static_properties))
-              static_props.set(name, taxonomy.make_property(this, prop));
-          }
-          let dynamic_props = undefined;
-          if (tp.dynamic_properties) {
-            dynamic_props = new Map<string, taxonomy.Property<unknown>>();
-            for (const [name, prop] of Object.entries(tp.dynamic_properties))
-              dynamic_props.set(name, taxonomy.make_property(this, prop));
-          }
-          this.new_type(new taxonomy.Type(name, parents, static_props, dynamic_props));
-        }
+        for (const [name, tp] of Object.entries(coco_message.types))
+          this.new_type(this.make_type(name, tp));
       }
       if (coco_message.items) {
         this._items.clear();
-        for (const [id, itm] of Object.entries(coco_message.items)) {
-          let value = undefined;
-          if (itm.value)
-            value = { data: itm.value.data, timestamp: new Date(itm.value.timestamp) };
-          this._items.set(id, new taxonomy.Item(id, this._types.get(itm.type)!, itm.properties, value));
-        }
+        for (const [id, itm] of Object.entries(coco_message.items))
+          this.new_item(this.make_item(id, itm));
       }
+    }
+
+    private make_type(name: string, tp: TypeMessage): taxonomy.Type {
+      let parents = undefined;
+      if (tp.parents)
+        parents = tp.parents.map(p => this._types.get(p)!);
+      let static_props = undefined;
+      if (tp.static_properties) {
+        static_props = new Map<string, taxonomy.Property<unknown>>();
+        for (const [name, prop] of Object.entries(tp.static_properties))
+          static_props.set(name, taxonomy.make_property(this, prop));
+      }
+      let dynamic_props = undefined;
+      if (tp.dynamic_properties) {
+        dynamic_props = new Map<string, taxonomy.Property<unknown>>();
+        for (const [name, prop] of Object.entries(tp.dynamic_properties))
+          dynamic_props.set(name, taxonomy.make_property(this, prop));
+      }
+      return new taxonomy.Type(name, parents, static_props, dynamic_props);
+    }
+
+    private make_item(id: string, itm: ItemMessage): taxonomy.Item {
+      let value = undefined;
+      if (itm.value)
+        value = { data: itm.value.data, timestamp: new Date(itm.value.timestamp) };
+      return new taxonomy.Item(id, this._types.get(itm.type)!, itm.properties, value);
     }
 
     get_type(name: string): taxonomy.Type { return this._types.get(name)!; }
@@ -154,8 +176,8 @@ export namespace coco {
         case 'int':
           const i_pm = property_message as IntPropertyMessage;
           return new IntProperty(i_pm.name, i_pm.min, i_pm.max, i_pm.default_value);
-        case 'int':
-          const f_pm = property_message as IntPropertyMessage;
+        case 'float':
+          const f_pm = property_message as FloatPropertyMessage;
           return new FloatProperty(f_pm.name, f_pm.min, f_pm.max, f_pm.default_value);
         case 'string':
           const s_pm = property_message as StringPropertyMessage;
@@ -239,9 +261,19 @@ export namespace coco {
   }
 }
 
+type UpdateCoCoMessage = CoCoMessage | NewTypeMessage | NewItemMessage;
+
 interface CoCoMessage {
   types?: Record<string, TypeMessage>;
   items?: Record<string, ItemMessage>;
+}
+
+interface NewTypeMessage extends TypeMessage {
+  name: string;
+}
+
+interface NewItemMessage extends ItemMessage {
+  id: string;
 }
 
 interface PropMessage<V> {

@@ -5,8 +5,8 @@ export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> {
 
 	a: HTMLAnchorElement;
 
-	constructor(type: coco.taxonomy.Item) {
-		super(type, document.createElement('li'));
+	constructor(item: coco.taxonomy.Item) {
+		super(item, document.createElement('li'));
 
 		this.a = document.createElement('a');
 
@@ -16,8 +16,8 @@ export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> {
 
 export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco.CoCoListener {
 
-	constructor() {
-		super([]);
+	constructor(itms: coco.taxonomy.Item[] = []) {
+		super(itms.map(itm => new ItemElement(itm)));
 	}
 
 	new_type(_: coco.taxonomy.Type): void { }

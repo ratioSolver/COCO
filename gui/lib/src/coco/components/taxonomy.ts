@@ -1,5 +1,5 @@
 import { Component } from "ratio-core";
-import { coco } from "./coco";
+import { coco } from "../coco";
 import cytoscape from 'cytoscape';
 
 export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implements coco.CoCoListener {
@@ -13,9 +13,9 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
   };
   private tooltip_style = "position: absolute; top: 0; left: 0; background-color: #444; color: white; border-radius: 4px; opacity: 0.8;";
 
-  constructor() {
+  constructor(id: string = 'taxonomy-graph') {
     super(coco.CoCo.get_instance(), document.createElement('div'));
-    this.element.id = 'taxonomy-graph';
+    this.element.id = id;
     this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
   }
 

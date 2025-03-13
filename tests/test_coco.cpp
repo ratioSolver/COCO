@@ -51,7 +51,7 @@ int main()
     db.drop();
 
 #ifdef BUILD_SERVER
-    srv.stop();
+    // srv.stop();
 #endif
 
     return 0;

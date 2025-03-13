@@ -16,8 +16,8 @@ export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> {
 
 export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco.CoCoListener {
 
-	constructor() {
-		super([], (t0: coco.taxonomy.Type, t1: coco.taxonomy.Type) => t0.get_name() === t1.get_name() ? 0 : (t0.get_name() < t1.get_name() ? -1 : 1));
+	constructor(tps: coco.taxonomy.Type[] = []) {
+		super(tps.map(tp => new TypeElement(tp)), (t0: coco.taxonomy.Type, t1: coco.taxonomy.Type) => t0.get_name() === t1.get_name() ? 0 : (t0.get_name() < t1.get_name() ? -1 : 1));
 	}
 
 	new_type(type: coco.taxonomy.Type): void {

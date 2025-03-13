@@ -1,19 +1,26 @@
-import { AppComponent, Component, Offcanvas } from 'ratio-core';
+import { AppComponent, Connection, Settings } from 'ratio-core';
+import { coco, Offcanvas, TaxonomyGraph } from 'coco-lib';
 import './styles.css'
 
-const offcanvas_id = "CoCoCanvas";
+Settings.get_instance().load_settings({ hostname: location.host, port: 8080, ws_path: 'coco' });
+
+const offcanvas_id = 'coco-offcanvas';
 
 class CoCoApp extends AppComponent {
 
   offcanvas: Offcanvas;
+  taxonomy_graph: TaxonomyGraph;
 
   constructor() {
     super();
 
-    const top = new Map<HTMLAnchorElement, Component<any, HTMLElement>>();
-
-    this.offcanvas = new Offcanvas(offcanvas_id, top);
+    this.offcanvas = new Offcanvas(offcanvas_id);
     this.add_child(this.offcanvas);
+
+    this.taxonomy_graph = new TaxonomyGraph();
+    this.add_child(this.taxonomy_graph);
+
+    Connection.get_instance().connect();
   }
 
   populate_navbar(container: HTMLDivElement): void {
@@ -33,6 +40,8 @@ class CoCoApp extends AppComponent {
 
     container.appendChild(brand);
   }
+
+  override received_message(message: any): void { coco.CoCo.get_instance().update_coco(message); }
 }
 
 new CoCoApp();

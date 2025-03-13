@@ -16,11 +16,15 @@
   },
   "devDependencies": {
     "@types/cytoscape": "^3.21.8",
+    "@types/cytoscape-dagre": "^2.3.3",
+    "@types/plotly.js-dist-min": "^2.3.4",
     "typescript": "~5.6.2"
   },
   "dependencies": {
     "cytoscape": "^3.30.4",
+    "cytoscape-dagre": "^2.5.0",
     "cytoscape-popper": "^4.0.1",
+    "plotly.js-dist-min": "^2.34.0",
     "ratio-core": "^0.0.8",
     "ratio-lib": "^0.0.24"
   }

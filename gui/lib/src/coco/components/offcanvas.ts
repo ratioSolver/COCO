@@ -2,7 +2,7 @@ import { App, Component } from "ratio-core";
 import { TypeList } from "./type_list";
 import { ItemList } from "./item_list";
 
-class Body extends Component<App, HTMLDivElement> {
+class OffcanvasBody extends Component<App, HTMLDivElement> {
 
   constructor(type_list: TypeList, item_list: ItemList) {
     super(App.get_instance(), document.createElement('div'));
@@ -15,17 +15,19 @@ class Body extends Component<App, HTMLDivElement> {
 
 export class Offcanvas extends Component<App, HTMLDivElement> {
 
-  private body: Body;
+  private body: OffcanvasBody;
 
-  constructor(id: string, type_list: TypeList, item_list: ItemList) {
+  constructor(id: string = 'coco-offcanvas', type_list: TypeList = new TypeList(), item_list: ItemList = new ItemList()) {
     super(App.get_instance(), document.createElement('div'));
 
     this.element.classList.add('offcanvas', 'offcanvas-start', 'd-flex');
     this.element.tabIndex = -1;
     this.element.id = id;
 
-    this.body = new Body(type_list, item_list);
+    this.body = new OffcanvasBody(type_list, item_list);
 
     this.add_child(this.body);
   }
+
+  get_id(): string { return this.element.id; }
 }

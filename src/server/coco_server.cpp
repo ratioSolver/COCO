@@ -114,6 +114,8 @@ namespace coco
         LOG_TRACE("New connection from " << ws.remote_endpoint());
         std::lock_guard<std::recursive_mutex> _(get_mtx());
 
+        clients.insert(&ws);
+
         auto jc = cc.to_json();
         jc["type"] = "coco";
         ws.send(jc.dump());
@@ -152,6 +154,13 @@ namespace coco
     {
         auto j_itm = itm.to_json();
         j_itm["type"] = "new_item";
+        j_itm["id"] = itm.get_id();
+        broadcast(std::move(j_itm));
+    }
+    void coco_server::updated_item(const item &itm)
+    {
+        auto j_itm = itm.to_json();
+        j_itm["type"] = "updated_item";
         j_itm["id"] = itm.get_id();
         broadcast(std::move(j_itm));
     }

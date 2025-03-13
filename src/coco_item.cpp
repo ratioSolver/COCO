@@ -6,6 +6,16 @@
 #include <queue>
 #include <cassert>
 
+#ifdef BUILD_LISTENERS
+#define NEW_ITEM() tp.get_coco().new_item(*this)
+#define UPDATED_ITEM() tp.get_coco().updated_item(*this)
+#define NEW_DATA(data, timestamp) tp.get_coco().new_data(*this, data, timestamp)
+#else
+#define NEW_ITEM()
+#define UPDATED_ITEM()
+#define NEW_DATA(data, timestamp)
+#endif
+
 namespace coco
 {
     item::item(type &tp, std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept : tp(tp), id(id), properties(props)
@@ -28,6 +38,8 @@ namespace coco
         set_properties(std::move(props));
         if (val.has_value())
             set_value(std::move(val.value()));
+
+        NEW_ITEM();
     }
     item::~item() noexcept
     {
@@ -85,6 +97,7 @@ namespace coco
             }
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have static property " + p_name);
+        UPDATED_ITEM();
     }
 
     void item::set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val)
@@ -139,6 +152,7 @@ namespace coco
             }
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have dynamic property " + p_name);
+        NEW_DATA(val.first, val.second);
     }
 
     json::json item::to_json() const noexcept

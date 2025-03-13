@@ -6,9 +6,9 @@
 #include <cassert>
 
 #ifdef BUILD_LISTENERS
-#define NEW_ITEM(itm) cc.new_item(itm)
+#define NEW_TYPE() cc.new_type(*this)
 #else
-#define NEW_ITEM(itm)
+#define NEW_TYPE()
 #endif
 
 namespace coco
@@ -26,6 +26,7 @@ namespace coco
             static_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, false, name, prop));
         for (auto &[name, prop] : dynamic_props.as_object())
             dynamic_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, true, name, prop));
+        NEW_TYPE();
     }
     type::~type()
     {
@@ -64,7 +65,6 @@ namespace coco
         if (!cc.items.emplace(id.data(), std::move(itm_ptr)).second)
             throw std::invalid_argument("item `" + std::string(id) + "` already exists");
         instances.emplace(id);
-        NEW_ITEM(itm);
         return itm;
     }
 

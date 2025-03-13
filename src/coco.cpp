@@ -8,16 +8,6 @@
 #include <algorithm>
 #include <cassert>
 
-#ifdef BUILD_LISTENERS
-#define NEW_TYPE(tp) new_type(tp)
-#define NEW_ITEM(itm) new_item(itm)
-#define NEW_DATA(itm, data, timestamp) new_data(itm, data, timestamp)
-#else
-#define NEW_TYPE(tp)
-#define NEW_ITEM(itm)
-#define NEW_DATA(itm, data, timestamp)
-#endif
-
 namespace coco
 {
     coco::coco(coco_db &db) noexcept : db(db), env(CreateEnvironment())
@@ -140,7 +130,6 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto id = db.create_item(tp.get_name(), props, val);
         auto &itm = tp.make_item(id, std::move(props), std::move(val));
-        NEW_ITEM(itm);
         return itm;
     }
     void coco::set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp)
@@ -148,7 +137,6 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.set_value(itm.get_id(), val, timestamp);
         itm.set_value(std::make_pair(std::move(val), timestamp));
-        NEW_DATA(itm, itm.get_value()->first, itm.get_value()->second);
     }
     void coco::delete_item(item &itm) noexcept
     {
@@ -193,7 +181,6 @@ namespace coco
         auto &tp = *tp_ptr;
         if (!types.emplace(name, std::move(tp_ptr)).second)
             throw std::invalid_argument("type `" + std::string(name) + "` already exists");
-        NEW_TYPE(tp);
         return tp;
     }
 
@@ -206,6 +193,13 @@ namespace coco
             for (auto &[name, tp] : types)
                 jtps[name] = tp->to_json();
             jc["types"] = std::move(jtps);
+        }
+        if (!items.empty())
+        {
+            json::json jitms;
+            for (auto &[id, itm] : items)
+                jitms[id] = itm->to_json();
+            jc["items"] = std::move(jitms);
         }
         return jc;
     }
@@ -279,6 +273,11 @@ namespace coco
     {
         for (auto &l : listeners)
             l->new_item(itm);
+    }
+    void coco::updated_item(const item &itm) const
+    {
+        for (auto &l : listeners)
+            l->updated_item(itm);
     }
     void coco::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) const
     {

@@ -104,6 +104,13 @@ namespace coco
     void new_item(const item &itm) const;
 
     /**
+     * @brief Notifies when the item is created.
+     *
+     * @param itm The created item.
+     */
+    void updated_item(const item &itm) const;
+
+    /**
      * @brief Notifies when new data is added to the item.
      *
      * @param itm The item.
@@ -153,6 +160,13 @@ namespace coco
      * @param itm The created item.
      */
     virtual void new_item([[maybe_unused]] const item &itm) {}
+
+    /**
+     * @brief Notifies when the item is updated.
+     *
+     * @param itm The updated item.
+     */
+    virtual void updated_item([[maybe_unused]] const item &itm) {}
 
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 

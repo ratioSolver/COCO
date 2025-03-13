@@ -7,8 +7,12 @@ export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> {
 
 	constructor(type: coco.taxonomy.Type) {
 		super(type, document.createElement('li'));
+		this.element.classList.add('nav-item');
 
 		this.a = document.createElement('a');
+		this.a.classList.add('nav-link');
+		this.a.href = '#';
+		this.a.textContent = ' ' + type.get_name();
 
 		this.element.append(this.a);
 	}
@@ -18,6 +22,8 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 
 	constructor(tps: coco.taxonomy.Type[] = []) {
 		super(tps.map(tp => new TypeElement(tp)), (t0: coco.taxonomy.Type, t1: coco.taxonomy.Type) => t0.get_name() === t1.get_name() ? 0 : (t0.get_name() < t1.get_name() ? -1 : 1));
+		this.element.classList.add('nav', 'nav-pills', 'flex-column');
+		coco.CoCo.get_instance().add_coco_listener(this);
 	}
 
 	new_type(type: coco.taxonomy.Type): void {

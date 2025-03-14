@@ -2,7 +2,7 @@ import { Component } from "ratio-core";
 import { coco } from "../coco";
 import cytoscape from 'cytoscape';
 
-export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implements coco.CoCoListener {
+export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implements coco.CoCoListener, coco.taxonomy.TypeListener {
 
   private cy: cytoscape.Core | null = null;
   private layout = {
@@ -78,28 +78,41 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
     this.payload.add_coco_listener(this);
   }
 
+  override unmounting(): void {
+    for (const tp of this.payload._types.values())
+      tp.remove_type_listener(this);
+    this.payload.remove_coco_listener(this);
+  }
+
   new_type(type: coco.taxonomy.Type): void {
     this.create_type_node(type);
     this.cy!.layout(this.layout).run();
+    type.add_type_listener(this);
   }
 
-  type_updated(type: coco.taxonomy.Type): void {
+  parents_updated(type: coco.taxonomy.Type): void {
+    this.cy!.elements(`edge[id ^= "p-${type.get_name()}"]`).remove();
     const pars = type.get_parents();
     if (pars)
       for (const par of pars)
-        this.cy!.add({ group: 'edges', data: { id: `${type.get_name()}-${par.get_name()}`, type: 'is_a', source: type.get_name(), target: par.get_name() } });
-
+        this.cy!.add({ group: 'edges', data: { id: `p-${type.get_name()}-${par.get_name()}`, type: 'is_a', source: type.get_name(), target: par.get_name() } });
+  }
+  data_updated(_: coco.taxonomy.Type): void { }
+  static_properties_updated(type: coco.taxonomy.Type): void {
+    this.cy!.elements(`edge[id ^= "sp-${type.get_name()}"]`).remove();
     const static_props = type.get_static_properties();
     if (static_props)
       for (const [name, prop] of static_props)
         if (prop instanceof coco.taxonomy.ItemProperty)
-          this.cy!.add({ group: 'edges', data: { id: `${type.get_name()}-${prop.domain.get_name()}`, type: 'static_property', name: name, source: type.get_name(), target: prop.domain.get_name() } });
-
+          this.cy!.add({ group: 'edges', data: { id: `sp-${type.get_name()}-${prop.domain.get_name()}`, type: 'static_property', name: name, source: type.get_name(), target: prop.domain.get_name() } });
+  }
+  dynamic_properties_updated(type: coco.taxonomy.Type): void {
+    this.cy!.elements(`edge[id ^= "dp-${type.get_name()}"]`).remove();
     const dynamic_props = type.get_static_properties();
     if (dynamic_props)
       for (const [name, prop] of dynamic_props)
         if (prop instanceof coco.taxonomy.ItemProperty)
-          this.cy!.add({ group: 'edges', data: { id: `${type.get_name()}-${prop.domain.get_name()}`, type: 'dynamic_property', name: name, source: type.get_name(), target: prop.domain.get_name() } });
+          this.cy!.add({ group: 'edges', data: { id: `dp-${type.get_name()}-${prop.domain.get_name()}`, type: 'dynamic_property', name: name, source: type.get_name(), target: prop.domain.get_name() } });
   }
 
   new_item(_: coco.taxonomy.Item): void { }

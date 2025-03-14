@@ -25,8 +25,10 @@ import {
 // import cytoscapePopper from 'cytoscape-popper';
 
 export { coco } from './coco/coco';
-export { TaxonomyGraph } from './coco/components/taxonomy';
 export { Offcanvas } from './coco/components/offcanvas';
+export { TaxonomyGraph } from './coco/components/taxonomy';
+export { TypeElement, TypeList, Type } from './coco/components/type'
+export { ItemElement, ItemList, Item } from './coco/components/item'
 
 function popperFactory(ref: RefElement, content: HTMLElement, options?: PopperOptions): PopperInstance {
   const popperOptions = { middleware: [flip(), shift({ limiter: limitShift() })], ...options, };

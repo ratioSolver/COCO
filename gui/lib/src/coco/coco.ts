@@ -23,8 +23,6 @@ export namespace coco {
       for (const listener of this.coco_listeners) listener.new_type(type);
     }
 
-    type_updated(type: taxonomy.Type): void { for (const listener of this.coco_listeners) listener.type_updated(type); }
-
     new_item(item: taxonomy.Item): void {
       this._items.set(item.get_id(), item);
       for (const listener of this.coco_listeners) listener.new_item(item);
@@ -40,7 +38,6 @@ export namespace coco {
           const n_tp = new taxonomy.Type(ntm.name, [], ntm.data);
           this.new_type(n_tp);
           this.refine_type(n_tp, ntm);
-          this.type_updated(n_tp);
           break;
         case 'new_item':
           const nim = message as NewItemMessage;
@@ -57,7 +54,6 @@ export namespace coco {
         for (const [name, tp] of Object.entries(coco_message.types)) {
           const ctp = this._types.get(name)!;
           this.refine_type(ctp, tp);
-          this.type_updated(ctp);
         }
       }
       if (coco_message.items) {
@@ -69,18 +65,18 @@ export namespace coco {
 
     private refine_type(tp: taxonomy.Type, tpm: TypeMessage) {
       if (tpm.parents)
-        tp._parents = tpm.parents.map(p => this._types.get(p)!);
+        tp._set_parents(tpm.parents.map(p => this._types.get(p)!));
       if (tpm.static_properties) {
         const static_props = new Map<string, taxonomy.Property<unknown>>();
         for (const [name, prop] of Object.entries(tpm.static_properties))
           static_props.set(name, taxonomy.make_property(this, prop));
-        tp._static_properties = static_props;
+        tp._set_static_properties(static_props);
       }
       if (tpm.dynamic_properties) {
         const dynamic_props = new Map<string, taxonomy.Property<unknown>>();
         for (const [name, prop] of Object.entries(tpm.dynamic_properties))
           dynamic_props.set(name, taxonomy.make_property(this, prop));
-        tp._dynamic_properties = dynamic_props;
+        tp._set_dynamic_properties(dynamic_props);
       }
     }
 
@@ -101,7 +97,6 @@ export namespace coco {
   export interface CoCoListener {
 
     new_type(type: taxonomy.Type): void;
-    type_updated(type: taxonomy.Type): void;
     new_item(item: taxonomy.Item): void;
   }
 
@@ -212,39 +207,68 @@ export namespace coco {
     export class Type {
 
       private name: string;
-      _parents?: Type[];
+      private parents?: Type[];
       private data?: Record<string, any>;
-      _static_properties?: Map<string, Property<unknown>>;
-      _dynamic_properties?: Map<string, Property<unknown>>;
+      private static_properties?: Map<string, Property<unknown>>;
+      private dynamic_properties?: Map<string, Property<unknown>>;
+      private listeners = new Set<TypeListener>();
 
       constructor(name: string, parents?: Type[], data?: Record<string, any>, static_properties?: Map<string, Property<unknown>>, dynamic_properties?: Map<string, Property<unknown>>) {
         this.name = name;
-        this._parents = parents;
+        this.parents = parents;
         this.data = data;
-        this._static_properties = static_properties;
-        this._dynamic_properties = dynamic_properties;
+        this.static_properties = static_properties;
+        this.dynamic_properties = dynamic_properties;
       }
 
       get_name(): string { return this.name; }
-      get_parents(): Type[] | undefined { return this._parents; }
+      get_parents(): Type[] | undefined { return this.parents; }
       get_data(): Record<string, any> | undefined { return this.data; }
-      get_static_properties(): Map<string, Property<unknown>> | undefined { return this._static_properties; }
-      get_dynamic_properties(): Map<string, Property<unknown>> | undefined { return this._dynamic_properties; }
+      get_static_properties(): Map<string, Property<unknown>> | undefined { return this.static_properties; }
+      get_dynamic_properties(): Map<string, Property<unknown>> | undefined { return this.dynamic_properties; }
+
+      _set_parents(ps?: Type[]): void {
+        this.parents = ps;
+        for (const l of this.listeners) l.parents_updated(this);
+      }
+      _set_data(data?: Record<string, any>): void {
+        this.data = data;
+        for (const l of this.listeners) l.data_updated(this);
+      }
+      _set_static_properties(sp?: Map<string, Property<unknown>>): void {
+        this.static_properties = sp;
+        for (const l of this.listeners) l.static_properties_updated(this);
+      }
+      _set_dynamic_properties(dp?: Map<string, Property<unknown>>): void {
+        this.dynamic_properties = dp;
+        for (const l of this.listeners) l.dynamic_properties_updated(this);
+      }
 
       to_string(): string {
         let tp_str = `<html><b>${this.name}</b>`;
-        if (this._static_properties) {
+        if (this.static_properties) {
           tp_str += '<br><b>Static Properties:</b>';
-          for (const [name, prop] of this._static_properties)
+          for (const [name, prop] of this.static_properties)
             tp_str += `<br><em>${name}</em> ${prop.to_string()}`;
         }
-        if (this._dynamic_properties) {
+        if (this.dynamic_properties) {
           tp_str += '<br><b>Dynamic Properties:</b>';
-          for (const [name, prop] of this._dynamic_properties)
+          for (const [name, prop] of this.dynamic_properties)
             tp_str += `<br><em>${name}</em> ${prop.to_string()}`;
         }
         return tp_str + '</html>';
       }
+
+      add_type_listener(l: TypeListener): void { this.listeners.add(l); }
+      remove_type_listener(l: TypeListener): void { this.listeners.delete(l); }
+    }
+
+    export interface TypeListener {
+
+      parents_updated(type: Type): void;
+      data_updated(type: Type): void;
+      static_properties_updated(type: Type): void;
+      dynamic_properties_updated(type: Type): void;
     }
 
     export interface Value { data: Record<string, unknown>, timestamp: Date }
@@ -255,6 +279,8 @@ export namespace coco {
       private type: Type;
       private properties?: Record<string, unknown>;
       private value?: Value;
+      private values: Value[] = [];
+      private listeners = new Set<ItemListener>();
 
       constructor(id: string, type: Type, properties?: Record<string, unknown>, value?: Value) {
         this.id = id;
@@ -267,6 +293,30 @@ export namespace coco {
       get_type(): Type { return this.type; }
       get_properties(): Record<string, unknown> | undefined { return this.properties; }
       get_value(): Value | undefined { return this.value; }
+
+      _set_properties(props?: Record<string, unknown>): void {
+        this.properties = props;
+        for (const l of this.listeners) l.properties_updated(this);
+      }
+      _set_values(values: Value[]): void {
+        this.values = values;
+        for (const l of this.listeners) l.values_updated(this);
+      }
+      _add_value(v: Value): void {
+        this.value = v;
+        this.values.push(v);
+        for (const l of this.listeners) l.new_value(this, v);
+      }
+
+      add_item_listener(l: ItemListener): void { this.listeners.add(l); }
+      remove_item_listener(l: ItemListener): void { this.listeners.delete(l); }
+    }
+
+    export interface ItemListener {
+
+      properties_updated(item: Item): void;
+      values_updated(item: Item): void;
+      new_value(item: Item, v: Value): void;
     }
   }
 }

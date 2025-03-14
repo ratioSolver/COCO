@@ -1,5 +1,5 @@
 import { AppComponent, Connection, Settings } from 'ratio-core';
-import { coco, Offcanvas, TaxonomyGraph } from 'coco-lib';
+import { coco, Offcanvas } from 'coco-lib';
 import { Offcanvas as BootstrapOffcanvas } from 'bootstrap';
 import './styles.css'
 
@@ -10,16 +10,12 @@ const offcanvas_id = 'coco-offcanvas';
 class CoCoApp extends AppComponent {
 
   offcanvas: Offcanvas;
-  taxonomy_graph: TaxonomyGraph;
 
   constructor() {
     super();
 
     this.offcanvas = new Offcanvas(offcanvas_id);
     this.add_child(this.offcanvas);
-
-    this.taxonomy_graph = new TaxonomyGraph();
-    this.add_child(this.taxonomy_graph);
 
     Connection.get_instance().connect();
   }
@@ -28,6 +24,7 @@ class CoCoApp extends AppComponent {
     const brand = document.createElement('a');
     brand.classList.add('navbar-brand');
     brand.text = " CoCo";
+    brand.href = '#';
     brand.addEventListener('click', (event) => {
       event.preventDefault();
       BootstrapOffcanvas.getOrCreateInstance(document.getElementById(offcanvas_id)!).show();

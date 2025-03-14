@@ -14,7 +14,7 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "coco-lib": "file:../lib",
+    "coco-lib": "^0.0.2",
     "ratio-core": "^0.0.12"
   }
 }

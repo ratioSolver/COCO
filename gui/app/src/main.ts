@@ -1,5 +1,5 @@
 import { AppComponent, Connection, Settings } from 'ratio-core';
-import { coco, Offcanvas } from 'coco-lib';
+import { coco, Offcanvas } from 'ratio-coco-lib';
 import { Offcanvas as BootstrapOffcanvas } from 'bootstrap';
 import './styles.css'
 

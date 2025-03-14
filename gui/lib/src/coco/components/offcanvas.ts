@@ -21,7 +21,7 @@ class TaxonomyElement extends Component<App, HTMLLIElement> implements Selector 
   constructor(group: SelectorGroup) {
     super(App.get_instance(), document.createElement('li'));
     this.group = group;
-    this.element.classList.add('nav-item');
+    this.element.classList.add('nav-item', 'list-group-item');
 
     this.a = document.createElement('a');
     this.a.classList.add('nav-link');

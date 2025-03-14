@@ -15,6 +15,6 @@
   },
   "dependencies": {
     "coco-lib": "file:../lib",
-    "ratio-core": "^0.0.11"
+    "ratio-core": "^0.0.12"
   }
 }

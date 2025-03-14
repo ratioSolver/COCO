@@ -14,7 +14,7 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "coco-lib": "^0.0.2",
-    "ratio-core": "^0.0.12"
+    "ratio-core": "^0.0.12",
+    "ratio-coco-lib": "^0.0.2"
   }
 }

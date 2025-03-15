@@ -3,13 +3,21 @@ export namespace coco {
   export class CoCo implements CoCoListener {
 
     private static instance: CoCo;
-    _types: Map<string, taxonomy.Type>;
-    _items: Map<string, taxonomy.Item>;
+    private property_types = new Map<string, taxonomy.PropertyType<any>>();
+    private types: Map<string, taxonomy.Type>;
+    private items: Map<string, taxonomy.Item>;
     private coco_listeners: Set<CoCoListener> = new Set();
 
     private constructor() {
-      this._types = new Map();
-      this._items = new Map();
+      this.add_property_type(new taxonomy.BoolPropertyType());
+      this.add_property_type(new taxonomy.IntPropertyType());
+      this.add_property_type(new taxonomy.FloatPropertyType());
+      this.add_property_type(new taxonomy.StringPropertyType());
+      this.add_property_type(new taxonomy.SymbolPropertyType());
+      this.add_property_type(new taxonomy.ItemPropertyType());
+      this.add_property_type(new taxonomy.JSONPropertyType());
+      this.types = new Map();
+      this.items = new Map();
     }
 
     static get_instance() {
@@ -18,13 +26,18 @@ export namespace coco {
       return CoCo.instance;
     }
 
+    add_property_type(pt: taxonomy.PropertyType<any>) { this.property_types.set(pt.get_name(), pt); }
+
+    get_types(): MapIterator<taxonomy.Type> { return this.types.values(); }
+    get_items(): MapIterator<taxonomy.Item> { return this.items.values(); }
+
     new_type(type: taxonomy.Type): void {
-      this._types.set(type.get_name(), type);
+      this.types.set(type.get_name(), type);
       for (const listener of this.coco_listeners) listener.new_type(type);
     }
 
     new_item(item: taxonomy.Item): void {
-      this._items.set(item.get_id(), item);
+      this.items.set(item.get_id(), item);
       for (const listener of this.coco_listeners) listener.new_item(item);
     }
 
@@ -48,16 +61,16 @@ export namespace coco {
 
     private init(coco_message: CoCoMessage): void {
       if (coco_message.types) {
-        this._types.clear();
+        this.types.clear();
         for (const [name, tp] of Object.entries(coco_message.types))
           this.new_type(new taxonomy.Type(name, [], tp.data));
         for (const [name, tp] of Object.entries(coco_message.types)) {
-          const ctp = this._types.get(name)!;
+          const ctp = this.types.get(name)!;
           this.refine_type(ctp, tp);
         }
       }
       if (coco_message.items) {
-        this._items.clear();
+        this.items.clear();
         for (const [id, itm] of Object.entries(coco_message.items))
           this.new_item(this.make_item(id, itm));
       }
@@ -65,17 +78,17 @@ export namespace coco {
 
     private refine_type(tp: taxonomy.Type, tpm: TypeMessage) {
       if (tpm.parents)
-        tp._set_parents(tpm.parents.map(p => this._types.get(p)!));
+        tp._set_parents(tpm.parents.map(p => this.types.get(p)!));
       if (tpm.static_properties) {
         const static_props = new Map<string, taxonomy.Property<unknown>>();
         for (const [name, prop] of Object.entries(tpm.static_properties))
-          static_props.set(name, taxonomy.make_property(this, prop));
+          static_props.set(name, this.property_types.get(prop.type)!.make_property(this, prop));
         tp._set_static_properties(static_props);
       }
       if (tpm.dynamic_properties) {
         const dynamic_props = new Map<string, taxonomy.Property<unknown>>();
         for (const [name, prop] of Object.entries(tpm.dynamic_properties))
-          dynamic_props.set(name, taxonomy.make_property(this, prop));
+          dynamic_props.set(name, this.property_types.get(prop.type)!.make_property(this, prop));
         tp._set_dynamic_properties(dynamic_props);
       }
     }
@@ -84,11 +97,11 @@ export namespace coco {
       let value = undefined;
       if (itm.value)
         value = { data: itm.value.data, timestamp: new Date(itm.value.timestamp) };
-      return new taxonomy.Item(id, this._types.get(itm.type)!, itm.properties, value);
+      return new taxonomy.Item(id, this.types.get(itm.type)!, itm.properties, value);
     }
 
-    get_type(name: string): taxonomy.Type { return this._types.get(name)!; }
-    get_item(id: string): taxonomy.Item { return this._items.get(id)!; }
+    get_type(name: string): taxonomy.Type { return this.types.get(name)!; }
+    get_item(id: string): taxonomy.Item { return this.items.get(id)!; }
 
     add_coco_listener(listener: CoCoListener) { this.coco_listeners.add(listener); }
     remove_coco_listener(listener: CoCoListener) { this.coco_listeners.delete(listener); }
@@ -101,6 +114,90 @@ export namespace coco {
   }
 
   export namespace taxonomy {
+
+    export abstract class PropertyType<P extends Property<unknown>> {
+
+      private name: string;
+
+      constructor(name: string) { this.name = name; }
+
+      get_name(): string { return this.name; }
+
+      abstract make_property(cc: CoCo, property_message: PropertyMessage | any): P;
+    }
+
+    export class BoolPropertyType extends PropertyType<BoolProperty> {
+
+      constructor() { super('bool'); }
+
+      override make_property(_: CoCo, property_message: PropertyMessage | any): BoolProperty {
+        const b_pm = property_message as BoolPropertyMessage;
+        return new BoolProperty(b_pm.default_value);
+      }
+    }
+
+    export class IntPropertyType extends PropertyType<IntProperty> {
+
+      constructor() { super('int'); }
+
+      override make_property(_: CoCo, property_message: PropertyMessage | any): IntProperty {
+        const i_pm = property_message as IntPropertyMessage;
+        return new IntProperty(i_pm.min, i_pm.max, i_pm.default_value);
+      }
+    }
+
+    export class FloatPropertyType extends PropertyType<FloatProperty> {
+
+      constructor() { super('float'); }
+
+      override make_property(_: CoCo, property_message: PropertyMessage | any): FloatProperty {
+        const f_pm = property_message as FloatPropertyMessage;
+        return new FloatProperty(f_pm.min, f_pm.max, f_pm.default_value);
+      }
+    }
+
+    export class StringPropertyType extends PropertyType<StringProperty> {
+
+      constructor() { super('string'); }
+
+      override make_property(_: CoCo, property_message: PropertyMessage | any): StringProperty {
+        const s_pm = property_message as StringPropertyMessage;
+        return new StringProperty(s_pm.default_value);
+      }
+    }
+
+    export class SymbolPropertyType extends PropertyType<SymbolProperty> {
+
+      constructor() { super('symbol'); }
+
+      override make_property(_: CoCo, property_message: PropertyMessage | any): SymbolProperty {
+        const sym_pm = property_message as SymbolPropertyMessage;
+        return new SymbolProperty(sym_pm.multiple, sym_pm.symbols, sym_pm.default_value);
+      }
+    }
+
+    export class ItemPropertyType extends PropertyType<ItemProperty> {
+
+      constructor() { super('item'); }
+
+      override make_property(cc: CoCo, property_message: PropertyMessage | any): ItemProperty {
+        const itm_pm = property_message as ItemPropertyMessage;
+        let def = undefined;
+        if (itm_pm.default_value)
+          def = Array.isArray(itm_pm.default_value) ? itm_pm.default_value.map(itm => cc.get_item(itm)) : cc.get_item(itm_pm.default_value);
+        return new ItemProperty(cc.get_type(itm_pm.domain), itm_pm.multiple, itm_pm.items?.map(itm => cc.get_item(itm)), def);
+      }
+    }
+
+    export class JSONPropertyType extends PropertyType<JSONProperty> {
+
+      constructor() { super('json'); }
+
+      override make_property(_: CoCo, property_message: PropertyMessage | any): JSONProperty {
+        const j_pm = property_message as JSONPropertyMessage;
+        return new JSONProperty(j_pm.schema, j_pm.default_value);
+      }
+    }
 
     export class Property<V> {
 
@@ -170,37 +267,6 @@ export namespace coco {
       constructor(schema: Record<string, any>, default_value?: Record<string, any>) {
         super(default_value);
         this.schema = schema;
-      }
-    }
-
-    export function make_property(cc: CoCo, property_message: PropertyMessage): Property<unknown> {
-      switch (property_message.type) {
-        case 'bool':
-          const b_pm = property_message as BoolPropertyMessage;
-          return new BoolProperty(b_pm.default_value);
-        case 'int':
-          const i_pm = property_message as IntPropertyMessage;
-          return new IntProperty(i_pm.min, i_pm.max, i_pm.default_value);
-        case 'float':
-          const f_pm = property_message as FloatPropertyMessage;
-          return new FloatProperty(f_pm.min, f_pm.max, f_pm.default_value);
-        case 'string':
-          const s_pm = property_message as StringPropertyMessage;
-          return new StringProperty(s_pm.default_value);
-        case 'symbol':
-          const sym_pm = property_message as SymbolPropertyMessage;
-          return new SymbolProperty(sym_pm.multiple, sym_pm.symbols, sym_pm.default_value);
-        case 'item':
-          const itm_pm = property_message as ItemPropertyMessage;
-          let def = undefined;
-          if (itm_pm.default_value)
-            def = Array.isArray(itm_pm.default_value) ? itm_pm.default_value.map(itm => cc.get_item(itm)) : cc.get_item(itm_pm.default_value);
-          return new ItemProperty(cc.get_type(itm_pm.domain), itm_pm.multiple, itm_pm.items?.map(itm => cc.get_item(itm)), def);
-        case 'json':
-          const j_pm = property_message as JSONPropertyMessage;
-          return new JSONProperty(j_pm.schema, j_pm.default_value);
-        default:
-          throw new Error(`Unknown property type: ${property_message.type}`);
       }
     }
 

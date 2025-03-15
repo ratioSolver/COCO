@@ -71,15 +71,15 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
       ]
     });
 
-    for (const [_, type] of this.payload._types)
-      this.create_type_node(type);
+    for (const tp of this.payload.get_types())
+      this.create_type_node(tp);
     this.cy.layout(this.layout).run();
 
     this.payload.add_coco_listener(this);
   }
 
   override unmounting(): void {
-    for (const tp of this.payload._types.values())
+    for (const tp of this.payload.get_types())
       tp.remove_type_listener(this);
     this.payload.remove_coco_listener(this);
   }

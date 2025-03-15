@@ -17,7 +17,7 @@ export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> im
     this.a.textContent = ' ' + type.get_name();
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
-      App.get_instance().selected_component(new Type(this.payload));
+      this.select_component();
       group.set_selected(this);
     });
 
@@ -34,6 +34,8 @@ export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> im
 
   select(): void { this.a.classList.add('active'); }
   unselect(): void { this.a.classList.remove('active'); }
+
+  select_component(): void { App.get_instance().selected_component(new Type(this.payload)); }
 }
 
 export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco.CoCoListener {
@@ -55,8 +57,42 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 
 export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implements coco.taxonomy.TypeListener {
 
+  private static_properties_table: HTMLTableElement;
+  private dynamic_properties_table: HTMLTableElement;
+
   constructor(type: coco.taxonomy.Type) {
     super(type, document.createElement('div'));
+    this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+
+    this.static_properties_table = document.createElement('table');
+    this.static_properties_table.classList.add('table');
+
+    const sthead = this.static_properties_table.createTHead();
+    const shrow = sthead.insertRow();
+    const sproperty_name = shrow.insertCell();
+    sproperty_name.scope = 'col';
+    sproperty_name.textContent = 'Name';
+    const sproperty_type = shrow.insertCell();
+    sproperty_type.scope = 'col';
+    sproperty_type.textContent = 'Type';
+    this.static_properties_table.createTBody();
+
+    this.dynamic_properties_table = document.createElement('table');
+    this.dynamic_properties_table.classList.add('table');
+
+    const dthead = this.static_properties_table.createTHead();
+    const dhrow = dthead.insertRow();
+    const dproperty_name = dhrow.insertCell();
+    dproperty_name.scope = 'col';
+    dproperty_name.textContent = 'Name';
+    const dproperty_type = dhrow.insertCell();
+    dproperty_type.scope = 'col';
+    dproperty_type.textContent = 'Type';
+    this.dynamic_properties_table.createTBody();
+
+    this.element.append(this.static_properties_table);
+    this.element.append(this.dynamic_properties_table);
+
     type.add_type_listener(this);
   }
 
@@ -67,3 +103,4 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
   static_properties_updated(_: coco.taxonomy.Type): void { }
   dynamic_properties_updated(_: coco.taxonomy.Type): void { }
 }
+

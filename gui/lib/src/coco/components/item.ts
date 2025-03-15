@@ -21,7 +21,7 @@ export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> im
       this.a.textContent = ' ' + item.get_id();
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
-      App.get_instance().selected_component(new Item(this.payload));
+      this.select_component();
       group.set_selected(this);
     });
 
@@ -37,6 +37,8 @@ export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> im
 
   select(): void { this.a.classList.add('active'); }
   unselect(): void { this.a.classList.remove('active'); }
+
+  select_component(): void { App.get_instance().selected_component(new Item(this.payload)); }
 }
 
 export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco.CoCoListener {
@@ -58,8 +60,27 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 
 export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
+  private properties_table: HTMLTableElement;
+
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
+    this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+
+    this.properties_table = document.createElement('table');
+    this.properties_table.classList.add('table');
+
+    const sthead = this.properties_table.createTHead();
+    const shrow = sthead.insertRow();
+    const sproperty_name = shrow.insertCell();
+    sproperty_name.scope = 'col';
+    sproperty_name.textContent = 'Name';
+    const sproperty_type = shrow.insertCell();
+    sproperty_type.scope = 'col';
+    sproperty_type.textContent = 'Type';
+    this.properties_table.createTBody();
+
+    this.element.append(this.properties_table);
+
     item.add_item_listener(this);
   }
 

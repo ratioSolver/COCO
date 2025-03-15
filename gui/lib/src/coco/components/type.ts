@@ -57,50 +57,111 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 
 export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implements coco.taxonomy.TypeListener {
 
-  private static_properties_table: HTMLTableElement;
-  private dynamic_properties_table: HTMLTableElement;
+  private sp_body: HTMLTableSectionElement;
+  private dp_body: HTMLTableSectionElement;
 
   constructor(type: coco.taxonomy.Type) {
     super(type, document.createElement('div'));
     this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
 
-    this.static_properties_table = document.createElement('table');
-    this.static_properties_table.classList.add('table');
+    const sp_table = document.createElement('table');
+    sp_table.classList.add('table');
 
-    const sthead = this.static_properties_table.createTHead();
+    const sthead = sp_table.createTHead();
     const shrow = sthead.insertRow();
-    const sproperty_name = shrow.insertCell();
-    sproperty_name.scope = 'col';
-    sproperty_name.textContent = 'Name';
-    const sproperty_type = shrow.insertCell();
-    sproperty_type.scope = 'col';
-    sproperty_type.textContent = 'Type';
-    this.static_properties_table.createTBody();
+    const sp_name = shrow.insertCell();
+    sp_name.scope = 'col';
+    sp_name.textContent = 'Name';
+    const sp_type = shrow.insertCell();
+    sp_type.scope = 'col';
+    sp_type.textContent = 'Type';
+    this.sp_body = sp_table.createTBody();
 
-    this.dynamic_properties_table = document.createElement('table');
-    this.dynamic_properties_table.classList.add('table');
+    const dp_table = document.createElement('table');
+    dp_table.classList.add('table');
 
-    const dthead = this.static_properties_table.createTHead();
+    const dthead = sp_table.createTHead();
     const dhrow = dthead.insertRow();
-    const dproperty_name = dhrow.insertCell();
-    dproperty_name.scope = 'col';
-    dproperty_name.textContent = 'Name';
-    const dproperty_type = dhrow.insertCell();
-    dproperty_type.scope = 'col';
-    dproperty_type.textContent = 'Type';
-    this.dynamic_properties_table.createTBody();
+    const dp_name = dhrow.insertCell();
+    dp_name.scope = 'col';
+    dp_name.textContent = 'Name';
+    const dp_type = dhrow.insertCell();
+    dp_type.scope = 'col';
+    dp_type.textContent = 'Type';
+    this.dp_body = dp_table.createTBody();
 
-    this.element.append(this.static_properties_table);
-    this.element.append(this.dynamic_properties_table);
+    this.set_static_properties();
+    this.set_dynamic_properties();
 
-    type.add_type_listener(this);
+    this.element.append(sp_table);
+    this.element.append(dp_table);
+
+    const q: coco.taxonomy.Type[] = [this.payload];
+    while (q.length > 0) {
+      const t = q.shift()!;
+      t.add_type_listener(this);
+      const pars = t.get_parents();
+      if (pars)
+        for (const par of pars)
+          q.push(par);
+    }
   }
 
-  override unmounting(): void { this.payload.remove_type_listener(this); }
+  override unmounting(): void {
+    const q: coco.taxonomy.Type[] = [this.payload];
+    while (q.length > 0) {
+      const t = q.shift()!;
+      t.remove_type_listener(this);
+      const pars = t.get_parents();
+      if (pars)
+        for (const par of pars)
+          q.push(par);
+    }
+  }
 
   parents_updated(_: coco.taxonomy.Type): void { }
   data_updated(_: coco.taxonomy.Type): void { }
-  static_properties_updated(_: coco.taxonomy.Type): void { }
-  dynamic_properties_updated(_: coco.taxonomy.Type): void { }
+  static_properties_updated(_: coco.taxonomy.Type): void { this.set_static_properties(); }
+  dynamic_properties_updated(_: coco.taxonomy.Type): void { this.set_dynamic_properties(); }
+
+  private set_static_properties() {
+    this.sp_body.innerHTML = '';
+    const sps = this.payload.get_all_static_properties();
+    if (sps) {
+      const fragment = document.createDocumentFragment();
+      for (const [name, tp] of sps) {
+        const row = document.createElement('tr');
+        const sp_name = document.createElement('th');
+        sp_name.scope = 'col';
+        sp_name.textContent = name;
+        row.appendChild(sp_name);
+        const sp_type = document.createElement('td');
+        sp_type.textContent = tp.to_string();
+        row.appendChild(sp_type);
+        fragment.appendChild(row);
+      }
+      this.sp_body.appendChild(fragment);
+    }
+  }
+
+  private set_dynamic_properties() {
+    this.dp_body.innerHTML = '';
+    const dps = this.payload.get_all_dynamic_properties();
+    if (dps) {
+      const fragment = document.createDocumentFragment();
+      for (const [name, tp] of dps) {
+        const row = document.createElement('tr');
+        const dp_name = document.createElement('th');
+        dp_name.scope = 'col';
+        dp_name.textContent = name;
+        row.appendChild(dp_name);
+        const dp_type = document.createElement('td');
+        dp_type.textContent = tp.to_string();
+        row.appendChild(dp_type);
+        fragment.appendChild(row);
+      }
+      this.dp_body.appendChild(fragment);
+    }
+  }
 }
 

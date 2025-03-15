@@ -3,19 +3,19 @@ export namespace coco {
   export class CoCo implements CoCoListener {
 
     private static instance: CoCo;
-    private property_types = new Map<string, taxonomy.PropertyType<any>>();
-    private types: Map<string, taxonomy.Type>;
-    private items: Map<string, taxonomy.Item>;
-    private coco_listeners: Set<CoCoListener> = new Set();
+    private readonly property_types = new Map<string, taxonomy.PropertyType<any>>();
+    private readonly types: Map<string, taxonomy.Type>;
+    private readonly items: Map<string, taxonomy.Item>;
+    private readonly coco_listeners: Set<CoCoListener> = new Set();
 
     private constructor() {
-      this.add_property_type(new taxonomy.BoolPropertyType());
-      this.add_property_type(new taxonomy.IntPropertyType());
-      this.add_property_type(new taxonomy.FloatPropertyType());
-      this.add_property_type(new taxonomy.StringPropertyType());
-      this.add_property_type(new taxonomy.SymbolPropertyType());
-      this.add_property_type(new taxonomy.ItemPropertyType());
-      this.add_property_type(new taxonomy.JSONPropertyType());
+      this.add_property_type(new taxonomy.BoolPropertyType(this));
+      this.add_property_type(new taxonomy.IntPropertyType(this));
+      this.add_property_type(new taxonomy.FloatPropertyType(this));
+      this.add_property_type(new taxonomy.StringPropertyType(this));
+      this.add_property_type(new taxonomy.SymbolPropertyType(this));
+      this.add_property_type(new taxonomy.ItemPropertyType(this));
+      this.add_property_type(new taxonomy.JSONPropertyType(this));
       this.types = new Map();
       this.items = new Map();
     }
@@ -82,13 +82,13 @@ export namespace coco {
       if (tpm.static_properties) {
         const static_props = new Map<string, taxonomy.Property<unknown>>();
         for (const [name, prop] of Object.entries(tpm.static_properties))
-          static_props.set(name, this.property_types.get(prop.type)!.make_property(this, prop));
+          static_props.set(name, this.property_types.get(prop.type)!.make_property(prop));
         tp._set_static_properties(static_props);
       }
       if (tpm.dynamic_properties) {
         const dynamic_props = new Map<string, taxonomy.Property<unknown>>();
         for (const [name, prop] of Object.entries(tpm.dynamic_properties))
-          dynamic_props.set(name, this.property_types.get(prop.type)!.make_property(this, prop));
+          dynamic_props.set(name, this.property_types.get(prop.type)!.make_property(prop));
         tp._set_dynamic_properties(dynamic_props);
       }
     }
@@ -117,109 +117,152 @@ export namespace coco {
 
     export abstract class PropertyType<P extends Property<unknown>> {
 
-      private name: string;
+      protected readonly cc: CoCo;
+      private readonly name: string;
 
-      constructor(name: string) { this.name = name; }
+      constructor(cc: CoCo, name: string) {
+        this.cc = cc;
+        this.name = name;
+      }
 
       get_name(): string { return this.name; }
 
-      abstract make_property(cc: CoCo, property_message: PropertyMessage | any): P;
+      abstract make_property(property_message: PropertyMessage | any): P;
+
+      abstract to_string(val: unknown): string;
     }
 
     export class BoolPropertyType extends PropertyType<BoolProperty> {
 
-      constructor() { super('bool'); }
+      constructor(cc: CoCo) { super(cc, 'bool'); }
 
-      override make_property(_: CoCo, property_message: PropertyMessage | any): BoolProperty {
+      override make_property(property_message: PropertyMessage | any): BoolProperty {
         const b_pm = property_message as BoolPropertyMessage;
-        return new BoolProperty(b_pm.default_value);
+        return new BoolProperty(this, b_pm.default_value);
       }
+
+      to_string(val: boolean): string { return val ? 'true' : 'false'; }
     }
 
     export class IntPropertyType extends PropertyType<IntProperty> {
 
-      constructor() { super('int'); }
+      constructor(cc: CoCo) { super(cc, 'int'); }
 
-      override make_property(_: CoCo, property_message: PropertyMessage | any): IntProperty {
+      override make_property(property_message: PropertyMessage | any): IntProperty {
         const i_pm = property_message as IntPropertyMessage;
-        return new IntProperty(i_pm.min, i_pm.max, i_pm.default_value);
+        return new IntProperty(this, i_pm.min, i_pm.max, i_pm.default_value);
       }
+
+      to_string(val: number): string { return String(val); }
     }
 
     export class FloatPropertyType extends PropertyType<FloatProperty> {
 
-      constructor() { super('float'); }
+      constructor(cc: CoCo) { super(cc, 'float'); }
 
-      override make_property(_: CoCo, property_message: PropertyMessage | any): FloatProperty {
+      override make_property(property_message: PropertyMessage | any): FloatProperty {
         const f_pm = property_message as FloatPropertyMessage;
-        return new FloatProperty(f_pm.min, f_pm.max, f_pm.default_value);
+        return new FloatProperty(this, f_pm.min, f_pm.max, f_pm.default_value);
       }
+
+      to_string(val: number): string { return String(val); }
     }
 
     export class StringPropertyType extends PropertyType<StringProperty> {
 
-      constructor() { super('string'); }
+      constructor(cc: CoCo) { super(cc, 'string'); }
 
-      override make_property(_: CoCo, property_message: PropertyMessage | any): StringProperty {
+      override make_property(property_message: PropertyMessage | any): StringProperty {
         const s_pm = property_message as StringPropertyMessage;
-        return new StringProperty(s_pm.default_value);
+        return new StringProperty(this, s_pm.default_value);
       }
+
+      to_string(val: string): string { return val; }
     }
 
     export class SymbolPropertyType extends PropertyType<SymbolProperty> {
 
-      constructor() { super('symbol'); }
+      constructor(cc: CoCo) { super(cc, 'symbol'); }
 
-      override make_property(_: CoCo, property_message: PropertyMessage | any): SymbolProperty {
+      override make_property(property_message: PropertyMessage | any): SymbolProperty {
         const sym_pm = property_message as SymbolPropertyMessage;
-        return new SymbolProperty(sym_pm.multiple, sym_pm.symbols, sym_pm.default_value);
+        return new SymbolProperty(this, sym_pm.multiple, sym_pm.symbols, sym_pm.default_value);
       }
+
+      to_string(val: string | string[]): string { return Array.isArray(val) ? val.join(', ') : val; }
     }
 
     export class ItemPropertyType extends PropertyType<ItemProperty> {
 
-      constructor() { super('item'); }
+      constructor(cc: CoCo) { super(cc, 'item'); }
 
-      override make_property(cc: CoCo, property_message: PropertyMessage | any): ItemProperty {
+      override make_property(property_message: PropertyMessage | any): ItemProperty {
         const itm_pm = property_message as ItemPropertyMessage;
         let def = undefined;
         if (itm_pm.default_value)
-          def = Array.isArray(itm_pm.default_value) ? itm_pm.default_value.map(itm => cc.get_item(itm)) : cc.get_item(itm_pm.default_value);
-        return new ItemProperty(cc.get_type(itm_pm.domain), itm_pm.multiple, itm_pm.items?.map(itm => cc.get_item(itm)), def);
+          def = Array.isArray(itm_pm.default_value) ? itm_pm.default_value.map(itm => this.cc.get_item(itm)) : this.cc.get_item(itm_pm.default_value);
+        return new ItemProperty(this, this.cc.get_type(itm_pm.domain), itm_pm.multiple, itm_pm.items?.map(itm => this.cc.get_item(itm)), def);
+      }
+
+      to_string(val: string | string[]): string {
+        const i_val = Array.isArray(val) ? val.map(id => this.cc.get_item(id)) : this.cc.get_item(val);
+        let str_val: string;
+        if (Array.isArray(i_val))
+          str_val = i_val.map(itm => {
+            const props = itm.get_properties();
+            if (props && 'name' in props)
+              return props.name as string;
+            else
+              return itm.get_id();
+          }).join(', ');
+        else {
+          const props = i_val.get_properties();
+          if (props && 'name' in props)
+            return props.name as string;
+          else
+            return i_val.get_id();
+        }
+        return str_val;
       }
     }
 
     export class JSONPropertyType extends PropertyType<JSONProperty> {
 
-      constructor() { super('json'); }
+      constructor(cc: CoCo) { super(cc, 'json'); }
 
-      override make_property(_: CoCo, property_message: PropertyMessage | any): JSONProperty {
+      override make_property(property_message: PropertyMessage | any): JSONProperty {
         const j_pm = property_message as JSONPropertyMessage;
-        return new JSONProperty(j_pm.schema, j_pm.default_value);
+        return new JSONProperty(this, j_pm.schema, j_pm.default_value);
       }
+
+      to_string(val: JSON): string { return JSON.stringify(val); }
     }
 
     export class Property<V> {
 
-      private default_value: V | undefined;
+      private readonly type: PropertyType<Property<V>>;
+      private readonly default_value: V | undefined;
 
-      constructor(default_value?: V) {
+      constructor(type: PropertyType<Property<V>>, default_value?: V) {
+        this.type = type;
         this.default_value = default_value;
       }
+
+      get_type(): PropertyType<Property<V>> { return this.type; }
 
       to_string(): string { return this.default_value ? ` (${this.default_value})` : ''; }
     }
 
     export class BoolProperty extends Property<boolean> {
-      constructor(default_value?: boolean) {
-        super(default_value);
+      constructor(type: BoolPropertyType, default_value?: boolean) {
+        super(type, default_value);
       }
     }
 
     export class IntProperty extends Property<number> {
       min?: number; max?: number;
-      constructor(min?: number, max?: number, default_value?: number) {
-        super(default_value);
+      constructor(type: IntPropertyType, min?: number, max?: number, default_value?: number) {
+        super(type, default_value);
         this.min = min;
         this.max = max;
       }
@@ -227,24 +270,24 @@ export namespace coco {
 
     export class FloatProperty extends Property<number> {
       min?: number; max?: number;
-      constructor(min?: number, max?: number, default_value?: number) {
-        super(default_value);
+      constructor(type: FloatPropertyType, min?: number, max?: number, default_value?: number) {
+        super(type, default_value);
         this.min = min;
         this.max = max;
       }
     }
 
     export class StringProperty extends Property<string> {
-      constructor(default_value?: string) {
-        super(default_value);
+      constructor(type: StringPropertyType, default_value?: string) {
+        super(type, default_value);
       }
     }
 
     export class SymbolProperty extends Property<string | string[]> {
       multiple: boolean;
       symbols?: string[];
-      constructor(multiple: boolean, symbols?: string[], default_value?: string | string[]) {
-        super(default_value);
+      constructor(type: SymbolPropertyType, multiple: boolean, symbols?: string[], default_value?: string | string[]) {
+        super(type, default_value);
         this.multiple = multiple;
         this.symbols = symbols;
       }
@@ -254,8 +297,8 @@ export namespace coco {
       domain: Type;
       multiple: boolean;
       symbols?: Item[];
-      constructor(domain: Type, multiple: boolean, symbols?: Item[], default_value?: Item | Item[]) {
-        super(default_value);
+      constructor(type: ItemPropertyType, domain: Type, multiple: boolean, symbols?: Item[], default_value?: Item | Item[]) {
+        super(type, default_value);
         this.domain = domain;
         this.multiple = multiple;
         this.symbols = symbols;
@@ -264,20 +307,20 @@ export namespace coco {
 
     export class JSONProperty extends Property<Record<string, any>> {
       schema: Record<string, any>;
-      constructor(schema: Record<string, any>, default_value?: Record<string, any>) {
-        super(default_value);
+      constructor(type: JSONPropertyType, schema: Record<string, any>, default_value?: Record<string, any>) {
+        super(type, default_value);
         this.schema = schema;
       }
     }
 
     export class Type {
 
-      private name: string;
+      private readonly name: string;
       private parents?: Type[];
       private data?: Record<string, any>;
       private static_properties?: Map<string, Property<unknown>>;
       private dynamic_properties?: Map<string, Property<unknown>>;
-      private listeners = new Set<TypeListener>();
+      private readonly listeners = new Set<TypeListener>();
 
       constructor(name: string, parents?: Type[], data?: Record<string, any>, static_properties?: Map<string, Property<unknown>>, dynamic_properties?: Map<string, Property<unknown>>) {
         this.name = name;
@@ -291,7 +334,35 @@ export namespace coco {
       get_parents(): Type[] | undefined { return this.parents; }
       get_data(): Record<string, any> | undefined { return this.data; }
       get_static_properties(): Map<string, Property<unknown>> | undefined { return this.static_properties; }
+      get_all_static_properties(): Map<string, Property<unknown>> {
+        const props = new Map<string, coco.taxonomy.Property<unknown>>();
+        const q: Type[] = [this];
+        while (q.length > 0) {
+          const t = q.shift()!;
+          if (t.static_properties)
+            for (const [name, property] of t.static_properties)
+              props.set(name, property);
+          if (t.parents)
+            for (const par of t.parents)
+              q.push(par);
+        }
+        return props;
+      }
       get_dynamic_properties(): Map<string, Property<unknown>> | undefined { return this.dynamic_properties; }
+      get_all_dynamic_properties(): Map<string, Property<unknown>> {
+        const props = new Map<string, coco.taxonomy.Property<unknown>>();
+        const q: Type[] = [this];
+        while (q.length > 0) {
+          const t = q.shift()!;
+          if (t.dynamic_properties)
+            for (const [name, property] of t.dynamic_properties)
+              props.set(name, property);
+          if (t.parents)
+            for (const par of t.parents)
+              q.push(par);
+        }
+        return props;
+      }
 
       _set_parents(ps?: Type[]): void {
         this.parents = ps;
@@ -341,12 +412,12 @@ export namespace coco {
 
     export class Item {
 
-      private id: string;
-      private type: Type;
+      private readonly id: string;
+      private readonly type: Type;
       private properties?: Record<string, unknown>;
       private value?: Value;
       private values: Value[] = [];
-      private listeners = new Set<ItemListener>();
+      private readonly listeners = new Set<ItemListener>();
 
       constructor(id: string, type: Type, properties?: Record<string, unknown>, value?: Value) {
         this.id = id;

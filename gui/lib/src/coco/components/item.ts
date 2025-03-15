@@ -60,33 +60,56 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 
 export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
-  private properties_table: HTMLTableElement;
+  private p_body: HTMLTableSectionElement;
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
     this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
 
-    this.properties_table = document.createElement('table');
-    this.properties_table.classList.add('table');
+    const p_table = document.createElement('table');
+    p_table.classList.add('table');
 
-    const sthead = this.properties_table.createTHead();
+    const sthead = p_table.createTHead();
     const shrow = sthead.insertRow();
     const sproperty_name = shrow.insertCell();
     sproperty_name.scope = 'col';
     sproperty_name.textContent = 'Name';
     const sproperty_type = shrow.insertCell();
     sproperty_type.scope = 'col';
-    sproperty_type.textContent = 'Type';
-    this.properties_table.createTBody();
+    sproperty_type.textContent = 'Value';
+    this.p_body = p_table.createTBody();
 
-    this.element.append(this.properties_table);
+    this.set_properties();
+
+    this.element.append(p_table);
 
     item.add_item_listener(this);
   }
 
   override unmounting(): void { this.payload.remove_item_listener(this); }
 
-  properties_updated(_: coco.taxonomy.Item): void { }
+  properties_updated(_: coco.taxonomy.Item): void { this.set_properties(); }
   values_updated(_: coco.taxonomy.Item): void { }
   new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Value): void { }
+
+  private set_properties() {
+    this.p_body.innerHTML = '';
+    const ps = this.payload.get_properties();
+    if (ps) {
+      const props = this.payload.get_type().get_all_static_properties();
+      const fragment = document.createDocumentFragment();
+      for (const [name, v] of Object.entries(ps)) {
+        const row = document.createElement('tr');
+        const dp_name = document.createElement('th');
+        dp_name.scope = 'col';
+        dp_name.textContent = name;
+        row.appendChild(dp_name);
+        const dp_type = document.createElement('td');
+        dp_type.textContent = props.get(name)!.get_type().to_string(v);
+        row.appendChild(dp_type);
+        fragment.appendChild(row);
+      }
+      this.p_body.appendChild(fragment);
+    }
+  }
 }

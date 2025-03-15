@@ -96,28 +96,10 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     this.element.append(sp_table);
     this.element.append(dp_table);
 
-    const q: coco.taxonomy.Type[] = [this.payload];
-    while (q.length > 0) {
-      const t = q.shift()!;
-      t.add_type_listener(this);
-      const pars = t.get_parents();
-      if (pars)
-        for (const par of pars)
-          q.push(par);
-    }
+    type.add_type_listener(this);
   }
 
-  override unmounting(): void {
-    const q: coco.taxonomy.Type[] = [this.payload];
-    while (q.length > 0) {
-      const t = q.shift()!;
-      t.remove_type_listener(this);
-      const pars = t.get_parents();
-      if (pars)
-        for (const par of pars)
-          q.push(par);
-    }
-  }
+  override unmounting(): void { this.payload.remove_type_listener(this); }
 
   parents_updated(_: coco.taxonomy.Type): void { }
   data_updated(_: coco.taxonomy.Type): void { }
@@ -126,7 +108,7 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
 
   private set_static_properties() {
     this.sp_body.innerHTML = '';
-    const sps = this.payload.get_all_static_properties();
+    const sps = this.payload.get_static_properties();
     if (sps) {
       const fragment = document.createDocumentFragment();
       for (const [name, tp] of sps) {
@@ -146,7 +128,7 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
 
   private set_dynamic_properties() {
     this.dp_body.innerHTML = '';
-    const dps = this.payload.get_all_dynamic_properties();
+    const dps = this.payload.get_dynamic_properties();
     if (dps) {
       const fragment = document.createDocumentFragment();
       for (const [name, tp] of dps) {

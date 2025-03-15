@@ -204,26 +204,7 @@ export namespace coco {
         return new ItemProperty(this, this.cc.get_type(itm_pm.domain), itm_pm.multiple, itm_pm.items?.map(itm => this.cc.get_item(itm)), def);
       }
 
-      to_string(val: string | string[]): string {
-        const i_val = Array.isArray(val) ? val.map(id => this.cc.get_item(id)) : this.cc.get_item(val);
-        let str_val: string;
-        if (Array.isArray(i_val))
-          str_val = i_val.map(itm => {
-            const props = itm.get_properties();
-            if (props && 'name' in props)
-              return props.name as string;
-            else
-              return itm.get_id();
-          }).join(', ');
-        else {
-          const props = i_val.get_properties();
-          if (props && 'name' in props)
-            return props.name as string;
-          else
-            return i_val.get_id();
-        }
-        return str_val;
-      }
+      to_string(val: string | string[]): string { return Array.isArray(val) ? '[' + val.map(id => this.cc.get_item(id).to_string()).join(', ') + ']' : this.cc.get_item(val).to_string(); }
     }
 
     export class JSONPropertyType extends PropertyType<JSONProperty> {
@@ -240,8 +221,8 @@ export namespace coco {
 
     export class Property<V> {
 
-      private readonly type: PropertyType<Property<V>>;
-      private readonly default_value: V | undefined;
+      protected readonly type: PropertyType<Property<V>>;
+      protected readonly default_value: V | undefined;
 
       constructor(type: PropertyType<Property<V>>, default_value?: V) {
         this.type = type;
@@ -250,30 +231,53 @@ export namespace coco {
 
       get_type(): PropertyType<Property<V>> { return this.type; }
 
-      to_string(): string { return this.default_value ? ` (${this.default_value})` : ''; }
+      to_string(): string { return this.default_value ? `(${this.default_value})` : ''; }
     }
 
     export class BoolProperty extends Property<boolean> {
+
       constructor(type: BoolPropertyType, default_value?: boolean) {
         super(type, default_value);
       }
     }
 
     export class IntProperty extends Property<number> {
-      min?: number; max?: number;
+
+      private readonly min?: number; max?: number;
+
       constructor(type: IntPropertyType, min?: number, max?: number, default_value?: number) {
         super(type, default_value);
         this.min = min;
         this.max = max;
       }
+
+      override to_string(): string {
+        const str: string = '';
+        if (this.min && this.max)
+          str.concat(`[${this.min}, ${this.max}] `);
+        if (this.default_value)
+          str.concat(String(this.default_value));
+        return str;
+      }
     }
 
     export class FloatProperty extends Property<number> {
-      min?: number; max?: number;
+
+      private readonly min?: number; max?: number;
+
       constructor(type: FloatPropertyType, min?: number, max?: number, default_value?: number) {
         super(type, default_value);
         this.min = min;
         this.max = max;
+      }
+
+      override to_string(): string {
+        const str: string = '';
+        if (this.min && this.max)
+          str.concat(`[${this.min}, ${this.max}] `);
+        if (this.default_value)
+          str.concat(String(this.default_value));
+        return str;
       }
     }
 
@@ -284,33 +288,65 @@ export namespace coco {
     }
 
     export class SymbolProperty extends Property<string | string[]> {
-      multiple: boolean;
-      symbols?: string[];
+
+      private readonly multiple: boolean;
+      private readonly symbols?: string[];
+
       constructor(type: SymbolPropertyType, multiple: boolean, symbols?: string[], default_value?: string | string[]) {
         super(type, default_value);
         this.multiple = multiple;
         this.symbols = symbols;
       }
+
+      override to_string(): string {
+        const str: string = this.multiple ? '[multiple]' : '';
+        if (this.symbols) {
+          str.concat(' ');
+          str.concat('{' + this.symbols.join(', ') + '}');
+        }
+        if (this.default_value)
+          str.concat('(' + (Array.isArray(this.default_value) ? this.default_value.join(', ') : this.default_value) + ')');
+        return str;
+      }
     }
 
     export class ItemProperty extends Property<Item | Item[]> {
-      domain: Type;
-      multiple: boolean;
-      symbols?: Item[];
+
+      private readonly domain: Type;
+      private readonly multiple: boolean;
+      private readonly symbols?: Item[];
+
       constructor(type: ItemPropertyType, domain: Type, multiple: boolean, symbols?: Item[], default_value?: Item | Item[]) {
         super(type, default_value);
         this.domain = domain;
         this.multiple = multiple;
         this.symbols = symbols;
       }
+
+      get_domain(): Type { return this.domain; }
+
+      override to_string(): string {
+        const str: string = this.multiple ? '[multiple]' : '';
+        if (this.symbols) {
+          str.concat(' ');
+          str.concat('{' + this.symbols.map(itm => itm.to_string()).join(', ') + '}');
+        }
+        if (this.default_value)
+          str.concat('(' + (Array.isArray(this.default_value) ? this.default_value.map(itm => itm.to_string()).join(', ') : this.default_value.to_string()) + ')');
+        return str;
+      }
     }
 
     export class JSONProperty extends Property<Record<string, any>> {
-      schema: Record<string, any>;
+
+      private readonly schema: Record<string, any>;
+
       constructor(type: JSONPropertyType, schema: Record<string, any>, default_value?: Record<string, any>) {
         super(type, default_value);
         this.schema = schema;
       }
+
+      override to_string(): string { return JSON.stringify(this.schema); }
     }
 
     export class Type {
@@ -447,6 +483,8 @@ export namespace coco {
 
       add_item_listener(l: ItemListener): void { this.listeners.add(l); }
       remove_item_listener(l: ItemListener): void { this.listeners.delete(l); }
+
+      to_string(): string { return this.properties && 'name' in this.properties ? this.properties.name as string : this.id; }
     }
 
     export interface ItemListener {

@@ -60,11 +60,33 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 
 export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
+  private p_label: HTMLLabelElement;
   private p_body: HTMLTableSectionElement;
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
     this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+
+    const id_div = document.createElement('div');
+    id_div.classList.add('input-group');
+    const id_input = document.createElement('input');
+    id_input.classList.add('form-control');
+    id_input.type = 'text';
+    id_input.placeholder = 'Item ID';
+    id_input.value = item.get_id();
+    id_input.disabled = true;
+    id_div.append(id_input);
+    const id_button_div = document.createElement('div');
+    id_button_div.classList.add('input-group-append');
+    const id_button = document.createElement('button');
+    id_button.classList.add('btn', 'btn-outline-secondary');
+    id_button.type = 'button';
+    id_button_div.append(id_button);
+    id_div.append(id_button_div);
+    this.element.append(id_div);
+
+    this.p_label = document.createElement('label');
+    this.p_label.title = 'Properties';
 
     const p_table = document.createElement('table');
     p_table.classList.add('table');
@@ -95,7 +117,8 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   private set_properties() {
     this.p_body.innerHTML = '';
     const ps = this.payload.get_properties();
-    if (ps) {
+    if (ps && Object.keys(ps).length > 0) {
+      this.p_label.hidden = false;
       const props = this.payload.get_type().get_all_static_properties();
       const fragment = document.createDocumentFragment();
       for (const [name, v] of Object.entries(ps)) {
@@ -110,6 +133,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
         fragment.appendChild(row);
       }
       this.p_body.appendChild(fragment);
-    }
+    } else
+      this.p_label.hidden = true;
   }
 }

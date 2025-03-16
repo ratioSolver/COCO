@@ -4,6 +4,6 @@ body {
     height: 100%;
 }
 
-.bg-body-tertiary {
-    background-color: #ffece2 !important;
+.navbar {
+    background-color: #ffe5b4 !important;
 }

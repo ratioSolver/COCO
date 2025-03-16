@@ -56,6 +56,9 @@ export namespace coco {
           const nim = message as NewItemMessage;
           this.new_item(this.make_item(nim.id, nim));
           break;
+        case 'new_data':
+          const ndm = message as NewItemMessage;
+          this.get_item(ndm.id)._add_value({ data: ndm.value!.data, timestamp: new Date(ndm.value!.timestamp) });
       }
     }
 
@@ -444,7 +447,7 @@ export namespace coco {
       dynamic_properties_updated(type: Type): void;
     }
 
-    export interface Value { data: Record<string, unknown>, timestamp: Date }
+    export type Value = { data: Record<string, unknown>, timestamp: Date }
 
     export class Item {
 
@@ -496,7 +499,7 @@ export namespace coco {
   }
 }
 
-type UpdateCoCoMessage = CoCoMessage | NewTypeMessage | NewItemMessage;
+type UpdateCoCoMessage = CoCoMessage | NewTypeMessage | NewItemMessage | NewDataMessage;
 
 interface CoCoMessage {
   types?: Record<string, TypeMessage>;
@@ -508,6 +511,10 @@ interface NewTypeMessage extends TypeMessage {
 }
 
 interface NewItemMessage extends ItemMessage {
+  id: string;
+}
+
+interface NewDataMessage extends ValueMessage {
   id: string;
 }
 

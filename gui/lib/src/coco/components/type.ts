@@ -57,12 +57,35 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 
 export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implements coco.taxonomy.TypeListener {
 
+  private sp_label: HTMLLabelElement;
   private sp_body: HTMLTableSectionElement;
+  private dp_label: HTMLLabelElement;
   private dp_body: HTMLTableSectionElement;
 
   constructor(type: coco.taxonomy.Type) {
     super(type, document.createElement('div'));
     this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+
+    const id_div = document.createElement('div');
+    id_div.classList.add('input-group');
+    const id_input = document.createElement('input');
+    id_input.classList.add('form-control');
+    id_input.type = 'text';
+    id_input.placeholder = 'Type name';
+    id_input.value = type.get_name();
+    id_input.disabled = true;
+    id_div.append(id_input);
+    const id_button_div = document.createElement('div');
+    id_button_div.classList.add('input-group-append');
+    const id_button = document.createElement('button');
+    id_button.classList.add('btn', 'btn-outline-secondary');
+    id_button.type = 'button';
+    id_button_div.append(id_button);
+    id_div.append(id_button_div);
+    this.element.append(id_div);
+
+    this.sp_label = document.createElement('label');
+    this.sp_label.title = 'Static properties';
 
     const sp_table = document.createElement('table');
     sp_table.classList.add('table');
@@ -76,6 +99,9 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     sp_type.scope = 'col';
     sp_type.textContent = 'Type';
     this.sp_body = sp_table.createTBody();
+
+    this.dp_label = document.createElement('label');
+    this.dp_label.title = 'Dynamic properties';
 
     const dp_table = document.createElement('table');
     dp_table.classList.add('table');
@@ -109,7 +135,8 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
   private set_static_properties() {
     this.sp_body.innerHTML = '';
     const sps = this.payload.get_static_properties();
-    if (sps) {
+    if (sps && Object.keys(sps).length > 0) {
+      this.sp_label.hidden = false;
       const fragment = document.createDocumentFragment();
       for (const [name, tp] of sps) {
         const row = document.createElement('tr');
@@ -123,13 +150,15 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
         fragment.appendChild(row);
       }
       this.sp_body.appendChild(fragment);
-    }
+    } else
+      this.sp_label.hidden = true;
   }
 
   private set_dynamic_properties() {
     this.dp_body.innerHTML = '';
     const dps = this.payload.get_dynamic_properties();
-    if (dps) {
+    if (dps && Object.keys(dps).length > 0) {
+      this.dp_label.hidden = false;
       const fragment = document.createDocumentFragment();
       for (const [name, tp] of dps) {
         const row = document.createElement('tr');
@@ -143,7 +172,8 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
         fragment.appendChild(row);
       }
       this.dp_body.appendChild(fragment);
-    }
+    } else
+      this.dp_label.hidden = true;
   }
 }
 

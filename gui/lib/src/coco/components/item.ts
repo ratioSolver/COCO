@@ -1,5 +1,9 @@
 import { Component, UListComponent, Selector, SelectorGroup, App } from "ratio-core";
 import { coco } from "../coco";
+import { library, icon } from '@fortawesome/fontawesome-svg-core'
+import { faTag } from '@fortawesome/free-solid-svg-icons'
+
+library.add(faTag);
 
 export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> implements coco.taxonomy.ItemListener, Selector {
 
@@ -14,14 +18,9 @@ export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> im
     this.a = document.createElement('a');
     this.a.classList.add('nav-link');
     this.a.href = '#';
-    const props = item.get_properties();
-    if (props && 'name' in props)
-      this.a.textContent = ' ' + props.name;
-    else
-      this.a.textContent = ' ' + item.get_id();
+    this.a.textContent = icon(faTag).html + ' ' + item.to_string();
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
-      this.select_component();
       group.set_selected(this);
     });
 
@@ -35,10 +34,11 @@ export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> im
   values_updated(_: coco.taxonomy.Item): void { }
   new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Value): void { }
 
-  select(): void { this.a.classList.add('active'); }
+  select(): void {
+    this.a.classList.add('active');
+    App.get_instance().selected_component(new Item(this.payload));
+  }
   unselect(): void { this.a.classList.remove('active'); }
-
-  select_component(): void { App.get_instance().selected_component(new Item(this.payload)); }
 }
 
 export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco.CoCoListener {

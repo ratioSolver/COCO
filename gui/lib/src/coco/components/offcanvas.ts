@@ -1,7 +1,7 @@
-import { App, Component, Selector, SelectorGroup } from "ratio-core";
+import { App, Component, SelectorGroup } from "ratio-core";
 import { TypeList } from "./type";
 import { ItemList } from "./item";
-import { TaxonomyGraph } from "./taxonomy";
+import { TaxonomyElement } from "./taxonomy";
 
 class ULComponent extends Component<void, HTMLUListElement> {
 
@@ -11,36 +11,6 @@ class ULComponent extends Component<void, HTMLUListElement> {
 
     this.add_child(new TaxonomyElement(group));
   }
-}
-
-class TaxonomyElement extends Component<App, HTMLLIElement> implements Selector {
-
-  private group: SelectorGroup;
-  private a: HTMLAnchorElement;
-
-  constructor(group: SelectorGroup) {
-    super(App.get_instance(), document.createElement('li'));
-    this.group = group;
-    this.element.classList.add('nav-item', 'list-group-item');
-
-    this.a = document.createElement('a');
-    this.a.classList.add('nav-link');
-    this.a.href = '#';
-    this.a.textContent = ' Taxonomy';
-    this.a.addEventListener('click', (event) => {
-      event.preventDefault();
-      App.get_instance().selected_component(new TaxonomyGraph());
-      group.set_selected(this);
-    });
-
-    this.element.append(this.a);
-    group.add_selector(this);
-  }
-
-  override unmounting(): void { this.group.remove_selector(this); }
-
-  select(): void { this.a.classList.add('active'); }
-  unselect(): void { this.a.classList.remove('active'); }
 }
 
 class OffcanvasBody extends Component<App, HTMLDivElement> {

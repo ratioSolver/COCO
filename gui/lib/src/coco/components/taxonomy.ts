@@ -1,6 +1,42 @@
-import { Component } from "ratio-core";
+import { App, Component, Selector, SelectorGroup } from "ratio-core";
 import { coco } from "../coco";
 import cytoscape from 'cytoscape';
+import { library, icon } from '@fortawesome/fontawesome-svg-core'
+import { faSitemap } from '@fortawesome/free-solid-svg-icons'
+
+library.add(faSitemap);
+
+export class TaxonomyElement extends Component<App, HTMLLIElement> implements Selector {
+
+  private group: SelectorGroup;
+  private a: HTMLAnchorElement;
+
+  constructor(group: SelectorGroup) {
+    super(App.get_instance(), document.createElement('li'));
+    this.group = group;
+    this.element.classList.add('nav-item', 'list-group-item');
+
+    this.a = document.createElement('a');
+    this.a.classList.add('nav-link');
+    this.a.href = '#';
+    this.a.textContent = icon(faSitemap).html + ' Taxonomy';
+    this.a.addEventListener('click', (event) => {
+      event.preventDefault();
+      group.set_selected(this);
+    });
+
+    this.element.append(this.a);
+    group.add_selector(this);
+  }
+
+  override unmounting(): void { this.group.remove_selector(this); }
+
+  select(): void {
+    this.a.classList.add('active');
+    App.get_instance().selected_component(new TaxonomyGraph());
+  }
+  unselect(): void { this.a.classList.remove('active'); }
+}
 
 export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implements coco.CoCoListener, coco.taxonomy.TypeListener {
 

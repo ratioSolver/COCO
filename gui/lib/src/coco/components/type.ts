@@ -1,5 +1,9 @@
 import { Component, UListComponent, Selector, SelectorGroup, App } from "ratio-core";
 import { coco } from "../coco";
+import { library, icon } from '@fortawesome/fontawesome-svg-core'
+import { faCube } from '@fortawesome/free-solid-svg-icons'
+
+library.add(faCube);
 
 export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> implements coco.taxonomy.TypeListener, Selector {
 
@@ -14,10 +18,9 @@ export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> im
     this.a = document.createElement('a');
     this.a.classList.add('nav-link');
     this.a.href = '#';
-    this.a.textContent = ' ' + type.get_name();
+    this.a.textContent = icon(faCube).html + ' ' + type.get_name();
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
-      this.select_component();
       group.set_selected(this);
     });
 
@@ -32,10 +35,11 @@ export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> im
   static_properties_updated(_: coco.taxonomy.Type): void { }
   dynamic_properties_updated(_: coco.taxonomy.Type): void { }
 
-  select(): void { this.a.classList.add('active'); }
+  select(): void {
+    this.a.classList.add('active');
+    App.get_instance().selected_component(new Type(this.payload));
+  }
   unselect(): void { this.a.classList.remove('active'); }
-
-  select_component(): void { App.get_instance().selected_component(new Type(this.payload)); }
 }
 
 export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco.CoCoListener {
@@ -58,8 +62,10 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implements coco.taxonomy.TypeListener {
 
   private sp_label: HTMLLabelElement;
+  private sp_table: HTMLTableElement;
   private sp_body: HTMLTableSectionElement;
   private dp_label: HTMLLabelElement;
+  private dp_table: HTMLTableElement;
   private dp_body: HTMLTableSectionElement;
 
   constructor(type: coco.taxonomy.Type) {
@@ -87,10 +93,10 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     this.sp_label = document.createElement('label');
     this.sp_label.title = 'Static properties';
 
-    const sp_table = document.createElement('table');
-    sp_table.classList.add('table');
+    this.sp_table = document.createElement('table');
+    this.sp_table.classList.add('table');
 
-    const sthead = sp_table.createTHead();
+    const sthead = this.sp_table.createTHead();
     const shrow = sthead.insertRow();
     const sp_name = shrow.insertCell();
     sp_name.scope = 'col';
@@ -98,15 +104,15 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     const sp_type = shrow.insertCell();
     sp_type.scope = 'col';
     sp_type.textContent = 'Type';
-    this.sp_body = sp_table.createTBody();
+    this.sp_body = this.sp_table.createTBody();
 
     this.dp_label = document.createElement('label');
     this.dp_label.title = 'Dynamic properties';
 
-    const dp_table = document.createElement('table');
-    dp_table.classList.add('table');
+    this.dp_table = document.createElement('table');
+    this.dp_table.classList.add('table');
 
-    const dthead = sp_table.createTHead();
+    const dthead = this.dp_table.createTHead();
     const dhrow = dthead.insertRow();
     const dp_name = dhrow.insertCell();
     dp_name.scope = 'col';
@@ -114,13 +120,13 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     const dp_type = dhrow.insertCell();
     dp_type.scope = 'col';
     dp_type.textContent = 'Type';
-    this.dp_body = dp_table.createTBody();
+    this.dp_body = this.dp_table.createTBody();
 
     this.set_static_properties();
     this.set_dynamic_properties();
 
-    this.element.append(sp_table);
-    this.element.append(dp_table);
+    this.element.append(this.sp_table);
+    this.element.append(this.dp_table);
 
     type.add_type_listener(this);
   }
@@ -135,8 +141,9 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
   private set_static_properties() {
     this.sp_body.innerHTML = '';
     const sps = this.payload.get_static_properties();
-    if (sps && Object.keys(sps).length > 0) {
+    if (sps && sps.size > 0) {
       this.sp_label.hidden = false;
+      this.sp_table.hidden = false;
       const fragment = document.createDocumentFragment();
       for (const [name, tp] of sps) {
         const row = document.createElement('tr');
@@ -150,15 +157,18 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
         fragment.appendChild(row);
       }
       this.sp_body.appendChild(fragment);
-    } else
+    } else {
       this.sp_label.hidden = true;
+      this.sp_table.hidden = true;
+    }
   }
 
   private set_dynamic_properties() {
     this.dp_body.innerHTML = '';
     const dps = this.payload.get_dynamic_properties();
-    if (dps && Object.keys(dps).length > 0) {
+    if (dps && dps.size > 0) {
       this.dp_label.hidden = false;
+      this.dp_table.hidden = false;
       const fragment = document.createDocumentFragment();
       for (const [name, tp] of dps) {
         const row = document.createElement('tr');
@@ -172,8 +182,10 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
         fragment.appendChild(row);
       }
       this.dp_body.appendChild(fragment);
-    } else
+    } else {
       this.dp_label.hidden = true;
+      this.dp_table.hidden = true;
+    }
   }
 }
 

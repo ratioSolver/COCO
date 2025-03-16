@@ -63,12 +63,7 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 
 export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
-  private p_label: HTMLLabelElement;
-  private p_table: HTMLTableElement;
-  private p_body: HTMLTableSectionElement;
-  private v_label: HTMLLabelElement;
-  private v_table: HTMLTableElement;
-  private v_body: HTMLTableSectionElement;
+  private p_values = new Map<string, HTMLTableCellElement>();
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
@@ -93,14 +88,14 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     id_div.append(id_button_div);
     this.element.append(id_div);
 
-    this.p_label = document.createElement('label');
-    this.p_label.title = 'Properties';
-    this.element.append(this.p_label);
+    const p_label = document.createElement('label');
+    p_label.title = 'Properties';
+    this.element.append(p_label);
 
-    this.p_table = document.createElement('table');
-    this.p_table.classList.add('table');
+    const p_table = document.createElement('table');
+    p_table.classList.add('table');
 
-    const p_thead = this.p_table.createTHead();
+    const p_thead = p_table.createTHead();
     const p_hrow = p_thead.insertRow();
     const p_name = document.createElement('th');
     p_name.scope = 'col';
@@ -111,16 +106,29 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     p_val.textContent = 'Value';
     p_hrow.appendChild(p_val);
 
-    this.p_body = this.p_table.createTBody();
+    const p_body = p_table.createTBody();
+    const props = item.get_properties();
+    for (const [name, prop] of item.get_type().get_all_static_properties()) {
+      const row = p_body.insertRow();
+      const p_name = document.createElement('th');
+      p_name.scope = 'col';
+      p_name.textContent = name;
+      row.appendChild(p_name);
+      const p_value = document.createElement('td');
+      this.p_values.set(name, p_value);
+      if (props && props[name])
+        p_value.textContent = prop.get_type().to_string(props[name]);
+      row.appendChild(p_value);
+    }
 
-    this.v_label = document.createElement('label');
-    this.v_label.title = 'Properties';
-    this.element.append(this.v_label);
+    const v_label = document.createElement('label');
+    v_label.title = 'Properties';
+    this.element.append(v_label);
 
-    this.v_table = document.createElement('table');
-    this.v_table.classList.add('table');
+    const v_table = document.createElement('table');
+    v_table.classList.add('table');
 
-    const v_thead = this.v_table.createTHead();
+    const v_thead = v_table.createTHead();
     const v_hrow = v_thead.insertRow();
     const v_name = document.createElement('th');
     v_name.scope = 'col';
@@ -131,13 +139,23 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     v_val.textContent = 'Value';
     v_hrow.appendChild(v_val);
 
-    this.v_body = this.v_table.createTBody();
+    const v_body = v_table.createTBody();
+    const val = item.get_value();
+    for (const [name, prop] of item.get_type().get_all_dynamic_properties()) {
+      const row = v_body.insertRow();
+      const v_name = document.createElement('th');
+      v_name.scope = 'col';
+      v_name.textContent = name;
+      row.appendChild(v_name);
+      const v_value = document.createElement('td');
+      this.p_values.set(name, v_value);
+      if (val && val.data[name])
+        v_value.textContent = prop.get_type().to_string(val.data[name]);
+      row.appendChild(v_value);
+    }
 
-    this.set_properties();
-    this.set_value();
-
-    this.element.append(this.p_table);
-    this.element.append(this.v_table);
+    this.element.append(p_table);
+    this.element.append(v_table);
 
     item.add_item_listener(this);
   }
@@ -149,54 +167,18 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Value): void { this.set_value(); }
 
   private set_properties() {
-    this.p_body.innerHTML = '';
     const ps = this.payload.get_properties();
-    if (ps && Object.keys(ps).length > 0) {
-      this.p_label.hidden = false;
-      this.p_table.hidden = false;
-      const props = this.payload.get_type().get_all_static_properties();
-      const fragment = document.createDocumentFragment();
-      for (const [name, v] of Object.entries(ps)) {
-        const row = document.createElement('tr');
-        const dp_name = document.createElement('th');
-        dp_name.scope = 'col';
-        dp_name.textContent = name;
-        row.appendChild(dp_name);
-        const dp_type = document.createElement('td');
-        dp_type.textContent = props.get(name)!.get_type().to_string(v);
-        row.appendChild(dp_type);
-        fragment.appendChild(row);
-      }
-      this.p_body.appendChild(fragment);
-    } else {
-      this.p_label.hidden = true;
-      this.p_table.hidden = true;
-    }
+    if (ps)
+      for (const [name, prop] of this.payload.get_type().get_all_static_properties())
+        if (ps && ps[name])
+          this.p_values.get(name)!.textContent = prop.get_type().to_string(ps[name]);
   }
 
   private set_value() {
-    this.v_body.innerHTML = '';
     const val = this.payload.get_value();
-    if (val && Object.keys(val).length > 0) {
-      this.v_label.hidden = false;
-      this.v_table.hidden = false;
-      const props = this.payload.get_type().get_all_dynamic_properties();
-      const fragment = document.createDocumentFragment();
-      for (const [name, v] of Object.entries(val)) {
-        const row = document.createElement('tr');
-        const dp_name = document.createElement('th');
-        dp_name.scope = 'col';
-        dp_name.textContent = name;
-        row.appendChild(dp_name);
-        const dp_type = document.createElement('td');
-        dp_type.textContent = props.get(name)!.get_type().to_string(v);
-        row.appendChild(dp_type);
-        fragment.appendChild(row);
-      }
-      this.v_body.appendChild(fragment);
-    } else {
-      this.v_label.hidden = true;
-      this.v_table.hidden = true;
-    }
+    if (val)
+      for (const [name, prop] of this.payload.get_type().get_all_dynamic_properties())
+        if (val && val.data[name])
+          this.p_values.get(name)!.textContent = prop.get_type().to_string(val.data[name]);
   }
 }

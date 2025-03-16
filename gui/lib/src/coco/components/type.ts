@@ -1,9 +1,9 @@
 import { Component, UListComponent, Selector, SelectorGroup, App } from "ratio-core";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
-import { faCube } from '@fortawesome/free-solid-svg-icons'
+import { faCopy, faCube } from '@fortawesome/free-solid-svg-icons'
 
-library.add(faCube);
+library.add(faCopy, faCube);
 
 export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> implements coco.taxonomy.TypeListener, Selector {
 
@@ -18,7 +18,7 @@ export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> im
     this.a = document.createElement('a');
     this.a.classList.add('nav-link');
     this.a.href = '#';
-    this.a.textContent = icon(faCube).html + ' ' + type.get_name();
+    this.a.textContent = icon(faCube).html[0] + ' ' + type.get_name();
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
       group.set_selected(this);

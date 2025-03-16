@@ -1,9 +1,9 @@
 import { Component, UListComponent, Selector, SelectorGroup, App } from "ratio-core";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
-import { faTag } from '@fortawesome/free-solid-svg-icons'
+import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
 
-library.add(faTag);
+library.add(faCopy, faTag);
 
 export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> implements coco.taxonomy.ItemListener, Selector {
 
@@ -18,7 +18,7 @@ export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> im
     this.a = document.createElement('a');
     this.a.classList.add('nav-link');
     this.a.href = '#';
-    this.a.textContent = icon(faTag).html + ' ' + item.to_string();
+    this.a.textContent = icon(faTag).html[0] + ' ' + item.to_string();
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
       group.set_selected(this);
@@ -81,6 +81,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     const id_button = document.createElement('button');
     id_button.classList.add('btn', 'btn-outline-secondary');
     id_button.type = 'button';
+    id_button.innerHTML = icon(faCopy).html[0];
     id_button_div.append(id_button);
     id_div.append(id_button_div);
     this.element.append(id_div);

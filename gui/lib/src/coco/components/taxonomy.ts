@@ -19,7 +19,7 @@ export class TaxonomyElement extends Component<App, HTMLLIElement> implements Se
     this.a = document.createElement('a');
     this.a.classList.add('nav-link');
     this.a.href = '#';
-    this.a.textContent = icon(faSitemap).html + ' Taxonomy';
+    this.a.textContent = icon(faSitemap).html[0] + ' Taxonomy';
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
       group.set_selected(this);

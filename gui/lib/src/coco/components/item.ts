@@ -122,7 +122,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     }
 
     const v_label = document.createElement('label');
-    v_label.title = 'Properties';
+    v_label.title = 'Value';
     this.element.append(v_label);
 
     const v_table = document.createElement('table');

@@ -65,10 +65,8 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implements coco.taxonomy.TypeListener {
 
   private sp_label: HTMLLabelElement;
-  private sp_table: HTMLTableElement;
   private sp_body: HTMLTableSectionElement;
   private dp_label: HTMLLabelElement;
-  private dp_table: HTMLTableElement;
   private dp_body: HTMLTableSectionElement;
 
   constructor(type: coco.taxonomy.Type) {
@@ -96,12 +94,11 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
 
     this.sp_label = document.createElement('label');
     this.sp_label.title = 'Static properties';
-    this.element.append(this.sp_label);
 
-    this.sp_table = document.createElement('table');
-    this.sp_table.classList.add('table');
+    const sp_table = document.createElement('table');
+    sp_table.classList.add('table');
 
-    const sp_thead = this.sp_table.createTHead();
+    const sp_thead = sp_table.createTHead();
     const sp_hrow = sp_thead.insertRow();
     const sp_name = document.createElement('th');
     sp_name.scope = 'col';
@@ -110,18 +107,19 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     const sp_type = document.createElement('th');
     sp_type.scope = 'col';
     sp_type.textContent = 'Type';
-    sp_hrow.appendChild(sp_name);
+    sp_hrow.appendChild(sp_type);
 
-    this.sp_body = this.sp_table.createTBody();
+    this.sp_body = sp_table.createTBody();
+    this.sp_label.append(sp_table);
+    this.element.append(this.sp_label);
 
     this.dp_label = document.createElement('label');
     this.dp_label.title = 'Dynamic properties';
-    this.element.append(this.dp_label);
 
-    this.dp_table = document.createElement('table');
-    this.dp_table.classList.add('table');
+    const dp_table = document.createElement('table');
+    dp_table.classList.add('table');
 
-    const dp_thead = this.dp_table.createTHead();
+    const dp_thead = dp_table.createTHead();
     const dp_hrow = dp_thead.insertRow();
     const dp_name = document.createElement('th');
     dp_name.scope = 'col';
@@ -132,13 +130,12 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     dp_type.textContent = 'Type';
     dp_hrow.appendChild(dp_type);
 
-    this.dp_body = this.dp_table.createTBody();
+    this.dp_body = dp_table.createTBody();
+    this.dp_label.append(dp_table);
+    this.element.append(this.dp_label);
 
     this.set_static_properties();
     this.set_dynamic_properties();
-
-    this.element.append(this.sp_table);
-    this.element.append(this.dp_table);
 
     type.add_type_listener(this);
   }
@@ -155,7 +152,6 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     const sps = this.payload.get_static_properties();
     if (sps && sps.size > 0) {
       this.sp_label.hidden = false;
-      this.sp_table.hidden = false;
       const fragment = document.createDocumentFragment();
       for (const [name, tp] of sps) {
         const row = document.createElement('tr');
@@ -169,10 +165,8 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
         fragment.appendChild(row);
       }
       this.sp_body.appendChild(fragment);
-    } else {
+    } else
       this.sp_label.hidden = true;
-      this.sp_table.hidden = true;
-    }
   }
 
   private set_dynamic_properties() {
@@ -180,7 +174,6 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     const dps = this.payload.get_dynamic_properties();
     if (dps && dps.size > 0) {
       this.dp_label.hidden = false;
-      this.dp_table.hidden = false;
       const fragment = document.createDocumentFragment();
       for (const [name, tp] of dps) {
         const row = document.createElement('tr');
@@ -194,10 +187,8 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
         fragment.appendChild(row);
       }
       this.dp_body.appendChild(fragment);
-    } else {
+    } else
       this.dp_label.hidden = true;
-      this.dp_table.hidden = true;
-    }
   }
 }
 

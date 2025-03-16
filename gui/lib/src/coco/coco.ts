@@ -42,24 +42,25 @@ export namespace coco {
     }
 
     update_coco(message: UpdateCoCoMessage | any): void {
-      switch (message.type) {
-        case 'coco':
-          this.init(message as CoCoMessage);
-          break;
-        case 'new_type':
-          const ntm = message as NewTypeMessage;
-          const n_tp = new taxonomy.Type(ntm.name, [], ntm.data);
-          this.new_type(n_tp);
-          this.refine_type(n_tp, ntm);
-          break;
-        case 'new_item':
-          const nim = message as NewItemMessage;
-          this.new_item(this.make_item(nim.id, nim));
-          break;
-        case 'new_data':
-          const ndm = message as NewItemMessage;
-          this.get_item(ndm.id)._add_value({ data: ndm.value!.data, timestamp: new Date(ndm.value!.timestamp) });
-      }
+      if ('msg_type' in message)
+        switch (message.msg_type) {
+          case 'coco':
+            this.init(message as CoCoMessage);
+            break;
+          case 'new_type':
+            const ntm = message as NewTypeMessage;
+            const n_tp = new taxonomy.Type(ntm.name, [], ntm.data);
+            this.new_type(n_tp);
+            this.refine_type(n_tp, ntm);
+            break;
+          case 'new_item':
+            const nim = message as NewItemMessage;
+            this.new_item(this.make_item(nim.id, nim));
+            break;
+          case 'new_data':
+            const ndm = message as NewItemMessage;
+            this.get_item(ndm.id)._add_value({ data: ndm.value!.data, timestamp: new Date(ndm.value!.timestamp) });
+        }
     }
 
     private init(coco_message: CoCoMessage): void {
@@ -499,7 +500,7 @@ export namespace coco {
   }
 }
 
-type UpdateCoCoMessage = CoCoMessage | NewTypeMessage | NewItemMessage | NewDataMessage;
+type UpdateCoCoMessage = { msg_type: string } & (CoCoMessage | NewTypeMessage | NewItemMessage | NewDataMessage);
 
 interface CoCoMessage {
   types?: Record<string, TypeMessage>;

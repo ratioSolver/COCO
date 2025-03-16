@@ -96,34 +96,42 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
 
     this.sp_label = document.createElement('label');
     this.sp_label.title = 'Static properties';
+    this.element.append(this.sp_label);
 
     this.sp_table = document.createElement('table');
     this.sp_table.classList.add('table');
 
-    const sthead = this.sp_table.createTHead();
-    const shrow = sthead.insertRow();
-    const sp_name = shrow.insertCell();
+    const sp_thead = this.sp_table.createTHead();
+    const sp_hrow = sp_thead.insertRow();
+    const sp_name = document.createElement('th');
     sp_name.scope = 'col';
     sp_name.textContent = 'Name';
-    const sp_type = shrow.insertCell();
+    sp_hrow.appendChild(sp_name);
+    const sp_type = document.createElement('th');
     sp_type.scope = 'col';
     sp_type.textContent = 'Type';
+    sp_hrow.appendChild(sp_name);
+
     this.sp_body = this.sp_table.createTBody();
 
     this.dp_label = document.createElement('label');
     this.dp_label.title = 'Dynamic properties';
+    this.element.append(this.dp_label);
 
     this.dp_table = document.createElement('table');
     this.dp_table.classList.add('table');
 
-    const dthead = this.dp_table.createTHead();
-    const dhrow = dthead.insertRow();
-    const dp_name = dhrow.insertCell();
+    const dp_thead = this.dp_table.createTHead();
+    const dp_hrow = dp_thead.insertRow();
+    const dp_name = document.createElement('th');
     dp_name.scope = 'col';
     dp_name.textContent = 'Name';
-    const dp_type = dhrow.insertCell();
+    sp_hrow.appendChild(dp_name);
+    const dp_type = document.createElement('th');
     dp_type.scope = 'col';
     dp_type.textContent = 'Type';
+    dp_hrow.appendChild(dp_type);
+
     this.dp_body = this.dp_table.createTBody();
 
     this.set_static_properties();

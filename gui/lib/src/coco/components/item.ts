@@ -64,7 +64,11 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
   private p_label: HTMLLabelElement;
+  private p_table: HTMLTableElement;
   private p_body: HTMLTableSectionElement;
+  private v_label: HTMLLabelElement;
+  private v_table: HTMLTableElement;
+  private v_body: HTMLTableSectionElement;
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
@@ -91,23 +95,49 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
 
     this.p_label = document.createElement('label');
     this.p_label.title = 'Properties';
+    this.element.append(this.p_label);
 
-    const p_table = document.createElement('table');
-    p_table.classList.add('table');
+    this.p_table = document.createElement('table');
+    this.p_table.classList.add('table');
 
-    const sthead = p_table.createTHead();
-    const shrow = sthead.insertRow();
-    const sproperty_name = shrow.insertCell();
-    sproperty_name.scope = 'col';
-    sproperty_name.textContent = 'Name';
-    const sproperty_type = shrow.insertCell();
-    sproperty_type.scope = 'col';
-    sproperty_type.textContent = 'Value';
-    this.p_body = p_table.createTBody();
+    const p_thead = this.p_table.createTHead();
+    const p_hrow = p_thead.insertRow();
+    const p_name = document.createElement('th');
+    p_name.scope = 'col';
+    p_name.textContent = 'Name';
+    p_hrow.appendChild(p_name);
+    const p_val = document.createElement('th');
+    p_val.scope = 'col';
+    p_val.textContent = 'Value';
+    p_hrow.appendChild(p_val);
+
+    this.p_body = this.p_table.createTBody();
+
+    this.v_label = document.createElement('label');
+    this.v_label.title = 'Properties';
+    this.element.append(this.v_label);
+
+    this.v_table = document.createElement('table');
+    this.v_table.classList.add('table');
+
+    const v_thead = this.v_table.createTHead();
+    const v_hrow = v_thead.insertRow();
+    const v_name = document.createElement('th');
+    v_name.scope = 'col';
+    v_name.textContent = 'Name';
+    v_hrow.appendChild(v_name);
+    const v_val = document.createElement('th');
+    v_val.scope = 'col';
+    v_val.textContent = 'Value';
+    v_hrow.appendChild(v_val);
+
+    this.v_body = this.v_table.createTBody();
 
     this.set_properties();
+    this.set_value();
 
-    this.element.append(p_table);
+    this.element.append(this.p_table);
+    this.element.append(this.v_table);
 
     item.add_item_listener(this);
   }
@@ -116,13 +146,14 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
 
   properties_updated(_: coco.taxonomy.Item): void { this.set_properties(); }
   values_updated(_: coco.taxonomy.Item): void { }
-  new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Value): void { }
+  new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Value): void { this.set_value(); }
 
   private set_properties() {
     this.p_body.innerHTML = '';
     const ps = this.payload.get_properties();
     if (ps && Object.keys(ps).length > 0) {
       this.p_label.hidden = false;
+      this.p_table.hidden = false;
       const props = this.payload.get_type().get_all_static_properties();
       const fragment = document.createDocumentFragment();
       for (const [name, v] of Object.entries(ps)) {
@@ -137,7 +168,35 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
         fragment.appendChild(row);
       }
       this.p_body.appendChild(fragment);
-    } else
+    } else {
       this.p_label.hidden = true;
+      this.p_table.hidden = true;
+    }
+  }
+
+  private set_value() {
+    this.v_body.innerHTML = '';
+    const val = this.payload.get_value();
+    if (val && Object.keys(val).length > 0) {
+      this.v_label.hidden = false;
+      this.v_table.hidden = false;
+      const props = this.payload.get_type().get_all_dynamic_properties();
+      const fragment = document.createDocumentFragment();
+      for (const [name, v] of Object.entries(val)) {
+        const row = document.createElement('tr');
+        const dp_name = document.createElement('th');
+        dp_name.scope = 'col';
+        dp_name.textContent = name;
+        row.appendChild(dp_name);
+        const dp_type = document.createElement('td');
+        dp_type.textContent = props.get(name)!.get_type().to_string(v);
+        row.appendChild(dp_type);
+        fragment.appendChild(row);
+      }
+      this.v_body.appendChild(fragment);
+    } else {
+      this.v_label.hidden = true;
+      this.v_table.hidden = true;
+    }
   }
 }

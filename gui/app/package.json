@@ -1,7 +1,7 @@
 {
   "name": "coco-gui",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,7 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "ratio-core": "^0.0.12",
-    "ratio-coco-lib": "^0.0.5"
+    "ratio-core": "^0.0.13",
+    "ratio-coco-lib": "^0.0.7"
   }
 }

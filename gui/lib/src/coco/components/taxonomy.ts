@@ -17,9 +17,12 @@ export class TaxonomyElement extends Component<App, HTMLLIElement> implements Se
     this.element.classList.add('nav-item', 'list-group-item');
 
     this.a = document.createElement('a');
-    this.a.classList.add('nav-link');
+    this.a.classList.add('nav-link', 'd-flex', 'align-items-center');
     this.a.href = '#';
-    this.a.textContent = icon(faSitemap).html[0] + ' Taxonomy';
+    const icn = icon(faSitemap).node[0];
+    icn.classList.add('me-2');
+    this.a.append(icn);
+    this.a.append(document.createTextNode('Taxonomy'));
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
       group.set_selected(this);

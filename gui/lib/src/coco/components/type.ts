@@ -16,9 +16,12 @@ export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> im
     this.element.classList.add('nav-item', 'list-group-item');
 
     this.a = document.createElement('a');
-    this.a.classList.add('nav-link');
+    this.a.classList.add('nav-link', 'd-flex', 'align-items-center');
     this.a.href = '#';
-    this.a.textContent = icon(faCube).html[0] + ' ' + type.get_name();
+    const icn = icon(faCube).node[0];
+    icn.classList.add('me-2');
+    this.a.append(icn);
+    this.a.append(document.createTextNode(type.get_name()));
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
       group.set_selected(this);
@@ -86,6 +89,7 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     const id_button = document.createElement('button');
     id_button.classList.add('btn', 'btn-outline-secondary');
     id_button.type = 'button';
+    id_button.append(icon(faCopy).node[0]);
     id_button_div.append(id_button);
     id_div.append(id_button_div);
     this.element.append(id_div);

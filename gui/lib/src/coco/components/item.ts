@@ -1,4 +1,4 @@
-import { Component, UListComponent, Selector, SelectorGroup, App } from "ratio-core";
+import { Component, UListComponent, Selector, SelectorGroup, App, blink } from "ratio-core";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
@@ -64,6 +64,7 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
   private p_values = new Map<string, HTMLTableCellElement>();
+  private v_values = new Map<string, HTMLTableCellElement>();
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
@@ -148,7 +149,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       v_name.textContent = name;
       row.appendChild(v_name);
       const v_value = document.createElement('td');
-      this.p_values.set(name, v_value);
+      this.v_values.set(name, v_value);
       if (val && val.data[name])
         v_value.textContent = prop.get_type().to_string(val.data[name]);
       row.appendChild(v_value);
@@ -170,15 +171,21 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     const ps = this.payload.get_properties();
     if (ps)
       for (const [name, prop] of this.payload.get_type().get_all_static_properties())
-        if (ps && ps[name])
-          this.p_values.get(name)!.textContent = prop.get_type().to_string(ps[name]);
+        if (ps && ps[name]) {
+          const p_val = this.p_values.get(name)!;
+          blink(p_val);
+          p_val.textContent = prop.get_type().to_string(ps[name]);
+        }
   }
 
   private set_value() {
     const val = this.payload.get_value();
     if (val)
       for (const [name, prop] of this.payload.get_type().get_all_dynamic_properties())
-        if (val && val.data[name])
-          this.p_values.get(name)!.textContent = prop.get_type().to_string(val.data[name]);
+        if (val && val.data[name]) {
+          const v_val = this.v_values.get(name)!;
+          blink(v_val);
+          v_val.textContent = prop.get_type().to_string(val.data[name]);
+        }
   }
 }

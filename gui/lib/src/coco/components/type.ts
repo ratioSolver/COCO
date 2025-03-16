@@ -124,7 +124,7 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     const dp_name = document.createElement('th');
     dp_name.scope = 'col';
     dp_name.textContent = 'Name';
-    sp_hrow.appendChild(dp_name);
+    dp_hrow.appendChild(dp_name);
     const dp_type = document.createElement('th');
     dp_type.scope = 'col';
     dp_type.textContent = 'Type';

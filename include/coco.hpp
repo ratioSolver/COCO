@@ -3,6 +3,9 @@
 #include "json.hpp"
 #include "memory.hpp"
 #include "clips.h"
+#ifdef BUILD_EXECUTOR
+#include "coco_executor.hpp"
+#endif
 #include <chrono>
 #include <optional>
 #include <unordered_map>
@@ -34,6 +37,9 @@ namespace coco
     friend class item;
     friend class property;
     friend class reactive_rule;
+#ifdef BUILD_EXECUTOR
+    friend class coco_executor;
+#endif
 #ifdef BUILD_LISTENERS
     friend class listener;
 #endif
@@ -89,6 +95,26 @@ namespace coco
 
 #ifdef BUILD_LISTENERS
   private:
+#ifdef BUILD_EXECUTOR
+    void state_changed(coco_executor &exec);
+
+    void flaw_created(coco_executor &exec, const ratio::flaw &f);
+    void flaw_state_changed(coco_executor &exec, const ratio::flaw &f);
+    void flaw_cost_changed(coco_executor &exec, const ratio::flaw &f);
+    void flaw_position_changed(coco_executor &exec, const ratio::flaw &f);
+    void current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f);
+    void resolver_created(coco_executor &exec, const ratio::resolver &r);
+    void resolver_state_changed(coco_executor &exec, const ratio::resolver &r);
+    void current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r);
+    void causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r);
+
+    void executor_state_changed(coco_executor &exec, ratio::executor::executor_state state);
+    void tick(coco_executor &exec, const utils::rational &time);
+    void starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
+    void start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
+    void ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
+    void end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
+#endif
     /**
      * @brief Notifies when the type is created.
      *
@@ -170,6 +196,26 @@ namespace coco
 
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
+#ifdef BUILD_EXECUTOR
+    virtual void state_changed([[maybe_unused]] coco_executor &exec) {}
+
+    virtual void flaw_created([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
+    virtual void flaw_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
+    virtual void flaw_cost_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
+    virtual void flaw_position_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
+    virtual void current_flaw([[maybe_unused]] coco_executor &exec, [[maybe_unused]] std::optional<utils::ref_wrapper<ratio::flaw>> f) {}
+    virtual void resolver_created([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
+    virtual void resolver_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
+    virtual void current_resolver([[maybe_unused]] coco_executor &exec, [[maybe_unused]] std::optional<utils::ref_wrapper<ratio::resolver>> r) {}
+    virtual void causal_link_added([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r) {}
+
+    virtual void executor_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] ratio::executor::executor_state state) {}
+    virtual void tick([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const utils::rational &time) {}
+    virtual void starting([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+    virtual void start([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+    virtual void ending([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+    virtual void end([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+#endif
   protected:
     [[nodiscard]] std::recursive_mutex &get_mtx() const { return cc.mtx; }
 

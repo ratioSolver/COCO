@@ -264,6 +264,90 @@ namespace coco
     }
 
 #ifdef BUILD_LISTENERS
+#ifdef BUILD_EXECUTOR
+    void coco::state_changed(coco_executor &exec)
+    {
+        for (auto &l : listeners)
+            l->state_changed(exec);
+    }
+
+    void coco::flaw_created(coco_executor &exec, const ratio::flaw &f)
+    {
+        for (auto &l : listeners)
+            l->flaw_created(exec, f);
+    }
+    void coco::flaw_state_changed(coco_executor &exec, const ratio::flaw &f)
+    {
+        for (auto &l : listeners)
+            l->flaw_state_changed(exec, f);
+    }
+    void coco::flaw_cost_changed(coco_executor &exec, const ratio::flaw &f)
+    {
+        for (auto &l : listeners)
+            l->flaw_cost_changed(exec, f);
+    }
+    void coco::flaw_position_changed(coco_executor &exec, const ratio::flaw &f)
+    {
+        for (auto &l : listeners)
+            l->flaw_position_changed(exec, f);
+    }
+    void coco::current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f)
+    {
+        for (auto &l : listeners)
+            l->current_flaw(exec, f);
+    }
+    void coco::resolver_created(coco_executor &exec, const ratio::resolver &r)
+    {
+        for (auto &l : listeners)
+            l->resolver_created(exec, r);
+    }
+    void coco::resolver_state_changed(coco_executor &exec, const ratio::resolver &r)
+    {
+        for (auto &l : listeners)
+            l->resolver_state_changed(exec, r);
+    }
+    void coco::current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r)
+    {
+        for (auto &l : listeners)
+            l->current_resolver(exec, r);
+    }
+    void coco::causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r)
+    {
+        for (auto &l : listeners)
+            l->causal_link_added(exec, f, r);
+    }
+
+    void coco::executor_state_changed(coco_executor &exec, ratio::executor::executor_state state)
+    {
+        for (auto &l : listeners)
+            l->executor_state_changed(exec, state);
+    }
+    void coco::tick(coco_executor &exec, const utils::rational &time)
+    {
+        for (auto &l : listeners)
+            l->tick(exec, time);
+    }
+    void coco::starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    {
+        for (auto &l : listeners)
+            l->starting(exec, atms);
+    }
+    void coco::start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    {
+        for (auto &l : listeners)
+            l->start(exec, atms);
+    }
+    void coco::ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    {
+        for (auto &l : listeners)
+            l->ending(exec, atms);
+    }
+    void coco::end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    {
+        for (auto &l : listeners)
+            l->end(exec, atms);
+    }
+#endif
     void coco::new_type(const type &tp) const
     {
         for (auto &l : listeners)

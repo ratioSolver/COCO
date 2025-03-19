@@ -7,6 +7,9 @@
 #else
 #include "coco_db.hpp"
 #endif
+#ifdef BUILD_ABDUCTIVE_REASONER
+#include "coco_abductive.hpp"
+#endif
 #ifdef BUILD_TRANSFORMER
 #include "coco_transformer.hpp"
 #endif
@@ -24,6 +27,10 @@ int main()
     coco::coco_db db;
 #endif
     coco::coco cc(db);
+
+#ifdef BUILD_ABDUCTIVE_REASONER
+    coco::abductive ab(cc);
+#endif
 
 #ifdef BUILD_TRANSFORMER
     coco::transformer t(cc);

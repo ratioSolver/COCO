@@ -1,5 +1,6 @@
 #include "coco_server.hpp"
 #include "coco_type.hpp"
+#include "coco_property.hpp"
 #include "coco_item.hpp"
 #include "logging.hpp"
 
@@ -19,6 +20,8 @@ namespace coco
         add_route(network::Get, "^/item/.*$", std::bind(&coco_server::get_item, this, network::placeholders::request));
         add_route(network::Post, "^/item$", std::bind(&coco_server::create_item, this, network::placeholders::request));
         add_route(network::Delete, "^/item/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
+
+        add_route(network::Post, "^/fake/.*$", std::bind(&coco_server::fake, this, network::placeholders::request));
 
         add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
@@ -177,6 +180,54 @@ namespace coco
         {
             return utils::make_u_ptr<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
         }
+    }
+
+    utils::u_ptr<network::response> coco_server::fake(const network::request &req)
+    {
+        type *tp;
+        try
+        {
+            tp = &cc.get_type(req.get_target().substr(6));
+        }
+        catch (const std::exception &)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+        }
+
+        std::unordered_map<std::string, utils::ref_wrapper<property>> props;
+        std::queue<const type *> q;
+        q.push(tp);
+        while (!q.empty())
+        {
+            auto tp = q.front();
+            q.pop();
+            for (const auto &[name, p] : tp->get_dynamic_properties())
+                props.emplace(name, *p);
+            for (const auto &[_, p] : tp->get_parents())
+                q.push(&*p);
+        }
+        json::json j;
+
+        if (auto json = dynamic_cast<const network::json_request *>(&req))
+        {
+            auto &body = json->get_body();
+            if (body.get_type() != json::json_type::array || std::any_of(body.as_array().begin(), body.as_array().end(), [](const auto &x)
+                                                                         { return x.get_type() != json::json_type::string; }))
+                return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            for (auto &prop : body.as_array())
+                if (auto it = props.find(static_cast<std::string>(prop)); it != props.end())
+                {
+                    j[it->first] = it->second->fake();
+                    props.erase(it);
+                }
+                else
+                    return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        }
+        else // fake all properties
+            for (auto &[name, prop] : props)
+                j[name] = prop->fake();
+
+        return utils::make_u_ptr<network::json_response>(std::move(j));
     }
 
     void coco_server::on_ws_open(network::ws_session &ws)

@@ -25,6 +25,8 @@ namespace coco
     utils::u_ptr<network::response> create_item(const network::request &req);
     utils::u_ptr<network::response> delete_item(const network::request &req);
 
+    utils::u_ptr<network::response> fake(const network::request &req);
+
   private:
     virtual void on_ws_open(network::ws_session &ws);
     virtual void on_ws_message(network::ws_session &ws, std::string_view msg);

@@ -9,3 +9,4 @@
 [submodule "extern/plexa"]
 	path = extern/plexa
 	url = https://github.com/ratioSolver/PlExA
+	branch = uncertainty

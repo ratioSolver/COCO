@@ -4,6 +4,7 @@
 #include "coco.hpp"
 #include "logging.hpp"
 #include <algorithm>
+#include <queue>
 #include <cassert>
 
 namespace coco

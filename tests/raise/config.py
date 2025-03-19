@@ -17,6 +17,7 @@ def create_types(session, url):
     response = session.post(url + '/type', json={
         'name': 'User',
         'static_properties': {
+            'name': {'type': 'string'},
             'baseline_nutrition': {'type': 'bool'},
             'baseline_fall': {'type': 'int'},
             #    'rehabilitation_school_load': {'type': 'bool'},

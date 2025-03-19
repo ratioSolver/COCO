@@ -38,6 +38,14 @@ export namespace coco {
 
     new_item(item: taxonomy.Item): void {
       this.items.set(item.get_id(), item);
+      const queue: taxonomy.Type[] = [item.get_type()];
+      while (queue.length > 0) {
+        const tp = queue.shift()!;
+        tp._instances.add(item);
+        if (tp.get_parents())
+          for (const par of tp.get_parents()!)
+            queue.push(par);
+      }
       for (const listener of this.coco_listeners) listener.new_item(item);
     }
 
@@ -258,13 +266,17 @@ export namespace coco {
 
     export class IntProperty extends Property<number> {
 
-      private readonly min?: number; max?: number;
+      private readonly min?: number;
+      private readonly max?: number;
 
       constructor(type: IntPropertyType, min?: number, max?: number, default_value?: number) {
         super(type, default_value);
         this.min = min;
         this.max = max;
       }
+
+      get_min(): number | undefined { return this.min; }
+      get_max(): number | undefined { return this.max; }
 
       override to_string(): string {
         const str: string = 'int';
@@ -278,13 +290,17 @@ export namespace coco {
 
     export class FloatProperty extends Property<number> {
 
-      private readonly min?: number; max?: number;
+      private readonly min?: number;
+      private readonly max?: number;
 
       constructor(type: FloatPropertyType, min?: number, max?: number, default_value?: number) {
         super(type, default_value);
         this.min = min;
         this.max = max;
       }
+
+      get_min(): number | undefined { return this.min; }
+      get_max(): number | undefined { return this.max; }
 
       override to_string(): string {
         const str: string = 'float';
@@ -320,6 +336,9 @@ export namespace coco {
         this.symbols = symbols;
       }
 
+      is_multiple(): boolean { return this.multiple; }
+      get_symbols(): string[] | undefined { return this.symbols; }
+
       override to_string(): string {
         const str: string = 'symbol';
         if (this.multiple)
@@ -344,6 +363,7 @@ export namespace coco {
       }
 
       get_domain(): Type { return this.domain; }
+      is_multiple(): boolean { return this.multiple; }
 
       override to_string(): string {
         const str: string = this.domain.get_name();
@@ -374,6 +394,7 @@ export namespace coco {
       private data?: Record<string, any>;
       private static_properties?: Map<string, Property<unknown>>;
       private dynamic_properties?: Map<string, Property<unknown>>;
+      readonly _instances: Set<Item> = new Set();
       private readonly listeners = new Set<TypeListener>();
 
       constructor(name: string, parents?: Type[], data?: Record<string, any>, static_properties?: Map<string, Property<unknown>>, dynamic_properties?: Map<string, Property<unknown>>) {
@@ -417,6 +438,7 @@ export namespace coco {
         }
         return props;
       }
+      get_instances(): Set<Item> { return this._instances; }
 
       _set_parents(ps?: Type[]): void {
         this.parents = ps;

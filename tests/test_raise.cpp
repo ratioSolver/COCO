@@ -29,7 +29,10 @@ int main()
     std::this_thread::sleep_for(std::chrono::seconds(1));
 #endif
 
-    db.drop();
+    std::string user_input;
+    std::cin >> user_input;
+    if (user_input == "d")
+        db.drop();
 
 #ifdef BUILD_SERVER
     srv.stop();

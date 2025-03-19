@@ -14,7 +14,8 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "ratio-core": "^0.0.14",
-    "ratio-coco-lib": "^0.0.13"
+    "bootstrap": "^5.3.3",
+    "ratio-core": "file:../../../oRatio/gui/core",
+    "ratio-coco-lib": "file:../lib"
   }
 }

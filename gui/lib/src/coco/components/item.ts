@@ -69,6 +69,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
     this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+    this.element.style.margin = '1em';
 
     const id_div = document.createElement('div');
     id_div.classList.add('input-group');
@@ -89,74 +90,77 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     id_div.append(id_button_div);
     this.element.append(id_div);
 
-    const p_label = document.createElement('label');
-    p_label.title = 'Properties';
-    this.element.append(p_label);
+    if (item.get_type().get_all_static_properties().size > 0) {
+      const p_table = document.createElement('table');
+      p_table.createCaption().textContent = 'Properties';
+      p_table.classList.add('table', 'caption-top');
 
-    const p_table = document.createElement('table');
-    p_table.classList.add('table');
-
-    const p_thead = p_table.createTHead();
-    const p_hrow = p_thead.insertRow();
-    const p_name = document.createElement('th');
-    p_name.scope = 'col';
-    p_name.textContent = 'Name';
-    p_hrow.appendChild(p_name);
-    const p_val = document.createElement('th');
-    p_val.scope = 'col';
-    p_val.textContent = 'Value';
-    p_hrow.appendChild(p_val);
-
-    const p_body = p_table.createTBody();
-    const props = item.get_properties();
-    for (const [name, prop] of item.get_type().get_all_static_properties()) {
-      const row = p_body.insertRow();
+      const p_thead = p_table.createTHead();
+      const p_hrow = p_thead.insertRow();
       const p_name = document.createElement('th');
       p_name.scope = 'col';
-      p_name.textContent = name;
-      row.appendChild(p_name);
-      const p_value = document.createElement('td');
-      this.p_values.set(name, p_value);
-      if (props && props[name])
-        p_value.textContent = prop.get_type().to_string(props[name]);
-      row.appendChild(p_value);
+      p_name.textContent = 'Name';
+      p_name.classList.add('w-75');
+      p_hrow.appendChild(p_name);
+      const p_val = document.createElement('th');
+      p_val.scope = 'col';
+      p_val.textContent = 'Value';
+      p_val.classList.add('w-25');
+      p_hrow.appendChild(p_val);
+
+      const p_body = p_table.createTBody();
+      const props = item.get_properties();
+      for (const [name, prop] of item.get_type().get_all_static_properties()) {
+        const row = p_body.insertRow();
+        const p_name = document.createElement('th');
+        p_name.scope = 'col';
+        p_name.textContent = name;
+        row.appendChild(p_name);
+        const p_value = document.createElement('td');
+        this.p_values.set(name, p_value);
+        if (props && props[name])
+          p_value.textContent = prop.get_type().to_string(props[name]);
+        row.appendChild(p_value);
+      }
+
+      this.element.append(p_table);
     }
 
-    const v_label = document.createElement('label');
-    v_label.title = 'Value';
-    this.element.append(v_label);
+    if (item.get_type().get_all_dynamic_properties().size > 0) {
+      const v_table = document.createElement('table');
+      v_table.createCaption().textContent = 'Values';
+      v_table.classList.add('table', 'caption-top');
 
-    const v_table = document.createElement('table');
-    v_table.classList.add('table');
-
-    const v_thead = v_table.createTHead();
-    const v_hrow = v_thead.insertRow();
-    const v_name = document.createElement('th');
-    v_name.scope = 'col';
-    v_name.textContent = 'Name';
-    v_hrow.appendChild(v_name);
-    const v_val = document.createElement('th');
-    v_val.scope = 'col';
-    v_val.textContent = 'Value';
-    v_hrow.appendChild(v_val);
-
-    const v_body = v_table.createTBody();
-    const val = item.get_value();
-    for (const [name, prop] of item.get_type().get_all_dynamic_properties()) {
-      const row = v_body.insertRow();
+      const v_thead = v_table.createTHead();
+      const v_hrow = v_thead.insertRow();
       const v_name = document.createElement('th');
       v_name.scope = 'col';
-      v_name.textContent = name;
-      row.appendChild(v_name);
-      const v_value = document.createElement('td');
-      this.v_values.set(name, v_value);
-      if (val && val.data[name])
-        v_value.textContent = prop.get_type().to_string(val.data[name]);
-      row.appendChild(v_value);
-    }
+      v_name.textContent = 'Name';
+      v_name.classList.add('w-75');
+      v_hrow.appendChild(v_name);
+      const v_val = document.createElement('th');
+      v_val.scope = 'col';
+      v_val.textContent = 'Value';
+      v_val.classList.add('w-25');
+      v_hrow.appendChild(v_val);
 
-    this.element.append(p_table);
-    this.element.append(v_table);
+      const v_body = v_table.createTBody();
+      const val = item.get_value();
+      for (const [name, prop] of item.get_type().get_all_dynamic_properties()) {
+        const row = v_body.insertRow();
+        const v_name = document.createElement('th');
+        v_name.scope = 'col';
+        v_name.textContent = name;
+        row.appendChild(v_name);
+        const v_value = document.createElement('td');
+        this.v_values.set(name, v_value);
+        if (val && val.data[name])
+          v_value.textContent = prop.get_type().to_string(val.data[name]);
+        row.appendChild(v_value);
+      }
+
+      this.element.append(v_table);
+    }
 
     item.add_item_listener(this);
   }

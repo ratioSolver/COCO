@@ -21,11 +21,14 @@
     "typescript": "~5.6.2"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.6.13",
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "cytoscape": "^3.30.4",
     "cytoscape-dagre": "^2.5.0",
     "cytoscape-popper": "^4.0.1",
     "plotly.js-dist-min": "^2.34.0",
-    "ratio-core": "^0.0.14",
-    "ratio-lib": "^0.0.28"
+    "ratio-core": "file:../../../oRatio/gui/core",
+    "ratio-lib": "file:../../../oRatio/gui/lib"
   }
 }

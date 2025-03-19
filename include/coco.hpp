@@ -172,6 +172,9 @@ namespace coco
     std::unordered_map<std::string, utils::u_ptr<item>> items;                              // The items by their ID..
     std::map<std::string, utils::u_ptr<reactive_rule>, std::less<>> reactive_rules;         // The reactive rules..
     std::map<std::string, utils::u_ptr<deliberative_rule>, std::less<>> deliberative_rules; // The deliberative rules..
+#ifdef BUILD_EXECUTOR
+    std::set<utils::u_ptr<coco_executor>> executors; // the executors..
+#endif
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif
@@ -241,9 +244,6 @@ namespace coco
 
   protected:
     coco &cc;
-#ifdef BUILD_EXECUTOR
-    std::set<utils::u_ptr<coco_executor>> executors; // the executors..
-#endif
   };
 #endif
 } // namespace coco

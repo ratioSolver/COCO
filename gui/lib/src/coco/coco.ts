@@ -205,7 +205,7 @@ export namespace coco {
         let def = undefined;
         if (itm_pm.default_value)
           def = Array.isArray(itm_pm.default_value) ? itm_pm.default_value.map(itm => this.cc.get_item(itm)) : this.cc.get_item(itm_pm.default_value);
-        return new ItemProperty(this, this.cc.get_type(itm_pm.domain), itm_pm.multiple, itm_pm.items?.map(itm => this.cc.get_item(itm)), def);
+        return new ItemProperty(this, this.cc.get_type(itm_pm.domain), itm_pm.multiple, def);
       }
 
       to_string(val: string | string[]): string { return Array.isArray(val) ? '[' + val.map(id => this.cc.get_item(id).to_string()).join(', ') + ']' : this.cc.get_item(val).to_string(); }
@@ -235,6 +235,10 @@ export namespace coco {
 
       get_type(): PropertyType<Property<V>> { return this.type; }
 
+      has_default_value(): boolean { return this.default_value !== undefined; }
+
+      get_default_value(): V | undefined { return this.default_value; }
+
       to_string(): string { return this.default_value ? `(${this.default_value})` : ''; }
     }
 
@@ -242,6 +246,13 @@ export namespace coco {
 
       constructor(type: BoolPropertyType, default_value?: boolean) {
         super(type, default_value);
+      }
+
+      override to_string(): string {
+        const str: string = 'bool';
+        if (this.has_default_value())
+          str.concat(' (' + (this.default_value ? 'true' : 'false') + ')');
+        return str;
       }
     }
 
@@ -256,11 +267,11 @@ export namespace coco {
       }
 
       override to_string(): string {
-        const str: string = '';
+        const str: string = 'int';
         if (this.min && this.max)
-          str.concat(`[${this.min}, ${this.max}] `);
-        if (this.default_value)
-          str.concat(String(this.default_value));
+          str.concat(` [${this.min}, ${this.max}]`);
+        if (this.has_default_value())
+          str.concat(' ' + String(this.default_value));
         return str;
       }
     }
@@ -276,11 +287,11 @@ export namespace coco {
       }
 
       override to_string(): string {
-        const str: string = '';
+        const str: string = 'float';
         if (this.min && this.max)
-          str.concat(`[${this.min}, ${this.max}] `);
-        if (this.default_value)
-          str.concat(String(this.default_value));
+          str.concat(` [${this.min}, ${this.max}]`);
+        if (this.has_default_value())
+          str.concat(' ' + String(this.default_value));
         return str;
       }
     }
@@ -288,6 +299,13 @@ export namespace coco {
     export class StringProperty extends Property<string> {
       constructor(type: StringPropertyType, default_value?: string) {
         super(type, default_value);
+      }
+
+      override to_string(): string {
+        const str: string = 'string';
+        if (this.has_default_value())
+          str.concat(' (' + this.default_value + ')');
+        return str;
       }
     }
 
@@ -303,13 +321,13 @@ export namespace coco {
       }
 
       override to_string(): string {
-        const str: string = this.multiple ? '[multiple]' : '';
-        if (this.symbols) {
-          str.concat(' ');
-          str.concat('{' + this.symbols.join(', ') + '}');
-        }
+        const str: string = 'symbol';
+        if (this.multiple)
+          str.concat(' [multiple]');
+        if (this.symbols)
+          str.concat(' {' + this.symbols.join(', ') + '}');
         if (this.default_value)
-          str.concat('(' + (Array.isArray(this.default_value) ? this.default_value.join(', ') : this.default_value) + ')');
+          str.concat(' (' + (Array.isArray(this.default_value) ? this.default_value.join(', ') : this.default_value) + ')');
         return str;
       }
     }
@@ -318,25 +336,21 @@ export namespace coco {
 
       private readonly domain: Type;
       private readonly multiple: boolean;
-      private readonly symbols?: Item[];
 
-      constructor(type: ItemPropertyType, domain: Type, multiple: boolean, symbols?: Item[], default_value?: Item | Item[]) {
+      constructor(type: ItemPropertyType, domain: Type, multiple: boolean, default_value?: Item | Item[]) {
         super(type, default_value);
         this.domain = domain;
         this.multiple = multiple;
-        this.symbols = symbols;
       }
 
       get_domain(): Type { return this.domain; }
 
       override to_string(): string {
-        const str: string = this.multiple ? '[multiple]' : '';
-        if (this.symbols) {
-          str.concat(' ');
-          str.concat('{' + this.symbols.map(itm => itm.to_string()).join(', ') + '}');
-        }
+        const str: string = this.domain.get_name();
+        if (this.multiple)
+          str.concat(' [multiple]');
         if (this.default_value)
-          str.concat('(' + (Array.isArray(this.default_value) ? this.default_value.map(itm => itm.to_string()).join(', ') : this.default_value.to_string()) + ')');
+          str.concat(' (' + (Array.isArray(this.default_value) ? this.default_value.map(itm => itm.to_string()).join(', ') : this.default_value.to_string()) + ')');
         return str;
       }
     }

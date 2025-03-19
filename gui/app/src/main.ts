@@ -23,12 +23,18 @@ class CoCoApp extends AppComponent {
   override populate_navbar(container: HTMLDivElement): void {
     const brand = document.createElement('a');
     brand.classList.add('navbar-brand');
-    brand.text = " CoCo";
     brand.href = '#';
     brand.addEventListener('click', (event) => {
       event.preventDefault();
-      BootstrapOffcanvas.getOrCreateInstance(document.getElementById(offcanvas_id)!).show();
+      const offcanvasElement = document.getElementById(offcanvas_id);
+      if (offcanvasElement) {
+        BootstrapOffcanvas.getOrCreateInstance(offcanvasElement).show();
+      }
     });
+
+    const brand_container = document.createElement('div');
+    brand_container.style.display = 'flex';
+    brand_container.style.alignItems = 'center';
 
     const brand_icon = document.createElement('img');
     brand_icon.src = 'favicon.ico';
@@ -36,7 +42,13 @@ class CoCoApp extends AppComponent {
     brand_icon.width = 32;
     brand_icon.height = 32;
     brand_icon.classList.add('d-inline-block', 'align-text-top', 'mr-2');
-    brand.prepend(brand_icon);
+
+    const brand_text = document.createElement('span');
+    brand_text.textContent = 'CoCo';
+
+    brand_container.appendChild(brand_icon);
+    brand_container.appendChild(brand_text);
+    brand.appendChild(brand_container);
 
     container.appendChild(brand);
   }

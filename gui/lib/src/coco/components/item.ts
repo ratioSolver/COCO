@@ -177,7 +177,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       for (const [name, prop] of this.payload.get_type().get_all_static_properties())
         if (ps && ps[name]) {
           const p_val = this.p_values.get(name)!;
-          blink(p_val);
+          blink(p_val, 500);
           p_val.textContent = prop.get_type().to_string(ps[name]);
         }
   }
@@ -188,7 +188,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       for (const [name, prop] of this.payload.get_type().get_all_dynamic_properties())
         if (val && val.data[name]) {
           const v_val = this.v_values.get(name)!;
-          blink(v_val);
+          blink(v_val, 500);
           v_val.textContent = prop.get_type().to_string(val.data[name]);
         }
   }

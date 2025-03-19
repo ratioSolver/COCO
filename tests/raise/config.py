@@ -2,3 +2,110 @@ import sys
 import requests
 import logging
 from faker import Faker
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+logger.addHandler(handler)
+
+fake = Faker('it_IT')
+
+
+def create_types(url):
+    session = requests.Session()
+
+    response = session.post(url + '/type', json={
+        'name': 'User',
+        'static_properties': {
+            'baseline_nutrition': {'type': 'bool'},
+            'baseline_fall': {'type': 'int'},
+            #    'rehabilitation_school_load': {'type': 'bool'},
+            #    'baseline_rehabilitation_school_load': {'type': 'bool'},
+            #    'comorbidities': {'type': 'bool'},
+            #    'bipolar_disorder_diagnosis': {'type': 'bool'},
+            #    'disability_level': {'type': 'bool'},
+            #    'intellectual_disability': {'type': 'bool'},
+            #    'traumatic_events': {'type': 'bool'},
+            'baseline_freezing': {'type': 'int'},
+            'baseline_heart_rate': {'type': 'int'},
+            #    'social_judgment': {'type': 'bool'},
+            #    'motor_deficit_level': {'type': 'bool'},
+            #    'agoraphobia_avoidance_symptoms': {'type': 'bool'},
+            #    'panic_attacks_anticipatory_anxiety': {'type': 'bool'},
+            #    'somatoform_disorders': {'type': 'bool'},
+            #    'social_phobia': {'type': 'bool'},
+            'state_anxiety_presence': {'type': 'int'},
+            'baseline_blood_pressure': {'type': 'int'},
+            'sensory_profile': {'type': 'bool'},
+            'stress': {'type': 'int'},
+            #    'personality_traits': {'type': 'bool'},
+        },
+        'dynamic_properties': {
+            "EXCESSIVE_HEAT": {"type": "symbol", "values": ["low", "medium", "high"]},
+            "ANXIETY": {"type": "symbol", "values": ["low", "medium", "high"]},
+            "MENTAL_FATIGUE": {"type": "symbol", "values": ["low", "medium", "high"]},
+            "PHYSICAL_FATIGUE": {"type": "symbol", "values": ["low", "medium", "high"]},
+            "SENSORY_DYSREGULATION": {"type": "symbol", "values": ["low", "medium", "high"]},
+            "FREEZING": {"type": "symbol", "values": ["low", "medium", "high"]},
+            "FLUCTUATION": {"type": "symbol", "values": ["low", "medium", "high"]},
+            "DYSKINESIA": {"type": "symbol", "values": ["low", "medium", "high"]},
+            "parkinson": {"type": "bool"},
+            "older_adults": {"type": "bool"},
+            "psychiatric_patients": {"type": "bool"},
+            "multiple_sclerosis": {"type": "bool"},
+            "young_pci_autism": {"type": "bool"},
+            'crowding': {'type': 'int'},
+            'altered_nutrition': {'type': 'bool'},
+            'altered_thirst_perception': {'type': 'int'},
+            'bar_restaurant': {'type': 'bool'},
+            'architectural_barriers': {'type': 'bool'},
+            'water_balance': {'type': 'int'},
+            #    'fall': {'type': 'bool'},
+            #    'attention_capacity': {'type': 'bool'},
+            'sleep_duration_quality': {'type': 'int'},
+            #    'engagement_in_adl': {'type': 'bool'},
+            'water_fountains': {'type': 'bool'},
+            'recent_freezing_episodes': {'type': 'int'},
+            'heart_rate': {'type': 'int'},
+            'heart_rate_differential': {'type': 'int'},
+            'public_events_frequency': {'type': 'bool'},
+            'respiratory_rate': {'type': 'int'},
+            'galvanic_skin_response': {'type': 'int'},
+            'lighting': {'type': 'bool'},
+            'noise_pollution': {'type': 'int'},
+            'user_reported_noise_pollution': {'type': 'int'},
+            'air_pollution': {'type': 'int'},
+            'traffic_levels': {'type': 'int'},
+            'lack_of_ventilation': {'type': 'bool'},
+            #    'daily_steps': {'type': 'bool'},
+            #    'heat_waves': {'type': 'bool'},
+            'path_slope': {'type': 'bool'},
+            'safety_perception': {'type': 'bool'},
+            #    'fatigue_perception': {'type': 'bool'},
+            'rough_path': {'type': 'bool'},
+            'public_events_presence': {'type': 'bool'},
+            'high_blood_pressure': {'type': 'int'},
+            'low_blood_pressure': {'type': 'int'},
+            'social_pressure': {'type': 'bool'},
+            'sessions': {'type': 'bool'},
+            'self_perception': {'type': 'bool'},
+            'restroom_availability': {'type': 'bool'},
+            'sweating': {'type': 'int'},
+            'ambient_temperature': {'type': 'int'},
+            'body_temperature': {'type': 'int'},
+            'ambient_humidity': {'type': 'int'},
+            'excessive_urbanization': {'type': 'bool'},
+            'green_spaces': {'type': 'bool'}
+        }
+    })
+
+    if response.status_code != 204:
+        logger.error('Failed to create type User')
+        return
+
+
+if __name__ == '__main__':
+    url = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:8080'
+    create_types(url)

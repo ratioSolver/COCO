@@ -307,6 +307,13 @@ namespace coco
             deftemplate += "slot ";
         deftemplate += name.data();
         deftemplate += " (type SYMBOL)";
+        if (!values.empty())
+        {
+            deftemplate += " (allowed-values";
+            for (const auto &val : values)
+                deftemplate += " " + val;
+            deftemplate += ")";
+        }
         if (default_value.has_value())
         {
             deftemplate += " (default";

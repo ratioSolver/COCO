@@ -26,7 +26,6 @@ int main()
     coco::coco_server srv(cc);
     auto srv_ft = std::async(std::launch::async, [&srv]
                              { srv.server::start(); });
-    std::this_thread::sleep_for(std::chrono::seconds(1));
 #endif
 
     std::string user_input;

@@ -2,6 +2,12 @@ html,
 body {
   margin: 0;
   height: 100%;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .navbar {
@@ -15,5 +21,6 @@ body {
 }
 
 .blink {
-  animation: blink 1s ease-in-out;
+  animation: blink 0.5s ease-in-out;
+  border-radius: 15px;
 }

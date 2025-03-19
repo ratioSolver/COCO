@@ -15,6 +15,11 @@ namespace coco
         add_route(network::Post, "^/type$", std::bind(&coco_server::create_type, this, network::placeholders::request));
         add_route(network::Delete, "^/type/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
 
+        add_route(network::Get, "^/items$", std::bind(&coco_server::get_items, this, network::placeholders::request));
+        add_route(network::Get, "^/item/.*$", std::bind(&coco_server::get_item, this, network::placeholders::request));
+        add_route(network::Post, "^/item$", std::bind(&coco_server::create_item, this, network::placeholders::request));
+        add_route(network::Delete, "^/item/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
+
         add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
 
@@ -27,7 +32,7 @@ namespace coco
         return utils::make_u_ptr<network::file_response>(CLIENT_DIR "/dist" + target);
     }
 
-    utils::u_ptr<network::response> coco_server::get_types([[maybe_unused]] const network::request &req)
+    utils::u_ptr<network::response> coco_server::get_types(const network::request &)
     {
         json::json ts(json::json_type::array);
         for (auto &tp : cc.get_types())
@@ -41,7 +46,7 @@ namespace coco
     utils::u_ptr<network::response> coco_server::get_type(const network::request &req)
     {
         try
-        { // get type by id in the path
+        { // get type by name in the path
             auto &tp = cc.get_type(req.get_target().substr(6));
             auto j_tp = tp.to_json();
             j_tp["name"] = tp.get_name();
@@ -99,13 +104,78 @@ namespace coco
     utils::u_ptr<network::response> coco_server::delete_type(const network::request &req)
     {
         try
-        { // get type by id in the path
+        { // get type by name in the path
             cc.delete_type(cc.get_type(req.get_target().substr(6)));
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &)
         {
             return utils::make_u_ptr<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+        }
+    }
+
+    utils::u_ptr<network::response> coco_server::get_items(const network::request &)
+    {
+        json::json ts(json::json_type::array);
+        for (auto &itm : cc.get_items())
+        {
+            auto j_itm = itm->to_json();
+            j_itm["id"] = itm->get_id();
+            ts.push_back(std::move(j_itm));
+        }
+        return utils::make_u_ptr<network::json_response>(std::move(ts));
+    }
+    utils::u_ptr<network::response> coco_server::get_item(const network::request &req)
+    {
+        try
+        { // get item by id in the path
+            auto &itm = cc.get_item(req.get_target().substr(6));
+            auto j_tp = itm.to_json();
+            j_tp["id"] = itm.get_id();
+            return utils::make_u_ptr<network::json_response>(std::move(j_tp));
+        }
+        catch (const std::exception &)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
+        }
+    }
+    utils::u_ptr<network::response> coco_server::create_item(const network::request &req)
+    {
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (body.get_type() != json::json_type::object || !body.contains("type") || body["type"].get_type() != json::json_type::string)
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+
+        std::string type_name = body["type"];
+        type *tp;
+        try
+        {
+            tp = &cc.get_type(type_name);
+        }
+        catch (const std::exception &)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+        }
+        try
+        {
+            json::json props = body.contains("properties") ? body["properties"] : json::json();
+            auto &itm = cc.create_item(*tp, std::move(props));
+            return utils::make_u_ptr<network::string_response>(std::string(itm.get_id()));
+        }
+        catch (const std::exception &e)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
+        }
+    }
+    utils::u_ptr<network::response> coco_server::delete_item(const network::request &req)
+    {
+        try
+        { // get item by id in the path
+            cc.delete_item(cc.get_item(req.get_target().substr(6)));
+            return utils::make_u_ptr<network::response>(network::status_code::no_content);
+        }
+        catch (const std::exception &)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
         }
     }
 
@@ -165,6 +235,25 @@ namespace coco
         broadcast(std::move(j_itm));
     }
     void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
+
+    void coco_server::state_changed(coco_executor &exec) {}
+
+    void coco_server::flaw_created(coco_executor &exec, const ratio::flaw &f) {}
+    void coco_server::flaw_state_changed(coco_executor &exec, const ratio::flaw &f) {}
+    void coco_server::flaw_cost_changed(coco_executor &exec, const ratio::flaw &f) {}
+    void coco_server::flaw_position_changed(coco_executor &exec, const ratio::flaw &f) {}
+    void coco_server::current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f) {}
+    void coco_server::resolver_created(coco_executor &exec, const ratio::resolver &r) {}
+    void coco_server::resolver_state_changed(coco_executor &exec, const ratio::resolver &r) {}
+    void coco_server::current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r) {}
+    void coco_server::causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r) {}
+
+    void coco_server::executor_state_changed(coco_executor &exec, ratio::executor::executor_state state) {}
+    void coco_server::tick(coco_executor &exec, const utils::rational &time) {}
+    void coco_server::starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+    void coco_server::start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+    void coco_server::ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+    void coco_server::end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
 
     void coco_server::broadcast(json::json &&msg)
     {

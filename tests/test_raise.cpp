@@ -25,7 +25,7 @@ int main()
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);
     auto srv_ft = std::async(std::launch::async, [&srv]
-                             { srv.start(); });
+                             { srv.server::start(); });
     std::this_thread::sleep_for(std::chrono::seconds(1));
 #endif
 

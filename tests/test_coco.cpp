@@ -7,9 +7,6 @@
 #else
 #include "coco_db.hpp"
 #endif
-#ifdef BUILD_ABDUCTIVE_REASONER
-#include "coco_abductive.hpp"
-#endif
 #ifdef BUILD_TRANSFORMER
 #include "coco_transformer.hpp"
 #endif
@@ -28,10 +25,6 @@ int main()
 #endif
     coco::coco cc(db);
 
-#ifdef BUILD_ABDUCTIVE_REASONER
-    coco::abductive ab(cc);
-#endif
-
 #ifdef BUILD_TRANSFORMER
     coco::transformer t(cc);
 #endif
@@ -39,7 +32,7 @@ int main()
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);
     auto srv_ft = std::async(std::launch::async, [&srv]
-                             { srv.start(); });
+                             { srv.server::start(); });
     std::this_thread::sleep_for(std::chrono::seconds(1));
 #endif
 
@@ -58,7 +51,7 @@ int main()
     db.drop();
 
 #ifdef BUILD_SERVER
-    // srv.stop();
+    srv.stop();
 #endif
 
     return 0;

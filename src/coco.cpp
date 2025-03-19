@@ -35,6 +35,19 @@ namespace coco
         LOG_TRACE(all_instances_of_function);
         Build(env, all_instances_of_function);
 
+#ifdef BUILD_EXECUTOR
+        LOG_TRACE(solver_deftemplate);
+        Build(env, solver_deftemplate);
+        LOG_TRACE(task_deftemplate);
+        Build(env, task_deftemplate);
+        LOG_TRACE(tick_function);
+        Build(env, tick_function);
+        LOG_TRACE(starting_function);
+        Build(env, starting_function);
+        LOG_TRACE(ending_function);
+        Build(env, ending_function);
+#endif
+
         LOG_DEBUG("Retrieving all types");
         auto tps = db.get_types();
         LOG_DEBUG("Retrieved " << tps.size() << " types");
@@ -80,6 +93,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         std::vector<utils::ref_wrapper<type>> res;
+        res.reserve(types.size());
         for (auto &s : types)
             res.push_back(*s.second);
         return res;
@@ -111,6 +125,7 @@ namespace coco
         db.set_parents(tp.get_name(), parents_names);
         tp.set_parents(std::move(parents));
     }
+
     void coco::delete_type(type &tp) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -118,7 +133,17 @@ namespace coco
         types.erase(tp.get_name());
     }
 
-    [[nodiscard]] item &coco::get_item(std::string_view id)
+    std::vector<utils::ref_wrapper<item>> coco::get_items() noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<utils::ref_wrapper<item>> res;
+        res.reserve(items.size());
+        for (auto &s : items)
+            res.push_back(*s.second);
+        return res;
+    }
+
+    item &coco::get_item(std::string_view id)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         if (items.find(id.data()) == items.end())
@@ -184,7 +209,7 @@ namespace coco
         return tp;
     }
 
-    [[nodiscard]] json::json coco::to_json() const noexcept
+    json::json coco::to_json() const noexcept
     {
         json::json jc;
         if (!types.empty())

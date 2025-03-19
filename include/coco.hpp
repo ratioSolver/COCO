@@ -19,6 +19,13 @@ namespace coco
   constexpr const char *instance_of_deftemplate = "(deftemplate instance_of (slot id (type SYMBOL)) (slot type (type SYMBOL)))";
   constexpr const char *inheritance_rule = "(defrule inheritance (is_a (type ?t) (parent ?p)) (instance_of (id ?i) (type ?t)) => (assert (instance_of (id ?i) (type ?p))))";
   constexpr const char *all_instances_of_function = "(deffunction all-instances-of (?type) (bind ?instances (create$)) (do-for-all-facts ((?instance_of instance_of)) (eq ?instance_of:type ?type) (bind ?instances (create$ ?instances ?instance_of:id))) (return ?instances))";
+#ifdef BUILD_EXECUTOR
+  constexpr const char *solver_deftemplate = "(deftemplate solver (slot name (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))";
+  constexpr const char *task_deftemplate = "(deftemplate task (slot solver (type SYMBOL)) (slot id (type INTEGER)) (slot type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))";
+  constexpr const char *tick_function = "(deffunction tick (?year ?month ?day ?hour ?minute ?second) (do-for-all-facts ((?task task)) TRUE (modify ?task (since (+ ?task:since 1)))) (return TRUE))";
+  constexpr const char *starting_function = "(deffunction starting (?solver ?task_type ?pars ?vals) (return TRUE))";
+  constexpr const char *ending_function = "(deffunction ending (?solver ?id) (return TRUE))";
+#endif
 
   class coco_db;
   class type;
@@ -70,6 +77,15 @@ namespace coco
     [[nodiscard]] type &create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
     void set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents) noexcept;
     void delete_type(type &tp) noexcept;
+
+    /**
+     * @brief Returns a vector of references to the items.
+     *
+     * This function retrieves all the items stored in the database and returns them as a vector of `item` objects. The returned vector contains references to the actual items stored in the `items` map.
+     *
+     * @return A vector of items.
+     */
+    [[nodiscard]] std::vector<utils::ref_wrapper<item>> get_items() noexcept;
 
     [[nodiscard]] item &get_item(std::string_view id);
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
@@ -225,6 +241,9 @@ namespace coco
 
   protected:
     coco &cc;
+#ifdef BUILD_EXECUTOR
+    std::set<utils::u_ptr<coco_executor>> executors; // the executors..
+#endif
   };
 #endif
 } // namespace coco

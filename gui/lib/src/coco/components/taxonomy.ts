@@ -112,6 +112,23 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
 
     for (const tp of this.payload.get_types())
       this.create_type_node(tp);
+    for (const tp of this.payload.get_types()) {
+      const pars = tp.get_parents();
+      if (pars)
+        for (const par of pars)
+          this.cy!.add({ group: 'edges', data: { id: `p-${tp.get_name()}-${par.get_name()}`, type: 'is_a', source: tp.get_name(), target: par.get_name() } });
+      const static_props = tp.get_static_properties();
+      if (static_props)
+        for (const [name, prop] of static_props)
+          if (prop instanceof coco.taxonomy.ItemProperty)
+            this.cy!.add({ group: 'edges', data: { id: `sp-${tp.get_name()}-${prop.get_domain().get_name()}`, type: 'static_property', name: name, source: tp.get_name(), target: prop.get_domain().get_name() } });
+      const dynamic_props = tp.get_dynamic_properties();
+      if (dynamic_props)
+        for (const [name, prop] of dynamic_props)
+          if (prop instanceof coco.taxonomy.ItemProperty)
+            this.cy!.add({ group: 'edges', data: { id: `dp-${tp.get_name()}-${prop.get_domain().get_name()}`, type: 'dynamic_property', name: name, source: tp.get_name(), target: prop.get_domain().get_name() } });
+    }
+
     this.cy.layout(this.layout).run();
 
     this.payload.add_coco_listener(this);

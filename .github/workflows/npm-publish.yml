@@ -9,6 +9,8 @@ on:
 
 jobs:
   coco-gui-lib:
+    name: Publish coco-gui-lib
+    if: false # Disable this job
     runs-on: ubuntu-latest
     defaults:
       run:

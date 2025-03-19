@@ -13,9 +13,7 @@ logger.addHandler(handler)
 fake = Faker('it_IT')
 
 
-def create_types(url):
-    session = requests.Session()
-
+def create_types(session, url):
     response = session.post(url + '/type', json={
         'name': 'User',
         'static_properties': {
@@ -106,6 +104,34 @@ def create_types(url):
         return
 
 
+def create_items(session, url):
+    for _ in range(10):
+        first_name = fake.first_name()
+
+        response = session.post(url + '/item', json={
+            'type': 'User',
+            'properties': {
+                'name': first_name,
+                'baseline_nutrition': fake.boolean(),
+                'baseline_fall': fake.random_int(max=10),
+                'baseline_freezing': fake.random_int(max=10),
+                'baseline_heart_rate': fake.random_int(min=40, max=200),
+                'state_anxiety_presence': fake.random_int(max=10),
+                'baseline_blood_pressure': fake.random_int(min=60, max=200),
+                'stress': fake.random_int(max=10),
+            }})
+
+        if response.status_code != 200:
+            logger.error('Failed to create item User')
+            return
+        else:
+            logger.info(
+                f'Created User {first_name} with id {response.text}')
+
+
 if __name__ == '__main__':
     url = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:8080'
-    create_types(url)
+    session = requests.Session()
+
+    create_types(session, url)
+    create_items(session, url)

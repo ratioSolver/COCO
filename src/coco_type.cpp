@@ -58,6 +58,14 @@ namespace coco
         }
     }
 
+    std::vector<utils::ref_wrapper<item>> type::get_instances() const noexcept
+    {
+        std::vector<utils::ref_wrapper<item>> res;
+        for (const auto &id : instances)
+            res.emplace_back(cc.get_item(id));
+        return res;
+    }
+
     item &type::make_item(std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val)
     {
         auto itm_ptr = utils::make_u_ptr<item>(*this, id, std::move(props), std::move(val));

@@ -82,6 +82,13 @@ namespace coco
     [[nodiscard]] const std::unordered_map<std::string, utils::u_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
 
     /**
+     * @brief Gets the instances of the type.
+     *
+     * @return The instances of the type.
+     */
+    [[nodiscard]] std::vector<utils::ref_wrapper<item>> get_instances() const noexcept;
+
+    /**
      * @brief Creates a new instance of the type.
      *
      * @param id The id of the instance.

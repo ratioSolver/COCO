@@ -10,6 +10,7 @@
 #include <optional>
 #include <unordered_map>
 #include <mutex>
+#include <random>
 
 namespace coco
 {
@@ -165,6 +166,7 @@ namespace coco
   protected:
     coco_db &db;                                                                            // The database..
     json::json schemas;                                                                     // The JSON schemas..
+    std::mt19937 gen;                                                                       // The random number generator..
     std::map<std::string, utils::u_ptr<property_type>, std::less<>> property_types;         // The property types..
     std::recursive_mutex mtx;                                                               // The mutex for the core..
     Environment *env;                                                                       // The CLIPS environment..

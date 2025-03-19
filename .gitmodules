@@ -6,3 +6,6 @@
 	path = extern/json
 	url = https://github.com/ratioSolver/json
 	branch = memory
+[submodule "extern/plexa"]
+	path = extern/plexa
+	url = https://github.com/ratioSolver/PlExA

@@ -48,10 +48,10 @@ int main()
     auto &s_itm = cc.create_item(s_tp);
     cc.set_value(s_itm, json::json{{"parent", ch_itm.get_id().c_str()}});
 
-    std::string user_input;
-    std::cin >> user_input;
-    if (user_input == "d")
-        db.drop();
+    // std::string user_input;
+    // std::cin >> user_input;
+    // if (user_input == "d")
+    db.drop();
 
 #ifdef BUILD_SERVER
     srv.stop();

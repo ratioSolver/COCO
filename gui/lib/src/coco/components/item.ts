@@ -2,6 +2,7 @@ import { Component, UListComponent, Selector, SelectorGroup, App, blink } from "
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
+import { publisher } from "./publisher";
 
 library.add(faCopy, faTag);
 
@@ -63,8 +64,9 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 
 export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
-  private p_values = new Map<string, HTMLTableCellElement>();
-  private v_values = new Map<string, HTMLTableCellElement>();
+  private readonly p_values = new Map<string, HTMLTableCellElement>();
+  private readonly val: Record<string, unknown> = {};
+  private readonly v_values = new Map<string, publisher.Publisher<unknown>>();
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
@@ -145,7 +147,6 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       v_hrow.appendChild(v_val);
 
       const v_body = v_table.createTBody();
-      const val = item.get_value();
       for (const [name, prop] of item.get_type().get_all_dynamic_properties()) {
         const row = v_body.insertRow();
         const v_name = document.createElement('th');
@@ -153,11 +154,12 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
         v_name.textContent = name;
         row.appendChild(v_name);
         const v_value = document.createElement('td');
-        this.v_values.set(name, v_value);
-        if (val && val.data[name])
-          v_value.textContent = prop.get_type().to_string(val.data[name]);
+        const pub = publisher.PublisherManager.get_instance().get_publisher_maker(prop.get_type().get_name()).make_publisher(name, prop, this.val);
+        this.v_values.set(name, pub);
+        v_value.append(pub.get_element());
         row.appendChild(v_value);
       }
+      this.set_value();
 
       this.element.append(v_table);
     }
@@ -185,11 +187,11 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   private set_value() {
     const val = this.payload.get_value();
     if (val)
-      for (const [name, prop] of this.payload.get_type().get_all_dynamic_properties())
+      for (const [name, _] of this.payload.get_type().get_all_dynamic_properties())
         if (val && val.data[name]) {
           const v_val = this.v_values.get(name)!;
-          blink(v_val, 500);
-          v_val.textContent = prop.get_type().to_string(val.data[name]);
+          blink(v_val.get_element(), 500);
+          v_val.set_value(val.data[name]);
         }
   }
 }

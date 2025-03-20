@@ -205,9 +205,9 @@ namespace coco
         if (default_value.has_value())
             j["default"] = default_value.value();
         if (min.has_value())
-            j["max"] = min.value();
-        if (min.has_value())
-            j["max"] = min.value();
+            j["min"] = min.value();
+        if (max.has_value())
+            j["max"] = max.value();
         return j;
     }
     json::json int_property::fake() const noexcept
@@ -253,9 +253,9 @@ namespace coco
         if (default_value.has_value())
             j["default"] = default_value.value();
         if (min.has_value())
-            j["max"] = min.value();
-        if (min.has_value())
-            j["max"] = min.value();
+            j["min"] = min.value();
+        if (max.has_value())
+            j["max"] = max.value();
         return j;
     }
     json::json float_property::fake() const noexcept

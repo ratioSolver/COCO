@@ -9,6 +9,8 @@ target_link_libraries(raise_tests PRIVATE CoCo)
 setup_sanitizers(raise_tests)
 
 if(DEFINED ENV{GITHUB_ACTIONS})
+    message(STATUS "GitHub action..")
+
     target_compile_definitions(coco_tests PUBLIC NO_INTERACTIVE_MODE)
     target_compile_definitions(raise_tests PUBLIC NO_INTERACTIVE_MODE)
 endif()

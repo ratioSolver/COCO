@@ -34,7 +34,7 @@ namespace coco
             std::vector<std::string> parents;
             if (doc.find("parents") != doc.end())
                 for (const auto &p : doc["parents"].get_array().value)
-                    parents.push_back(p.get_string().value.to_string());
+                    parents.push_back(p.get_string().value.data());
 
             std::optional<json::json> data, static_props, dynamic_props;
             if (doc.find("data") != doc.end())

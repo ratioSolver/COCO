@@ -190,7 +190,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       for (const [name, _] of this.payload.get_type().get_all_dynamic_properties())
         if (val && val.data[name]) {
           const v_val = this.v_values.get(name)!;
-          blink(v_val.get_element(), 500);
+          blink(v_val.get_element().children[0] as HTMLElement, 500);
           v_val.set_value(val.data[name]);
         }
   }

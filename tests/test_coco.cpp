@@ -12,8 +12,6 @@
 #endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
-#endif
-#if defined(BUILD_SERVER) || defined(NO_INTERACTIVE_MODE)
 #include <thread>
 #endif
 
@@ -50,22 +48,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto &s_itm = cc.create_item(s_tp);
     cc.set_value(s_itm, json::json{{"parent", ch_itm.get_id().c_str()}});
 
-#ifndef NO_INTERACTIVE_MODE
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    db.drop();
-#else
-    bool skip_user_input = false;
-    if (argc > 1 && std::string(argv[1]) == "--skip-input")
-        skip_user_input = true;
-
-    if (!skip_user_input)
-    {
-        std::string user_input;
-        std::cin >> user_input;
-        if (user_input == "d")
-            db.drop();
-    }
-#endif
+    std::string user_input;
+    std::cin >> user_input;
+    if (user_input == "d")
+        db.drop();
 
 #ifdef BUILD_SERVER
     srv.stop();

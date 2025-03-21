@@ -8,5 +8,10 @@ add_dependencies(raise_tests CoCo)
 target_link_libraries(raise_tests PRIVATE CoCo)
 setup_sanitizers(raise_tests)
 
+if(DEFINED ENV{GITHUB_ACTIONS})
+    target_compile_definitions(coco_tests PUBLIC NO_INTERACTIVE_MODE)
+    target_compile_definitions(raise_tests PUBLIC NO_INTERACTIVE_MODE)
+endif()
+
 add_test(NAME COCOTest00 COMMAND coco_tests)
 add_test(NAME RAISETest00 COMMAND raise_tests)

@@ -37,8 +37,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
 
     auto &tp = cc.create_type("ParentType", {}, json::json(), json::json{{"online", {"type", "bool"}}});
-    auto &itm = cc.create_item(tp);
-    cc.set_value(itm, json::json{{"online", true}});
+    auto &itm_0 = cc.create_item(tp);
+    cc.set_value(itm_0, json::json{{"online", true}});
+    auto &itm_1 = cc.create_item(tp);
+    cc.set_value(itm_1, json::json{{"online", false}});
 
     auto &ch_tp = cc.create_type("ChildType", {tp}, json::json(), json::json{{"count", {{"type", "int"}, {"min", 0}}}, {"temp", {{"type", "float"}, {"max", 50}}}});
     auto &ch_itm = cc.create_item(ch_tp);

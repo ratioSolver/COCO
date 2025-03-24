@@ -94,7 +94,10 @@ namespace coco
     void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
     void delete_item(item &itm) noexcept;
 
+    [[nodiscard]] std::vector<utils::ref_wrapper<reactive_rule>> get_reactive_rules() noexcept;
     void create_reactive_rule(std::string_view rule_name, std::string_view rule_content);
+
+    [[nodiscard]] std::vector<utils::ref_wrapper<deliberative_rule>> get_deliberative_rules() noexcept;
     void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content);
 
     [[nodiscard]] json::json to_json() const noexcept;

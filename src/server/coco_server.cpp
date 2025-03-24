@@ -2,6 +2,7 @@
 #include "coco_type.hpp"
 #include "coco_property.hpp"
 #include "coco_item.hpp"
+#include "coco_rule.hpp"
 #include "logging.hpp"
 
 namespace coco
@@ -25,6 +26,12 @@ namespace coco
         add_route(network::Post, "^/value/.*$", std::bind(&coco_server::set_value, this, network::placeholders::request));
 
         add_route(network::Post, "^/fake/.*$", std::bind(&coco_server::fake, this, network::placeholders::request));
+
+        add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, network::placeholders::request));
+        add_route(network::Post, "^/reactive_rule$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
+
+        add_route(network::Get, "^/deliberative_rules$", std::bind(&coco_server::get_deliberative_rules, this, network::placeholders::request));
+        add_route(network::Post, "^/deliberative_rule$", std::bind(&coco_server::create_deliberative_rule, this, network::placeholders::request));
 
         add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
@@ -122,14 +129,14 @@ namespace coco
 
     utils::u_ptr<network::response> coco_server::get_items(const network::request &)
     {
-        json::json ts(json::json_type::array);
+        json::json is(json::json_type::array);
         for (auto &itm : cc.get_items())
         {
             auto j_itm = itm->to_json();
             j_itm["id"] = itm->get_id();
-            ts.push_back(std::move(j_itm));
+            is.push_back(std::move(j_itm));
         }
-        return utils::make_u_ptr<network::json_response>(std::move(ts));
+        return utils::make_u_ptr<network::json_response>(std::move(is));
     }
     utils::u_ptr<network::response> coco_server::get_item(const network::request &req)
     {
@@ -284,6 +291,64 @@ namespace coco
                 j[name] = prop->fake();
 
         return utils::make_u_ptr<network::json_response>(std::move(j));
+    }
+
+    utils::u_ptr<network::response> coco_server::get_reactive_rules(const network::request &req)
+    {
+        json::json is(json::json_type::array);
+        for (auto &rr : cc.get_reactive_rules())
+        {
+            auto j_rrs = rr->to_json();
+            j_rrs["name"] = rr->get_name();
+            is.push_back(std::move(j_rrs));
+        }
+        return utils::make_u_ptr<network::json_response>(std::move(is));
+    }
+    utils::u_ptr<network::response> coco_server::create_reactive_rule(const network::request &req)
+    {
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("content") || body["content"].get_type() != json::json_type::string)
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        std::string name = body["name"];
+        std::string content = body["content"];
+        try
+        {
+            cc.create_reactive_rule(name, content);
+            return utils::make_u_ptr<network::response>(network::status_code::no_content);
+        }
+        catch (const std::exception &e)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
+        }
+    }
+
+    utils::u_ptr<network::response> coco_server::get_deliberative_rules(const network::request &req)
+    {
+        json::json is(json::json_type::array);
+        for (auto &dr : cc.get_deliberative_rules())
+        {
+            auto j_drs = dr->to_json();
+            j_drs["name"] = dr->get_name();
+            is.push_back(std::move(j_drs));
+        }
+        return utils::make_u_ptr<network::json_response>(std::move(is));
+    }
+    utils::u_ptr<network::response> coco_server::create_deliberative_rule(const network::request &req)
+    {
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("content") || body["content"].get_type() != json::json_type::string)
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        std::string name = body["name"];
+        std::string content = body["content"];
+        try
+        {
+            cc.create_deliberative_rule(name, content);
+            return utils::make_u_ptr<network::response>(network::status_code::no_content);
+        }
+        catch (const std::exception &e)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
+        }
     }
 
     void coco_server::on_ws_open(network::ws_session &ws)

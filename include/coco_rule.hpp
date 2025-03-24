@@ -28,14 +28,16 @@ namespace coco
      *
      * @return The name of the rule.
      */
-    const std::string &get_name() const { return name; }
+    [[nodiscard]] const std::string &get_name() const { return name; }
 
     /**
      * @brief Gets the content of the rule.
      *
      * @return The content of the rule.
      */
-    const std::string &get_content() const { return content; }
+    [[nodiscard]] const std::string &get_content() const { return content; }
+
+    [[nodiscard]] json::json to_json() const noexcept;
 
   private:
     coco &cc;            // the CoCo core object.
@@ -65,14 +67,16 @@ namespace coco
      *
      * @return The name of the rule.
      */
-    const std::string &get_name() const { return name; }
+    [[nodiscard]] const std::string &get_name() const { return name; }
 
     /**
      * @brief Gets the content of the rule.
      *
      * @return The content of the rule.
      */
-    const std::string &get_content() const { return content; }
+    [[nodiscard]] const std::string &get_content() const { return content; }
+
+    [[nodiscard]] json::json to_json() const noexcept;
 
   private:
     coco &cc;            // the CoCo core object.

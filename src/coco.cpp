@@ -94,8 +94,8 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         std::vector<utils::ref_wrapper<type>> res;
         res.reserve(types.size());
-        for (auto &s : types)
-            res.push_back(*s.second);
+        for (auto &t : types)
+            res.push_back(*t.second);
         return res;
     }
 
@@ -138,8 +138,8 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         std::vector<utils::ref_wrapper<item>> res;
         res.reserve(items.size());
-        for (auto &s : items)
-            res.push_back(*s.second);
+        for (auto &i : items)
+            res.push_back(*i.second);
         return res;
     }
 
@@ -176,12 +176,31 @@ namespace coco
         items.erase(id);
     }
 
+    std::vector<utils::ref_wrapper<reactive_rule>> coco::get_reactive_rules() noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<utils::ref_wrapper<reactive_rule>> res;
+        res.reserve(reactive_rules.size());
+        for (auto &r : reactive_rules)
+            res.push_back(*r.second);
+        return res;
+    }
     void coco::create_reactive_rule(std::string_view rule_name, std::string_view rule_content)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.create_reactive_rule(rule_name, rule_content);
         if (!reactive_rules.emplace(rule_name, utils::make_u_ptr<reactive_rule>(*this, rule_name, rule_content)).second)
             throw std::invalid_argument("reactive rule `" + std::string(rule_name) + "` already exists");
+    }
+
+    std::vector<utils::ref_wrapper<deliberative_rule>> coco::get_deliberative_rules() noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<utils::ref_wrapper<deliberative_rule>> res;
+        res.reserve(deliberative_rules.size());
+        for (auto &r : deliberative_rules)
+            res.push_back(*r.second);
+        return res;
     }
     void coco::create_deliberative_rule(std::string_view rule_name, std::string_view rule_content)
     {

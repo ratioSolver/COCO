@@ -20,7 +20,7 @@
 
     (if (and (or ?psychiatric_patients ?young_pci_autism ?parkinson ?multiple_sclerosis) (>= ?heart_rate_differential 50)) then (bind ?freezing_relevant (append$ ?freezing_relevant heart_rate_differential)))
 
-    (if (and (>= ?freezing 0) (<= ?freezing 1)) then (add_data ?user (create$ physical_distress freezing_relevant) (create$ "Low" ?freezing_relevant)))
-    (if (and (>= ?freezing 2) (<= ?freezing 3)) then (add_data ?user (create$ physical_distress freezing_relevant) (create$ "Medium" ?freezing_relevant)))
-    (if (>= ?freezing 4) then (add_data ?user (create$ physical_distress freezing_relevant) (create$ "High" ?freezing_relevant)))
+    (if (and (>= ?freezing 0) (<= ?freezing 1)) then (add_data ?user (create$ FREEZING freezing_relevant) (create$ "Low" ?freezing_relevant)))
+    (if (and (>= ?freezing 2) (<= ?freezing 3)) then (add_data ?user (create$ FREEZING freezing_relevant) (create$ "Medium" ?freezing_relevant)))
+    (if (>= ?freezing 4) then (add_data ?user (create$ FREEZING freezing_relevant) (create$ "High" ?freezing_relevant)))
 )

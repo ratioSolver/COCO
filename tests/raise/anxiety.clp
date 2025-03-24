@@ -68,7 +68,7 @@
     (if (and (or ?older_adults ?parkinson) (>= ?sweating 10)) then (bind ?anxiety_relevant (append$ ?anxiety_relevant sweating)))
     (if (and (or ?psychiatric_patients ?older_adults ?parkinson) (> ?body_temperature 37.3)) then (bind ?anxiety_relevant (append$ ?anxiety_relevant body_temperature)))
 
-    (if (and (>= ?anxiety 0) (<= ?anxiety 1)) then (add_data ?user (create$ physical_distress anxiety_relevant) (create$ "Low" ?anxiety_relevant)))
-    (if (and (>= ?anxiety 2) (<= ?anxiety 3)) then (add_data ?user (create$ physical_distress anxiety_relevant) (create$ "Medium" ?anxiety_relevant)))
-    (if (>= ?anxiety 4) then (add_data ?user (create$ physical_distress anxiety_relevant) (create$ "High" ?anxiety_relevant)))
+    (if (and (>= ?anxiety 0) (<= ?anxiety 1)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ "Low" ?anxiety_relevant)))
+    (if (and (>= ?anxiety 2) (<= ?anxiety 3)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ "Medium" ?anxiety_relevant)))
+    (if (>= ?anxiety 4) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ "High" ?anxiety_relevant)))
 )

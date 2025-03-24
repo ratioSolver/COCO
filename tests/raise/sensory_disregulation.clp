@@ -29,7 +29,7 @@
     (if (and (or ?parkinson ?psychiatric_patients ?older_adults ?multiple_sclerosis ?young_pci_autism) (>= ?respiratory_rate 30)) then (bind ?sensory_disregulation_relevant (append$ ?sensory_disregulation_relevant respiratory_rate)))
     (if (and ?young_pci_autism ?sensory_profile) then (bind ?sensory_disregulation_relevant (append$ ?sensory_disregulation_relevant sensory_profile)))
 
-    (if (and (>= ?sensory_disregulation 0) (<= ?sensory_disregulation 1)) then (add_data ?user (create$ physical_distress sensory_disregulation_relevant) (create$ "Low" ?sensory_disregulation_relevant)))
-    (if (and (>= ?sensory_disregulation 2) (<= ?sensory_disregulation 3)) then (add_data ?user (create$ physical_distress sensory_disregulation_relevant) (create$ "Medium" ?sensory_disregulation_relevant)))
-    (if (>= ?sensory_disregulation 4) then (add_data ?user (create$ physical_distress sensory_disregulation_relevant) (create$ "High" ?sensory_disregulation_relevant)))
+    (if (and (>= ?sensory_disregulation 0) (<= ?sensory_disregulation 1)) then (add_data ?user (create$ SENSORY_DISREGULATION sensory_disregulation_relevant) (create$ "Low" ?sensory_disregulation_relevant)))
+    (if (and (>= ?sensory_disregulation 2) (<= ?sensory_disregulation 3)) then (add_data ?user (create$ SENSORY_DISREGULATION sensory_disregulation_relevant) (create$ "Medium" ?sensory_disregulation_relevant)))
+    (if (>= ?sensory_disregulation 4) then (add_data ?user (create$ SENSORY_DISREGULATION sensory_disregulation_relevant) (create$ "High" ?sensory_disregulation_relevant)))
 )

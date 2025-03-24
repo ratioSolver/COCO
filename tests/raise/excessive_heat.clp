@@ -43,7 +43,7 @@
     (if (and (or ?older_adults ?parkinson) (>= ?sweating 10)) then (bind ?excessive_heat_relevant (append$ ?excessive_heat_relevant sweating)))
     (if (and (or ?psychiatric_patients ?older_adults ?parkinson) (> ?body_temperature 37.5)) then (bind ?excessive_heat_relevant (append$ ?excessive_heat_relevant body_temperature)))
 
-    (if (and (>= ?excessive_heat 0) (<= ?excessive_heat 1)) then (add_data ?user (create$ physical_distress excessive_heat_relevant) (create$ "Low" ?excessive_heat_relevant)))
-    (if (and (>= ?excessive_heat 2) (<= ?excessive_heat 3)) then (add_data ?user (create$ physical_distress excessive_heat_relevant) (create$ "Medium" ?excessive_heat_relevant)))
-    (if (>= ?excessive_heat 4) then (add_data ?user (create$ physical_distress excessive_heat_relevant) (create$ "High" ?excessive_heat_relevant)))
+    (if (and (>= ?excessive_heat 0) (<= ?excessive_heat 1)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ "Low" ?excessive_heat_relevant)))
+    (if (and (>= ?excessive_heat 2) (<= ?excessive_heat 3)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ "Medium" ?excessive_heat_relevant)))
+    (if (>= ?excessive_heat 4) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ "High" ?excessive_heat_relevant)))
 )

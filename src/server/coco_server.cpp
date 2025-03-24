@@ -21,6 +21,9 @@ namespace coco
         add_route(network::Post, "^/item$", std::bind(&coco_server::create_item, this, network::placeholders::request));
         add_route(network::Delete, "^/item/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
 
+        add_route(network::Get, "^/value/.*$", std::bind(&coco_server::get_values, this, network::placeholders::request));
+        add_route(network::Post, "^/value/.*$", std::bind(&coco_server::set_value, this, network::placeholders::request));
+
         add_route(network::Post, "^/fake/.*$", std::bind(&coco_server::fake, this, network::placeholders::request));
 
         add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
@@ -180,6 +183,59 @@ namespace coco
         {
             return utils::make_u_ptr<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
         }
+    }
+
+    utils::u_ptr<network::response> coco_server::get_values(const network::request &req)
+    { // get item by id in the path
+        auto id = req.get_target().substr(7);
+        std::map<std::string, std::string> params;
+        if (id.find('?') != std::string::npos)
+        {
+            params = network::parse_query(id.substr(id.find('?') + 1));
+            id = id.substr(0, id.find('?'));
+        }
+        item *itm;
+        try
+        {
+            itm = &cc.get_item(id);
+        }
+        catch (const std::exception &)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
+        }
+        std::chrono::system_clock::time_point to = params.count("to") ? std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("to"))}) : std::chrono::system_clock::time_point();
+        std::chrono::system_clock::time_point from = params.count("from") ? std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("from"))}) : to - std::chrono::hours{24 * 7};
+        return utils::make_u_ptr<network::json_response>(cc.get_values(*itm, from, to));
+    }
+    utils::u_ptr<network::response> coco_server::set_value(const network::request &req)
+    { // get item by id in the path
+        auto id = req.get_target().substr(7);
+        std::map<std::string, std::string> params;
+        if (id.find('?') != std::string::npos)
+        {
+            params = network::parse_query(id.substr(id.find('?') + 1));
+            id = id.substr(0, id.find('?'));
+        }
+        item *itm;
+        try
+        {
+            itm = &cc.get_item(id);
+        }
+        catch (const std::exception &)
+        {
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
+        }
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (body.get_type() != json::json_type::object)
+            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        if (params.count("timestamp"))
+        {
+            std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("timestamp"))});
+            cc.set_value(*itm, json::json(body), timestamp);
+        }
+        else
+            cc.set_value(*itm, json::json(body));
+        return utils::make_u_ptr<network::response>(network::status_code::no_content);
     }
 
     utils::u_ptr<network::response> coco_server::fake(const network::request &req)

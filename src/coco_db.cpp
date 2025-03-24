@@ -76,6 +76,22 @@ namespace coco
         }
         return std::to_string(counter++);
     }
+    json::json coco_db::get_values(std::string_view itm_id, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
+    {
+        LOG_WARN(std::string("Getting values for item ") + itm_id.data());
+        std::time_t from_time = std::chrono::system_clock::to_time_t(from);
+        std::tm from_tm = *std::localtime(&from_time);
+        std::ostringstream from_oss;
+        from_oss << std::put_time(&from_tm, "%Y-%m-%d %H:%M:%S");
+        LOG_WARN(std::string("FROM: ") + from_oss.str());
+        std::time_t to_time = std::chrono::system_clock::to_time_t(to);
+        std::tm to_tm = *std::localtime(&to_time);
+        std::ostringstream to_oss;
+        to_oss << std::put_time(&to_tm, "%Y-%m-%d %H:%M:%S");
+        LOG_WARN(std::string("FROM: ") + to_oss.str());
+        json::json res(json::json_type::array);
+        return res;
+    }
     void coco_db::set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
         LOG_WARN(std::string("Setting value for item ") + itm_id.data());

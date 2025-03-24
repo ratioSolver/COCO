@@ -157,6 +157,11 @@ namespace coco
         auto &itm = tp.make_item(id, std::move(props), std::move(val));
         return itm;
     }
+    json::json coco::get_values(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        return db.get_values(itm.get_id(), from, to);
+    }
     void coco::set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);

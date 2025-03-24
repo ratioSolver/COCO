@@ -39,6 +39,7 @@ namespace coco
 
     [[nodiscard]] virtual std::vector<db_item> get_items() noexcept;
     virtual std::string create_item(std::string_view type, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val = std::nullopt);
+    [[nodiscard]] virtual json::json get_values(std::string_view itm_id, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to = std::chrono::system_clock::now());
     virtual void set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
     virtual void delete_item(std::string_view itm_id);
 

@@ -136,6 +136,16 @@ namespace coco
             throw std::invalid_argument("Failed to insert " + std::string(type) + " item");
         return result->inserted_id().get_oid().value.to_string();
     }
+    json::json mongo_db::get_values(std::string_view itm_id, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
+    {
+        bsoncxx::builder::basic::document query;
+        query.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}));
+        query.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$gte", bsoncxx::types::b_date{from}), bsoncxx::builder::basic::kvp("$lte", bsoncxx::types::b_date{to}))));
+        json::json data = json::json_type::array;
+        for (const auto &doc : item_data_collection.find(query.view()))
+            data.push_back(json::json{{"data", json::load(bsoncxx::to_json(doc["data"].get_document().view()))}, {"timestamp", doc["timestamp"].get_date().to_int64()}});
+        return data;
+    }
     void mongo_db::set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
         bsoncxx::builder::basic::document doc;

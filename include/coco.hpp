@@ -90,6 +90,7 @@ namespace coco
 
     [[nodiscard]] item &get_item(std::string_view id);
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
+    [[nodiscard]] json::json get_values(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to = std::chrono::system_clock::now());
     void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
     void delete_item(item &itm) noexcept;
 

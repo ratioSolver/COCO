@@ -25,7 +25,18 @@ namespace coco
     utils::u_ptr<network::response> create_item(const network::request &req);
     utils::u_ptr<network::response> delete_item(const network::request &req);
 
+    utils::u_ptr<network::response> get_values(const network::request &req);
+    utils::u_ptr<network::response> set_value(const network::request &req);
+
     utils::u_ptr<network::response> fake(const network::request &req);
+
+    utils::u_ptr<network::response> get_reactive_rules(const network::request &req);
+    utils::u_ptr<network::response> create_reactive_rule(const network::request &req);
+    utils::u_ptr<network::response> delete_reactive_rule(const network::request &req);
+
+    utils::u_ptr<network::response> get_deliberative_rules(const network::request &req);
+    utils::u_ptr<network::response> create_deliberative_rule(const network::request &req);
+    utils::u_ptr<network::response> delete_deliberative_rule(const network::request &req);
 
   private:
     virtual void on_ws_open(network::ws_session &ws);

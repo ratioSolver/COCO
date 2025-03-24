@@ -3,6 +3,7 @@ import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
 import { publisher } from "./publisher";
+import Plotly, { Layout } from 'plotly.js-dist-min';
 
 library.add(faCopy, faTag);
 
@@ -67,6 +68,9 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   private readonly p_values = new Map<string, HTMLTableCellElement>();
   private readonly val: Record<string, unknown> = {};
   private readonly v_values = new Map<string, publisher.Publisher<unknown>>();
+
+  private layout: Partial<Layout> & { [key: `yaxis${number}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: 'Time', type: 'date' }, showlegend: false };
+  private config = { responsive: true, displaylogo: false };
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
@@ -177,7 +181,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
         row.appendChild(v_sel);
 
         const v_value = document.createElement('td');
-        const pub = publisher.PublisherManager.get_instance().get_publisher_maker(prop.get_type().get_name()).make_publisher(name, prop, this.val);
+        const pub = publisher.PublisherManager.get_instance().get_publisher_generator(prop.get_type().get_name()).make_publisher(name, prop, this.val);
         this.v_values.set(name, pub);
         v_value.append(pub.get_element());
         row.appendChild(v_value);
@@ -193,7 +197,9 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   override unmounting(): void { this.payload.remove_item_listener(this); }
 
   properties_updated(_: coco.taxonomy.Item): void { this.set_properties(); }
-  values_updated(_: coco.taxonomy.Item): void { }
+  values_updated(_: coco.taxonomy.Item): void {
+    Plotly.react(this.element, [], this.layout, this.config);
+  }
   new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Value): void { this.set_value(); }
 
   private set_properties() {

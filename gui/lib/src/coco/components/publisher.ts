@@ -8,13 +8,13 @@ export namespace publisher {
     private publishers: Map<string, PublisherGenerator<unknown>> = new Map();
 
     private constructor() {
-      this.add_publisher_maker(new BoolPublisherGenerator());
-      this.add_publisher_maker(new IntPublisherGenerator());
-      this.add_publisher_maker(new FloatPublisherGenerator());
-      this.add_publisher_maker(new StringPublisherGenerator());
-      this.add_publisher_maker(new SymbolPublisherGenerator());
-      this.add_publisher_maker(new ItemPublisherGenerator());
-      this.add_publisher_maker(new JSONPublisherGenerator());
+      this.add_publisher_generator(new BoolPublisherGenerator());
+      this.add_publisher_generator(new IntPublisherGenerator());
+      this.add_publisher_generator(new FloatPublisherGenerator());
+      this.add_publisher_generator(new StringPublisherGenerator());
+      this.add_publisher_generator(new SymbolPublisherGenerator());
+      this.add_publisher_generator(new ItemPublisherGenerator());
+      this.add_publisher_generator(new JSONPublisherGenerator());
     }
 
     public static get_instance(): PublisherManager {
@@ -23,8 +23,8 @@ export namespace publisher {
       return PublisherManager.instance;
     }
 
-    add_publisher_maker<V>(publisher: PublisherGenerator<V>) { this.publishers.set(publisher.get_name(), publisher); }
-    get_publisher_maker(name: string): PublisherGenerator<unknown> { return this.publishers.get(name)!; }
+    add_publisher_generator<V>(publisher: PublisherGenerator<V>) { this.publishers.set(publisher.get_name(), publisher); }
+    get_publisher_generator(name: string): PublisherGenerator<unknown> { return this.publishers.get(name)!; }
   }
 
   export abstract class PublisherGenerator<V> {
@@ -40,49 +40,49 @@ export namespace publisher {
     abstract make_publisher(name: string, property: coco.taxonomy.Property<unknown>, val: Record<string, unknown>): Publisher<V>;
   }
 
-  export class BoolPublisherGenerator extends PublisherGenerator<boolean> {
+  class BoolPublisherGenerator extends PublisherGenerator<boolean> {
 
     constructor() { super('bool'); }
 
     make_publisher(name: string, property: coco.taxonomy.BoolProperty, val: Record<string, unknown>): BoolPublisher { return new BoolPublisher(name, property, val); }
   }
 
-  export class IntPublisherGenerator extends PublisherGenerator<number> {
+  class IntPublisherGenerator extends PublisherGenerator<number> {
 
     constructor() { super('int'); }
 
     make_publisher(name: string, property: coco.taxonomy.IntProperty, val: Record<string, unknown>): IntPublisher { return new IntPublisher(name, property, val); }
   }
 
-  export class FloatPublisherGenerator extends PublisherGenerator<number> {
+  class FloatPublisherGenerator extends PublisherGenerator<number> {
 
     constructor() { super('float'); }
 
     make_publisher(name: string, property: coco.taxonomy.FloatProperty, val: Record<string, unknown>): FloatPublisher { return new FloatPublisher(name, property, val); }
   }
 
-  export class StringPublisherGenerator extends PublisherGenerator<string> {
+  class StringPublisherGenerator extends PublisherGenerator<string> {
 
     constructor() { super('string'); }
 
     make_publisher(name: string, property: coco.taxonomy.StringProperty, val: Record<string, unknown>): StringPublisher { return new StringPublisher(name, property, val); }
   }
 
-  export class SymbolPublisherGenerator extends PublisherGenerator<string | string[]> {
+  class SymbolPublisherGenerator extends PublisherGenerator<string | string[]> {
 
     constructor() { super('symbol'); }
 
     make_publisher(name: string, property: coco.taxonomy.SymbolProperty, val: Record<string, unknown>): SymbolPublisher { return new SymbolPublisher(name, property, val); }
   }
 
-  export class ItemPublisherGenerator extends PublisherGenerator<string | string[]> {
+  class ItemPublisherGenerator extends PublisherGenerator<string | string[]> {
 
     constructor() { super('item'); }
 
     make_publisher(name: string, property: coco.taxonomy.ItemProperty, val: Record<string, unknown>): ItemPublisher { return new ItemPublisher(name, property, val); }
   }
 
-  export class JSONPublisherGenerator extends PublisherGenerator<Record<string, unknown>> {
+  class JSONPublisherGenerator extends PublisherGenerator<Record<string, unknown>> {
 
     constructor() { super('json'); }
 
@@ -96,7 +96,7 @@ export namespace publisher {
     get_element(): HTMLElement;
   }
 
-  export class BoolPublisher implements Publisher<boolean> {
+  class BoolPublisher implements Publisher<boolean> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -128,7 +128,7 @@ export namespace publisher {
     get_element(): HTMLElement { return this.element; }
   }
 
-  export class IntPublisher implements Publisher<number> {
+  class IntPublisher implements Publisher<number> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -165,7 +165,7 @@ export namespace publisher {
     get_element(): HTMLElement { return this.element; }
   }
 
-  export class FloatPublisher implements Publisher<number> {
+  class FloatPublisher implements Publisher<number> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -201,7 +201,7 @@ export namespace publisher {
     get_element(): HTMLElement { return this.element; }
   }
 
-  export class StringPublisher implements Publisher<string> {
+  class StringPublisher implements Publisher<string> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -233,7 +233,7 @@ export namespace publisher {
     get_element(): HTMLElement { return this.element; }
   }
 
-  export class SymbolPublisher implements Publisher<string | string[]> {
+  class SymbolPublisher implements Publisher<string | string[]> {
 
     private readonly name: string;
     private readonly multiple: boolean;
@@ -290,7 +290,7 @@ export namespace publisher {
     get_element(): HTMLElement { return this.element; }
   }
 
-  export class ItemPublisher implements Publisher<string | string[]> {
+  class ItemPublisher implements Publisher<string | string[]> {
 
     private readonly name: string;
     private readonly multiple: boolean;
@@ -347,7 +347,7 @@ export namespace publisher {
     get_element(): HTMLElement { return this.element; }
   }
 
-  export class JSONPublisher implements Publisher<Record<string, unknown>> {
+  class JSONPublisher implements Publisher<Record<string, unknown>> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;

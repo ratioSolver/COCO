@@ -7,6 +7,7 @@
     (User_multiple_sclerosis (item_id ?user) (multiple_sclerosis ?multiple_sclerosis))
     (User_young_pci_autism (item_id ?user) (young_pci_autism ?young_pci_autism))
 
+    (User_has_ANXIETY (item_id ?user) (ANXIETY ?ANXIETY))
     (User_has_crowding (item_id ?user) (crowding ?crowding))
     (User_has_altered_nutrition (item_id ?user) (altered_nutrition ?altered_nutrition))
     (User_has_water_balance (item_id ?user) (water_balance ?water_balance))

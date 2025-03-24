@@ -6,6 +6,7 @@
     (User_young_pci_autism (item_id ?user) (young_pci_autism ?young_pci_autism))
 
     (User_has_ANXIETY (item_id ?user) (ANXIETY ?ANXIETY))
+    (User_has_crowding (item_id ?user) (crowding ?crowding))
     (User_has_architectural_barriers (item_id ?user) (architectural_barriers ?architectural_barriers))
     (User_has_heart_rate_differential (item_id ?user) (heart_rate_differential ?heart_rate_differential))
     (User_has_lighting (item_id ?user) (lighting ?lighting))
@@ -18,7 +19,7 @@
     (if (and ?parkinson ?architectural_barriers) then (bind ?freezing (+ ?freezing 1)))
     (if (and (or ?parkinson ?young_pci_autism) ?lighting) then (bind ?freezing (+ ?freezing 1)))
 
-    (if (and (or ?psychiatric_patients ?young_pci_autism ?parkinson ?multiple_sclerosis) (>= ?heart_rate_differential 50)) then (bind ?freezing_relevant (append$ ?freezing_relevant heart_rate_differential)))
+    (if (and (or ?psychiatric_patients ?young_pci_autism ?parkinson ?multiple_sclerosis) (>= ?heart_rate_differential 50)) then (bind ?freezing_relevant (insert$ ?freezing_relevant 1 heart_rate_differential)))
 
     (if (and (>= ?freezing 0) (<= ?freezing 1)) then (add_data ?user (create$ FREEZING freezing_relevant) (create$ "Low" ?freezing_relevant)))
     (if (and (>= ?freezing 2) (<= ?freezing 3)) then (add_data ?user (create$ FREEZING freezing_relevant) (create$ "Medium" ?freezing_relevant)))

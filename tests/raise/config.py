@@ -14,6 +14,7 @@ fake = Faker('it_IT')
 
 
 def create_types(session, url):
+    # Create the user type..
     response = session.post(url + '/type', json={
         'name': 'User',
         'static_properties': {
@@ -38,6 +39,7 @@ def create_types(session, url):
             'baseline_blood_pressure': {'type': 'int'},
             'sensory_profile': {'type': 'bool'},
             'stress': {'type': 'int'},
+            'psychiatric_disorders': {'type': 'bool'},
             #    'personality_traits': {'type': 'bool'},
             'parkinson': {'type': 'bool'},
             'older_adults': {'type': 'bool'},
@@ -81,7 +83,7 @@ def create_types(session, url):
             'user_reported_noise_pollution': {'type': 'int'},
             'air_pollution': {'type': 'int'},
             'traffic_levels': {'type': 'int'},
-            'lack_of_ventilation': {'type': 'bool'},
+            'lack_of_ventilation': {'type': 'int'},
             #    'daily_steps': {'type': 'bool'},
             #    'rehabilitation_school_load': {'type': 'bool'},
             #    'heat_waves': {'type': 'bool'},
@@ -107,6 +109,88 @@ def create_types(session, url):
 
     if response.status_code != 204:
         logger.error('Failed to create type User')
+        return
+
+
+def create_rules(session, url):
+    # Create Anxiety rule..
+    with open('anxiety.clp', 'r') as file:
+        data = file.read()
+    logger.info('Creating the Anxiety rule')
+    response = requests.post(
+        url + '/reactive_rule', json={'name': 'anxiety', 'content': data})
+    if response.status_code != 204:
+        logger.error(response.json())
+        return
+
+    # Create Dyskinesia rule..
+    with open('dyskinesia.clp', 'r') as file:
+        data = file.read()
+    logger.info('Creating the Dyskinesia rule')
+    response = requests.post(
+        url + '/reactive_rule', json={'name': 'dyskinesia', 'content': data})
+    if response.status_code != 204:
+        logger.error(response.json())
+        return
+
+    # Create Excessive heat rule..
+    with open('excessive_heat.clp', 'r') as file:
+        data = file.read()
+    logger.info('Creating the Excessive heat rule')
+    response = requests.post(
+        url + '/reactive_rule', json={'name': 'excessive_heat', 'content': data})
+    if response.status_code != 204:
+        logger.error(response.json())
+        return
+
+    # Create Fluctuation rule..
+    with open('fluctuation.clp', 'r') as file:
+        data = file.read()
+    logger.info('Creating the Fluctuation rule')
+    response = requests.post(
+        url + '/reactive_rule', json={'name': 'fluctuation', 'content': data})
+    if response.status_code != 204:
+        logger.error(response.json())
+        return
+
+    # Create Freezing rule..
+    with open('freezing.clp', 'r') as file:
+        data = file.read()
+    logger.info('Creating the Freezing rule')
+    response = requests.post(
+        url + '/reactive_rule', json={'name': 'freezing', 'content': data})
+    if response.status_code != 204:
+        logger.error(response.json())
+        return
+
+    # Create Mental fatigue rule..
+    with open('mental_fatigue.clp', 'r') as file:
+        data = file.read()
+    logger.info('Creating the Mental fatigue rule')
+    response = requests.post(
+        url + '/reactive_rule', json={'name': 'mental_fatigue', 'content': data})
+    if response.status_code != 204:
+        logger.error(response.json())
+        return
+
+    # Create Physical fatigue rule..
+    with open('physical_fatigue.clp', 'r') as file:
+        data = file.read()
+    logger.info('Creating the Physical fatigue rule')
+    response = requests.post(
+        url + '/reactive_rule', json={'name': 'physical_fatigue', 'content': data})
+    if response.status_code != 204:
+        logger.error(response.json())
+        return
+
+    # Create Sensory disregulation rule..
+    with open('sensory_disregulation.clp', 'r') as file:
+        data = file.read()
+    logger.info('Creating the Sensory disregulation rule')
+    response = requests.post(
+        url + '/reactive_rule', json={'name': 'sensory_disregulation', 'content': data})
+    if response.status_code != 204:
+        logger.error(response.json())
         return
 
 
@@ -140,4 +224,5 @@ if __name__ == '__main__':
     session = requests.Session()
 
     create_types(session, url)
+    create_rules(session, url)
     create_items(session, url)

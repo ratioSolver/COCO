@@ -135,11 +135,23 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
 
       const v_thead = v_table.createTHead();
       const v_hrow = v_thead.insertRow();
+
       const v_name = document.createElement('th');
       v_name.scope = 'col';
       v_name.textContent = 'Name';
       v_name.classList.add('w-75');
       v_hrow.appendChild(v_name);
+
+      const v_sel_all = document.createElement('th');
+      v_sel_all.scope = 'col';
+      v_sel_all.classList.add('w-auto', 'text-center'); // Auto width and centered content
+      const v_sel_all_check = document.createElement('input');
+      v_sel_all_check.classList.add('form-check-input');
+      v_sel_all_check.type = 'checkbox';
+      v_sel_all_check.addEventListener('change', function () { });
+      v_sel_all.appendChild(v_sel_all_check);
+      v_hrow.appendChild(v_sel_all);
+
       const v_val = document.createElement('th');
       v_val.scope = 'col';
       v_val.textContent = 'Value';
@@ -149,10 +161,21 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       const v_body = v_table.createTBody();
       for (const [name, prop] of item.get_type().get_all_dynamic_properties()) {
         const row = v_body.insertRow();
+
         const v_name = document.createElement('th');
         v_name.scope = 'col';
         v_name.textContent = name;
         row.appendChild(v_name);
+
+        const v_sel = document.createElement('td');
+        v_sel.classList.add('text-center');
+        const v_sel_check = document.createElement('input');
+        v_sel_check.classList.add('form-check-input');
+        v_sel_check.type = 'checkbox';
+        v_sel_check.classList.add('property-checkbox');
+        v_sel.appendChild(v_sel_check);
+        row.appendChild(v_sel);
+
         const v_value = document.createElement('td');
         const pub = publisher.PublisherManager.get_instance().get_publisher_maker(prop.get_type().get_name()).make_publisher(name, prop, this.val);
         this.v_values.set(name, pub);

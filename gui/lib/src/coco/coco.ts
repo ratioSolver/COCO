@@ -198,7 +198,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): SymbolProperty {
         const sym_pm = property_message as SymbolPropertyMessage;
-        return new SymbolProperty(this, sym_pm.multiple, sym_pm.symbols, sym_pm.default_value);
+        return new SymbolProperty(this, sym_pm.multiple, sym_pm.values, sym_pm.default_value);
       }
 
       to_string(val: string | string[]): string { return Array.isArray(val) ? val.join(', ') : val; }
@@ -578,13 +578,12 @@ interface StringPropertyMessage extends PropMessage<string> {
 
 interface SymbolPropertyMessage extends PropMessage<string | string[]> {
   multiple: boolean;
-  symbols?: string[];
+  values?: string[];
 }
 
 interface ItemPropertyMessage extends PropMessage<string | string[]> {
   domain: string;
   multiple: boolean;
-  items?: string[];
 }
 
 interface JSONPropertyMessage extends PropMessage<Record<string, any>> {

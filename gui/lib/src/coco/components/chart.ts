@@ -97,7 +97,7 @@ export namespace chart {
   export interface Chart<V> {
 
     set_values(vals: Value<V>[]): void;
-    add_value(val: Value<V>): void;
+    add_value(val: Value<V>): Data[];
     get_data(): Data[];
     get_range(): number[] | undefined;
   }
@@ -116,14 +116,18 @@ export namespace chart {
     set_values(vals: Value<boolean>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) }, yaxis: this.name });
+        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) }, yaxis: 'yaxis-' + this.name });
       if (vals.length)
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) }, yaxis: this.name });
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) }, yaxis: 'yaxis-' + this.name });
     }
-    add_value(val: Value<boolean>): void {
+    add_value(val: Value<boolean>): Data[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) }, yaxis: this.name });
+      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) }, yaxis: 'yaxis-' + this.name });
+      if (this.data.length > 1)
+        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
+      else
+        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Data[] { return this.data; }
@@ -134,32 +138,28 @@ export namespace chart {
 
     private readonly name: string;
     private readonly prop: coco.taxonomy.IntProperty;
-    private readonly data: Partial<PlotData>[] = [];
+    private readonly data: Partial<PlotData>;
 
     constructor(name: string, prop: coco.taxonomy.IntProperty, vals: Value<number>[]) {
       this.name = name;
       this.prop = prop;
+      this.data = { x: [], y: [], type: 'scatter', yaxis: 'yaxis-' + this.name };
       this.set_values(vals);
     }
 
     set_values(vals: Value<number>[]): void {
-      this.data.length = 0;
-      const xs: number[] = [];
-      const ys: number[] = [];
       for (let i = 0; i < vals.length - 1; i++) {
-        xs.push(vals[i].timestamp.valueOf());
-        ys.push(vals[i].value);
+        (this.data.x! as number[]).push(vals[i].timestamp.valueOf());
+        (this.data.y! as number[]).push(vals[i].value);
       }
-      this.data.push({ x: xs, y: ys, type: 'scatter', yaxis: this.name });
     }
-    add_value(val: Value<number>): void {
-      if (this.data.length == 0)
-        this.data.push({ x: [], y: [], type: 'scatter', yaxis: this.name });
-      (this.data[0].x! as number[]).push(val.timestamp.valueOf());
-      (this.data[0].y! as number[]).push(val.value);
+    add_value(val: Value<number>): Data[] {
+      (this.data.x! as number[]).push(val.timestamp.valueOf());
+      (this.data.y! as number[]).push(val.value);
+      return [this.data];
     }
 
-    get_data(): Data[] { return this.data; }
+    get_data(): Data[] { return [this.data]; }
     get_range(): number[] | undefined {
       const min = this.prop.get_min();
       const max = this.prop.get_max();
@@ -171,32 +171,28 @@ export namespace chart {
 
     private readonly name: string;
     private readonly prop: coco.taxonomy.FloatProperty;
-    private readonly data: Partial<PlotData>[] = [];
+    private readonly data: Partial<PlotData>;
 
     constructor(name: string, prop: coco.taxonomy.FloatProperty, vals: Value<number>[]) {
       this.name = name;
       this.prop = prop;
+      this.data = { x: [], y: [], type: 'scatter', yaxis: 'yaxis-' + this.name };
       this.set_values(vals);
     }
 
     set_values(vals: Value<number>[]): void {
-      this.data.length = 0;
-      const xs: number[] = [];
-      const ys: number[] = [];
       for (let i = 0; i < vals.length - 1; i++) {
-        xs.push(vals[i].timestamp.valueOf());
-        ys.push(vals[i].value);
+        (this.data.x! as number[]).push(vals[i].timestamp.valueOf());
+        (this.data.y! as number[]).push(vals[i].value);
       }
-      this.data.push({ x: xs, y: ys, type: 'scatter', yaxis: this.name });
     }
-    add_value(val: Value<number>): void {
-      if (this.data.length == 0)
-        this.data.push({ x: [], y: [], type: 'scatter', yaxis: this.name });
-      (this.data[0].x! as number[]).push(val.timestamp.valueOf());
-      (this.data[0].y! as number[]).push(val.value);
+    add_value(val: Value<number>): Data[] {
+      (this.data.x! as number[]).push(val.timestamp.valueOf());
+      (this.data.y! as number[]).push(val.value);
+      return [this.data];
     }
 
-    get_data(): Data[] { return this.data; }
+    get_data(): Data[] { return [this.data]; }
     get_range(): number[] | undefined {
       const min = this.prop.get_min();
       const max = this.prop.get_max();
@@ -218,14 +214,18 @@ export namespace chart {
     set_values(vals: Value<string>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: vals[i].value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) }, yaxis: this.name });
+        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: vals[i].value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) }, yaxis: 'yaxis-' + this.name });
       if (vals.length)
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) }, yaxis: this.name });
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) }, yaxis: 'yaxis-' + this.name });
     }
-    add_value(val: Value<string>): void {
+    add_value(val: Value<string>): Data[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) }, yaxis: this.name });
+      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) }, yaxis: 'yaxis-' + this.name });
+      if (this.data.length > 1)
+        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
+      else
+        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Data[] { return this.data; }
@@ -247,18 +247,22 @@ export namespace chart {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++) {
         const name = Array.isArray(vals[i].value) ? (vals[i].value as string[]).join(', ') : vals[i].value as string;
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
       }
       if (vals.length) {
         const name = Array.isArray(vals[vals.length - 1].value) ? (vals[vals.length - 1].value as string[]).join(', ') : vals[vals.length - 1].value as string;
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
       }
     }
-    add_value(val: Value<string | string[]>): void {
+    add_value(val: Value<string | string[]>): Data[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       const name = Array.isArray(val.value) ? (val.value as string[]).join(', ') : val.value as string;
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
+      if (this.data.length > 1)
+        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
+      else
+        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Data[] { return this.data; }
@@ -280,18 +284,22 @@ export namespace chart {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++) {
         const name = Array.isArray(vals[i].value) ? (vals[i].value as string[]).join(', ') : vals[i].value as string;
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
       }
       if (vals.length) {
         const name = Array.isArray(vals[vals.length - 1].value) ? (vals[vals.length - 1].value as string[]).join(', ') : vals[vals.length - 1].value as string;
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
       }
     }
-    add_value(val: Value<string | string[]>): void {
+    add_value(val: Value<string | string[]>): Data[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       const name = Array.isArray(val.value) ? (val.value as string[]).join(', ') : val.value as string;
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
+      if (this.data.length > 1)
+        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
+      else
+        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Data[] { return this.data; }
@@ -313,18 +321,22 @@ export namespace chart {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++) {
         const name = JSON.stringify(vals[i].value);
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
       }
       if (vals.length) {
         const name = JSON.stringify(vals[vals.length - 1].value);
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
       }
     }
-    add_value(val: Value<Record<string, any>>): void {
+    add_value(val: Value<Record<string, any>>): Data[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       const name = JSON.stringify(val.value);
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: this.name });
+      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) }, yaxis: 'yaxis-' + this.name });
+      if (this.data.length > 1)
+        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
+      else
+        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Data[] { return this.data; }

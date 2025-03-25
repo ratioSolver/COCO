@@ -3,7 +3,8 @@ import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
 import { publisher } from "./publisher";
-import Plotly, { Layout } from 'plotly.js-dist-min';
+import Plotly, { Data, Layout } from 'plotly.js-dist-min';
+import { chart } from "./chart";
 
 library.add(faCopy, faTag);
 
@@ -69,8 +70,9 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   private readonly val: Record<string, unknown> = {};
   private readonly v_values = new Map<string, publisher.Publisher<unknown>>();
 
-  private layout: Partial<Layout> & { [key: `yaxis${number}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: 'Time', type: 'date' }, showlegend: false };
-  private config = { responsive: true, displaylogo: false };
+  private readonly layout: Partial<Layout> & { [key: `yaxis-${string}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: 'Time', type: 'date' }, showlegend: false };
+  private readonly config = { responsive: true, displaylogo: false };
+  private readonly charts: Map<string, chart.Chart<unknown>> = new Map();
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
@@ -96,7 +98,8 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     id_div.append(id_button_div);
     this.element.append(id_div);
 
-    if (item.get_type().get_all_static_properties().size > 0) {
+    const static_props = item.get_type().get_all_static_properties();
+    if (static_props.size > 0) {
       const p_table = document.createElement('table');
       p_table.createCaption().textContent = 'Properties';
       p_table.classList.add('table', 'caption-top');
@@ -116,7 +119,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
 
       const p_body = p_table.createTBody();
       const props = item.get_properties();
-      for (const [name, prop] of item.get_type().get_all_static_properties()) {
+      for (const [name, prop] of static_props) {
         const row = p_body.insertRow();
         const p_name = document.createElement('th');
         p_name.scope = 'col';
@@ -132,7 +135,8 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       this.element.append(p_table);
     }
 
-    if (item.get_type().get_all_dynamic_properties().size > 0) {
+    const dynamic_props = item.get_type().get_all_dynamic_properties();
+    if (dynamic_props.size > 0) {
       const v_table = document.createElement('table');
       v_table.createCaption().textContent = 'Values';
       v_table.classList.add('table', 'caption-top');
@@ -163,7 +167,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       v_hrow.appendChild(v_val);
 
       const v_body = v_table.createTBody();
-      for (const [name, prop] of item.get_type().get_all_dynamic_properties()) {
+      for (const [name, prop] of dynamic_props) {
         const row = v_body.insertRow();
 
         const v_name = document.createElement('th');
@@ -189,6 +193,26 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       this.set_value();
 
       this.element.append(v_table);
+
+      const values: Map<string, chart.Value<unknown>[]> = new Map();
+      for (const val of item.get_values())
+        for (const [name, v] of Object.entries(val.data)) {
+          if (!values.has(name))
+            values.set(name, []);
+          values.get(name)!.push({ value: v, timestamp: val.timestamp });
+        }
+
+      const data: Data[] = [];
+      let start_domain = 0;
+      const domain_size = 1 / dynamic_props.size;
+      const domain_separator = 0.05 * domain_size;
+      for (const [name, prop] of dynamic_props) {
+        const c = chart.ChartManager.get_instance().get_chart_generator(prop.get_type().get_name()).make_chart(name, prop, values.has(name) ? values.get(name)! : []);
+        this.charts.set(name, c);
+        data.push(...c.get_data());
+        this.layout[`yaxis-${name}`] = { title: name, domain: [start_domain + domain_separator, start_domain + domain_size - domain_separator], zeroline: false, range: c.get_range() };
+      }
+      Plotly.newPlot(this.element, data.flat(), this.layout, this.config);
     }
 
     item.add_item_listener(this);
@@ -198,9 +222,19 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
 
   properties_updated(_: coco.taxonomy.Item): void { this.set_properties(); }
   values_updated(_: coco.taxonomy.Item): void {
-    Plotly.react(this.element, [], this.layout, this.config);
+    const data: Data[] = [];
+    for (const [_, ch] of this.charts)
+      data.push(...ch.get_data());
+    Plotly.react(this.element, data.flat(), this.layout, this.config);
   }
-  new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Value): void { this.set_value(); }
+  new_value(_i: coco.taxonomy.Item, val: coco.taxonomy.Value): void {
+    this.set_value();
+
+    const data: Data[] = [];
+    for (const [name, v] of Object.entries(val.data))
+      data.push(...this.charts.get(name)!.add_value({ value: v, timestamp: val.timestamp }));
+    Plotly.react(this.element, data.flat(), this.layout, this.config);
+  }
 
   private set_properties() {
     const ps = this.payload.get_properties();

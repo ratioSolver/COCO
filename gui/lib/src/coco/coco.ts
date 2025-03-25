@@ -506,6 +506,7 @@ export namespace coco {
       get_type(): Type { return this.type; }
       get_properties(): Record<string, unknown> | undefined { return this.properties; }
       get_value(): Value | undefined { return this.value; }
+      get_values(): Value[] { return this.values; }
 
       _set_properties(props?: Record<string, unknown>): void {
         this.properties = props;

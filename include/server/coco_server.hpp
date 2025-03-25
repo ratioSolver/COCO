@@ -25,8 +25,8 @@ namespace coco
     utils::u_ptr<network::response> create_item(const network::request &req);
     utils::u_ptr<network::response> delete_item(const network::request &req);
 
-    utils::u_ptr<network::response> get_values(const network::request &req);
-    utils::u_ptr<network::response> set_value(const network::request &req);
+    utils::u_ptr<network::response> get_data(const network::request &req);
+    utils::u_ptr<network::response> set_datum(const network::request &req);
 
     utils::u_ptr<network::response> fake(const network::request &req);
 

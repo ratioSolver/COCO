@@ -1,3 +1,5 @@
+import { App, Settings } from "ratio-core";
+
 export namespace coco {
 
   export class CoCo implements CoCoListener {
@@ -49,6 +51,27 @@ export namespace coco {
       for (const listener of this.coco_listeners) listener.new_item(item);
     }
 
+    /**
+     * Loads data for a given taxonomy item within a specified date range.
+     *
+     * @param item - The taxonomy item for which data is to be loaded.
+     * @param from - The start date of the range (in milliseconds since the Unix epoch). Defaults to 14 days ago.
+     * @param to - The end date of the range (in milliseconds since the Unix epoch). Defaults to the current date and time.
+     *
+     * If the request is successful, the item's values are updated with the fetched data.
+     * If the request fails, an error message is displayed using the application's toast mechanism.
+     */
+    load_data(item: taxonomy.Item, from = Date.now() - 1000 * 60 * 60 * 24 * 14, to = Date.now()) {
+      console.debug('Loading data for', item.to_string(), 'from', new Date(from), 'to', new Date(to));
+      const headers = { 'content-type': 'application/json' };
+      fetch(Settings.get_instance().get_host() + '/data/' + item.get_id() + '?' + new URLSearchParams({ from: from.toString(), to: to.toString() }), { method: 'GET', headers: headers }).then(res => {
+        if (res.ok)
+          res.json().then(data => item._set_data(data));
+        else
+          res.json().then(data => App.get_instance().toast(data.message)).catch(err => console.error(err));
+      });
+    }
+
     update_coco(message: UpdateCoCoMessage | any): void {
       if ('msg_type' in message)
         switch (message.msg_type) {
@@ -67,7 +90,7 @@ export namespace coco {
             break;
           case 'new_data':
             const ndm = message as NewItemMessage;
-            this.get_item(ndm.id)._add_value({ data: ndm.value!.data, timestamp: new Date(ndm.value!.timestamp) });
+            this.get_item(ndm.id)._set_datum({ data: ndm.value!.data, timestamp: new Date(ndm.value!.timestamp) });
         }
     }
 
@@ -484,42 +507,42 @@ export namespace coco {
       dynamic_properties_updated(type: Type): void;
     }
 
-    export type Value = { data: Record<string, unknown>, timestamp: Date }
+    export type Datum = { data: Record<string, unknown>, timestamp: Date }
 
     export class Item {
 
       private readonly id: string;
       private readonly type: Type;
       private properties?: Record<string, unknown>;
-      private value?: Value;
-      private values: Value[] = [];
+      private datum?: Datum;
+      private data: Datum[] = [];
       private readonly listeners = new Set<ItemListener>();
 
-      constructor(id: string, type: Type, properties?: Record<string, unknown>, value?: Value) {
+      constructor(id: string, type: Type, properties?: Record<string, unknown>, value?: Datum) {
         this.id = id;
         this.type = type;
         this.properties = properties;
-        this.value = value;
+        this.datum = value;
       }
 
       get_id(): string { return this.id; }
       get_type(): Type { return this.type; }
       get_properties(): Record<string, unknown> | undefined { return this.properties; }
-      get_value(): Value | undefined { return this.value; }
-      get_values(): Value[] { return this.values; }
+      get_datum(): Datum | undefined { return this.datum; }
+      get_data(): Datum[] { return this.data; }
 
       _set_properties(props?: Record<string, unknown>): void {
         this.properties = props;
         for (const l of this.listeners) l.properties_updated(this);
       }
-      _set_values(values: Value[]): void {
-        this.values = values;
+      _set_data(data: Datum[]): void {
+        this.data = data;
         for (const l of this.listeners) l.values_updated(this);
       }
-      _add_value(v: Value): void {
-        this.value = v;
-        this.values.push(v);
-        for (const l of this.listeners) l.new_value(this, v);
+      _set_datum(datum: Datum): void {
+        this.datum = datum;
+        this.data.push(datum);
+        for (const l of this.listeners) l.new_value(this, datum);
       }
 
       add_item_listener(l: ItemListener): void { this.listeners.add(l); }
@@ -532,7 +555,7 @@ export namespace coco {
 
       properties_updated(item: Item): void;
       values_updated(item: Item): void;
-      new_value(item: Item, v: Value): void;
+      new_value(item: Item, v: Datum): void;
     }
   }
 }

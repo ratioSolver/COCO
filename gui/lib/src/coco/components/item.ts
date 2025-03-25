@@ -3,7 +3,7 @@ import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
 import { publisher } from "./publisher";
-import Plotly, { Data, Layout } from 'plotly.js-dist-min';
+import Plotly, { Layout, PlotData } from 'plotly.js-dist-min';
 import { chart } from "./chart";
 
 library.add(faCopy, faTag);
@@ -38,7 +38,7 @@ export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> im
 
   properties_updated(_: coco.taxonomy.Item): void { }
   values_updated(_: coco.taxonomy.Item): void { }
-  new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Value): void { }
+  new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Datum): void { }
 
   select(): void {
     this.a.classList.add('active');
@@ -70,10 +70,11 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   private readonly val: Record<string, unknown> = {};
   private readonly v_values = new Map<string, publisher.Publisher<unknown>>();
 
-  private readonly layout: Partial<Layout> & { [key: `yaxis-${string}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: 'Time', type: 'date' }, showlegend: false };
+  private readonly layout: Partial<Layout> & { [key: `yaxis${number}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: 'Time', type: 'date' }, showlegend: false };
   private readonly config = { responsive: true, displaylogo: false };
   private readonly chart: HTMLDivElement;
   private readonly charts: Map<string, chart.Chart<unknown>> = new Map();
+  private readonly yaxis: Map<string, string> = new Map();
 
   constructor(item: coco.taxonomy.Item) {
     super(item, document.createElement('div'));
@@ -137,6 +138,13 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     }
 
     const dynamic_props = item.get_type().get_all_dynamic_properties();
+
+    this.chart = document.createElement('div');
+    this.chart.style.width = '100%';
+    this.chart.style.height = dynamic_props.size * 200 + 'px';
+
+    this.element.append(this.chart);
+
     if (dynamic_props.size > 0) {
       const v_table = document.createElement('table');
       v_table.createCaption().textContent = 'Values';
@@ -197,36 +205,47 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       this.element.append(v_table);
     }
 
-    this.chart = document.createElement('div');
-    this.chart.style.width = '100%';
-    this.chart.style.height = dynamic_props.size * 200 + 'px';
-
-    this.element.append(this.chart);
-
     item.add_item_listener(this);
+
+    if (item.get_data().length == 0)
+      coco.CoCo.get_instance().load_data(item);
   }
 
   override mounted(): void {
     const dynamic_props = this.payload.get_type().get_all_dynamic_properties();
     const values: Map<string, chart.Value<unknown>[]> = new Map();
-    for (const val of this.payload.get_values())
+    for (const val of this.payload.get_data())
       for (const [name, v] of Object.entries(val.data)) {
         if (!values.has(name))
           values.set(name, []);
         values.get(name)!.push({ value: v, timestamp: val.timestamp });
       }
 
-    const data: Data[] = [];
-    let start_domain = 0;
+    const data: Partial<PlotData>[] = [];
+    let i = dynamic_props.size;
     const domain_size = 1 / dynamic_props.size;
     const domain_separator = 0.05 * domain_size;
+    let start_domain = domain_size * dynamic_props.size - domain_size;
     for (const [name, prop] of dynamic_props) {
       const gen = chart.ChartManager.get_instance().get_chart_generator(prop.get_type().get_name());
-      const c = gen.make_chart(name, prop, values.has(name) ? values.get(name)! : []);
+      const c = gen.make_chart(prop, values.has(name) ? values.get(name)! : []);
       this.charts.set(name, c);
-      data.push(...c.get_data());
-      this.layout[`yaxis-${name}`] = { title: name, domain: [start_domain + domain_separator, start_domain + domain_size - domain_separator], zeroline: false, showticklabels: gen.show_tick_labels(), showgrid: gen.show_grid(), range: c.get_range() };
-      start_domain += domain_size;
+      const layout = { title: name, domain: [start_domain + domain_separator, start_domain + domain_size - domain_separator], zeroline: false, showticklabels: gen.show_tick_labels(), showgrid: gen.show_grid(), range: c.get_range() };
+      if (i == 1) {
+        this.yaxis.set(name, 'y');
+        this.layout['yaxis'] = layout;
+      }
+      else {
+        this.yaxis.set(name, `y${i}`);
+        this.layout[`yaxis${i}`] = layout;
+      }
+      const yaxis = this.yaxis.get(name);
+      for (const d of c.get_data()) {
+        d.yaxis = yaxis;
+        data.push(d);
+      }
+      i--;
+      start_domain -= domain_size;
     }
     Plotly.newPlot(this.chart, data.flat(), this.layout, this.config);
   }
@@ -234,18 +253,36 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
 
   properties_updated(_: coco.taxonomy.Item): void { this.set_properties(); }
   values_updated(_: coco.taxonomy.Item): void {
-    const data: Data[] = [];
-    for (const [_, ch] of this.charts)
-      data.push(...ch.get_data());
-    Plotly.react(this.element, data.flat(), this.layout, this.config);
+    const values: Map<string, chart.Value<unknown>[]> = new Map();
+    for (const val of this.payload.get_data())
+      for (const [name, v] of Object.entries(val.data)) {
+        if (!values.has(name))
+          values.set(name, []);
+        values.get(name)!.push({ value: v, timestamp: val.timestamp });
+      }
+
+    const data: Partial<PlotData>[] = [];
+    for (const [name, ch] of this.charts) {
+      const yaxis = this.yaxis.get(name);
+      for (const d of ch.set_values(values.has(name) ? values.get(name)! : [])) {
+        d.yaxis = yaxis;
+        data.push(d);
+      }
+    }
+    Plotly.react(this.chart, data.flat(), this.layout, this.config);
   }
-  new_value(_i: coco.taxonomy.Item, val: coco.taxonomy.Value): void {
+  new_value(_i: coco.taxonomy.Item, val: coco.taxonomy.Datum): void {
     this.set_value();
 
-    const data: Data[] = [];
-    for (const [name, v] of Object.entries(val.data))
-      data.push(...this.charts.get(name)!.add_value({ value: v, timestamp: val.timestamp }));
-    Plotly.react(this.element, data.flat(), this.layout, this.config);
+    const data: Partial<PlotData>[] = [];
+    for (const [name, v] of Object.entries(val.data)) {
+      const yaxis = this.yaxis.get(name);
+      for (const d of this.charts.get(name)!.add_value({ value: v, timestamp: val.timestamp })) {
+        d.yaxis = yaxis;
+        data.push(d);
+      }
+    }
+    Plotly.react(this.chart, data.flat(), this.layout, this.config);
   }
 
   private set_properties() {
@@ -260,7 +297,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
   }
 
   private set_value() {
-    const val = this.payload.get_value();
+    const val = this.payload.get_datum();
     if (val)
       for (const [name, _] of this.payload.get_type().get_all_dynamic_properties())
         if (val && val.data[name]) {

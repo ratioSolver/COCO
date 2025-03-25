@@ -22,8 +22,8 @@ namespace coco
         add_route(network::Post, "^/item$", std::bind(&coco_server::create_item, this, network::placeholders::request));
         add_route(network::Delete, "^/item/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
 
-        add_route(network::Get, "^/value/.*$", std::bind(&coco_server::get_values, this, network::placeholders::request));
-        add_route(network::Post, "^/value/.*$", std::bind(&coco_server::set_value, this, network::placeholders::request));
+        add_route(network::Get, "^/data/.*$", std::bind(&coco_server::get_data, this, network::placeholders::request));
+        add_route(network::Post, "^/data/.*$", std::bind(&coco_server::set_datum, this, network::placeholders::request));
 
         add_route(network::Post, "^/fake/.*$", std::bind(&coco_server::fake, this, network::placeholders::request));
 
@@ -192,9 +192,9 @@ namespace coco
         }
     }
 
-    utils::u_ptr<network::response> coco_server::get_values(const network::request &req)
+    utils::u_ptr<network::response> coco_server::get_data(const network::request &req)
     { // get item by id in the path
-        auto id = req.get_target().substr(7);
+        auto id = req.get_target().substr(6);
         std::map<std::string, std::string> params;
         if (id.find('?') != std::string::npos)
         {
@@ -214,9 +214,9 @@ namespace coco
         std::chrono::system_clock::time_point from = params.count("from") ? std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("from"))}) : to - std::chrono::hours{24 * 7};
         return utils::make_u_ptr<network::json_response>(cc.get_values(*itm, from, to));
     }
-    utils::u_ptr<network::response> coco_server::set_value(const network::request &req)
+    utils::u_ptr<network::response> coco_server::set_datum(const network::request &req)
     { // get item by id in the path
-        auto id = req.get_target().substr(7);
+        auto id = req.get_target().substr(6);
         std::map<std::string, std::string> params;
         if (id.find('?') != std::string::npos)
         {
@@ -293,7 +293,7 @@ namespace coco
         return utils::make_u_ptr<network::json_response>(std::move(j));
     }
 
-    utils::u_ptr<network::response> coco_server::get_reactive_rules(const network::request &req)
+    utils::u_ptr<network::response> coco_server::get_reactive_rules(const network::request &)
     {
         json::json is(json::json_type::array);
         for (auto &rr : cc.get_reactive_rules())
@@ -322,7 +322,7 @@ namespace coco
         }
     }
 
-    utils::u_ptr<network::response> coco_server::get_deliberative_rules(const network::request &req)
+    utils::u_ptr<network::response> coco_server::get_deliberative_rules(const network::request &)
     {
         json::json is(json::json_type::array);
         for (auto &dr : cc.get_deliberative_rules())

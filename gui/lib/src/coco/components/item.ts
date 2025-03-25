@@ -72,6 +72,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
 
   private readonly layout: Partial<Layout> & { [key: `yaxis-${string}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: 'Time', type: 'date' }, showlegend: false };
   private readonly config = { responsive: true, displaylogo: false };
+  private readonly chart: HTMLDivElement;
   private readonly charts: Map<string, chart.Chart<unknown>> = new Map();
 
   constructor(item: coco.taxonomy.Item) {
@@ -178,6 +179,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
         const v_sel = document.createElement('td');
         v_sel.classList.add('text-center');
         const v_sel_check = document.createElement('input');
+
         v_sel_check.classList.add('form-check-input');
         v_sel_check.type = 'checkbox';
         v_sel_check.classList.add('property-checkbox');
@@ -193,31 +195,41 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
       this.set_value();
 
       this.element.append(v_table);
-
-      const values: Map<string, chart.Value<unknown>[]> = new Map();
-      for (const val of item.get_values())
-        for (const [name, v] of Object.entries(val.data)) {
-          if (!values.has(name))
-            values.set(name, []);
-          values.get(name)!.push({ value: v, timestamp: val.timestamp });
-        }
-
-      const data: Data[] = [];
-      let start_domain = 0;
-      const domain_size = 1 / dynamic_props.size;
-      const domain_separator = 0.05 * domain_size;
-      for (const [name, prop] of dynamic_props) {
-        const c = chart.ChartManager.get_instance().get_chart_generator(prop.get_type().get_name()).make_chart(name, prop, values.has(name) ? values.get(name)! : []);
-        this.charts.set(name, c);
-        data.push(...c.get_data());
-        this.layout[`yaxis-${name}`] = { title: name, domain: [start_domain + domain_separator, start_domain + domain_size - domain_separator], zeroline: false, range: c.get_range() };
-      }
-      Plotly.newPlot(this.element, data.flat(), this.layout, this.config);
     }
+
+    this.chart = document.createElement('div');
+    this.chart.style.width = '100%';
+    this.chart.style.height = dynamic_props.size * 200 + 'px';
+
+    this.element.append(this.chart);
 
     item.add_item_listener(this);
   }
 
+  override mounted(): void {
+    const dynamic_props = this.payload.get_type().get_all_dynamic_properties();
+    const values: Map<string, chart.Value<unknown>[]> = new Map();
+    for (const val of this.payload.get_values())
+      for (const [name, v] of Object.entries(val.data)) {
+        if (!values.has(name))
+          values.set(name, []);
+        values.get(name)!.push({ value: v, timestamp: val.timestamp });
+      }
+
+    const data: Data[] = [];
+    let start_domain = 0;
+    const domain_size = 1 / dynamic_props.size;
+    const domain_separator = 0.05 * domain_size;
+    for (const [name, prop] of dynamic_props) {
+      const gen = chart.ChartManager.get_instance().get_chart_generator(prop.get_type().get_name());
+      const c = gen.make_chart(name, prop, values.has(name) ? values.get(name)! : []);
+      this.charts.set(name, c);
+      data.push(...c.get_data());
+      this.layout[`yaxis-${name}`] = { title: name, domain: [start_domain + domain_separator, start_domain + domain_size - domain_separator], zeroline: false, showticklabels: gen.show_tick_labels(), showgrid: gen.show_grid(), range: c.get_range() };
+      start_domain += domain_size;
+    }
+    Plotly.newPlot(this.chart, data.flat(), this.layout, this.config);
+  }
   override unmounting(): void { this.payload.remove_item_listener(this); }
 
   properties_updated(_: coco.taxonomy.Item): void { this.set_properties(); }

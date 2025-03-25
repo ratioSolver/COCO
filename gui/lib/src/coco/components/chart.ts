@@ -40,6 +40,9 @@ export namespace chart {
 
     get_name(): string { return this.name; }
 
+    show_tick_labels(): boolean | undefined { return undefined; }
+    show_grid(): boolean | undefined { return undefined; }
+
     abstract make_chart(name: string, prop: coco.taxonomy.Property<unknown>, vals: Value<V>[]): Chart<V>;
   }
 
@@ -50,6 +53,9 @@ export namespace chart {
     constructor() { super('bool'); }
 
     make_chart(name: string, prop: coco.taxonomy.BoolProperty, vals: Value<boolean>[]): BoolChart { return new BoolChart(name, prop, vals); }
+
+    override show_tick_labels(): boolean { return false; }
+    override show_grid(): boolean { return false; }
   }
 
   class IntChartGenerator extends ChartGenerator<number> {
@@ -71,6 +77,9 @@ export namespace chart {
     constructor() { super('string'); }
 
     make_chart(name: string, prop: coco.taxonomy.StringProperty, vals: Value<string>[]): StringChart { return new StringChart(name, prop, vals); }
+
+    override show_tick_labels(): boolean { return false; }
+    override show_grid(): boolean { return false; }
   }
 
   class SymbolChartGenerator extends ChartGenerator<string | string[]> {
@@ -78,6 +87,9 @@ export namespace chart {
     constructor() { super('symbol'); }
 
     make_chart(name: string, prop: coco.taxonomy.SymbolProperty, vals: Value<string | string[]>[]): SymbolChart { return new SymbolChart(name, prop, vals); }
+
+    override show_tick_labels(): boolean { return false; }
+    override show_grid(): boolean { return false; }
   }
 
   class ItemChartGenerator extends ChartGenerator<string | string[]> {
@@ -85,6 +97,9 @@ export namespace chart {
     constructor() { super('item'); }
 
     make_chart(name: string, prop: coco.taxonomy.ItemProperty, vals: Value<string | string[]>[]): ItemChart { return new ItemChart(name, prop, vals); }
+
+    override show_tick_labels(): boolean { return false; }
+    override show_grid(): boolean { return false; }
   }
 
   class JSONChartGenerator extends ChartGenerator<Record<string, any>> {
@@ -92,6 +107,9 @@ export namespace chart {
     constructor() { super('item'); }
 
     make_chart(name: string, prop: coco.taxonomy.JSONProperty, vals: Value<Record<string, any>>[]): JSONChart { return new JSONChart(name, prop, vals); }
+
+    override show_tick_labels(): boolean { return false; }
+    override show_grid(): boolean { return false; }
   }
 
   export interface Chart<V> {
@@ -99,6 +117,7 @@ export namespace chart {
     set_values(vals: Value<V>[]): void;
     add_value(val: Value<V>): Data[];
     get_data(): Data[];
+
     get_range(): number[] | undefined;
   }
 
@@ -131,6 +150,7 @@ export namespace chart {
     }
 
     get_data(): Data[] { return this.data; }
+
     get_range(): undefined { return undefined; }
   }
 
@@ -160,6 +180,7 @@ export namespace chart {
     }
 
     get_data(): Data[] { return [this.data]; }
+
     get_range(): number[] | undefined {
       const min = this.prop.get_min();
       const max = this.prop.get_max();
@@ -193,6 +214,7 @@ export namespace chart {
     }
 
     get_data(): Data[] { return [this.data]; }
+
     get_range(): number[] | undefined {
       const min = this.prop.get_min();
       const max = this.prop.get_max();
@@ -229,6 +251,7 @@ export namespace chart {
     }
 
     get_data(): Data[] { return this.data; }
+
     get_range(): undefined { return undefined; }
   }
 
@@ -266,6 +289,7 @@ export namespace chart {
     }
 
     get_data(): Data[] { return this.data; }
+
     get_range(): undefined { return undefined; }
   }
 
@@ -303,6 +327,7 @@ export namespace chart {
     }
 
     get_data(): Data[] { return this.data; }
+
     get_range(): undefined { return undefined; }
   }
 
@@ -340,6 +365,7 @@ export namespace chart {
     }
 
     get_data(): Data[] { return this.data; }
+
     get_range(): undefined { return undefined; }
   }
 }

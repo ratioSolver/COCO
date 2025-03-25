@@ -264,7 +264,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     const data: Partial<PlotData>[] = [];
     for (const [name, ch] of this.charts) {
       const yaxis = this.yaxis.get(name);
-      for (const d of ch.set_values(values.has(name) ? values.get(name)! : [])) {
+      for (const d of ch.set_data(values.has(name) ? values.get(name)! : [])) {
         d.yaxis = yaxis;
         data.push(d);
       }
@@ -277,7 +277,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> implemen
     const data: Partial<PlotData>[] = [];
     for (const [name, v] of Object.entries(val.data)) {
       const yaxis = this.yaxis.get(name);
-      for (const d of this.charts.get(name)!.add_value({ value: v, timestamp: val.timestamp })) {
+      for (const d of this.charts.get(name)!.set_datum({ value: v, timestamp: val.timestamp })) {
         d.yaxis = yaxis;
         data.push(d);
       }

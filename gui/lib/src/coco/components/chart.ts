@@ -114,8 +114,8 @@ export namespace chart {
 
   export interface Chart<V> {
 
-    set_values(vals: Value<V>[]): Partial<PlotData>[];
-    add_value(val: Value<V>): Partial<PlotData>[];
+    set_data(vals: Value<V>[]): Partial<PlotData>[];
+    set_datum(val: Value<V>): Partial<PlotData>[];
     get_data(): Partial<PlotData>[];
 
     get_range(): number[] | undefined;
@@ -127,10 +127,10 @@ export namespace chart {
     private readonly colors = scaleOrdinal<boolean, string>().domain([true, false]).range(["#4CAF50", "#F44336"]);
 
     constructor(_: coco.taxonomy.BoolProperty, vals: Value<boolean>[]) {
-      this.set_values(vals);
+      this.set_data(vals);
     }
 
-    set_values(vals: Value<boolean>[]): Partial<PlotData>[] {
+    set_data(vals: Value<boolean>[]): Partial<PlotData>[] {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
         this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) } });
@@ -138,7 +138,7 @@ export namespace chart {
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) } });
       return this.data;
     }
-    add_value(val: Value<boolean>): Partial<PlotData>[] {
+    set_datum(val: Value<boolean>): Partial<PlotData>[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
@@ -161,17 +161,17 @@ export namespace chart {
     constructor(prop: coco.taxonomy.IntProperty, vals: Value<number>[]) {
       this.prop = prop;
       this.data = { x: [], y: [], type: 'scatter' };
-      this.set_values(vals);
+      this.set_data(vals);
     }
 
-    set_values(vals: Value<number>[]): Partial<PlotData>[] {
+    set_data(vals: Value<number>[]): Partial<PlotData>[] {
       for (let i = 0; i < vals.length - 1; i++) {
         (this.data.x! as number[]).push(vals[i].timestamp.valueOf());
         (this.data.y! as number[]).push(vals[i].value);
       }
       return [this.data];
     }
-    add_value(val: Value<number>): Partial<PlotData>[] {
+    set_datum(val: Value<number>): Partial<PlotData>[] {
       (this.data.x! as number[]).push(val.timestamp.valueOf());
       (this.data.y! as number[]).push(val.value);
       return [this.data];
@@ -194,17 +194,17 @@ export namespace chart {
     constructor(prop: coco.taxonomy.FloatProperty, vals: Value<number>[]) {
       this.prop = prop;
       this.data = { x: [], y: [], type: 'scatter' };
-      this.set_values(vals);
+      this.set_data(vals);
     }
 
-    set_values(vals: Value<number>[]): Partial<PlotData>[] {
+    set_data(vals: Value<number>[]): Partial<PlotData>[] {
       for (let i = 0; i < vals.length - 1; i++) {
         (this.data.x! as number[]).push(vals[i].timestamp.valueOf());
         (this.data.y! as number[]).push(vals[i].value);
       }
       return [this.data];
     }
-    add_value(val: Value<number>): Partial<PlotData>[] {
+    set_datum(val: Value<number>): Partial<PlotData>[] {
       (this.data.x! as number[]).push(val.timestamp.valueOf());
       (this.data.y! as number[]).push(val.value);
       return [this.data];
@@ -225,10 +225,10 @@ export namespace chart {
     private readonly colors = scaleOrdinal(schemeCategory10);
 
     constructor(_: coco.taxonomy.StringProperty, vals: Value<string>[]) {
-      this.set_values(vals);
+      this.set_data(vals);
     }
 
-    set_values(vals: Value<string>[]): Partial<PlotData>[] {
+    set_data(vals: Value<string>[]): Partial<PlotData>[] {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
         this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: vals[i].value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) } });
@@ -236,7 +236,7 @@ export namespace chart {
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) } });
       return this.data;
     }
-    add_value(val: Value<string>): Partial<PlotData>[] {
+    set_datum(val: Value<string>): Partial<PlotData>[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
@@ -257,10 +257,10 @@ export namespace chart {
     private readonly colors = scaleOrdinal(schemeCategory10);
 
     constructor(_: coco.taxonomy.SymbolProperty, vals: Value<string | string[]>[]) {
-      this.set_values(vals);
+      this.set_data(vals);
     }
 
-    set_values(vals: Value<string | string[]>[]): Partial<PlotData>[] {
+    set_data(vals: Value<string | string[]>[]): Partial<PlotData>[] {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
         this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: this.get_name(vals[i].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[i].value)) } });
@@ -268,7 +268,7 @@ export namespace chart {
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value)) } });
       return this.data;
     }
-    add_value(val: Value<string | string[]>): Partial<PlotData>[] {
+    set_datum(val: Value<string | string[]>): Partial<PlotData>[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
@@ -291,10 +291,10 @@ export namespace chart {
     private readonly colors = scaleOrdinal(schemeCategory10);
 
     constructor(_: coco.taxonomy.ItemProperty, vals: Value<string | string[]>[]) {
-      this.set_values(vals);
+      this.set_data(vals);
     }
 
-    set_values(vals: Value<string | string[]>[]): Partial<PlotData>[] {
+    set_data(vals: Value<string | string[]>[]): Partial<PlotData>[] {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
         this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: this.get_name(vals[i].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[i].value)) } });
@@ -302,7 +302,7 @@ export namespace chart {
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value)) } });
       return this.data;
     }
-    add_value(val: Value<string | string[]>): Partial<PlotData>[] {
+    set_datum(val: Value<string | string[]>): Partial<PlotData>[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
@@ -325,10 +325,10 @@ export namespace chart {
     private readonly colors = scaleOrdinal(schemeCategory10);
 
     constructor(_: coco.taxonomy.JSONProperty, vals: Value<Record<string, any>>[]) {
-      this.set_values(vals);
+      this.set_data(vals);
     }
 
-    set_values(vals: Value<Record<string, any>>[]): Partial<PlotData>[] {
+    set_data(vals: Value<Record<string, any>>[]): Partial<PlotData>[] {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++) {
         const name = JSON.stringify(vals[i].value);
@@ -340,7 +340,7 @@ export namespace chart {
       }
       return this.data;
     }
-    add_value(val: Value<Record<string, any>>): Partial<PlotData>[] {
+    set_datum(val: Value<Record<string, any>>): Partial<PlotData>[] {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       const name = JSON.stringify(val.value);

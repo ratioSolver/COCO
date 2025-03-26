@@ -39,6 +39,7 @@ namespace coco
         if (val.has_value())
             set_value(std::move(val.value()));
 
+        Run(tp.get_coco().env, -1);
         NEW_ITEM();
     }
     item::~item() noexcept
@@ -49,6 +50,7 @@ namespace coco
             Retract(p.second);
         Retract(is_instance_of);
         Retract(item_fact);
+        Run(tp.get_coco().env, -1);
     }
 
     void item::set_properties(json::json &&props)
@@ -97,6 +99,7 @@ namespace coco
             }
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have static property " + p_name);
+        Run(tp.get_coco().env, -1);
         UPDATED_ITEM();
     }
 
@@ -126,10 +129,10 @@ namespace coco
         for (const auto &[p_name, j_val] : val.first.as_object())
             if (auto prop = dynamic_properties.find(p_name); prop != dynamic_properties.end())
             {
-                if (auto f = properties_facts.find(p_name); f != properties_facts.end())
+                if (auto f = value_facts.find(p_name); f != value_facts.end())
                 { // we retract the old property
                     Retract(f->second);
-                    properties_facts.erase(f);
+                    value_facts.erase(f);
                 }
 
                 if (j_val.get_type() == json::json_type::null)
@@ -140,18 +143,19 @@ namespace coco
                     FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
                     prop->second->get_property_type().set_value(value_fact_builder, p_name, j_val);
                     FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
-                    auto property_fact = FBAssert(value_fact_builder);
-                    assert(property_fact);
-                    LOG_TRACE(tp.get_coco().to_string(property_fact));
+                    auto value_fact = FBAssert(value_fact_builder);
+                    assert(value_fact);
+                    LOG_TRACE(tp.get_coco().to_string(value_fact));
                     FBDispose(value_fact_builder);
                     value->first[p_name] = j_val;
-                    properties_facts.emplace(p_name, property_fact);
+                    value_facts.emplace(p_name, value_fact);
                 }
                 else
                     LOG_WARN("Data " + p_name + " for item " + id + " is not valid");
             }
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have dynamic property " + p_name);
+        Run(tp.get_coco().env, -1);
         NEW_DATA(val.first, val.second);
     }
 

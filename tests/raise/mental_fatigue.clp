@@ -34,7 +34,10 @@
     (if (and ?older_adults ?rough_path) then (bind ?mental_fatigue (+ ?mental_fatigue 1)))
     (if (and (or ?parkinson ?psychiatric_patients ?multiple_sclerosis ?young_pci_autism) (> ?ambient_temperature 27)) then (bind ?mental_fatigue (+ ?mental_fatigue 1)))
 
-    (if (and (>= ?mental_fatigue 0) (<= ?mental_fatigue 1)) then (add_data ?user (create$ MENTAL_FATIGUE) (create$ "Low")))
-    (if (and (>= ?mental_fatigue 2) (<= ?mental_fatigue 3)) then (add_data ?user (create$ MENTAL_FATIGUE) (create$ "Medium")))
-    (if (>= ?mental_fatigue 4) then (add_data ?user (create$ MENTAL_FATIGUE) (create$ "High")))
+    (printout t "User: " ?user crlf)
+    (printout t "Mental Fatigue: " ?mental_fatigue crlf)
+
+    (if (and (>= ?mental_fatigue 0) (<= ?mental_fatigue 1)) then (add_data ?user (create$ MENTAL_FATIGUE) (create$ low)))
+    (if (and (>= ?mental_fatigue 2) (<= ?mental_fatigue 3)) then (add_data ?user (create$ MENTAL_FATIGUE) (create$ medium)))
+    (if (>= ?mental_fatigue 4) then (add_data ?user (create$ MENTAL_FATIGUE) (create$ high)))
 )

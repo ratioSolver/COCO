@@ -57,34 +57,34 @@ def create_types(session: requests.Session, url: str):
             'PHYSICAL_FATIGUE': {'type': 'symbol', 'values': ['low', 'medium', 'high']},
             'physical_fatigue_relevant': {'type': 'symbol', 'multiple': True, 'values': ['bar_restaurant', 'water_fountains', 'heart_rate', 'baseline_heart_rate', 'respiratory_rate', 'sittings', 'restroom_availability', 'green_spaces']},
             'SENSORY_DYSREGULATION': {'type': 'symbol', 'values': ['low', 'medium', 'high']},
-            'sensory_disregulation_relevant': {'type': 'symbol', 'multiple': True, 'values': ['heart_rate', 'baseline_heart_rate', 'respiratory_rate', 'sensory_profile']},
+            'sensory_dysregulation_relevant': {'type': 'symbol', 'multiple': True, 'values': ['heart_rate', 'baseline_heart_rate', 'respiratory_rate', 'sensory_profile']},
             'FREEZING': {'type': 'symbol', 'values': ['low', 'medium', 'high']},
             'freezing_relevant': {'type': 'symbol', 'multiple': True, 'values': ['heart_rate_differential']},
             'FLUCTUATION': {'type': 'symbol', 'values': ['low', 'medium', 'high']},
             'DYSKINESIA': {'type': 'symbol', 'values': ['low', 'medium', 'high']},
-            'crowding': {'type': 'int'},
+            'crowding': {'type': 'int', 'min': 0, 'max': 100},
             'altered_nutrition': {'type': 'bool'},
-            'altered_thirst_perception': {'type': 'int'},
+            'altered_thirst_perception': {'type': 'int', 'min': 0, 'max': 10},
             'bar_restaurant': {'type': 'bool'},
             'architectural_barriers': {'type': 'bool'},
-            'water_balance': {'type': 'int'},
+            'water_balance': {'type': 'int', 'min': -10, 'max': 10},
             #    'fall': {'type': 'bool'},
             #    'attention_capacity': {'type': 'bool'},
-            'sleep_duration_quality': {'type': 'int'},
+            'sleep_duration_quality': {'type': 'int', 'min': 0, 'max': 10},
             #    'engagement_in_adl': {'type': 'bool'},
             'water_fountains': {'type': 'bool'},
-            'recent_freezing_episodes': {'type': 'int'},
-            'heart_rate': {'type': 'int'},
-            'heart_rate_differential': {'type': 'int'},
+            'recent_freezing_episodes': {'type': 'int', 'min': 0, 'max': 10},
+            'heart_rate': {'type': 'int', 'min': 40, 'max': 200},
+            'heart_rate_differential': {'type': 'int', 'min': -50, 'max': 50},
             'public_events_frequency': {'type': 'bool'},
-            'respiratory_rate': {'type': 'int'},
-            'galvanic_skin_response': {'type': 'int'},
+            'respiratory_rate': {'type': 'int', 'min': 8, 'max': 50},
+            'galvanic_skin_response': {'type': 'int', 'min': 0, 'max': 20},
             'lighting': {'type': 'bool'},
-            'noise_pollution': {'type': 'int'},
-            'user_reported_noise_pollution': {'type': 'int'},
-            'air_pollution': {'type': 'int'},
-            'traffic_levels': {'type': 'int'},
-            'lack_of_ventilation': {'type': 'int'},
+            'noise_pollution': {'type': 'int', 'min': 30, 'max': 120},
+            'user_reported_noise_pollution': {'type': 'int', 'min': 0, 'max': 10},
+            'air_pollution': {'type': 'int', 'min': 0, 'max': 500},
+            'traffic_levels': {'type': 'int', 'min': 0, 'max': 100},
+            'lack_of_ventilation': {'type': 'int', 'min': 0, 'max': 10},
             #    'daily_steps': {'type': 'bool'},
             #    'rehabilitation_school_load': {'type': 'bool'},
             #    'heat_waves': {'type': 'bool'},
@@ -93,16 +93,18 @@ def create_types(session: requests.Session, url: str):
             #    'fatigue_perception': {'type': 'bool'},
             'rough_path': {'type': 'bool'},
             'public_events_presence': {'type': 'bool'},
-            'high_blood_pressure': {'type': 'int'},
-            'low_blood_pressure': {'type': 'int'},
+            # Systolic?
+            'high_blood_pressure': {'type': 'int', 'min': 90, 'max': 200},
+            # Diastolic?
+            'low_blood_pressure': {'type': 'int', 'min': 40, 'max': 120},
             'social_pressure': {'type': 'bool'},
             'sittings': {'type': 'bool'},
             'self_perception': {'type': 'bool'},
             'restroom_availability': {'type': 'bool'},
-            'sweating': {'type': 'int'},
-            'ambient_temperature': {'type': 'int'},
-            'body_temperature': {'type': 'int'},
-            'ambient_humidity': {'type': 'int'},
+            'sweating': {'type': 'int', 'min': 0, 'max': 10},
+            'ambient_temperature': {'type': 'int', 'min': -30, 'max': 50},
+            'body_temperature': {'type': 'int', 'min': 35, 'max': 42},
+            'ambient_humidity': {'type': 'int', 'min': 0, 'max': 100},
             'excessive_urbanization': {'type': 'bool'},
             'green_spaces': {'type': 'bool'}
         }
@@ -185,11 +187,11 @@ def create_rules(session: requests.Session, url: str):
         return
 
     # Create Sensory disregulation rule..
-    with open('sensory_disregulation.clp', 'r') as file:
+    with open('sensory_dysregulation.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Sensory disregulation rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'sensory_disregulation', 'content': data})
+        url + '/reactive_rule', json={'name': 'sensory_dysregulation', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -209,7 +211,9 @@ def create_items(session: requests.Session, url: str):
                 'baseline_heart_rate': fake.random_int(min=40, max=200),
                 'state_anxiety_presence': fake.random_int(max=10),
                 'baseline_blood_pressure': fake.random_int(min=60, max=200),
+                'sensory_profile': fake.boolean(),
                 'stress': fake.random_int(max=10),
+                'psychiatric_disorders': fake.boolean(),
                 'parkinson': fake.boolean(),
                 'older_adults': fake.boolean(),
                 'psychiatric_patients': fake.boolean(),

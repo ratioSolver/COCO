@@ -80,8 +80,6 @@ namespace coco
         LOG_DEBUG("Retrieved " << itms.size() << " items");
         for (auto &itm : itms)
             get_type(itm.type).make_item(itm.id, itm.props.has_value() ? std::move(itm.props.value()) : json::json{});
-
-        Run(env, -1);
     }
     coco::~coco()
     {
@@ -154,8 +152,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto id = db.create_item(tp.get_name(), props, val);
-        auto &itm = tp.make_item(id, std::move(props), std::move(val));
-        return itm;
+        return tp.make_item(id, std::move(props), std::move(val));
     }
     json::json coco::get_values(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
     {

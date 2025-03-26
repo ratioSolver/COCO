@@ -43,7 +43,11 @@
     (if (and (or ?older_adults ?parkinson) (>= ?sweating 10)) then (bind ?excessive_heat_relevant (insert$ ?excessive_heat_relevant 1 sweating)))
     (if (and (or ?psychiatric_patients ?older_adults ?parkinson) (> ?body_temperature 37.5)) then (bind ?excessive_heat_relevant (insert$ ?excessive_heat_relevant 1 body_temperature)))
 
-    (if (and (>= ?excessive_heat 0) (<= ?excessive_heat 1)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ "Low" ?excessive_heat_relevant)))
-    (if (and (>= ?excessive_heat 2) (<= ?excessive_heat 3)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ "Medium" ?excessive_heat_relevant)))
-    (if (>= ?excessive_heat 4) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ "High" ?excessive_heat_relevant)))
+    (printout t "User: " ?user crlf)
+    (printout t "Excessive Heat: " ?excessive_heat crlf)
+    (printout t "Excessive Heat Relevant Factors: " ?excessive_heat_relevant crlf)
+
+    (if (and (>= ?excessive_heat 0) (<= ?excessive_heat 1)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ low ?excessive_heat_relevant)))
+    (if (and (>= ?excessive_heat 2) (<= ?excessive_heat 3)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ medium ?excessive_heat_relevant)))
+    (if (>= ?excessive_heat 4) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ high ?excessive_heat_relevant)))
 )

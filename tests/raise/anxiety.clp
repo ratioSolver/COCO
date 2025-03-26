@@ -35,6 +35,7 @@
     (User_has_body_temperature (item_id ?user) (body_temperature ?body_temperature))
     (User_has_excessive_urbanization (item_id ?user) (excessive_urbanization ?excessive_urbanization))
 =>
+    (printout t "Updating anxiety!" crlf)
     (bind ?anxiety 0)
     (bind ?anxiety_relevant (create$))
 
@@ -68,7 +69,11 @@
     (if (and (or ?older_adults ?parkinson) (>= ?sweating 10)) then (bind ?anxiety_relevant (insert$ ?anxiety_relevant 1 sweating)))
     (if (and (or ?psychiatric_patients ?older_adults ?parkinson) (> ?body_temperature 37.3)) then (bind ?anxiety_relevant (insert$ ?anxiety_relevant 1 body_temperature)))
 
-    (if (and (>= ?anxiety 0) (<= ?anxiety 1)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ "Low" ?anxiety_relevant)))
-    (if (and (>= ?anxiety 2) (<= ?anxiety 3)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ "Medium" ?anxiety_relevant)))
-    (if (>= ?anxiety 4) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ "High" ?anxiety_relevant)))
+    (printout t "User: " ?user crlf)
+    (printout t "Anxiety: " ?anxiety crlf)
+    (printout t "Anxiety Relevant Factors: " ?anxiety_relevant crlf)
+
+    (if (and (>= ?anxiety 0) (<= ?anxiety 1)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ low ?anxiety_relevant)))
+    (if (and (>= ?anxiety 2) (<= ?anxiety 3)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ medium ?anxiety_relevant)))
+    (if (>= ?anxiety 4) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ high ?anxiety_relevant)))
 )

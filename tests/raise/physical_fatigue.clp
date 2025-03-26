@@ -60,7 +60,11 @@
     (if (and ?psychiatric_patients ?restroom_availability) then (bind ?physical_fatigue_relevant (insert$ ?physical_fatigue_relevant 1 restroom_availability)))
     (if (and ?psychiatric_patients ?green_spaces) then (bind ?physical_fatigue_relevant (insert$ ?physical_fatigue_relevant 1 green_spaces)))
 
-    (if (and (>= ?physical_fatigue 0) (<= ?physical_fatigue 1)) then (add_data ?user (create$ PHYSICAL_FATIGUE physical_fatigue_relevant) (create$ "Low" ?physical_fatigue_relevant)))
-    (if (and (>= ?physical_fatigue 2) (<= ?physical_fatigue 3)) then (add_data ?user (create$ PHYSICAL_FATIGUE physical_fatigue_relevant) (create$ "Medium" ?physical_fatigue_relevant)))
-    (if (>= ?physical_fatigue 4) then (add_data ?user (create$ PHYSICAL_FATIGUE physical_fatigue_relevant) (create$ "High" ?physical_fatigue_relevant)))
+    (printout t "User: " ?user crlf)
+    (printout t "Physical Fatigue: " ?physical_fatigue crlf)
+    (printout t "Physical Fatigue Relevant Factors: " ?physical_fatigue_relevant crlf)
+
+    (if (and (>= ?physical_fatigue 0) (<= ?physical_fatigue 1)) then (add_data ?user (create$ PHYSICAL_FATIGUE physical_fatigue_relevant) (create$ low ?physical_fatigue_relevant)))
+    (if (and (>= ?physical_fatigue 2) (<= ?physical_fatigue 3)) then (add_data ?user (create$ PHYSICAL_FATIGUE physical_fatigue_relevant) (create$ medium ?physical_fatigue_relevant)))
+    (if (>= ?physical_fatigue 4) then (add_data ?user (create$ PHYSICAL_FATIGUE physical_fatigue_relevant) (create$ high ?physical_fatigue_relevant)))
 )

@@ -7,7 +7,10 @@
 
     (if (and ?parkinson ?ANXIETY) then (bind ?fluctuation (+ ?fluctuation 1)))
 
-    (if (and (>= ?fluctuation 0) (<= ?fluctuation 1)) then (add_data ?user (create$ FLUCTUATION) (create$ "Low")))
-    (if (and (>= ?fluctuation 2) (<= ?fluctuation 3)) then (add_data ?user (create$ FLUCTUATION) (create$ "Medium")))
-    (if (>= ?fluctuation 4) then (add_data ?user (create$ FLUCTUATION) (create$ "High")))
+    (printout t "User: " ?user crlf)
+    (printout t "Fluctuation: " ?fluctuation crlf)
+
+    (if (and (>= ?fluctuation 0) (<= ?fluctuation 1)) then (add_data ?user (create$ FLUCTUATION) (create$ low)))
+    (if (and (>= ?fluctuation 2) (<= ?fluctuation 3)) then (add_data ?user (create$ FLUCTUATION) (create$ medium)))
+    (if (>= ?fluctuation 4) then (add_data ?user (create$ FLUCTUATION) (create$ high)))
 )

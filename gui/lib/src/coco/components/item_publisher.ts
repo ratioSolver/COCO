@@ -5,6 +5,8 @@ import { publisher } from "./publisher";
 export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
   private readonly val: Record<string, unknown> = {};
+  private readonly v_sel_all_check: HTMLInputElement;
+  private readonly v_checks = new Map<string, HTMLInputElement>();
   private readonly v_values = new Map<string, publisher.Publisher<unknown>>();
 
   constructor(item: coco.taxonomy.Item) {
@@ -26,11 +28,18 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
     const v_sel_all = document.createElement('th');
     v_sel_all.scope = 'col';
     v_sel_all.classList.add('w-auto', 'text-center'); // Auto width and centered content
-    const v_sel_all_check = document.createElement('input');
-    v_sel_all_check.classList.add('form-check-input');
-    v_sel_all_check.type = 'checkbox';
-    v_sel_all_check.addEventListener('change', function () { });
-    v_sel_all.appendChild(v_sel_all_check);
+    this.v_sel_all_check = document.createElement('input');
+    this.v_sel_all_check.classList.add('form-check-input');
+    this.v_sel_all_check.type = 'checkbox';
+    this.v_sel_all_check.addEventListener('change', () => {
+      const val = this.payload.get_datum();
+      for (const [name, check] of this.v_checks) {
+        check.checked = this.v_sel_all_check.checked;
+        if (!this.v_sel_all_check.checked && val && val.data[name])
+          this.v_values.get(name)!.set_value(val.data[name]);
+      }
+    });
+    v_sel_all.appendChild(this.v_sel_all_check);
     v_hrow.appendChild(v_sel_all);
 
     const v_val = document.createElement('th');
@@ -54,7 +63,23 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
 
       v_sel_check.classList.add('form-check-input');
       v_sel_check.type = 'checkbox';
+      v_sel_check.addEventListener('change', () => {
+        if (this.v_checks.values().every(check => check.checked)) {
+          this.v_sel_all_check.indeterminate = false;
+          this.v_sel_all_check.checked = true;
+        }
+        else if (this.v_checks.values().every(check => !check.checked)) {
+          this.v_sel_all_check.indeterminate = false;
+          this.v_sel_all_check.checked = false;
+          const val = this.payload.get_datum();
+          if (val && val.data[name])
+            this.v_values.get(name)!.set_value(val.data[name]);
+        }
+        else
+          this.v_sel_all_check.indeterminate = true;
+      });
       v_sel_check.classList.add('property-checkbox');
+      this.v_checks.set(name, v_sel_check);
       v_sel.appendChild(v_sel_check);
       row.appendChild(v_sel);
 
@@ -67,6 +92,8 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
 
     this.element.append(v_table);
     this.set_value();
+    this.v_sel_all_check.checked = true;
+    this.v_sel_all_check.dispatchEvent(new Event('change'));
 
     item.add_item_listener(this);
   }
@@ -86,7 +113,8 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
         for (const [name, v] of Object.entries(val.data)) {
           const v_val = this.v_values.get(name)!;
           blink(v_val.get_element().children[0] as HTMLElement, 500);
-          v_val.set_value(v);
+          if (!this.v_checks.get(name)!.checked)
+            v_val.set_value(v);
         }
     } else
       this.element.hidden = true;

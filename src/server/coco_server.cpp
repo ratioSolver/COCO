@@ -25,7 +25,7 @@ namespace coco
         add_route(network::Get, "^/data/.*$", std::bind(&coco_server::get_data, this, network::placeholders::request));
         add_route(network::Post, "^/data/.*$", std::bind(&coco_server::set_datum, this, network::placeholders::request));
 
-        add_route(network::Post, "^/fake/.*$", std::bind(&coco_server::fake, this, network::placeholders::request));
+        add_route(network::Get, "^/fake/.*$", std::bind(&coco_server::fake, this, network::placeholders::request));
 
         add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, network::placeholders::request));
         add_route(network::Post, "^/reactive_rule$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
@@ -247,10 +247,17 @@ namespace coco
 
     utils::u_ptr<network::response> coco_server::fake(const network::request &req)
     {
+        auto name = req.get_target().substr(6);
+        std::map<std::string, std::string> params;
+        if (name.find('?') != std::string::npos)
+        {
+            params = network::parse_query(name.substr(name.find('?') + 1));
+            name = name.substr(0, name.find('?'));
+        }
         type *tp;
         try
         {
-            tp = &cc.get_type(req.get_target().substr(6));
+            tp = &cc.get_type(name);
         }
         catch (const std::exception &)
         {
@@ -269,23 +276,23 @@ namespace coco
             for (const auto &[_, p] : tp->get_parents())
                 q.push(&*p);
         }
+
         json::json j;
 
-        if (auto json = dynamic_cast<const network::json_request *>(&req))
-        {
-            auto &body = json->get_body();
-            if (body.get_type() != json::json_type::array || std::any_of(body.as_array().begin(), body.as_array().end(), [](const auto &x)
-                                                                         { return x.get_type() != json::json_type::string; }))
+        if (params.count("parameters"))
+            try
+            {
+                const auto pars = json::load(network::decode(params.at("parameters")));
+                for (const auto &par : pars.as_array())
+                    if (auto it = props.find(static_cast<std::string>(par)); it != props.end())
+                        j[it->first] = it->second->fake();
+                    else
+                        return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            }
+            catch (const std::exception &)
+            {
                 return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            for (auto &prop : body.as_array())
-                if (auto it = props.find(static_cast<std::string>(prop)); it != props.end())
-                {
-                    j[it->first] = it->second->fake();
-                    props.erase(it);
-                }
-                else
-                    return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-        }
+            }
         else // fake all properties
             for (auto &[name, prop] : props)
                 j[name] = prop->fake();

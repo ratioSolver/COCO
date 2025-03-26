@@ -95,6 +95,46 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
     this.v_sel_all_check.checked = true;
     this.v_sel_all_check.dispatchEvent(new Event('change'));
 
+    const b_div = document.createElement('div');
+    b_div.classList.add('d-flex', 'justify-content-end', 'gap-2');
+    const fake_button = document.createElement('button');
+    fake_button.classList.add('btn', 'btn-secondary');
+    fake_button.textContent = 'Fake';
+    fake_button.addEventListener('click', () => {
+      if (!this.v_sel_all_check.checked) {
+        const pars: string[] = [];
+        for (const [name, check] of this.v_checks)
+          if (check.checked)
+            pars.push(name);
+        coco.CoCo.get_instance().fake_data(item.get_type(), pars).then(fake => {
+          for (const [name, v] of Object.entries(fake)) {
+            const v_val = this.v_values.get(name)!;
+            blink(v_val.get_element().children[0] as HTMLElement, 500);
+            v_val.set_value(v);
+          }
+        });
+      } else
+        coco.CoCo.get_instance().fake_data(item.get_type()).then(fake => {
+          for (const [name, v] of Object.entries(fake)) {
+            const v_val = this.v_values.get(name)!;
+            blink(v_val.get_element().children[0] as HTMLElement, 500);
+            v_val.set_value(v);
+          }
+        });
+    });
+    b_div.append(fake_button);
+    const publish_button = document.createElement('button');
+    publish_button.classList.add('btn', 'btn-primary');
+    publish_button.textContent = 'Publish';
+    publish_button.addEventListener('click', () => {
+      const val: Record<string, unknown> = {};
+      for (const [name, v] of Object.entries(this.val))
+        val[name] = v;
+      coco.CoCo.get_instance().publish(item, val);
+    });
+    b_div.append(publish_button);
+    this.element.append(b_div);
+
     item.add_item_listener(this);
   }
 

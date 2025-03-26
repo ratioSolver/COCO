@@ -61,8 +61,8 @@ export namespace coco {
      * If the request is successful, the item's values are updated with the fetched data.
      * If the request fails, an error message is displayed using the application's toast mechanism.
      */
-    load_data(item: taxonomy.Item, from = Date.now() - 1000 * 60 * 60 * 24 * 14, to = Date.now()) {
-      console.debug('Loading data for', item.to_string(), 'from', new Date(from), 'to', new Date(to));
+    load_data(item: taxonomy.Item, from = Date.now() - 1000 * 60 * 60 * 24 * 14, to = Date.now()): void {
+      console.debug('Loading data for ', item.to_string(), ' from ', new Date(from), ' to ', new Date(to));
       const headers = { 'content-type': 'application/json' };
       fetch(Settings.get_instance().get_host() + '/data/' + item.get_id() + '?' + new URLSearchParams({ from: from.toString(), to: to.toString() }), { method: 'GET', headers: headers }).then(res => {
         if (res.ok)
@@ -70,6 +70,31 @@ export namespace coco {
         else
           res.json().then(data => App.get_instance().toast(data.message)).catch(err => console.error(err));
       });
+    }
+
+    publish(item: taxonomy.Item, data: Record<string, unknown>): void {
+      console.debug('Publishing data for ', item.to_string(), ': ', JSON.stringify(data));
+      fetch(Settings.get_instance().get_host() + '/data/' + item.get_id(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(res => {
+        if (!res.ok)
+          res.json().then(data => App.get_instance().toast(data.message)).catch(err => console.error(err));
+      });
+    }
+
+    async fake_data(type: taxonomy.Type, pars: string[] | undefined = undefined): Promise<Record<string, unknown>> {
+      console.debug('Faking data for ', type.get_name());
+      let url = Settings.get_instance().get_host() + '/fake/' + type.get_name();
+      if (pars) {
+        console.debug('Parameters:', JSON.stringify(pars));
+        url += '?' + new URLSearchParams({ parameters: JSON.stringify(pars) });
+      }
+
+      const res = await fetch(url, { method: 'GET' });
+      if (res.ok)
+        return res.json();
+      else {
+        res.json().then(data => App.get_instance().toast(data.message)).catch(err => console.error(err));
+        return {};
+      }
     }
 
     update_coco(message: UpdateCoCoMessage | any): void {

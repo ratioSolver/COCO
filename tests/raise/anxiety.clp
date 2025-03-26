@@ -73,7 +73,7 @@
     (printout t "Anxiety: " ?anxiety crlf)
     (printout t "Anxiety Relevant Factors: " ?anxiety_relevant crlf)
 
-    (if (and (>= ?anxiety 0) (<= ?anxiety 1)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ low ?anxiety_relevant)))
-    (if (and (>= ?anxiety 2) (<= ?anxiety 3)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ medium ?anxiety_relevant)))
-    (if (>= ?anxiety 4) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ high ?anxiety_relevant)))
+    (if (and (>= ?anxiety 0) (<= ?anxiety 1)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ low (to_json ?anxiety_relevant))))
+    (if (and (>= ?anxiety 2) (<= ?anxiety 3)) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ medium (to_json ?anxiety_relevant))))
+    (if (>= ?anxiety 4) then (add_data ?user (create$ ANXIETY anxiety_relevant) (create$ high (to_json ?anxiety_relevant))))
 )

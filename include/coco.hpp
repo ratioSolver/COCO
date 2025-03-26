@@ -187,6 +187,7 @@ namespace coco
   };
 
   void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
+  void multifield_to_json(Environment *env, UDFContext *udfc, UDFValue *out);
 
 #ifdef BUILD_LISTENERS
   class listener

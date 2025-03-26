@@ -5,7 +5,6 @@
 #include "clips.h"
 #include <chrono>
 #include <optional>
-#include <unordered_map>
 #include <unordered_set>
 
 namespace coco
@@ -72,14 +71,18 @@ namespace coco
      *
      * @return The static properties of the type.
      */
-    [[nodiscard]] const std::unordered_map<std::string, utils::u_ptr<property>> &get_static_properties() const noexcept { return static_properties; }
+    [[nodiscard]] const std::map<std::string, utils::u_ptr<property>> &get_static_properties() const noexcept { return static_properties; }
+
+    [[nodiscard]] const std::map<std::string, utils::ref_wrapper<const property>> get_all_static_properties() const noexcept;
 
     /**
      * @brief Gets the dynamic properties of the type.
      *
      * @return The dynamic properties of the type.
      */
-    [[nodiscard]] const std::unordered_map<std::string, utils::u_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
+    [[nodiscard]] const std::map<std::string, utils::u_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
+
+    [[nodiscard]] const std::map<std::string, utils::ref_wrapper<const property>> get_all_dynamic_properties() const noexcept;
 
     /**
      * @brief Gets the instances of the type.
@@ -101,14 +104,14 @@ namespace coco
     [[nodiscard]] json::json to_json() const noexcept;
 
   private:
-    coco &cc;                                                                   // The CoCo object..
-    std::string name;                                                           // The name of the type..
-    std::map<std::string, utils::ref_wrapper<const type>> parents;              // The parent types of the type.
-    const json::json data;                                                      // The data of the type..
-    Fact *type_fact = nullptr;                                                  // The type fact..
-    std::map<std::string, Fact *> parent_facts;                                 // The parent facts of the type.
-    std::unordered_map<std::string, utils::u_ptr<property>> static_properties;  // The static properties..
-    std::unordered_map<std::string, utils::u_ptr<property>> dynamic_properties; // The dynamic properties..
-    std::unordered_set<std::string> instances;                                  // The IDs of the instances of the type..
+    coco &cc;                                                         // The CoCo object..
+    std::string name;                                                 // The name of the type..
+    std::map<std::string, utils::ref_wrapper<const type>> parents;    // The parent types of the type.
+    const json::json data;                                            // The data of the type..
+    Fact *type_fact = nullptr;                                        // The type fact..
+    std::map<std::string, Fact *> parent_facts;                       // The parent facts of the type.
+    std::map<std::string, utils::u_ptr<property>> static_properties;  // The static properties..
+    std::map<std::string, utils::u_ptr<property>> dynamic_properties; // The dynamic properties..
+    std::unordered_set<std::string> instances;                        // The IDs of the instances of the type..
   };
 } // namespace coco

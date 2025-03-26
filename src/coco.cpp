@@ -21,6 +21,7 @@ namespace coco
         add_property_type(utils::make_u_ptr<json_property_type>(*this));
 
         AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
+        AddUDF(env, "to_json", "s", 1, 1, "m", multifield_to_json, "multifield_to_json", this);
 
         LOG_TRACE(type_deftemplate);
         Build(env, type_deftemplate);
@@ -260,6 +261,7 @@ namespace coco
         if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
             return;
         auto &itm = *cc.items.at(item_id.lexemeValue->contents);
+        std::map<std::string, utils::ref_wrapper<const property>> dynamic_props = itm.get_type().get_all_dynamic_properties();
 
         UDFValue pars; // we get the parameters..
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &pars))
@@ -290,6 +292,8 @@ namespace coco
                     data[par.lexemeValue->contents] = true;
                 else if (std::string(val.lexemeValue->contents) == "FALSE")
                     data[par.lexemeValue->contents] = false;
+                else if (dynamic_props.at(par.lexemeValue->contents)->is_complex())
+                    data[par.lexemeValue->contents] = json::load(val.lexemeValue->contents);
                 else
                     data[par.lexemeValue->contents] = val.lexemeValue->contents;
                 break;
@@ -307,6 +311,37 @@ namespace coco
         }
         else
             cc.set_value(itm, std::move(data));
+    }
+
+    void multifield_to_json(Environment *env, UDFContext *udfc, UDFValue *ret)
+    {
+        UDFValue multifield;
+        if (!UDFFirstArgument(udfc, MULTIFIELD_BIT, &multifield))
+            return;
+
+        json::json j_array(json::json_type::array);
+
+        for (size_t i = 0; i < multifield.multifieldValue->length; ++i)
+        {
+            auto &val = multifield.multifieldValue->contents[i];
+            switch (val.header->type)
+            {
+            case STRING_TYPE:
+            case SYMBOL_TYPE:
+                j_array.push_back(val.lexemeValue->contents);
+                break;
+            case INTEGER_TYPE:
+                j_array.push_back(static_cast<int64_t>(val.integerValue->contents));
+                break;
+            case FLOAT_TYPE:
+                j_array.push_back(val.floatValue->contents);
+                break;
+            default:
+                break;
+            }
+        }
+
+        ret->lexemeValue = CreateString(env, j_array.dump().c_str());
     }
 
 #ifdef BUILD_LISTENERS

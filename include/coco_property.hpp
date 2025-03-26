@@ -183,6 +183,8 @@ namespace coco
      */
     [[nodiscard]] virtual bool validate(const json::json &j) const noexcept = 0;
 
+    [[nodiscard]] virtual bool is_complex() const noexcept = 0;
+
     [[nodiscard]] virtual json::json to_json() const noexcept = 0;
 
     [[nodiscard]] virtual json::json fake() const noexcept = 0;
@@ -208,6 +210,8 @@ namespace coco
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
+    [[nodiscard]] bool is_complex() const noexcept override { return false; }
+
     [[nodiscard]] json::json to_json() const noexcept override;
 
     [[nodiscard]] json::json fake() const noexcept override;
@@ -222,6 +226,8 @@ namespace coco
     int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<long> default_value = std::nullopt, std::optional<long> min = std::nullopt, std::optional<long> max = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+    [[nodiscard]] bool is_complex() const noexcept override { return false; }
 
     [[nodiscard]] json::json to_json() const noexcept override;
 
@@ -240,6 +246,8 @@ namespace coco
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
+    [[nodiscard]] bool is_complex() const noexcept override { return false; }
+
     [[nodiscard]] json::json to_json() const noexcept override;
 
     [[nodiscard]] json::json fake() const noexcept override;
@@ -257,6 +265,8 @@ namespace coco
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
+    [[nodiscard]] bool is_complex() const noexcept override { return false; }
+
     [[nodiscard]] json::json to_json() const noexcept override;
 
     [[nodiscard]] json::json fake() const noexcept override;
@@ -271,6 +281,8 @@ namespace coco
     symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple = false, std::vector<std::string> &&values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+    [[nodiscard]] bool is_complex() const noexcept override { return multiple; }
 
     [[nodiscard]] json::json to_json() const noexcept override;
 
@@ -289,6 +301,8 @@ namespace coco
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
+    [[nodiscard]] bool is_complex() const noexcept override { return multiple; }
+
     [[nodiscard]] json::json to_json() const noexcept override;
 
     [[nodiscard]] json::json fake() const noexcept override;
@@ -305,6 +319,8 @@ namespace coco
     json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema = std::nullopt, std::optional<json::json> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
+
+    [[nodiscard]] bool is_complex() const noexcept override { return true; }
 
     [[nodiscard]] json::json to_json() const noexcept override;
 

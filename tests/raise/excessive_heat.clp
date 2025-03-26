@@ -47,7 +47,7 @@
     (printout t "Excessive Heat: " ?excessive_heat crlf)
     (printout t "Excessive Heat Relevant Factors: " ?excessive_heat_relevant crlf)
 
-    (if (and (>= ?excessive_heat 0) (<= ?excessive_heat 1)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ low ?excessive_heat_relevant)))
-    (if (and (>= ?excessive_heat 2) (<= ?excessive_heat 3)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ medium ?excessive_heat_relevant)))
-    (if (>= ?excessive_heat 4) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ high ?excessive_heat_relevant)))
+    (if (and (>= ?excessive_heat 0) (<= ?excessive_heat 1)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ low (to_json ?excessive_heat_relevant))))
+    (if (and (>= ?excessive_heat 2) (<= ?excessive_heat 3)) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ medium (to_json ?excessive_heat_relevant))))
+    (if (>= ?excessive_heat 4) then (add_data ?user (create$ EXCESSIVE_HEAT excessive_heat_relevant) (create$ high (to_json ?excessive_heat_relevant))))
 )

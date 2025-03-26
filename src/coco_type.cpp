@@ -39,6 +39,46 @@ namespace coco
         Run(cc.env, -1);
     }
 
+    const std::map<std::string, utils::ref_wrapper<const property>> type::get_all_static_properties() const noexcept
+    {
+        std::map<std::string, utils::ref_wrapper<const property>> static_props;
+        std::queue<const type *> q;
+        q.push(this);
+
+        while (!q.empty())
+        {
+            const type *t = q.front();
+            q.pop();
+
+            for (const auto &[p_name, p] : t->static_properties)
+                static_props.emplace(p_name, *p);
+
+            for (const auto &tp : t->parents)
+                q.push(&*tp.second);
+        }
+        return static_props;
+    }
+
+    const std::map<std::string, utils::ref_wrapper<const property>> type::get_all_dynamic_properties() const noexcept
+    {
+        std::map<std::string, utils::ref_wrapper<const property>> dynamic_props;
+        std::queue<const type *> q;
+        q.push(this);
+
+        while (!q.empty())
+        {
+            const type *t = q.front();
+            q.pop();
+
+            for (const auto &[p_name, p] : t->dynamic_properties)
+                dynamic_props.emplace(p_name, *p);
+
+            for (const auto &tp : t->parents)
+                q.push(&*tp.second);
+        }
+        return dynamic_props;
+    }
+
     void type::set_parents(std::vector<utils::ref_wrapper<const type>> &&parents) noexcept
     {
         // we retract the current parent facts (if any)..

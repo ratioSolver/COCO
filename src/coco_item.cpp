@@ -55,24 +55,10 @@ namespace coco
 
     void item::set_properties(json::json &&props)
     {
-        std::map<std::string, utils::ref_wrapper<const property>> static_properties;
-        std::queue<const type *> q;
-        q.push(&tp);
-
-        while (!q.empty())
-        {
-            const type *t = q.front();
-            q.pop();
-
-            for (const auto &[p_name, p] : t->get_static_properties())
-                static_properties.emplace(p_name, *p);
-
-            for (const auto &tp : t->get_parents())
-                q.push(&*tp.second);
-        }
+        std::map<std::string, utils::ref_wrapper<const property>> static_props = tp.get_all_static_properties();
 
         for (const auto &[p_name, val] : props.as_object())
-            if (auto prop = static_properties.find(p_name); prop != static_properties.end())
+            if (auto prop = static_props.find(p_name); prop != static_props.end())
             {
                 if (auto f = properties_facts.find(p_name); f != properties_facts.end())
                 { // we retract the old property
@@ -105,21 +91,7 @@ namespace coco
 
     void item::set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val)
     {
-        std::map<std::string, utils::ref_wrapper<const property>> dynamic_properties;
-        std::queue<const type *> q;
-        q.push(&tp);
-
-        while (!q.empty())
-        {
-            const type *t = q.front();
-            q.pop();
-
-            for (const auto &[p_name, p] : t->get_dynamic_properties())
-                dynamic_properties.emplace(p_name, *p);
-
-            for (const auto &tp : t->get_parents())
-                q.push(&*tp.second);
-        }
+        std::map<std::string, utils::ref_wrapper<const property>> dynamic_props = tp.get_all_dynamic_properties();
 
         if (!value.has_value())
             value = std::make_pair(json::json(), val.second);
@@ -127,7 +99,7 @@ namespace coco
             value->second = val.second;
 
         for (const auto &[p_name, j_val] : val.first.as_object())
-            if (auto prop = dynamic_properties.find(p_name); prop != dynamic_properties.end())
+            if (auto prop = dynamic_props.find(p_name); prop != dynamic_props.end())
             {
                 if (auto f = value_facts.find(p_name); f != value_facts.end())
                 { // we retract the old property

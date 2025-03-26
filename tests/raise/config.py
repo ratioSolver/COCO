@@ -1,5 +1,6 @@
 import sys
 import requests
+import json
 import logging
 from faker import Faker
 
@@ -13,7 +14,7 @@ logger.addHandler(handler)
 fake = Faker('it_IT')
 
 
-def create_types(session, url):
+def create_types(session: requests.Session, url: str):
     # Create the user type..
     response = session.post(url + '/type', json={
         'name': 'User',
@@ -112,12 +113,12 @@ def create_types(session, url):
         return
 
 
-def create_rules(session, url):
+def create_rules(session: requests.Session, url: str):
     # Create Anxiety rule..
     with open('anxiety.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Anxiety rule')
-    response = requests.post(
+    response = session.post(
         url + '/reactive_rule', json={'name': 'anxiety', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
@@ -127,7 +128,7 @@ def create_rules(session, url):
     with open('dyskinesia.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Dyskinesia rule')
-    response = requests.post(
+    response = session.post(
         url + '/reactive_rule', json={'name': 'dyskinesia', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
@@ -137,7 +138,7 @@ def create_rules(session, url):
     with open('excessive_heat.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Excessive heat rule')
-    response = requests.post(
+    response = session.post(
         url + '/reactive_rule', json={'name': 'excessive_heat', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
@@ -147,7 +148,7 @@ def create_rules(session, url):
     with open('fluctuation.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Fluctuation rule')
-    response = requests.post(
+    response = session.post(
         url + '/reactive_rule', json={'name': 'fluctuation', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
@@ -157,7 +158,7 @@ def create_rules(session, url):
     with open('freezing.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Freezing rule')
-    response = requests.post(
+    response = session.post(
         url + '/reactive_rule', json={'name': 'freezing', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
@@ -167,7 +168,7 @@ def create_rules(session, url):
     with open('mental_fatigue.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Mental fatigue rule')
-    response = requests.post(
+    response = session.post(
         url + '/reactive_rule', json={'name': 'mental_fatigue', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
@@ -177,7 +178,7 @@ def create_rules(session, url):
     with open('physical_fatigue.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Physical fatigue rule')
-    response = requests.post(
+    response = session.post(
         url + '/reactive_rule', json={'name': 'physical_fatigue', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
@@ -187,14 +188,14 @@ def create_rules(session, url):
     with open('sensory_disregulation.clp', 'r') as file:
         data = file.read()
     logger.info('Creating the Sensory disregulation rule')
-    response = requests.post(
+    response = session.post(
         url + '/reactive_rule', json={'name': 'sensory_disregulation', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
 
 
-def create_items(session, url):
+def create_items(session: requests.Session, url: str):
     for _ in range(10):
         first_name = fake.first_name()
 
@@ -209,6 +210,11 @@ def create_items(session, url):
                 'state_anxiety_presence': fake.random_int(max=10),
                 'baseline_blood_pressure': fake.random_int(min=60, max=200),
                 'stress': fake.random_int(max=10),
+                'parkinson': fake.boolean(),
+                'older_adults': fake.boolean(),
+                'psychiatric_patients': fake.boolean(),
+                'multiple_sclerosis': fake.boolean(),
+                'young_pci_autism': fake.boolean()
             }})
 
         if response.status_code != 200:
@@ -217,6 +223,58 @@ def create_items(session, url):
         else:
             logger.info(
                 f'Created User {first_name} with id {response.text}')
+            fake_data(session, url, response.text)
+
+
+def fake_data(session: requests.Session, url: str, user_id: str):
+    pars = ['crowding',
+            'altered_nutrition',
+            'altered_thirst_perception',
+            'bar_restaurant',
+            'architectural_barriers',
+            'water_balance',
+            'sleep_duration_quality',
+            'water_fountains',
+            'recent_freezing_episodes',
+            'heart_rate',
+            'heart_rate_differential',
+            'public_events_frequency',
+            'respiratory_rate',
+            'galvanic_skin_response',
+            'lighting',
+            'noise_pollution',
+            'user_reported_noise_pollution',
+            'air_pollution',
+            'traffic_levels',
+            'lack_of_ventilation',
+            'path_slope',
+            'safety_perception',
+            'rough_path',
+            'public_events_presence',
+            'high_blood_pressure',
+            'low_blood_pressure',
+            'social_pressure',
+            'sittings',
+            'self_perception',
+            'restroom_availability',
+            'sweating',
+            'ambient_temperature',
+            'body_temperature',
+            'ambient_humidity',
+            'excessive_urbanization',
+            'green_spaces']
+
+    response = session.get(url + '/fake/User?parameters=' + json.dumps(pars))
+    if response.status_code != 200:
+        logger.error('Failed to create fake data')
+        return
+    else:
+        logger.info(f'Sending fake data to user {user_id}')
+        response = session.post(url + '/data/' + user_id, json=response.json())
+
+        if response.status_code != 204:
+            logger.error('Failed to send fake data')
+            return
 
 
 if __name__ == '__main__':

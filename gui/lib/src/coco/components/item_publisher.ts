@@ -129,7 +129,8 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
     publish_button.addEventListener('click', () => {
       const val: Record<string, unknown> = {};
       for (const [name, v] of Object.entries(this.val))
-        val[name] = v;
+        if (this.v_checks.get(name)!.checked)
+          val[name] = v;
       coco.CoCo.get_instance().publish(item, val);
     });
     b_div.append(publish_button);

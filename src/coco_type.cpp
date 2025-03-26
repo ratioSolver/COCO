@@ -3,6 +3,7 @@
 #include "coco_property.hpp"
 #include "coco_item.hpp"
 #include "logging.hpp"
+#include <queue>
 #include <cassert>
 
 #ifdef BUILD_LISTENERS

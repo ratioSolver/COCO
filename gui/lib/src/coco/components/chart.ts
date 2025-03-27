@@ -104,7 +104,7 @@ export namespace chart {
 
   class JSONChartGenerator extends ChartGenerator<Record<string, any>> {
 
-    constructor() { super('item'); }
+    constructor() { super('json'); }
 
     make_chart(prop: coco.taxonomy.JSONProperty, vals: Value<Record<string, any>>[]): JSONChart { return new JSONChart(prop, vals); }
 
@@ -114,8 +114,8 @@ export namespace chart {
 
   export interface Chart<V> {
 
-    set_data(vals: Value<V>[]): Partial<PlotData>[];
-    set_datum(val: Value<V>): Partial<PlotData>[];
+    set_data(vals: Value<V>[]): void;
+    set_datum(val: Value<V>): void;
     get_data(): Partial<PlotData>[];
 
     get_range(): number[] | undefined;
@@ -130,22 +130,17 @@ export namespace chart {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<boolean>[]): Partial<PlotData>[] {
+    set_data(vals: Value<boolean>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) } });
+        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: vals[i].value ? 'true' : 'false', type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) } });
       if (vals.length)
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) } });
-      return this.data;
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: vals[vals.length - 1].value ? 'true' : 'false', type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) } });
     }
-    set_datum(val: Value<boolean>): Partial<PlotData>[] {
+    set_datum(val: Value<boolean>): void {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
-      if (this.data.length > 1)
-        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
-      else
-        return [this.data[this.data.length - 1]];
+      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: val.value ? 'true' : 'false', type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }
@@ -164,17 +159,15 @@ export namespace chart {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<number>[]): Partial<PlotData>[] {
+    set_data(vals: Value<number>[]): void {
       for (let i = 0; i < vals.length - 1; i++) {
         (this.data.x! as number[]).push(vals[i].timestamp.valueOf());
         (this.data.y! as number[]).push(vals[i].value);
       }
-      return [this.data];
     }
-    set_datum(val: Value<number>): Partial<PlotData>[] {
+    set_datum(val: Value<number>): void {
       (this.data.x! as number[]).push(val.timestamp.valueOf());
       (this.data.y! as number[]).push(val.value);
-      return [this.data];
     }
 
     get_data(): Partial<PlotData>[] { return [this.data]; }
@@ -197,17 +190,15 @@ export namespace chart {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<number>[]): Partial<PlotData>[] {
+    set_data(vals: Value<number>[]): void {
       for (let i = 0; i < vals.length - 1; i++) {
         (this.data.x! as number[]).push(vals[i].timestamp.valueOf());
         (this.data.y! as number[]).push(vals[i].value);
       }
-      return [this.data];
     }
-    set_datum(val: Value<number>): Partial<PlotData>[] {
+    set_datum(val: Value<number>): void {
       (this.data.x! as number[]).push(val.timestamp.valueOf());
       (this.data.y! as number[]).push(val.value);
-      return [this.data];
     }
 
     get_data(): Partial<PlotData>[] { return [this.data]; }
@@ -228,22 +219,17 @@ export namespace chart {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<string>[]): Partial<PlotData>[] {
+    set_data(vals: Value<string>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
         this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: vals[i].value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) } });
       if (vals.length)
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) } });
-      return this.data;
     }
-    set_datum(val: Value<string>): Partial<PlotData>[] {
+    set_datum(val: Value<string>): void {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
-      if (this.data.length > 1)
-        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
-      else
-        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }
@@ -260,22 +246,17 @@ export namespace chart {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<string | string[]>[]): Partial<PlotData>[] {
+    set_data(vals: Value<string | string[]>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
         this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: this.get_name(vals[i].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[i].value)) } });
       if (vals.length)
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value)) } });
-      return this.data;
     }
-    set_datum(val: Value<string | string[]>): Partial<PlotData>[] {
+    set_datum(val: Value<string | string[]>): void {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
-      if (this.data.length > 1)
-        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
-      else
-        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }
@@ -294,22 +275,17 @@ export namespace chart {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<string | string[]>[]): Partial<PlotData>[] {
+    set_data(vals: Value<string | string[]>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
         this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: this.get_name(vals[i].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[i].value)) } });
       if (vals.length)
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value)) } });
-      return this.data;
     }
-    set_datum(val: Value<string | string[]>): Partial<PlotData>[] {
+    set_datum(val: Value<string | string[]>): void {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
-      if (this.data.length > 1)
-        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
-      else
-        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }
@@ -328,7 +304,7 @@ export namespace chart {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<Record<string, any>>[]): Partial<PlotData>[] {
+    set_data(vals: Value<Record<string, any>>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++) {
         const name = JSON.stringify(vals[i].value);
@@ -338,17 +314,12 @@ export namespace chart {
         const name = JSON.stringify(vals[vals.length - 1].value);
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) } });
       }
-      return this.data;
     }
-    set_datum(val: Value<Record<string, any>>): Partial<PlotData>[] {
+    set_datum(val: Value<Record<string, any>>): void {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       const name = JSON.stringify(val.value);
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) } });
-      if (this.data.length > 1)
-        return [this.data[this.data.length - 2], this.data[this.data.length - 1]];
-      else
-        return [this.data[this.data.length - 1]];
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }

@@ -1,8 +1,9 @@
 import sys
 import requests
 import json
-import logging
+import time
 from faker import Faker
+import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -200,7 +201,8 @@ def create_rules(session: requests.Session, url: str):
         return
 
 
-def create_items(session: requests.Session, url: str):
+def create_items(session: requests.Session, url: str) -> list[str]:
+    ids: list[str] = []
     for _ in range(10):
         first_name = fake.first_name()
 
@@ -226,11 +228,13 @@ def create_items(session: requests.Session, url: str):
 
         if response.status_code != 200:
             logger.error('Failed to create item User')
-            return
+            return []
         else:
             logger.info(
                 f'Created User {first_name} with id {response.text}')
+            ids.append(response.text)
             fake_data(session, url, response.text)
+    return ids
 
 
 def fake_data(session: requests.Session, url: str, user_id: str):
@@ -292,4 +296,9 @@ if __name__ == '__main__':
 
     create_types(session, url)
     create_rules(session, url)
-    create_items(session, url)
+    ids = create_items(session, url)
+
+    while True:
+        time.sleep(5)
+        for id in ids:
+            fake_data(session, url, id)

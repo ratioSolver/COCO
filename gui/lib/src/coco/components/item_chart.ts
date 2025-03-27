@@ -71,8 +71,9 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
 
     const data: Partial<PlotData>[] = [];
     for (const [name, ch] of this.charts) {
+      ch.set_data(values.has(name) ? values.get(name)! : []);
       const yaxis = this.yaxis.get(name);
-      for (const d of ch.set_data(values.has(name) ? values.get(name)! : [])) {
+      for (const d of ch.get_data()) {
         d.yaxis = yaxis;
         data.push(d);
       }
@@ -81,9 +82,11 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
   }
   new_value(_: coco.taxonomy.Item, val: coco.taxonomy.Datum): void {
     const data: Partial<PlotData>[] = [];
-    for (const [name, v] of Object.entries(val.data)) {
+    for (const [name, ch] of this.charts) {
+      if (name in val.data)
+        this.charts.get(name)!.set_datum({ value: val.data[name], timestamp: val.timestamp });
       const yaxis = this.yaxis.get(name);
-      for (const d of this.charts.get(name)!.set_datum({ value: v, timestamp: val.timestamp })) {
+      for (const d of ch.get_data()) {
         d.yaxis = yaxis;
         data.push(d);
       }

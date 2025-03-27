@@ -66,7 +66,7 @@ namespace coco
         auto tps = db.get_types();
         LOG_DEBUG("Retrieved " << tps.size() << " types");
         for (auto &tp : tps)
-            make_type(tp.name, {}, tp.static_props.has_value() ? std::move(tp.static_props.value()) : json::json{}, tp.static_props.has_value() ? std::move(tp.static_props.value()) : json::json{}, tp.static_props.has_value() ? std::move(tp.static_props.value()) : json::json{});
+            make_type(tp.name, {}, tp.static_props.has_value() ? std::move(*tp.static_props) : json::json{}, tp.dynamic_props.has_value() ? std::move(*tp.dynamic_props) : json::json{}, tp.data.has_value() ? std::move(*tp.data) : json::json{});
 
         for (auto &tp : tps)
             if (!tp.parents.empty())

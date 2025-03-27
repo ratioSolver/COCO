@@ -147,7 +147,7 @@ namespace coco
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
         deftemplate += " (type SYMBOL)";
         if (default_value.has_value())
-            deftemplate += default_value.value() ? " (default TRUE)" : " (default FALSE)";
+            deftemplate += *default_value ? " (default TRUE)" : " (default FALSE)";
         deftemplate += ')';
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
@@ -163,7 +163,7 @@ namespace coco
         json::json j;
         j["type"] = bool_kw;
         if (default_value.has_value())
-            j["default"] = default_value.value();
+            j["default"] = *default_value;
         return j;
     }
     json::json bool_property::fake() const noexcept
@@ -177,13 +177,13 @@ namespace coco
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
         deftemplate += " (type INTEGER)";
         if (default_value.has_value())
-            deftemplate += " (default " + std::to_string(default_value.value()) + ")";
+            deftemplate += " (default " + std::to_string(*default_value) + ")";
         if (min.has_value() || max.has_value())
         {
             deftemplate += " (range ";
-            deftemplate += min.has_value() ? std::to_string(min.value()) : "?VARIABLE";
+            deftemplate += min.has_value() ? std::to_string(*min) : "?VARIABLE";
             deftemplate += ' ';
-            deftemplate += max.has_value() ? std::to_string(max.value()) : "?VARIABLE";
+            deftemplate += max.has_value() ? std::to_string(*max) : "?VARIABLE";
             deftemplate += ')';
         }
         deftemplate += ')';
@@ -200,7 +200,7 @@ namespace coco
         if (j.get_type() != json::json_type::number)
             return false;
         long value = j;
-        if ((min.has_value() && min.value() > value) || (max.has_value() && max.value() < value))
+        if ((min.has_value() && *min > value) || (max.has_value() && *max < value))
             return false;
         return true;
     }
@@ -209,16 +209,16 @@ namespace coco
         json::json j;
         j["type"] = int_kw;
         if (default_value.has_value())
-            j["default"] = default_value.value();
+            j["default"] = *default_value;
         if (min.has_value())
-            j["min"] = min.value();
+            j["min"] = *min;
         if (max.has_value())
-            j["max"] = max.value();
+            j["max"] = *max;
         return j;
     }
     json::json int_property::fake() const noexcept
     {
-        std::uniform_int_distribution<long> dist(min.has_value() ? min.value() : std::numeric_limits<long>::min(), max.has_value() ? max.value() : std::numeric_limits<long>::max());
+        std::uniform_int_distribution<long> dist(min.has_value() ? *min : std::numeric_limits<long>::min(), max.has_value() ? *max : std::numeric_limits<long>::max());
         return dist(get_gen());
     }
 
@@ -227,13 +227,13 @@ namespace coco
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
         deftemplate += " (type FLOAT)";
         if (default_value.has_value())
-            deftemplate += " (default " + std::to_string(default_value.value()) + ")";
+            deftemplate += " (default " + std::to_string(*default_value) + ")";
         if (min.has_value() || max.has_value())
         {
             deftemplate += " (range ";
-            deftemplate += min.has_value() ? std::to_string(min.value()) : "?VARIABLE";
+            deftemplate += min.has_value() ? std::to_string(*min) : "?VARIABLE";
             deftemplate += ' ';
-            deftemplate += max.has_value() ? std::to_string(max.value()) : "?VARIABLE";
+            deftemplate += max.has_value() ? std::to_string(*max) : "?VARIABLE";
             deftemplate += ')';
         }
         deftemplate += ')';
@@ -250,7 +250,7 @@ namespace coco
         if (j.get_type() != json::json_type::number)
             return false;
         double value = j;
-        if ((min.has_value() && min.value() > value) || (max.has_value() && max.value() < value))
+        if ((min.has_value() && *min > value) || (max.has_value() && *max < value))
             return false;
         return true;
     }
@@ -259,16 +259,16 @@ namespace coco
         json::json j;
         j["type"] = float_kw;
         if (default_value.has_value())
-            j["default"] = default_value.value();
+            j["default"] = *default_value;
         if (min.has_value())
-            j["min"] = min.value();
+            j["min"] = *min;
         if (max.has_value())
-            j["max"] = max.value();
+            j["max"] = *max;
         return j;
     }
     json::json float_property::fake() const noexcept
     {
-        std::uniform_real_distribution<double> dist(min.has_value() ? min.value() : std::numeric_limits<double>::min(), max.has_value() ? max.value() : std::numeric_limits<double>::max());
+        std::uniform_real_distribution<double> dist(min.has_value() ? *min : std::numeric_limits<double>::min(), max.has_value() ? *max : std::numeric_limits<double>::max());
         return dist(get_gen());
     }
 
@@ -277,7 +277,7 @@ namespace coco
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
         deftemplate += " (type STRING)";
         if (default_value.has_value())
-            deftemplate += " (default " + default_value.value() + ")";
+            deftemplate += " (default " + *default_value + ")";
         deftemplate += ')';
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
@@ -293,7 +293,7 @@ namespace coco
         json::json j;
         j["type"] = string_kw;
         if (default_value.has_value())
-            j["default"] = default_value.value();
+            j["default"] = *default_value;
         return j;
     }
     json::json string_property::fake() const noexcept
@@ -307,9 +307,9 @@ namespace coco
 
     symbol_property::symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::vector<std::string> &&values, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), values(values), default_value(default_value)
     {
-        assert(!default_value.has_value() || values.empty() || std::all_of(default_value.value().begin(), default_value.value().end(), [this](const std::string &val)
+        assert(!default_value.has_value() || values.empty() || std::all_of(default_value->begin(), default_value->end(), [this](const std::string &val)
                                                                            { return std::find(this->values.begin(), this->values.end(), val) != this->values.end(); }));
-        assert(!default_value.has_value() || !multiple || default_value.value().size() <= 1);
+        assert(!default_value.has_value() || !multiple || default_value->size() <= 1);
 
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
         if (multiple)
@@ -328,7 +328,7 @@ namespace coco
         if (default_value.has_value())
         {
             deftemplate += " (default";
-            for (const auto &val : default_value.value())
+            for (const auto &val : *default_value)
                 deftemplate += " " + val;
             deftemplate += ")";
         }
@@ -368,7 +368,7 @@ namespace coco
         if (default_value.has_value())
         {
             auto j_def_vals = json::json(json::json_type::array);
-            for (const auto &val : default_value.value())
+            for (const auto &val : *default_value)
                 j_def_vals.push_back(val.c_str());
             j["default"] = j_def_vals;
         }
@@ -391,21 +391,21 @@ namespace coco
 
     item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple, std::optional<std::vector<utils::ref_wrapper<item>>> default_value) noexcept : property(pt, tp, dynamic, name), domain(domain), multiple(multiple), default_value(default_value)
     {
-        assert(!default_value.has_value() || default_value.value().empty() || std::all_of(default_value.value().begin(), default_value.value().end(), [&domain](const auto &val)
-                                                                                          { 
-                                                                                            std::queue<const type *> q;
-                                                                                            q.push(&val->get_type());
-                                                                                            while (!q.empty())
-                                                                                            {
-                                                                                                auto tp = q.front();
-                                                                                                q.pop();
-                                                                                                if (tp == &domain)
-                                                                                                    return true;
-                                                                                                for (const auto &[_, p] : tp->get_parents())
-                                                                                                    q.push(&*p);
-                                                                                            }
-                                                                                            return false; }));
-        assert(!default_value.has_value() || !multiple || default_value.value().size() <= 1);
+        assert(!default_value.has_value() || default_value->empty() || std::all_of(default_value->begin(), default_value->end(), [&domain](const auto &val)
+                                                                                   { 
+                                                                                        std::queue<const type *> q;
+                                                                                        q.push(&val->get_type());
+                                                                                        while (!q.empty())
+                                                                                        {
+                                                                                            auto tp = q.front();
+                                                                                            q.pop();
+                                                                                            if (tp == &domain)
+                                                                                                return true;
+                                                                                            for (const auto &[_, p] : tp->get_parents())
+                                                                                                q.push(&*p);
+                                                                                        }
+                                                                                        return false; }));
+        assert(!default_value.has_value() || !multiple || default_value->size() <= 1);
 
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
         if (multiple)
@@ -417,7 +417,7 @@ namespace coco
         if (default_value.has_value())
         {
             deftemplate += " (default";
-            for (const auto &val : default_value.value())
+            for (const auto &val : *default_value)
                 deftemplate += " " + val->get_id();
             deftemplate += ")";
         }
@@ -451,7 +451,7 @@ namespace coco
         if (default_value.has_value())
         {
             auto j_def_vals = json::json(json::json_type::array);
-            for (const auto &val : default_value.value())
+            for (const auto &val : *default_value)
                 j_def_vals.push_back(val->get_id().c_str());
             j["default"] = j_def_vals;
         }
@@ -480,7 +480,7 @@ namespace coco
         if (default_value.has_value())
         {
             std::string def;
-            for (char ch : default_value.value().dump())
+            for (char ch : default_value->dump())
                 if (ch == '"')
                     def += "\\\"";
                 else if (ch == '\\')
@@ -498,15 +498,15 @@ namespace coco
         [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
         assert(prop_dt == BE_NO_ERROR);
     }
-    bool json_property::validate(const json::json &j) const noexcept { return schema.has_value() ? json::validate(j, schema.value(), get_schemas()) : true; }
+    bool json_property::validate(const json::json &j) const noexcept { return schema.has_value() ? json::validate(j, *schema, get_schemas()) : true; }
     json::json json_property::to_json() const noexcept
     {
         json::json j;
         j["type"] = json_kw;
         if (schema.has_value())
-            j["schema"] = schema.value();
+            j["schema"] = *schema;
         if (default_value.has_value())
-            j["default"] = default_value.value();
+            j["default"] = *default_value;
         return j;
     }
     json::json json_property::fake() const noexcept { return json::json(); }

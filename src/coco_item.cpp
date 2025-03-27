@@ -36,7 +36,7 @@ namespace coco
 
         set_properties(std::move(props));
         if (val.has_value())
-            set_value(std::move(val.value()));
+            set_value(std::move(*val));
 
         NEW_ITEM();
     }

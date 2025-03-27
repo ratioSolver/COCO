@@ -108,7 +108,7 @@ namespace coco
 
             std::optional<json::json> props;
             if (doc.find("properties") != doc.end())
-                props = json::load(bsoncxx::to_json(doc["data"].get_document().view()));
+                props = json::load(bsoncxx::to_json(doc["properties"].get_document().view()));
 
             std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> value;
             if (doc.find("value") != doc.end())
@@ -168,7 +168,7 @@ namespace coco
         std::vector<db_rule> rules;
         for (const auto &doc : reactive_rules_collection.find({}))
         {
-            auto name = doc["_id"].get_string().value;
+            auto name = doc["name"].get_string().value;
             auto content = doc["content"].get_string().value;
             rules.push_back({std::string(name), std::string(content)});
         }
@@ -187,7 +187,7 @@ namespace coco
         std::vector<db_rule> rules;
         for (const auto &doc : deliberative_rules_collection.find({}))
         {
-            auto name = doc["_id"].get_string().value;
+            auto name = doc["name"].get_string().value;
             auto content = doc["content"].get_string().value;
             rules.push_back({std::string(name), std::string(content)});
         }

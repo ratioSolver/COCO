@@ -102,11 +102,14 @@ def create_types(session: requests.Session, url: str):
             'self_perception': {'type': 'bool'},
             'restroom_availability': {'type': 'bool'},
             'sweating': {'type': 'int', 'min': 0, 'max': 10},
-            'ambient_temperature': {'type': 'int', 'min': -30, 'max': 50},
-            'body_temperature': {'type': 'int', 'min': 35, 'max': 42},
+            'ambient_temperature': {'type': 'float', 'min': -30, 'max': 50},
+            'body_temperature': {'type': 'float', 'min': 35, 'max': 42},
             'ambient_humidity': {'type': 'int', 'min': 0, 'max': 100},
             'excessive_urbanization': {'type': 'bool'},
-            'green_spaces': {'type': 'bool'}
+            'green_spaces': {'type': 'bool'},
+            'lat': {'type': 'float', 'min': 44.41, 'max': 44.42},
+            'lon': {'type': 'float', 'min': 8.94, 'max': 8.95},
+            'update_udp': {'type': 'bool'}
         }
     })
 
@@ -266,7 +269,9 @@ def fake_data(session: requests.Session, url: str, user_id: str):
             'body_temperature',
             'ambient_humidity',
             'excessive_urbanization',
-            'green_spaces']
+            'green_spaces',
+            'lat',
+            'lon']
 
     response = session.get(url + '/fake/User?parameters=' + json.dumps(pars))
     if response.status_code != 200:

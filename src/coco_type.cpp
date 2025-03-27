@@ -27,7 +27,6 @@ namespace coco
             static_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, false, name, prop));
         for (auto &[name, prop] : dynamic_props.as_object())
             dynamic_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, true, name, prop));
-        Run(cc.env, -1);
         NEW_TYPE();
     }
     type::~type()
@@ -37,7 +36,6 @@ namespace coco
         for (auto &p : parent_facts)
             Retract(p.second);
         Retract(type_fact);
-        Run(cc.env, -1);
     }
 
     const std::map<std::string, utils::ref_wrapper<const property>> type::get_all_static_properties() const noexcept
@@ -99,7 +97,6 @@ namespace coco
             this->parents.emplace(p->name, p);
             parent_facts.emplace(p->name, parent_fact);
         }
-        Run(cc.env, -1);
     }
 
     std::vector<utils::ref_wrapper<item>> type::get_instances() const noexcept

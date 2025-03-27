@@ -15,7 +15,7 @@ namespace coco
         if (item_data_collection.list_indexes().begin() == item_data_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for item data collection");
-            item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
+            item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize);
         }
     }
 

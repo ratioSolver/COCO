@@ -75,9 +75,9 @@ namespace coco
      * @throws std::invalid_argument if the type does not exist.
      */
     [[nodiscard]] type &get_type(std::string_view name);
-    [[nodiscard]] type &create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
-    void set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents) noexcept;
-    void delete_type(type &tp) noexcept;
+    [[nodiscard]] type &create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json(), bool infere = true) noexcept;
+    void set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents, bool infere = true) noexcept;
+    void delete_type(type &tp, bool infere = true) noexcept;
 
     /**
      * @brief Returns a vector of references to the items.
@@ -89,13 +89,13 @@ namespace coco
     [[nodiscard]] std::vector<utils::ref_wrapper<item>> get_items() noexcept;
 
     [[nodiscard]] item &get_item(std::string_view id);
-    [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
+    [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt, bool infere = true) noexcept;
     [[nodiscard]] json::json get_values(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to = std::chrono::system_clock::now());
-    void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now());
-    void delete_item(item &itm) noexcept;
+    void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now(), bool infere = true);
+    void delete_item(item &itm, bool infere = true) noexcept;
 
     [[nodiscard]] std::vector<utils::ref_wrapper<reactive_rule>> get_reactive_rules() noexcept;
-    void create_reactive_rule(std::string_view rule_name, std::string_view rule_content);
+    void create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
     [[nodiscard]] std::vector<utils::ref_wrapper<deliberative_rule>> get_deliberative_rules() noexcept;
     void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content);

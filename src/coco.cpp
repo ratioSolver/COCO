@@ -20,33 +20,46 @@ namespace coco
         add_property_type(utils::make_u_ptr<item_property_type>(*this));
         add_property_type(utils::make_u_ptr<json_property_type>(*this));
 
-        AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
-        AddUDF(env, "to_json", "s", 1, 1, "m", multifield_to_json, "multifield_to_json", this);
+        [[maybe_unused]] auto add_data_error = AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
+        assert(add_data_error == AUE_NO_ERROR);
+        [[maybe_unused]] auto to_json_error = AddUDF(env, "to_json", "s", 1, 1, "m", multifield_to_json, "multifield_to_json", this);
+        assert(to_json_error == AUE_NO_ERROR);
 
         LOG_TRACE(type_deftemplate);
-        Build(env, type_deftemplate);
+        [[maybe_unused]] auto build_type_dt_err = Build(env, type_deftemplate);
+        assert(build_type_dt_err == BE_NO_ERROR);
         LOG_TRACE(is_a_deftemplate);
-        Build(env, is_a_deftemplate);
+        [[maybe_unused]] auto build_is_a_dt_err = Build(env, is_a_deftemplate);
+        assert(build_is_a_dt_err == BE_NO_ERROR);
         LOG_TRACE(item_deftemplate);
-        Build(env, item_deftemplate);
+        [[maybe_unused]] auto build_item_dt_err = Build(env, item_deftemplate);
+        assert(build_item_dt_err == BE_NO_ERROR);
         LOG_TRACE(instance_of_deftemplate);
-        Build(env, instance_of_deftemplate);
+        [[maybe_unused]] auto build_instance_dt_err = Build(env, instance_of_deftemplate);
+        assert(build_instance_dt_err == BE_NO_ERROR);
         LOG_TRACE(inheritance_rule);
-        Build(env, inheritance_rule);
+        [[maybe_unused]] auto build_inh_rl_err = Build(env, inheritance_rule);
+        assert(build_inh_rl_err == BE_NO_ERROR);
         LOG_TRACE(all_instances_of_function);
-        Build(env, all_instances_of_function);
+        [[maybe_unused]] auto build_all_insts_fn_err = Build(env, all_instances_of_function);
+        assert(build_all_insts_fn_err == BE_NO_ERROR);
 
 #ifdef BUILD_EXECUTOR
         LOG_TRACE(solver_deftemplate);
-        Build(env, solver_deftemplate);
+        [[maybe_unused]] auto build_slv_dt_err = Build(env, solver_deftemplate);
+        assert(build_slv_dt_err == BE_NO_ERROR);
         LOG_TRACE(task_deftemplate);
-        Build(env, task_deftemplate);
+        [[maybe_unused]] auto build_tsk_dt_err = Build(env, task_deftemplate);
+        assert(build_tsk_dt_err == BE_NO_ERROR);
         LOG_TRACE(tick_function);
-        Build(env, tick_function);
+        [[maybe_unused]] auto build_tck_fn_err = Build(env, tick_function);
+        assert(build_tck_fn_err == BE_NO_ERROR);
         LOG_TRACE(starting_function);
-        Build(env, starting_function);
+        [[maybe_unused]] auto build_strt_fn_err = Build(env, starting_function);
+        assert(build_strt_fn_err == BE_NO_ERROR);
         LOG_TRACE(ending_function);
-        Build(env, ending_function);
+        [[maybe_unused]] auto build_end_fn_err = Build(env, ending_function);
+        assert(build_end_fn_err == BE_NO_ERROR);
 #endif
 
         LOG_DEBUG("Retrieving all types");
@@ -81,11 +94,19 @@ namespace coco
         LOG_DEBUG("Retrieved " << itms.size() << " items");
         for (auto &itm : itms)
             get_type(itm.type).make_item(itm.id, itm.props.has_value() ? std::move(itm.props.value()) : json::json{});
+
+        Run(env, -1);
     }
     coco::~coco()
     {
+        items.clear();
+        reactive_rules.clear();
         types.clear();
-        DestroyEnvironment(env);
+        Reset(env);
+        [[maybe_unused]] auto ce = Clear(env);
+        assert(ce);
+        [[maybe_unused]] auto de = DestroyEnvironment(env);
+        assert(de);
     }
 
     std::vector<utils::ref_wrapper<type>> coco::get_types() noexcept
@@ -106,16 +127,19 @@ namespace coco
         return *types.at(name.data());
     }
 
-    type &coco::create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept
+    type &coco::create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data, bool infere) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         std::vector<std::string> parents_names;
         for (const auto &parent : parents)
             parents_names.emplace_back(parent->get_name());
         db.create_type(name, parents_names, data, static_props, dynamic_props);
-        return make_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
+        auto &tp = make_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
+        if (infere)
+            Run(env, -1);
+        return tp;
     }
-    void coco::set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents) noexcept
+    void coco::set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents, bool infere) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         std::vector<std::string> parents_names;
@@ -123,13 +147,17 @@ namespace coco
             parents_names.emplace_back(parent->get_name());
         db.set_parents(tp.get_name(), parents_names);
         tp.set_parents(std::move(parents));
+        if (infere)
+            Run(env, -1);
     }
 
-    void coco::delete_type(type &tp) noexcept
+    void coco::delete_type(type &tp, bool infere) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.delete_type(tp.get_name());
         types.erase(tp.get_name());
+        if (infere)
+            Run(env, -1);
     }
 
     std::vector<utils::ref_wrapper<item>> coco::get_items() noexcept
@@ -149,29 +177,36 @@ namespace coco
             throw std::invalid_argument("Type not found: " + std::string(id));
         return *items.at(id.data());
     }
-    item &coco::create_item(type &tp, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept
+    item &coco::create_item(type &tp, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val, bool infere) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         auto id = db.create_item(tp.get_name(), props, val);
-        return tp.make_item(id, std::move(props), std::move(val));
+        auto &itm = tp.make_item(id, std::move(props), std::move(val));
+        if (infere)
+            Run(env, -1);
+        return itm;
     }
     json::json coco::get_values(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         return db.get_values(itm.get_id(), from, to);
     }
-    void coco::set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp)
+    void coco::set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp, bool infere)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.set_value(itm.get_id(), val, timestamp);
         itm.set_value(std::make_pair(std::move(val), timestamp));
+        if (infere)
+            Run(env, -1);
     }
-    void coco::delete_item(item &itm) noexcept
+    void coco::delete_item(item &itm, bool infere) noexcept
     {
         auto id = itm.get_id();
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.delete_item(id);
         items.erase(id);
+        if (infere)
+            Run(env, -1);
     }
 
     std::vector<utils::ref_wrapper<reactive_rule>> coco::get_reactive_rules() noexcept
@@ -183,12 +218,14 @@ namespace coco
             res.push_back(*r.second);
         return res;
     }
-    void coco::create_reactive_rule(std::string_view rule_name, std::string_view rule_content)
+    void coco::create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.create_reactive_rule(rule_name, rule_content);
         if (!reactive_rules.emplace(rule_name, utils::make_u_ptr<reactive_rule>(*this, rule_name, rule_content)).second)
             throw std::invalid_argument("reactive rule `" + std::string(rule_name) + "` already exists");
+        if (infere)
+            Run(env, -1);
     }
 
     std::vector<utils::ref_wrapper<deliberative_rule>> coco::get_deliberative_rules() noexcept
@@ -307,10 +344,10 @@ namespace coco
         {
             if (!UDFNextArgument(udfc, INTEGER_BIT, &timestamp))
                 return;
-            cc.set_value(itm, std::move(data), std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp.integerValue->contents)));
+            cc.set_value(itm, std::move(data), std::chrono::system_clock::time_point(std::chrono::milliseconds(timestamp.integerValue->contents)), false);
         }
         else
-            cc.set_value(itm, std::move(data));
+            cc.set_value(itm, std::move(data), std::chrono::system_clock::now(), false);
     }
 
     void multifield_to_json(Environment *env, UDFContext *udfc, UDFValue *ret)

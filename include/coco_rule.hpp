@@ -11,7 +11,7 @@ namespace coco
    *
    * This class represents a reactive CoCo rule in the form of a name and content.
    */
-  class reactive_rule
+  class reactive_rule final
   {
   public:
     /**
@@ -22,6 +22,7 @@ namespace coco
      * @param content The content of the rule.
      */
     reactive_rule(coco &cc, std::string_view name, std::string_view content) noexcept;
+    ~reactive_rule();
 
     /**
      * @brief Gets the name of the rule.
@@ -50,7 +51,7 @@ namespace coco
    *
    * This class represents a deliberative CoCo rule in the form of a name and content.
    */
-  class deliberative_rule
+  class deliberative_rule final
   {
   public:
     /**

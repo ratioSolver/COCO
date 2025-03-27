@@ -38,7 +38,6 @@ namespace coco
         if (val.has_value())
             set_value(std::move(val.value()));
 
-        Run(tp.get_coco().env, -1);
         NEW_ITEM();
     }
     item::~item() noexcept
@@ -49,7 +48,6 @@ namespace coco
             Retract(p.second);
         Retract(is_instance_of);
         Retract(item_fact);
-        Run(tp.get_coco().env, -1);
     }
 
     void item::set_properties(json::json &&props)
@@ -84,7 +82,6 @@ namespace coco
             }
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have static property " + p_name);
-        Run(tp.get_coco().env, -1);
         UPDATED_ITEM();
     }
 
@@ -126,7 +123,6 @@ namespace coco
             }
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have dynamic property " + p_name);
-        Run(tp.get_coco().env, -1);
         NEW_DATA(val.first, val.second);
     }
 

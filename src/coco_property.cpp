@@ -123,7 +123,9 @@ namespace coco
     {
         auto dt = FindDeftemplate(pt.get_coco().env, get_deftemplate_name().c_str());
         assert(dt);
-        Undeftemplate(dt, pt.get_coco().env);
+        assert(DeftemplateIsDeletable(dt));
+        [[maybe_unused]] auto undef_dt = Undeftemplate(dt, pt.get_coco().env);
+        assert(undef_dt);
     }
 
     std::string property::get_deftemplate_name() const noexcept
@@ -150,8 +152,10 @@ namespace coco
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
+
         LOG_TRACE(deftemplate);
-        Build(get_env(), deftemplate.c_str());
+        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+        assert(prop_dt == BE_NO_ERROR);
     }
     bool bool_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::boolean; }
     json::json bool_property::to_json() const noexcept
@@ -186,8 +190,10 @@ namespace coco
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
+
         LOG_TRACE(deftemplate);
-        Build(get_env(), deftemplate.c_str());
+        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+        assert(prop_dt == BE_NO_ERROR);
     }
     bool int_property::validate(const json::json &j) const noexcept
     {
@@ -234,14 +240,16 @@ namespace coco
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
+
         LOG_TRACE(deftemplate);
-        Build(get_env(), deftemplate.c_str());
+        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+        assert(prop_dt == BE_NO_ERROR);
     }
     bool float_property::validate(const json::json &j) const noexcept
     {
         if (j.get_type() != json::json_type::number)
             return false;
-        long value = j;
+        double value = j;
         if ((min.has_value() && min.value() > value) || (max.has_value() && max.value() < value))
             return false;
         return true;
@@ -274,8 +282,10 @@ namespace coco
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
+
         LOG_TRACE(deftemplate);
-        Build(get_env(), deftemplate.c_str());
+        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+        assert(prop_dt == BE_NO_ERROR);
     }
     bool string_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::string; }
     json::json string_property::to_json() const noexcept
@@ -326,8 +336,10 @@ namespace coco
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
+
         LOG_TRACE(deftemplate);
-        Build(get_env(), deftemplate.c_str());
+        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+        assert(prop_dt == BE_NO_ERROR);
     }
     bool symbol_property::validate(const json::json &j) const noexcept
     {
@@ -413,8 +425,10 @@ namespace coco
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
+
         LOG_TRACE(deftemplate);
-        Build(get_env(), deftemplate.c_str());
+        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+        assert(prop_dt == BE_NO_ERROR);
     }
     bool item_property::validate(const json::json &j) const noexcept
     {
@@ -479,8 +493,10 @@ namespace coco
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
+
         LOG_TRACE(deftemplate);
-        Build(get_env(), deftemplate.c_str());
+        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+        assert(prop_dt == BE_NO_ERROR);
     }
     bool json_property::validate(const json::json &j) const noexcept { return schema.has_value() ? json::validate(j, schema.value(), get_schemas()) : true; }
     json::json json_property::to_json() const noexcept

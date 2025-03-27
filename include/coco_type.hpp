@@ -13,7 +13,7 @@ namespace coco
   class property;
   class item;
 
-  class type
+  class type final
   {
     friend class coco;
 

@@ -88,8 +88,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> {
 
     this.add_child(new ItemProperties(item));
 
-    if (item.get_data().length == 0)
-      coco.CoCo.get_instance().load_data(item);
+    coco.CoCo.get_instance().load_data(item);
   }
 
   override mounted(): void {

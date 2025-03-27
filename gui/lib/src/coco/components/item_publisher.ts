@@ -92,8 +92,6 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
 
     this.element.append(v_table);
     this.set_value();
-    this.v_sel_all_check.checked = true;
-    this.v_sel_all_check.dispatchEvent(new Event('change'));
 
     const b_div = document.createElement('div');
     b_div.classList.add('d-flex', 'justify-content-end', 'gap-2');

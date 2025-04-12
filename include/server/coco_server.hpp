@@ -47,6 +47,7 @@ namespace coco
     void updated_item(const item &itm) override;
     void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
 
+#ifdef BUILD_EXECUTOR
     void state_changed(coco_executor &exec) override;
 
     void flaw_created(coco_executor &exec, const ratio::flaw &f) override;
@@ -65,6 +66,7 @@ namespace coco
     void start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) override;
     void ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) override;
     void end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) override;
+#endif
 
   protected:
     void broadcast(json::json &&msg);

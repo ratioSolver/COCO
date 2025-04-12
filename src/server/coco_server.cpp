@@ -415,6 +415,7 @@ namespace coco
     }
     void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
 
+#ifdef BUILD_EXECUTOR
     void coco_server::state_changed(coco_executor &exec) {}
 
     void coco_server::flaw_created(coco_executor &exec, const ratio::flaw &f) {}
@@ -433,6 +434,7 @@ namespace coco
     void coco_server::start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
     void coco_server::ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
     void coco_server::end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+#endif
 
     void coco_server::broadcast(json::json &&msg)
     {

@@ -12,6 +12,10 @@ namespace coco
     coco_server(coco &cc, std::string_view host = SERVER_HOST, unsigned short port = SERVER_PORT);
 
   protected:
+#ifdef ENABLE_SSL
+    [[nodiscard]] std::string get_token(const std::string &username, const std::string &password) override;
+#endif
+
     utils::u_ptr<network::response> index(const network::request &req);
     utils::u_ptr<network::response> assets(const network::request &req);
 

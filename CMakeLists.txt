@@ -44,6 +44,16 @@ if(BUILD_MONGODB)
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/db/mongo> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})
     target_link_libraries(CoCo PUBLIC mongo::bsoncxx_shared mongo::mongocxx_shared)
     target_compile_definitions(CoCo PUBLIC BUILD_MONGODB MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
+
+    if(ENABLE_SSL)
+        set(MONGODB_USERS_HOST "localhost" CACHE STRING "The MongoDB Users Host")
+        set(MONGODB_USERS_PORT "27018" CACHE STRING "The MongoDB Users Port")
+
+        message(STATUS "MongoDB users host: ${MONGODB_USERS_HOST}")
+        message(STATUS "MongoDB users port: ${MONGODB_USERS_PORT}")
+
+        target_compile_definitions(CoCo PUBLIC MONGODB_USERS_HOST="${MONGODB_USERS_HOST}" MONGODB_USERS_PORT="${MONGODB_USERS_PORT}")
+    endif()
 endif()
 
 message(STATUS "Build CoCo server: ${BUILD_COCO_SERVER}")

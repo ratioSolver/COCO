@@ -36,6 +36,10 @@ namespace coco
         add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
 
+#ifdef ENABLE_SSL
+    std::string coco_server::get_token(const std::string &username, const std::string &password) { return cc.get_token(username, password); }
+#endif
+
     utils::u_ptr<network::response> coco_server::index(const network::request &) { return utils::make_u_ptr<network::file_response>(CLIENT_DIR "/dist/index.html"); }
     utils::u_ptr<network::response> coco_server::assets(const network::request &req)
     {

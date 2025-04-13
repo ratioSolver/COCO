@@ -6,7 +6,11 @@
 
 namespace coco
 {
-    mongo_db::mongo_db(json::json &&cnfg, const std::string &mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+#ifdef ENABLE_SSL
+    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_users_uri, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), users_conn(mongocxx::uri(mongodb_users_uri)), db(conn[static_cast<std::string>(config["name"])]), users_db(users_conn[static_cast<std::string>(config["name"]) + "_users"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"]), users_collection(users_db["users"])
+#else
+    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+#endif
     {
         assert(conn);
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
@@ -15,7 +19,7 @@ namespace coco
         if (item_data_collection.list_indexes().begin() == item_data_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for item data collection");
-            item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize);
+            item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
     }
 
@@ -24,6 +28,28 @@ namespace coco
         LOG_WARN("Dropping database..");
         db.drop();
     }
+
+#ifdef ENABLE_SSL
+    db_user mongo_db::get_user(std::string_view username, std::string_view password)
+    {
+        auto doc = users_collection.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", username.data()), bsoncxx::builder::basic::kvp("password", password.data())));
+        if (!doc)
+            throw std::invalid_argument("Failed to find user: " + std::string(username));
+        return db_user{username, doc->view()["username"].get_string().value.to_string(), json::load(bsoncxx::to_json(doc->view()["personal_data"].get_document().view()))};
+    }
+
+    void mongo_db::create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data) noexcept
+    {
+        bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("_id", itm_id.data()));
+        doc.append(bsoncxx::builder::basic::kvp("username", username.data()));
+        doc.append(bsoncxx::builder::basic::kvp("password", password.data()));
+        if (!personal_data.as_object().empty())
+            doc.append(bsoncxx::builder::basic::kvp("personal_data", bsoncxx::from_json(personal_data.dump())));
+        if (!users_collection.insert_one(doc.view()))
+            throw std::invalid_argument("Failed to insert user: " + std::string(username));
+    }
+#endif
 
     std::vector<db_type> mongo_db::get_types() noexcept
     {
@@ -148,12 +174,22 @@ namespace coco
     }
     void mongo_db::set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
-        bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}));
-        doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(val.dump())));
-        doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
-        if (!item_data_collection.insert_one(doc.view()))
-            throw std::invalid_argument("Failed to insert data for item: " + std::string(itm_id));
+        bsoncxx::builder::basic::document filter_doc;
+        filter_doc.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}));
+        filter_doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
+
+        bsoncxx::builder::basic::document update_fields;
+        update_fields.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(val.dump())));
+
+        bsoncxx::builder::basic::document update_doc;
+        update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
+
+        mongocxx::options::update update_opts;
+        update_opts.upsert(true); // Create a new document if no document matches the filter
+
+        auto result = item_data_collection.update_one(filter_doc.view(), update_doc.view(), update_opts);
+        if (!result)
+            throw std::invalid_argument("Failed to merge or insert data for item: " + std::string(itm_id));
     }
     void mongo_db::delete_item(std::string_view itm_id)
     {

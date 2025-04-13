@@ -10,9 +10,21 @@ namespace coco
   class mongo_db : public coco_db
   {
   public:
-    mongo_db(json::json &&cnfg = {{"name", COCO_NAME}}, const std::string &mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT)) noexcept;
+#ifdef ENABLE_SSL
+    mongo_db(json::json &&cnfg = {{ "name",
+                                    COCO_NAME }},
+             std::string_view mongodb_users_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT), std::string_view mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT)) noexcept;
+#else
+    mongo_db(json::json &&cnfg = {{"name", COCO_NAME}}, std::string_view mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT)) noexcept;
+#endif
 
     void drop() noexcept override;
+
+#ifdef ENABLE_SSL
+    [[nodiscard]] db_user get_user(std::string_view username, std::string_view password) override;
+
+    void create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data = {}) override;
+#endif
 
     [[nodiscard]] std::vector<db_type> get_types() noexcept override;
     void create_type(std::string_view tp_name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props) override;
@@ -32,11 +44,20 @@ namespace coco
 
   private:
     mongocxx::client conn;
+#ifdef ENABLE_SSL
+    mongocxx::client users_conn;
+#endif
 
   protected:
     mongocxx::database db;
+#ifdef ENABLE_SSL
+    mongocxx::database users_db;
+#endif
 
   private:
     mongocxx::collection types_collection, items_collection, item_data_collection, reactive_rules_collection, deliberative_rules_collection;
+#ifdef ENABLE_SSL
+    mongocxx::collection users_collection;
+#endif
   };
 } // namespace coco

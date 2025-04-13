@@ -14,6 +14,9 @@
 
 namespace coco
 {
+#ifdef ENABLE_SSL
+  constexpr const char *user_kw = "User";
+#endif
   constexpr const char *type_deftemplate = "(deftemplate type (slot name (type SYMBOL)))";
   constexpr const char *is_a_deftemplate = "(deftemplate is_a (slot type (type SYMBOL)) (slot parent (type SYMBOL)))";
   constexpr const char *item_deftemplate = "(deftemplate item (slot id (type SYMBOL)))";
@@ -55,6 +58,12 @@ namespace coco
   public:
     coco(coco_db &db) noexcept;
     ~coco();
+
+#ifdef ENABLE_SSL
+    [[nodiscard]] std::string get_token(std::string_view username, std::string_view password);
+
+    [[nodiscard]] item &create_user(std::string_view username, std::string_view password, json::json &&personal_data = {});
+#endif
 
     /**
      * @brief Returns a vector of references to the types.

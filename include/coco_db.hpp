@@ -6,6 +6,14 @@
 
 namespace coco
 {
+#ifdef ENABLE_SSL
+  struct db_user
+  {
+    std::string id, username;
+    json::json personal_data;
+  };
+#endif
+
   struct db_type
   {
     std::string name;
@@ -31,6 +39,12 @@ namespace coco
     coco_db(json::json &&cnfg = {}) noexcept;
 
     virtual void drop() noexcept;
+
+#ifdef ENABLE_SSL
+    [[nodiscard]] virtual db_user get_user(std::string_view username, std::string_view password);
+
+    virtual void create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data = {});
+#endif
 
     [[nodiscard]] virtual std::vector<db_type> get_types() noexcept;
     virtual void create_type(std::string_view tp_name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props);

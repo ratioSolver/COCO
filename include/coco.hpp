@@ -14,7 +14,7 @@
 
 namespace coco
 {
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
   constexpr const char *user_kw = "User";
 #endif
   constexpr const char *type_deftemplate = "(deftemplate type (slot name (type SYMBOL)))";
@@ -59,7 +59,7 @@ namespace coco
     coco(coco_db &db) noexcept;
     ~coco();
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     [[nodiscard]] std::string get_token(std::string_view username, std::string_view password);
 
     [[nodiscard]] item &create_user(std::string_view username, std::string_view password, json::json &&personal_data = {});

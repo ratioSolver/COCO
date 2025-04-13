@@ -9,7 +9,7 @@ namespace coco
 
     void coco_db::drop() noexcept {}
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     db_user coco_db::get_user(std::string_view username, std::string_view password)
     {
         LOG_WARN("Retrieving user " + std::string(username) + " with password " + std::string(password));

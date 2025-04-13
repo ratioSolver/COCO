@@ -6,7 +6,7 @@
 
 namespace coco
 {
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
   struct db_user
   {
     std::string id, username;
@@ -40,7 +40,7 @@ namespace coco
 
     virtual void drop() noexcept;
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     [[nodiscard]] virtual db_user get_user(std::string_view username, std::string_view password);
 
     virtual void create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data = {});

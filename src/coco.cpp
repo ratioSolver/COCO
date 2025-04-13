@@ -77,7 +77,7 @@ namespace coco
                 get_type(tp.name).set_parents(std::move(parents));
             }
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
         if (!types.count(user_kw))
             [[maybe_unused]]
             auto &usr_tp = create_type(user_kw, {}, {}, {}, {});
@@ -115,7 +115,7 @@ namespace coco
         assert(de);
     }
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     std::string coco::get_token(std::string_view username, std::string_view password)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);

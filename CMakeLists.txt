@@ -14,6 +14,7 @@ option(BUILD_COCO_SERVER "Build the CoCo server" OFF)
 option(BUILD_MQTT "Build MQTT middleware" OFF)
 option(BUILD_EXECUTOR "Build CoCo executor" OFF)
 option(BUILD_TRANSFORMER "Build CoCo transformer" OFF)
+option(BUILD_AUTH "Build CoCo authentication" OFF)
 
 message(STATUS "CoCo name: ${COCO_NAME}")
 
@@ -45,7 +46,7 @@ if(BUILD_MONGODB)
     target_link_libraries(CoCo PUBLIC mongo::bsoncxx_shared mongo::mongocxx_shared)
     target_compile_definitions(CoCo PUBLIC BUILD_MONGODB MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 
-    if(ENABLE_SSL)
+    if(BUILD_AUTH)
         set(MONGODB_USERS_HOST "localhost" CACHE STRING "The MongoDB Users Host")
         set(MONGODB_USERS_PORT "27018" CACHE STRING "The MongoDB Users Port")
 
@@ -102,7 +103,7 @@ if(BUILD_EXECUTOR)
     target_compile_definitions(CoCo PUBLIC BUILD_EXECUTOR)
 endif()
 
-message(STATUS "CoCo transformer: ${BUILD_TRANSFORMER}")
+message(STATUS "Build CoCo transformer: ${BUILD_TRANSFORMER}")
 if(BUILD_TRANSFORMER)
     if(NOT TARGET ratioNet)
         add_subdirectory(extern/rationet)
@@ -118,6 +119,13 @@ if(BUILD_TRANSFORMER)
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/transformer>)
     add_dependencies(CoCo ratioNet)
     target_compile_definitions(CoCo PUBLIC BUILD_TRANSFORMER TRANSFORMER_HOST="${TRANSFORMER_HOST}" TRANSFORMER_PORT=${TRANSFORMER_PORT})
+endif()
+
+message(STATUS "Build CoCo authentication: ${BUILD_AUTH}")
+if(BUILD_AUTH)
+    set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
+
+    target_compile_definitions(CoCo PUBLIC BUILD_AUTH)
 endif()
 
 if(BUILD_TESTING)

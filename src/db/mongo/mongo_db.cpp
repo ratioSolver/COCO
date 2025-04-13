@@ -6,7 +6,7 @@
 
 namespace coco
 {
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_users_uri, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), users_conn(mongocxx::uri(mongodb_users_uri)), db(conn[static_cast<std::string>(config["name"])]), users_db(users_conn[static_cast<std::string>(config["name"]) + "_users"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"]), users_collection(users_db["users"])
 #else
     mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
@@ -29,7 +29,7 @@ namespace coco
         db.drop();
     }
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     db_user mongo_db::get_user(std::string_view username, std::string_view password)
     {
         auto doc = users_collection.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", username.data()), bsoncxx::builder::basic::kvp("password", password.data())));

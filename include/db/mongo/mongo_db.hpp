@@ -10,7 +10,7 @@ namespace coco
   class mongo_db : public coco_db
   {
   public:
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     mongo_db(json::json &&cnfg = {{ "name",
                                     COCO_NAME }},
              std::string_view mongodb_users_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT), std::string_view mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT)) noexcept;
@@ -20,7 +20,7 @@ namespace coco
 
     void drop() noexcept override;
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     [[nodiscard]] db_user get_user(std::string_view username, std::string_view password) override;
 
     void create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data = {}) override;
@@ -44,19 +44,19 @@ namespace coco
 
   private:
     mongocxx::client conn;
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     mongocxx::client users_conn;
 #endif
 
   protected:
     mongocxx::database db;
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     mongocxx::database users_db;
 #endif
 
   private:
     mongocxx::collection types_collection, items_collection, item_data_collection, reactive_rules_collection, deliberative_rules_collection;
-#ifdef ENABLE_SSL
+#ifdef BUILD_AUTH
     mongocxx::collection users_collection;
 #endif
   };

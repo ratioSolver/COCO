@@ -1,5 +1,6 @@
 #include "mongo_db.hpp"
 #include "logging.hpp"
+#include "crypto.hpp"
 #include <bsoncxx/json.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
 #include <cassert>
@@ -7,9 +8,9 @@
 namespace coco
 {
 #ifdef BUILD_AUTH
-    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_users_uri, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), users_conn(mongocxx::uri(mongodb_users_uri)), db(conn[static_cast<std::string>(config["name"])]), users_db(users_conn[static_cast<std::string>(config["name"]) + "_users"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"]), users_collection(users_db["users"])
+    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_users_uri, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri.data())), users_conn(mongocxx::uri(mongodb_users_uri.data())), db(conn[static_cast<std::string>(config["name"])]), users_db(users_conn[static_cast<std::string>(config["name"]) + "_users"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"]), users_collection(users_db["users"])
 #else
-    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri)), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri.data())), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
 #endif
     {
         assert(conn);
@@ -32,18 +33,25 @@ namespace coco
 #ifdef BUILD_AUTH
     db_user mongo_db::get_user(std::string_view username, std::string_view password)
     {
-        auto doc = users_collection.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", username.data()), bsoncxx::builder::basic::kvp("password", password.data())));
+        auto doc = users_collection.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("username", username.data())));
         if (!doc)
-            throw std::invalid_argument("Failed to find user: " + std::string(username));
-        return db_user{username, doc->view()["username"].get_string().value.to_string(), json::load(bsoncxx::to_json(doc->view()["personal_data"].get_document().view()))};
+            throw std::invalid_argument("User not found: " + std::string(username));
+        if (auto salt = doc->view()["salt"].get_string().value.to_string(); utils::encode_password(password, salt) != doc->view()["password"].get_string().value.to_string())
+            throw std::invalid_argument("Invalid password for user: " + std::string(username));
+        if (doc->view().find("personal_data") == doc->view().end())
+            return db_user{std::string(doc->view()["_id"].get_string().value), std::string(doc->view()["username"].get_string().value), json::json{}};
+        else
+            return db_user{std::string(doc->view()["_id"].get_string().value), std::string(doc->view()["username"].get_string().value), json::load(bsoncxx::to_json(doc->view()["personal_data"].get_document().view()))};
     }
 
-    void mongo_db::create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data) noexcept
+    void mongo_db::create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data)
     {
+        auto [salt, hash] = utils::encode_password(password);
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("_id", itm_id.data()));
         doc.append(bsoncxx::builder::basic::kvp("username", username.data()));
         doc.append(bsoncxx::builder::basic::kvp("password", password.data()));
+        doc.append(bsoncxx::builder::basic::kvp("salt", salt.data()));
         if (!personal_data.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("personal_data", bsoncxx::from_json(personal_data.dump())));
         if (!users_collection.insert_one(doc.view()))

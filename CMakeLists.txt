@@ -47,6 +47,8 @@ if(BUILD_MONGODB)
     target_compile_definitions(CoCo PUBLIC BUILD_MONGODB MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 
     if(BUILD_AUTH)
+        set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
+
         set(MONGODB_USERS_HOST "localhost" CACHE STRING "The MongoDB Users Host")
         set(MONGODB_USERS_PORT "27018" CACHE STRING "The MongoDB Users Port")
 

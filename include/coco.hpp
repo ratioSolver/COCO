@@ -126,6 +126,9 @@ namespace coco
 #ifdef BUILD_LISTENERS
   private:
 #ifdef BUILD_EXECUTOR
+    void new_executor(coco_executor &exec);
+    void executor_deleted(coco_executor &exec);
+
     void state_changed(coco_executor &exec);
 
     void flaw_created(coco_executor &exec, const ratio::flaw &f);
@@ -232,6 +235,9 @@ namespace coco
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
 #ifdef BUILD_EXECUTOR
+    virtual void new_executor([[maybe_unused]] coco_executor &exec) {}
+    virtual void executor_deleted([[maybe_unused]] coco_executor &exec) {}
+
     virtual void state_changed([[maybe_unused]] coco_executor &exec) {}
 
     virtual void flaw_created([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}

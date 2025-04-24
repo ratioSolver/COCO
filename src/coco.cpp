@@ -407,6 +407,17 @@ namespace coco
 
 #ifdef BUILD_LISTENERS
 #ifdef BUILD_EXECUTOR
+    void coco::new_executor(coco_executor &exec)
+    {
+        for (auto &l : listeners)
+            l->new_executor(exec);
+    }
+    void coco::executor_deleted(coco_executor &exec)
+    {
+        for (auto &l : listeners)
+            l->executor_deleted(exec);
+    }
+
     void coco::state_changed(coco_executor &exec)
     {
         for (auto &l : listeners)

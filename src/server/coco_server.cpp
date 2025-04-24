@@ -425,24 +425,128 @@ namespace coco
     void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
 
 #ifdef BUILD_EXECUTOR
-    void coco_server::state_changed(coco_executor &exec) {}
+    void coco_server::new_executor(coco_executor &exec)
+    {
+        json::json j_exec = exec.to_json();
+        j_exec["msg_type"] = "new_executor";
+        j_exec["executor"] = static_cast<uint64_t>(exec.get_id());
+        broadcast(std::move(j_exec));
+    }
+    void coco_server::executor_deleted(coco_executor &exec)
+    {
+        json::json j_exec = {{"msg_type", "executor_deleted"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
+        broadcast(std::move(j_exec));
+    }
 
-    void coco_server::flaw_created(coco_executor &exec, const ratio::flaw &f) {}
-    void coco_server::flaw_state_changed(coco_executor &exec, const ratio::flaw &f) {}
-    void coco_server::flaw_cost_changed(coco_executor &exec, const ratio::flaw &f) {}
-    void coco_server::flaw_position_changed(coco_executor &exec, const ratio::flaw &f) {}
-    void coco_server::current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f) {}
-    void coco_server::resolver_created(coco_executor &exec, const ratio::resolver &r) {}
-    void coco_server::resolver_state_changed(coco_executor &exec, const ratio::resolver &r) {}
-    void coco_server::current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r) {}
-    void coco_server::causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r) {}
+    void coco_server::state_changed(coco_executor &exec)
+    {
+        json::json j_exec = exec.to_json();
+        j_exec["msg_type"] = "state_changed";
+        j_exec["executor"] = static_cast<uint64_t>(exec.get_id());
+        broadcast(std::move(j_exec));
+    }
 
-    void coco_server::executor_state_changed(coco_executor &exec, ratio::executor::executor_state state) {}
-    void coco_server::tick(coco_executor &exec, const utils::rational &time) {}
-    void coco_server::starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    void coco_server::start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    void coco_server::ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    void coco_server::end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+    void coco_server::flaw_created(coco_executor &exec, const ratio::flaw &f)
+    {
+        json::json j_msg = f.to_json();
+        j_msg["msg_type"] = "flaw_created";
+        j_msg["executor"] = static_cast<uint64_t>(exec.get_id());
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::flaw_state_changed(coco_executor &exec, const ratio::flaw &f)
+    {
+        json::json j_msg = {{"msg_type", "flaw_state_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", f.get_id()}, {"state", ratio::to_string(f.get_state())}};
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::flaw_cost_changed(coco_executor &exec, const ratio::flaw &f)
+    {
+        auto cost = f.get_estimated_cost();
+        json::json j_msg = {{"msg_type", "flaw_cost_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", f.get_id()}, {"cost", {{"num", cost.numerator()}, {"den", cost.denominator()}}}};
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::flaw_position_changed(coco_executor &exec, const ratio::flaw &f)
+    {
+        json::json j_msg = {{"msg_type", "flaw_position_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", f.get_id()}, {"position", f.get_position()}};
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f)
+    {
+        json::json j_msg = {{"msg_type", "current_flaw"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
+        if (f)
+            j_msg["id"] = static_cast<uint64_t>(f.value()->get_id());
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::resolver_created(coco_executor &exec, const ratio::resolver &r)
+    {
+        json::json j_r = r.to_json();
+        j_r["msg_type"] = "resolver_created";
+        j_r["executor"] = static_cast<uint64_t>(exec.get_id());
+        broadcast(std::move(j_r));
+    }
+    void coco_server::resolver_state_changed(coco_executor &exec, const ratio::resolver &r)
+    {
+        json::json j_r = {{"msg_type", "resolver_state_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", r.get_id()}, {"state", ratio::to_string(r.get_state())}};
+        broadcast(std::move(j_r));
+    }
+    void coco_server::current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r)
+    {
+        json::json j_r = {{"msg_type", "current_resolver"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
+        if (r)
+            j_r["id"] = static_cast<uint64_t>(r.value()->get_id());
+        broadcast(std::move(j_r));
+    }
+    void coco_server::causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r)
+    {
+        json::json j_msg = {{"msg_type", "causal_link_added"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"flaw", f.get_id()}, {"resolver", r.get_id()}};
+        broadcast(std::move(j_msg));
+    }
+
+    void coco_server::executor_state_changed(coco_executor &exec, ratio::executor::executor_state state)
+    {
+        json::json j_msg = {{"msg_type", "executor_state_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"state", static_cast<int>(state)}};
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::tick(coco_executor &exec, const utils::rational &time)
+    {
+        json::json j_msg = {{"msg_type", "tick"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"time", {{"num", time.numerator()}, {"den", time.denominator()}}}};
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    {
+        json::json j_msg = {{"msg_type", "starting"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
+        json::json j_atms(json::json_type::array);
+        for (auto &atm : atms)
+            j_atms.push_back(atm->to_json());
+        j_msg["atms"] = std::move(j_atms);
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    {
+        json::json j_msg = {{"msg_type", "start"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
+        json::json j_atms(json::json_type::array);
+        for (auto &atm : atms)
+            j_atms.push_back(atm->to_json());
+        j_msg["atms"] = std::move(j_atms);
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    {
+        json::json j_msg = {{"msg_type", "ending"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
+        json::json j_atms(json::json_type::array);
+        for (auto &atm : atms)
+            j_atms.push_back(atm->to_json());
+        j_msg["atms"] = std::move(j_atms);
+        broadcast(std::move(j_msg));
+    }
+    void coco_server::end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    {
+        json::json j_msg = {{"msg_type", "end"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
+        json::json j_atms(json::json_type::array);
+        for (auto &atm : atms)
+            j_atms.push_back(atm->to_json());
+        j_msg["atms"] = std::move(j_atms);
+        broadcast(std::move(j_msg));
+    }
 #endif
 
     void coco_server::broadcast(json::json &&msg)

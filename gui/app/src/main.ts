@@ -21,6 +21,7 @@ class CoCoApp extends AppComponent {
   }
 
   override populate_navbar(container: HTMLDivElement): void {
+    // Create and add brand element
     const brand = document.createElement('a');
     brand.classList.add('navbar-brand');
     brand.href = '#';
@@ -35,16 +36,18 @@ class CoCoApp extends AppComponent {
     const brand_container = document.createElement('div');
     brand_container.style.display = 'flex';
     brand_container.style.alignItems = 'center';
+    brand_container.style.gap = '0.5rem'; // Add space between icon and text
 
     const brand_icon = document.createElement('img');
     brand_icon.src = 'favicon.ico';
     brand_icon.alt = 'CoCo';
     brand_icon.width = 32;
     brand_icon.height = 32;
-    brand_icon.classList.add('d-inline-block', 'align-text-top', 'mr-2');
+    brand_icon.classList.add('d-inline-block', 'align-text-top', 'me-1');
 
     const brand_text = document.createElement('span');
     brand_text.textContent = 'CoCo';
+    brand_text.style.fontWeight = '500'; // Make text slightly bolder
 
     brand_container.appendChild(brand_icon);
     brand_container.appendChild(brand_text);

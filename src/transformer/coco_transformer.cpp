@@ -11,7 +11,7 @@ namespace coco
 
         AddUDF(get_env(), "understand", "v", 1, 1, "s", understand, "understand", this);
         AddUDF(get_env(), "trigger_intent", "v", 3, 5, "yyymm", trigger_intent, "trigger_intent", this);
-        AddUDF(get_env(), "compute_response", "v", 3, 3, "yys", compute_response, "compute_response", this);
+        AddUDF(get_env(), "compute_response", "v", 2, 2, "ys", compute_response, "compute_response", this);
 
         auto res = client.get("/version");
         if (!res || res->get_status_code() != network::ok)
@@ -158,16 +158,12 @@ namespace coco
         if (!UDFFirstArgument(udfc, SYMBOL_BIT, &ctx))
             return;
 
-        UDFValue item;
-        if (!UDFNextArgument(udfc, STRING_BIT, &item))
-            return;
-
         UDFValue message;
         if (!UDFNextArgument(udfc, STRING_BIT, &message))
             return;
 
-        auto &itm = t.cc.get_item(item.lexemeValue->contents);
-        LOG_DEBUG("[" << ctx.lexemeValue->contents << "] says: '" << message.lexemeValue->contents << "' on " << itm.get_id());
+        auto &itm = t.cc.get_item(ctx.lexemeValue->contents);
+        LOG_DEBUG("[" << ctx.lexemeValue->contents << "] says: '" << message.lexemeValue->contents);
 
         auto res = t.client.post("/webhooks/rest/webhook", {{"sender", ctx.lexemeValue->contents}, {"message", message.lexemeValue->contents}}, {{"Content-Type", "application/json"}, {"Connection", "keep-alive"}});
         if (!res || res->get_status_code() != network::ok)

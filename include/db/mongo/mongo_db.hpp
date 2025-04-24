@@ -13,7 +13,7 @@ namespace coco
 #ifdef BUILD_AUTH
     mongo_db(json::json &&cnfg = {{ "name",
                                     COCO_NAME }},
-             std::string_view mongodb_users_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT), std::string_view mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT)) noexcept;
+             std::string_view mongodb_users_uri = MONGODB_URI(MONGODB_USERS_HOST, MONGODB_USERS_PORT), std::string_view mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT)) noexcept;
 #else
     mongo_db(json::json &&cnfg = {{"name", COCO_NAME}}, std::string_view mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT)) noexcept;
 #endif

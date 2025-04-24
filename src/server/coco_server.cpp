@@ -9,8 +9,13 @@ namespace coco
 {
     coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : listener(cc), server(host, port)
     {
+#ifdef BUILD_AUTH
+        add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request), false);
+        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request), false);
+#else
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
+#endif
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
         add_route(network::Get, "^/type/.*$", std::bind(&coco_server::get_type, this, network::placeholders::request));

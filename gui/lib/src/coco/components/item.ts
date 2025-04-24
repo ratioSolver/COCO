@@ -82,6 +82,10 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> {
     id_button.classList.add('btn', 'btn-outline-secondary');
     id_button.type = 'button';
     id_button.append(icon(faCopy).node[0]);
+    id_button.title = 'Copy item ID to clipboard';
+    id_button.addEventListener('click', () => {
+      navigator.clipboard.writeText(item.get_id());
+    });
     id_button_div.append(id_button);
     id_div.append(id_button_div);
     this.element.append(id_div);

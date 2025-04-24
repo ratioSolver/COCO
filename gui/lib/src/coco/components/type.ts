@@ -74,24 +74,29 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
     this.element.style.margin = '1em';
 
-    const id_div = document.createElement('div');
-    id_div.classList.add('input-group');
-    const id_input = document.createElement('input');
-    id_input.classList.add('form-control');
-    id_input.type = 'text';
-    id_input.placeholder = 'Type name';
-    id_input.value = type.get_name();
-    id_input.disabled = true;
-    id_div.append(id_input);
-    const id_button_div = document.createElement('div');
-    id_button_div.classList.add('input-group-append');
-    const id_button = document.createElement('button');
-    id_button.classList.add('btn', 'btn-outline-secondary');
-    id_button.type = 'button';
-    id_button.append(icon(faCopy).node[0]);
-    id_button_div.append(id_button);
-    id_div.append(id_button_div);
-    this.element.append(id_div);
+    const name_div = document.createElement('div');
+    name_div.classList.add('input-group');
+    const name_input = document.createElement('input');
+    name_input.classList.add('form-control');
+    name_input.type = 'text';
+    name_input.placeholder = 'Type name';
+    name_input.value = type.get_name();
+    name_input.disabled = true;
+    name_div.append(name_input);
+    const name_button_div = document.createElement('div');
+    name_button_div.classList.add('input-group-append');
+    const name_button = document.createElement('button');
+    name_button.classList.add('btn', 'btn-outline-secondary');
+    name_button.type = 'button';
+    name_button.title = 'Copy type name to clipboard';
+    name_button.append(icon(faCopy).node[0]);
+    name_button.title = 'Copy type name to clipboard';
+    name_button.addEventListener('click', () => {
+      navigator.clipboard.writeText(type.get_name());
+    });
+    name_button_div.append(name_button);
+    name_div.append(name_button_div);
+    this.element.append(name_div);
 
     this.sp_table = document.createElement('table');
     this.sp_table.createCaption().textContent = 'Static properties';

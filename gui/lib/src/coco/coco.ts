@@ -583,6 +583,20 @@ export namespace coco {
       new_value(item: Item, v: Datum): void;
     }
   }
+
+  export class User {
+
+    private readonly id: string;
+    private readonly personal_data: Record<string, unknown>;
+
+    constructor(id: string, personal_data: Record<string, unknown>) {
+      this.id = id;
+      this.personal_data = personal_data;
+    }
+
+    get_id(): string { return this.id; }
+    get_personal_data(): Record<string, unknown> { return this.personal_data; }
+  }
 }
 
 type UpdateCoCoMessage = { msg_type: string } & (CoCoMessage | NewTypeMessage | NewItemMessage | NewDataMessage);

@@ -15,7 +15,7 @@ namespace coco
   class coco_executor : public ratio::executor::executor
   {
   public:
-    coco_executor(coco &cc, const utils::rational &units_per_tick = utils::rational::one) noexcept;
+    coco_executor(coco &cc, std::string_view name = "oRatio", const utils::rational &units_per_tick = utils::rational::one) noexcept;
 
   private:
     void state_changed() override;

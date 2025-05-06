@@ -24,11 +24,11 @@ namespace coco
   constexpr const char *inheritance_rule = "(defrule inheritance (is_a (type ?t) (parent ?p)) (instance_of (id ?i) (type ?t)) => (assert (instance_of (id ?i) (type ?p))))";
   constexpr const char *all_instances_of_function = "(deffunction all-instances-of (?type) (bind ?instances (create$)) (do-for-all-facts ((?instance_of instance_of)) (eq ?instance_of:type ?type) (bind ?instances (create$ ?instances ?instance_of:id))) (return ?instances))";
 #ifdef BUILD_EXECUTOR
-  constexpr const char *solver_deftemplate = "(deftemplate solver (slot name (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))";
-  constexpr const char *task_deftemplate = "(deftemplate task (slot solver (type SYMBOL)) (slot id (type INTEGER)) (slot type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))";
+  constexpr const char *executor_deftemplate = "(deftemplate executor (slot name (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))";
+  constexpr const char *task_deftemplate = "(deftemplate task (slot executor (type SYMBOL)) (slot id (type INTEGER)) (slot type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))";
   constexpr const char *tick_function = "(deffunction tick (?year ?month ?day ?hour ?minute ?second) (do-for-all-facts ((?task task)) TRUE (modify ?task (since (+ ?task:since 1)))) (return TRUE))";
-  constexpr const char *starting_function = "(deffunction starting (?solver ?task_type ?pars ?vals) (return TRUE))";
-  constexpr const char *ending_function = "(deffunction ending (?solver ?id) (return TRUE))";
+  constexpr const char *starting_function = "(deffunction starting (?executor ?task_type ?pars ?vals) (return TRUE))";
+  constexpr const char *ending_function = "(deffunction ending (?executor ?id) (return TRUE))";
 #endif
 
   class coco_db;
@@ -123,10 +123,25 @@ namespace coco
 
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
+#ifdef BUILD_EXECUTOR
+    [[nodiscard]] coco_executor &create_executor(std::string_view name);
+    void delete_executor(coco_executor &exec);
+
+    friend void create_exec_script(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void create_exec_rules(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void delay_task(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void failure(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void adapt_rules(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void delete_exec(Environment *env, UDFContext *udfc, UDFValue *out);
+#endif
+
 #ifdef BUILD_LISTENERS
   private:
 #ifdef BUILD_EXECUTOR
-    void new_executor(coco_executor &exec);
+    void executor_created(coco_executor &exec);
     void executor_deleted(coco_executor &exec);
 
     void state_changed(coco_executor &exec);
@@ -191,7 +206,7 @@ namespace coco
     std::map<std::string, utils::u_ptr<reactive_rule>, std::less<>> reactive_rules;         // The reactive rules..
     std::map<std::string, utils::u_ptr<deliberative_rule>, std::less<>> deliberative_rules; // The deliberative rules..
 #ifdef BUILD_EXECUTOR
-    std::set<utils::u_ptr<coco_executor>> executors; // the executors..
+    std::unordered_map<std::string, utils::u_ptr<coco_executor>> executors; // the executors..
 #endif
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
@@ -235,7 +250,7 @@ namespace coco
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
 #ifdef BUILD_EXECUTOR
-    virtual void new_executor([[maybe_unused]] coco_executor &exec) {}
+    virtual void executor_created([[maybe_unused]] coco_executor &exec) {}
     virtual void executor_deleted([[maybe_unused]] coco_executor &exec) {}
 
     virtual void state_changed([[maybe_unused]] coco_executor &exec) {}
@@ -267,5 +282,17 @@ namespace coco
   protected:
     coco &cc;
   };
+#endif
+
+#ifdef BUILD_EXECUTOR
+  void create_exec_script(Environment *env, UDFContext *udfc, UDFValue *out);
+  void create_exec_rules(Environment *env, UDFContext *udfc, UDFValue *out);
+  void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
+  void delay_task(Environment *env, UDFContext *udfc, UDFValue *out);
+  void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
+  void failure(Environment *env, UDFContext *udfc, UDFValue *out);
+  void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
+  void adapt_rules(Environment *env, UDFContext *udfc, UDFValue *out);
+  void delete_exec(Environment *env, UDFContext *udfc, UDFValue *out);
 #endif
 } // namespace coco

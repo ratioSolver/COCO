@@ -20,10 +20,10 @@ namespace coco
         add_property_type(utils::make_u_ptr<item_property_type>(*this));
         add_property_type(utils::make_u_ptr<json_property_type>(*this));
 
-        [[maybe_unused]] auto add_data_error = AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
-        assert(add_data_error == AUE_NO_ERROR);
-        [[maybe_unused]] auto to_json_error = AddUDF(env, "to_json", "s", 1, 1, "m", multifield_to_json, "multifield_to_json", this);
-        assert(to_json_error == AUE_NO_ERROR);
+        [[maybe_unused]] auto add_data_err = AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
+        assert(add_data_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto to_json_err = AddUDF(env, "to_json", "s", 1, 1, "m", multifield_to_json, "multifield_to_json", this);
+        assert(to_json_err == AUE_NO_ERROR);
 
         LOG_TRACE(type_deftemplate);
         [[maybe_unused]] auto build_type_dt_err = Build(env, type_deftemplate);
@@ -45,8 +45,8 @@ namespace coco
         assert(build_all_insts_fn_err == BE_NO_ERROR);
 
 #ifdef BUILD_EXECUTOR
-        LOG_TRACE(solver_deftemplate);
-        [[maybe_unused]] auto build_slv_dt_err = Build(env, solver_deftemplate);
+        LOG_TRACE(executor_deftemplate);
+        [[maybe_unused]] auto build_slv_dt_err = Build(env, executor_deftemplate);
         assert(build_slv_dt_err == BE_NO_ERROR);
         LOG_TRACE(task_deftemplate);
         [[maybe_unused]] auto build_tsk_dt_err = Build(env, task_deftemplate);
@@ -60,6 +60,24 @@ namespace coco
         LOG_TRACE(ending_function);
         [[maybe_unused]] auto build_end_fn_err = Build(env, ending_function);
         assert(build_end_fn_err == BE_NO_ERROR);
+
+        [[maybe_unused]] auto create_executor_script_err = AddUDF(env, "create_executor_script", "v", 2, 2, "ys", create_exec_script, "create_executor_script", this);
+        assert(create_executor_script_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto create_executor_rules_err = AddUDF(env, "create_executor_rules", "v", 2, 2, "ym", create_exec_rules, "create_executor_rules", this);
+        assert(create_executor_rules_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto start_execution_err = AddUDF(env, "start_execution", "v", 1, 1, "l", start_execution, "start_execution", this);
+        assert(start_execution_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto delay_task_err = AddUDF(env, "delay_task", "v", 2, 3, "llm", delay_task, "delay_task", this);
+        assert(delay_task_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto extend_task_err = AddUDF(env, "extend_task", "v", 2, 3, "llm", extend_task, "extend_task", this);
+        assert(extend_task_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto failure_err = AddUDF(env, "failure", "v", 2, 2, "lm", failure, "failure", this);
+        assert(failure_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto adapt_script_err = AddUDF(env, "adapt_script", "v", 2, 2, "ls", adapt_script, "adapt_script", this);
+        assert(adapt_script_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto adapt_rules_err = AddUDF(env, "adapt_rules", "v", 2, 2, "lm", adapt_rules, "adapt_rules", this);
+        assert(adapt_rules_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto delete_executor_err = AddUDF(env, "delete_executor", "v", 1, 1, "l", delete_exec, "delete_executor", this);
 #endif
 
         LOG_DEBUG("Retrieving all types");
@@ -292,6 +310,21 @@ namespace coco
         return tp;
     }
 
+#ifdef BUILD_EXECUTOR
+    coco_executor &coco::create_executor(std::string_view name)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        auto &exec = *executors.emplace(name, utils::make_u_ptr<coco_executor>(*this, name)).first->second.get();
+        executor_created(exec);
+        return exec;
+    }
+    void coco::delete_executor(coco_executor &exec)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        executors.erase(exec.get_name());
+    }
+#endif
+
     json::json coco::to_json() const noexcept
     {
         json::json jc;
@@ -405,12 +438,275 @@ namespace coco
         ret->lexemeValue = CreateString(env, j_array.dump().c_str());
     }
 
+#ifdef BUILD_EXECUTOR
+    void create_exec_script(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Creating new executor..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto &exec = cc.create_executor(executor_name.lexemeValue->contents);
+
+        UDFValue script;
+        if (!UDFNextArgument(udfc, STRING_BIT, &script))
+            return;
+
+        exec.adapt(script.lexemeValue->contents);
+    }
+    void create_exec_rules(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Creating new executor..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto &exec = cc.create_executor(executor_name.lexemeValue->contents);
+
+        UDFValue rules;
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &rules))
+            return;
+
+        for (size_t i = 0; i < rules.multifieldValue->length; ++i)
+        {
+            auto &rule = rules.multifieldValue->contents[i];
+            if (rule.header->type != SYMBOL_TYPE)
+                return;
+            auto it = cc.deliberative_rules.find(rule.lexemeValue->contents);
+            if (it == cc.deliberative_rules.end())
+                return;
+            exec.adapt(it->second->get_content());
+        }
+    }
+    void start_execution(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Starting execution..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto it = cc.executors.find(executor_name.lexemeValue->contents);
+        if (it == cc.executors.end())
+            return;
+        auto &exec = *it->second;
+
+        exec.plexa::start();
+    }
+    void delay_task(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Delaying task..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto it = cc.executors.find(executor_name.lexemeValue->contents);
+        if (it == cc.executors.end())
+            return;
+        auto &exec = *it->second;
+
+        UDFValue task_id;
+        if (!UDFNextArgument(udfc, SYMBOL_BIT, &task_id))
+            return;
+
+        auto atm = reinterpret_cast<ratio::atom *>(task_id.integerValue->contents);
+        utils::rational delay = utils::rational::one;
+        if (UDFHasNextArgument(udfc))
+        { // we have a delay..
+            UDFValue delay_val;
+            if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
+                return;
+            switch (delay_val.multifieldValue->length)
+            {
+            case 1:
+            {
+                auto &num = delay_val.multifieldValue->contents[0];
+                if (num.header->type != INTEGER_TYPE)
+                    return;
+                delay = utils::rational(num.integerValue->contents);
+                break;
+            }
+            case 2:
+            {
+                auto &num = delay_val.multifieldValue->contents[0];
+                if (num.header->type != INTEGER_TYPE)
+                    return;
+                auto &den = delay_val.multifieldValue->contents[1];
+                if (den.header->type != INTEGER_TYPE)
+                    return;
+                delay = utils::rational(num.integerValue->contents, den.integerValue->contents);
+                break;
+            }
+            default:
+                return;
+            }
+        }
+
+        exec.dont_start_yet({std::pair(atm, delay)});
+    }
+    void extend_task(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Extending task..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto it = cc.executors.find(executor_name.lexemeValue->contents);
+        if (it == cc.executors.end())
+            return;
+        auto &exec = *it->second;
+
+        UDFValue task_id;
+        if (!UDFNextArgument(udfc, SYMBOL_BIT, &task_id))
+            return;
+
+        auto atm = reinterpret_cast<ratio::atom *>(task_id.integerValue->contents);
+        utils::rational delay = utils::rational::one;
+        if (UDFHasNextArgument(udfc))
+        { // we have a delay..
+            UDFValue delay_val;
+            if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &delay_val))
+                return;
+            switch (delay_val.multifieldValue->length)
+            {
+            case 1:
+            {
+                auto &num = delay_val.multifieldValue->contents[0];
+                if (num.header->type != INTEGER_TYPE)
+                    return;
+                delay = utils::rational(num.integerValue->contents);
+                break;
+            }
+            case 2:
+            {
+                auto &num = delay_val.multifieldValue->contents[0];
+                if (num.header->type != INTEGER_TYPE)
+                    return;
+                auto &den = delay_val.multifieldValue->contents[1];
+                if (den.header->type != INTEGER_TYPE)
+                    return;
+                delay = utils::rational(num.integerValue->contents, den.integerValue->contents);
+                break;
+            }
+            default:
+                return;
+            }
+        }
+
+        exec.dont_end_yet({std::pair(atm, delay)});
+    }
+    void failure(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Failure..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto it = cc.executors.find(executor_name.lexemeValue->contents);
+        if (it == cc.executors.end())
+            return;
+        auto &exec = *it->second;
+
+        UDFValue task_ids;
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &task_ids))
+            return;
+
+        std::unordered_set<const riddle::atom_term *> atms;
+        for (size_t i = 0; i < task_ids.multifieldValue->length; ++i)
+        {
+            auto &task_id = task_ids.multifieldValue->contents[i];
+            if (task_id.header->type != SYMBOL_TYPE)
+                return;
+            auto atm = reinterpret_cast<const riddle::atom_term *>(task_id.integerValue->contents);
+            atms.insert(atm);
+        }
+
+        exec.failure(atms);
+    }
+    void adapt_script(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Adapting script..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto it = cc.executors.find(executor_name.lexemeValue->contents);
+        if (it == cc.executors.end())
+            return;
+        auto &exec = *it->second;
+
+        UDFValue script;
+        if (!UDFNextArgument(udfc, STRING_BIT, &script))
+            return;
+
+        exec.adapt(script.lexemeValue->contents);
+    }
+    void adapt_rules(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Adapting rules..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto it = cc.executors.find(executor_name.lexemeValue->contents);
+        if (it == cc.executors.end())
+            return;
+        auto &exec = *it->second;
+
+        UDFValue rules;
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &rules))
+            return;
+
+        for (size_t i = 0; i < rules.multifieldValue->length; ++i)
+        {
+            auto &rule = rules.multifieldValue->contents[i];
+            if (rule.header->type != SYMBOL_TYPE)
+                return;
+            auto it = cc.deliberative_rules.find(rule.lexemeValue->contents);
+            if (it == cc.deliberative_rules.end())
+                return;
+            exec.adapt(it->second->get_content());
+        }
+    }
+    void delete_exec(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Deleting executor..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue executor_name;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &executor_name))
+            return;
+        auto it = cc.executors.find(executor_name.lexemeValue->contents);
+        if (it == cc.executors.end())
+            return;
+        auto &exec = *it->second;
+
+        cc.delete_executor(exec);
+    }
+#endif
+
 #ifdef BUILD_LISTENERS
 #ifdef BUILD_EXECUTOR
-    void coco::new_executor(coco_executor &exec)
+    void coco::executor_created(coco_executor &exec)
     {
         for (auto &l : listeners)
-            l->new_executor(exec);
+            l->executor_created(exec);
     }
     void coco::executor_deleted(coco_executor &exec)
     {

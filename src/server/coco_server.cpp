@@ -424,7 +424,7 @@ namespace coco
     }
     void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
 
-#ifdef BUILD_EXECUTOR
+#ifdef BUILD_DELIBERATIVE
     void coco_server::executor_created(coco_executor &exec)
     {
         json::json j_exec = exec.to_json();

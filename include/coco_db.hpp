@@ -11,14 +11,6 @@ namespace coco
 {
   class coco_db;
 
-#ifdef BUILD_AUTH
-  struct db_user
-  {
-    std::string id, username;
-    json::json personal_data;
-  };
-#endif
-
   struct db_type
   {
     std::string name;
@@ -53,6 +45,8 @@ namespace coco
   public:
     coco_db(json::json &&cnfg = {}) noexcept;
 
+    [[nodiscard]] const json::json &get_config() const noexcept { return config; }
+
     template <typename Tp, typename... Args>
     Tp &add_module(Args &&...args)
     {
@@ -78,12 +72,6 @@ namespace coco
     }
 
     virtual void drop() noexcept;
-
-#ifdef BUILD_AUTH
-    [[nodiscard]] virtual db_user get_user(std::string_view username, std::string_view password);
-
-    virtual void create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data = {});
-#endif
 
     [[nodiscard]] virtual std::vector<db_type> get_types() noexcept;
     virtual void create_type(std::string_view tp_name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props);

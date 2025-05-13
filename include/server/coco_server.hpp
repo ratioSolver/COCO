@@ -51,7 +51,7 @@ namespace coco
     void updated_item(const item &itm) override;
     void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
 
-#ifdef BUILD_EXECUTOR
+#ifdef BUILD_DELIBERATIVE
     void executor_created(coco_executor &exec) override;
     void executor_deleted(coco_executor &exec) override;
 

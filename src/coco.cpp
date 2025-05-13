@@ -59,12 +59,6 @@ namespace coco
                 get_type(tp.name).set_parents(std::move(parents));
             }
 
-#ifdef BUILD_AUTH
-        if (!types.count(user_kw))
-            [[maybe_unused]]
-            auto &usr_tp = create_type(user_kw, {}, {}, {}, {});
-#endif
-
         LOG_DEBUG("Retrieving all reactive rules");
         auto rrs = db.get_reactive_rules();
         LOG_DEBUG("Retrieved " << rrs.size() << " reactive rules");
@@ -90,24 +84,6 @@ namespace coco
         [[maybe_unused]] auto de = DestroyEnvironment(env);
         assert(de);
     }
-
-#ifdef BUILD_AUTH
-    std::string coco::get_token(std::string_view username, std::string_view password)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        auto user = db.get_user(username, password);
-        return user.id;
-    }
-
-    item &coco::create_user(std::string_view username, std::string_view password, json::json &&personal_data)
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        auto &tp = get_type(user_kw);
-        auto &itm = create_item(tp);
-        db.create_user(itm.get_id(), username, password, std::move(personal_data));
-        return itm;
-    }
-#endif
 
     std::vector<utils::ref_wrapper<type>> coco::get_types() noexcept
     {

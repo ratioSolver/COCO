@@ -12,9 +12,6 @@
 
 namespace coco
 {
-#ifdef BUILD_AUTH
-  constexpr const char *user_kw = "User";
-#endif
   constexpr const char *type_deftemplate = "(deftemplate type (slot name (type SYMBOL)))";
   constexpr const char *is_a_deftemplate = "(deftemplate is_a (slot type (type SYMBOL)) (slot parent (type SYMBOL)))";
   constexpr const char *item_deftemplate = "(deftemplate item (slot id (type SYMBOL)))";
@@ -73,12 +70,6 @@ namespace coco
         return *static_cast<Tp *>(it->second.get());
       throw std::runtime_error("Module not found");
     }
-
-#ifdef BUILD_AUTH
-    [[nodiscard]] std::string get_token(std::string_view username, std::string_view password);
-
-    [[nodiscard]] item &create_user(std::string_view username, std::string_view password, json::json &&personal_data = {});
-#endif
 
     /**
      * @brief Returns a vector of references to the types.

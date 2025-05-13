@@ -1,11 +1,16 @@
 #pragma once
 
 #include "json.hpp"
+#include "memory.hpp"
+#include <unordered_map>
+#include <typeindex>
 #include <optional>
 #include <chrono>
 
 namespace coco
 {
+  class coco_db;
+
 #ifdef BUILD_AUTH
   struct db_user
   {
@@ -33,10 +38,44 @@ namespace coco
     std::string name, content;
   };
 
+  class db_module
+  {
+  public:
+    db_module(coco_db &db) noexcept : db(db) {}
+    virtual ~db_module() = default;
+
+  protected:
+    coco_db &db;
+  };
+
   class coco_db
   {
   public:
     coco_db(json::json &&cnfg = {}) noexcept;
+
+    template <typename Tp, typename... Args>
+    Tp &add_module(Args &&...args)
+    {
+      static_assert(std::is_base_of<db_module, Tp>::value, "Module must be derived from db_module");
+      if (auto it = modules.find(typeid(Tp)); it == modules.end())
+      {
+        auto mod = utils::make_u_ptr<Tp>(std::forward<Args>(args)...);
+        auto &ref = *mod;
+        modules.emplace(typeid(Tp), std::move(mod));
+        return ref;
+      }
+      else
+        throw std::runtime_error("Module already exists");
+    }
+
+    template <typename Tp>
+    [[nodiscard]] Tp &get_module() const
+    {
+      static_assert(std::is_base_of<db_module, Tp>::value, "Module must be derived from db_module");
+      if (auto it = modules.find(typeid(Tp)); it != modules.end())
+        return *static_cast<Tp *>(it->second.get());
+      throw std::runtime_error("Module not found");
+    }
 
     virtual void drop() noexcept;
 
@@ -59,10 +98,11 @@ namespace coco
 
     [[nodiscard]] virtual std::vector<db_rule> get_reactive_rules() noexcept;
     virtual void create_reactive_rule(std::string_view rule_name, std::string_view rule_content);
-    [[nodiscard]] virtual std::vector<db_rule> get_deliberative_rules() noexcept;
-    virtual void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content);
 
   protected:
     const json::json config;
+
+  private:
+    std::unordered_map<std::type_index, utils::u_ptr<db_module>> modules; // The modules..
   };
 } // namespace coco

@@ -3,14 +3,12 @@
 #include "json.hpp"
 #include "memory.hpp"
 #include "clips.h"
-#ifdef BUILD_EXECUTOR
-#include "coco_executor.hpp"
-#endif
 #include <chrono>
 #include <optional>
 #include <unordered_map>
 #include <mutex>
 #include <random>
+#include <typeindex>
 
 namespace coco
 {
@@ -23,34 +21,25 @@ namespace coco
   constexpr const char *instance_of_deftemplate = "(deftemplate instance_of (slot id (type SYMBOL)) (slot type (type SYMBOL)))";
   constexpr const char *inheritance_rule = "(defrule inheritance (is_a (type ?t) (parent ?p)) (instance_of (id ?i) (type ?t)) => (assert (instance_of (id ?i) (type ?p))))";
   constexpr const char *all_instances_of_function = "(deffunction all-instances-of (?type) (bind ?instances (create$)) (do-for-all-facts ((?instance_of instance_of)) (eq ?instance_of:type ?type) (bind ?instances (create$ ?instances ?instance_of:id))) (return ?instances))";
-#ifdef BUILD_EXECUTOR
-  constexpr const char *executor_deftemplate = "(deftemplate executor (slot name (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))";
-  constexpr const char *task_deftemplate = "(deftemplate task (slot executor (type SYMBOL)) (slot id (type INTEGER)) (slot type (type SYMBOL)) (multislot pars (type SYMBOL)) (multislot vals) (slot since (type INTEGER) (default 0)))";
-  constexpr const char *tick_function = "(deffunction tick (?year ?month ?day ?hour ?minute ?second) (do-for-all-facts ((?task task)) TRUE (modify ?task (since (+ ?task:since 1)))) (return TRUE))";
-  constexpr const char *starting_function = "(deffunction starting (?executor ?task_type ?pars ?vals) (return TRUE))";
-  constexpr const char *ending_function = "(deffunction ending (?executor ?id) (return TRUE))";
-#endif
 
   class coco_db;
+  class coco_module;
   class type;
   class item;
   class property_type;
   class property;
   class reactive_rule;
-  class deliberative_rule;
 #ifdef BUILD_LISTENERS
   class listener;
 #endif
 
   class coco
   {
+    friend class coco_module;
     friend class type;
     friend class item;
     friend class property;
     friend class reactive_rule;
-#ifdef BUILD_EXECUTOR
-    friend class coco_executor;
-#endif
 #ifdef BUILD_LISTENERS
     friend class listener;
 #endif
@@ -58,6 +47,32 @@ namespace coco
   public:
     coco(coco_db &db) noexcept;
     ~coco();
+
+    [[nodiscard]] coco_db &get_db() noexcept { return db; }
+
+    template <typename Tp, typename... Args>
+    Tp &add_module(Args &&...args)
+    {
+      static_assert(std::is_base_of<coco_module, Tp>::value, "Extension must be derived from coco_module");
+      if (auto it = modules.find(typeid(Tp)); it == modules.end())
+      {
+        auto mod = utils::make_u_ptr<Tp>(std::forward<Args>(args)...);
+        auto &ref = *mod;
+        modules.emplace(typeid(Tp), std::move(mod));
+        return ref;
+      }
+      else
+        throw std::runtime_error("Module already exists");
+    }
+
+    template <typename Tp>
+    [[nodiscard]] Tp &get_module() const
+    {
+      static_assert(std::is_base_of<coco_module, Tp>::value, "Extension must be derived from coco_module");
+      if (auto it = modules.find(typeid(Tp)); it != modules.end())
+        return *static_cast<Tp *>(it->second.get());
+      throw std::runtime_error("Module not found");
+    }
 
 #ifdef BUILD_AUTH
     [[nodiscard]] std::string get_token(std::string_view username, std::string_view password);
@@ -106,9 +121,6 @@ namespace coco
     [[nodiscard]] std::vector<utils::ref_wrapper<reactive_rule>> get_reactive_rules() noexcept;
     void create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
-    [[nodiscard]] std::vector<utils::ref_wrapper<deliberative_rule>> get_deliberative_rules() noexcept;
-    void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content);
-
     [[nodiscard]] json::json to_json() const noexcept;
 
   protected:
@@ -123,46 +135,8 @@ namespace coco
 
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
-#ifdef BUILD_EXECUTOR
-    [[nodiscard]] coco_executor &create_executor(std::string_view name);
-    void delete_executor(coco_executor &exec);
-
-    friend void create_exec_script(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void create_exec_rules(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void delay_task(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void failure(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void adapt_rules(Environment *env, UDFContext *udfc, UDFValue *out);
-    friend void delete_exec(Environment *env, UDFContext *udfc, UDFValue *out);
-#endif
-
 #ifdef BUILD_LISTENERS
   private:
-#ifdef BUILD_EXECUTOR
-    void executor_created(coco_executor &exec);
-    void executor_deleted(coco_executor &exec);
-
-    void state_changed(coco_executor &exec);
-
-    void flaw_created(coco_executor &exec, const ratio::flaw &f);
-    void flaw_state_changed(coco_executor &exec, const ratio::flaw &f);
-    void flaw_cost_changed(coco_executor &exec, const ratio::flaw &f);
-    void flaw_position_changed(coco_executor &exec, const ratio::flaw &f);
-    void current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f);
-    void resolver_created(coco_executor &exec, const ratio::resolver &r);
-    void resolver_state_changed(coco_executor &exec, const ratio::resolver &r);
-    void current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r);
-    void causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r);
-
-    void executor_state_changed(coco_executor &exec, ratio::executor::executor_state state);
-    void tick(coco_executor &exec, const utils::rational &time);
-    void starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
-    void start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
-    void ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
-    void end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
-#endif
     /**
      * @brief Notifies when the type is created.
      *
@@ -195,22 +169,59 @@ namespace coco
 #endif
 
   protected:
-    coco_db &db;                                                                            // The database..
-    json::json schemas;                                                                     // The JSON schemas..
-    std::mt19937 gen;                                                                       // The random number generator..
-    std::map<std::string, utils::u_ptr<property_type>, std::less<>> property_types;         // The property types..
-    std::recursive_mutex mtx;                                                               // The mutex for the core..
-    Environment *env;                                                                       // The CLIPS environment..
-    std::map<std::string, utils::u_ptr<type>, std::less<>> types;                           // The types managed by CoCo by name.
-    std::unordered_map<std::string, utils::u_ptr<item>> items;                              // The items by their ID..
-    std::map<std::string, utils::u_ptr<reactive_rule>, std::less<>> reactive_rules;         // The reactive rules..
-    std::map<std::string, utils::u_ptr<deliberative_rule>, std::less<>> deliberative_rules; // The deliberative rules..
-#ifdef BUILD_EXECUTOR
-    std::unordered_map<std::string, utils::u_ptr<coco_executor>> executors; // the executors..
-#endif
+    coco_db &db;                                                                    // The database..
+    std::unordered_map<std::type_index, utils::u_ptr<coco_module>> modules;         // The modules..
+    json::json schemas;                                                             // The JSON schemas..
+    std::mt19937 gen;                                                               // The random number generator..
+    std::map<std::string, utils::u_ptr<property_type>, std::less<>> property_types; // The property types..
+    std::recursive_mutex mtx;                                                       // The mutex for the core..
+    Environment *env;                                                               // The CLIPS environment..
+    std::map<std::string, utils::u_ptr<type>, std::less<>> types;                   // The types managed by CoCo by name.
+    std::unordered_map<std::string, utils::u_ptr<item>> items;                      // The items by their ID..
+    std::map<std::string, utils::u_ptr<reactive_rule>, std::less<>> reactive_rules; // The reactive rules..
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif
+  };
+
+  /**
+   * @brief Represents a reactive CoCo rule.
+   *
+   * This class represents a reactive CoCo rule in the form of a name and content.
+   */
+  class reactive_rule final
+  {
+  public:
+    /**
+     * @brief Constructs a rule object.
+     *
+     * @param cc The CoCo core object.
+     * @param name The name of the rule.
+     * @param content The content of the rule.
+     */
+    reactive_rule(coco &cc, std::string_view name, std::string_view content) noexcept;
+    ~reactive_rule();
+
+    /**
+     * @brief Gets the name of the rule.
+     *
+     * @return The name of the rule.
+     */
+    [[nodiscard]] const std::string &get_name() const { return name; }
+
+    /**
+     * @brief Gets the content of the rule.
+     *
+     * @return The content of the rule.
+     */
+    [[nodiscard]] const std::string &get_content() const { return content; }
+
+    [[nodiscard]] json::json to_json() const noexcept;
+
+  private:
+    coco &cc;            // the CoCo core object.
+    std::string name;    // the name of the rule.
+    std::string content; // the content of the rule.
   };
 
   void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
@@ -249,50 +260,11 @@ namespace coco
 
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
-#ifdef BUILD_EXECUTOR
-    virtual void executor_created([[maybe_unused]] coco_executor &exec) {}
-    virtual void executor_deleted([[maybe_unused]] coco_executor &exec) {}
-
-    virtual void state_changed([[maybe_unused]] coco_executor &exec) {}
-
-    virtual void flaw_created([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
-    virtual void flaw_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
-    virtual void flaw_cost_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
-    virtual void flaw_position_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
-    virtual void current_flaw([[maybe_unused]] coco_executor &exec, [[maybe_unused]] std::optional<utils::ref_wrapper<ratio::flaw>> f) {}
-    virtual void resolver_created([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
-    virtual void resolver_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
-    virtual void current_resolver([[maybe_unused]] coco_executor &exec, [[maybe_unused]] std::optional<utils::ref_wrapper<ratio::resolver>> r) {}
-    virtual void causal_link_added([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r) {}
-
-    virtual void executor_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] ratio::executor::executor_state state) {}
-    virtual void tick([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const utils::rational &time) {}
-    virtual void starting([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    virtual void start([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    virtual void ending([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    virtual void end([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-#endif
   protected:
-    [[nodiscard]] std::recursive_mutex &get_mtx() const { return cc.mtx; }
-
-    [[nodiscard]] Environment *get_env() const { return cc.env; }
-
     [[nodiscard]] std::string to_string(Fact *f, std::size_t buff_size = 256) const noexcept { return cc.to_string(f, buff_size); }
 
   protected:
     coco &cc;
   };
-#endif
-
-#ifdef BUILD_EXECUTOR
-  void create_exec_script(Environment *env, UDFContext *udfc, UDFValue *out);
-  void create_exec_rules(Environment *env, UDFContext *udfc, UDFValue *out);
-  void start_execution(Environment *env, UDFContext *udfc, UDFValue *out);
-  void delay_task(Environment *env, UDFContext *udfc, UDFValue *out);
-  void extend_task(Environment *env, UDFContext *udfc, UDFValue *out);
-  void failure(Environment *env, UDFContext *udfc, UDFValue *out);
-  void adapt_script(Environment *env, UDFContext *udfc, UDFValue *out);
-  void adapt_rules(Environment *env, UDFContext *udfc, UDFValue *out);
-  void delete_exec(Environment *env, UDFContext *udfc, UDFValue *out);
 #endif
 } // namespace coco

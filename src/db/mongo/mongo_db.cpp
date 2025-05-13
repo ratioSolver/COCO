@@ -7,10 +7,13 @@
 
 namespace coco
 {
+    mongo_module::mongo_module(mongo_db &db) noexcept : db_module(db) {}
+    mongocxx::database &mongo_module::get_db() const noexcept { return static_cast<mongo_db &>(db).db; }
+
 #ifdef BUILD_AUTH
     mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_users_uri, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri.data())), users_conn(mongocxx::uri(mongodb_users_uri.data())), db(conn[static_cast<std::string>(config["name"])]), users_db(users_conn[static_cast<std::string>(config["name"]) + "_users"]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"]), users_collection(users_db["users"])
 #else
-    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri.data())), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"]), deliberative_rules_collection(db["deliberative_rules"])
+    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri.data())), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"])
 #endif
     {
         assert(conn);
@@ -224,25 +227,6 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("name", rule_name.data()));
         doc.append(bsoncxx::builder::basic::kvp("content", rule_content.data()));
         if (!reactive_rules_collection.insert_one(doc.view()))
-            throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
-    }
-    std::vector<db_rule> mongo_db::get_deliberative_rules() noexcept
-    {
-        std::vector<db_rule> rules;
-        for (const auto &doc : deliberative_rules_collection.find({}))
-        {
-            auto name = doc["name"].get_string().value;
-            auto content = doc["content"].get_string().value;
-            rules.push_back({std::string(name), std::string(content)});
-        }
-        return rules;
-    }
-    void mongo_db::create_deliberative_rule(std::string_view rule_name, std::string_view rule_content)
-    {
-        bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("name", rule_name.data()));
-        doc.append(bsoncxx::builder::basic::kvp("content", rule_content.data()));
-        if (!deliberative_rules_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
     }
 } // namespace coco

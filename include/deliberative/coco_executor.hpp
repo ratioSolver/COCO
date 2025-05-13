@@ -10,13 +10,14 @@
 
 namespace coco
 {
-  class coco;
+  class coco_deliberative;
 
   class coco_executor : public ratio::executor::executor
   {
   public:
-    coco_executor(coco &cc, std::string_view name = "oRatio", const utils::rational &units_per_tick = utils::rational::one) noexcept;
+    coco_executor(coco_deliberative &cd, std::string_view name = "oRatio", const utils::rational &units_per_tick = utils::rational::one) noexcept;
 
+#ifdef BUILD_LISTENERS
   private:
     void state_changed() override;
 
@@ -36,8 +37,9 @@ namespace coco
     void start(const std::vector<utils::ref_wrapper<riddle::atom_term>> &) override;
     void ending(const std::vector<utils::ref_wrapper<riddle::atom_term>> &) override;
     void end(const std::vector<utils::ref_wrapper<riddle::atom_term>> &) override;
+#endif
 
   private:
-    coco &cc; // reference to the coco object
+    coco_deliberative &cd; // reference to the coco object
   };
 } // namespace coco

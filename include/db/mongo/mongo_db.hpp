@@ -7,8 +7,21 @@
 
 namespace coco
 {
+  class mongo_db;
+
+  class mongo_module : public db_module
+  {
+  public:
+    mongo_module(mongo_db &db) noexcept;
+
+  protected:
+    [[nodiscard]] mongocxx::database &get_db() const noexcept;
+  };
+
   class mongo_db : public coco_db
   {
+    friend class mongo_module;
+
   public:
 #ifdef BUILD_AUTH
     mongo_db(json::json &&cnfg = {{ "name",
@@ -39,8 +52,6 @@ namespace coco
 
     [[nodiscard]] std::vector<db_rule> get_reactive_rules() noexcept override;
     void create_reactive_rule(std::string_view rule_name, std::string_view rule_content) override;
-    [[nodiscard]] std::vector<db_rule> get_deliberative_rules() noexcept override;
-    void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content) override;
 
   private:
     mongocxx::client conn;
@@ -55,7 +66,7 @@ namespace coco
 #endif
 
   private:
-    mongocxx::collection types_collection, items_collection, item_data_collection, reactive_rules_collection, deliberative_rules_collection;
+    mongocxx::collection types_collection, items_collection, item_data_collection, reactive_rules_collection;
 #ifdef BUILD_AUTH
     mongocxx::collection users_collection;
 #endif

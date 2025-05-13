@@ -10,6 +10,9 @@
 #ifdef BUILD_TRANSFORMER
 #include "coco_transformer.hpp"
 #endif
+#ifdef BUILD_LLM
+#include "coco_llm.hpp"
+#endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
 #include <thread>
@@ -27,6 +30,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
 #ifdef BUILD_TRANSFORMER
     coco::transformer t(cc);
+#endif
+
+#ifdef BUILD_LLM
+    coco::llm l(cc);
 #endif
 
 #ifdef BUILD_SERVER

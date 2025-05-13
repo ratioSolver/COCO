@@ -21,6 +21,9 @@ namespace coco
   class coco_deliberative : public coco_module
   {
     friend class coco_executor;
+#ifdef BUILD_LISTENERS
+    friend class deliberative_listener;
+#endif
 
   public:
     coco_deliberative(coco &cc) noexcept;
@@ -120,8 +123,8 @@ namespace coco
     friend class coco_deliberative;
 
   public:
-    deliberative_listener(coco_deliberative &cd) noexcept : cd(cd) {}
-    virtual ~deliberative_listener() = default;
+    deliberative_listener(coco_deliberative &cd) noexcept;
+    virtual ~deliberative_listener();
 
   private:
     virtual void executor_created([[maybe_unused]] coco_executor &exec) {}

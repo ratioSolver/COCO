@@ -10,7 +10,7 @@ namespace coco
   class coco_module
   {
   public:
-    coco_module(coco &cc) noexcept : cc(cc) {}
+    coco_module(coco &cc) noexcept;
     virtual ~coco_module() = default;
 
   protected:

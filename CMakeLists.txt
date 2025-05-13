@@ -20,6 +20,10 @@ if(BUILD_DELIBERATIVE OR BUILD_AUTH)
     set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB drivers" FORCE)
 endif()
 
+if(BUILD_AUTH)
+    set(BUILD_COCO_SERVER ON CACHE BOOL "Build the CoCo server" FORCE)
+endif()
+
 message(STATUS "CoCo name: ${COCO_NAME}")
 
 add_library(CoCo src/coco.cpp src/coco_module.cpp src/coco_property.cpp src/coco_type.cpp src/coco_item.cpp src/coco_db.cpp)
@@ -105,9 +109,13 @@ if(BUILD_DELIBERATIVE)
 
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/deliberative>)
     target_sources(CoCo PRIVATE src/deliberative/coco_deliberative.cpp src/deliberative/coco_executor.cpp src/deliberative/deliberative_db.cpp)
+
+    if (BUILD_COCO_SERVER)
+        target_sources(CoCo PRIVATE src/deliberative/deliberative_server.cpp)
+    endif()
+
     add_dependencies(CoCo PlExA)
     target_link_libraries(CoCo PUBLIC PlExA)
-    target_compile_definitions(CoCo PUBLIC BUILD_DELIBERATIVE)
 endif()
 
 message(STATUS "Build CoCo LLM: ${BUILD_LLM}")

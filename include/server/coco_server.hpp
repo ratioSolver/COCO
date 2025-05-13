@@ -1,21 +1,59 @@
 #pragma once
 
-#include "coco.hpp"
+#include "coco_module.hpp"
 #include "server.hpp"
 #include <unordered_set>
+#include <typeindex>
 
 namespace coco
 {
-  class coco_server : public listener, public network::server
+  class coco_server;
+
+  class server_module
   {
+  public:
+    server_module(coco_server &srv) noexcept;
+    virtual ~server_module() = default;
+
+  protected:
+    coco &get_coco() noexcept;
+
+  protected:
+    coco_server &srv;
+  };
+
+  class coco_server : public coco_module, public network::server
+  {
+    friend class server_module;
+
   public:
     coco_server(coco &cc, std::string_view host = SERVER_HOST, unsigned short port = SERVER_PORT);
 
-  protected:
-#ifdef BUILD_AUTH
-    [[nodiscard]] std::string get_token(const std::string &username, const std::string &password) override;
-#endif
+    template <typename Tp, typename... Args>
+    Tp &add_module(Args &&...args)
+    {
+      static_assert(std::is_base_of<server_module, Tp>::value, "Extension must be derived from server_module");
+      if (auto it = modules.find(typeid(Tp)); it == modules.end())
+      {
+        auto mod = utils::make_u_ptr<Tp>(std::forward<Args>(args)...);
+        auto &ref = *mod;
+        modules.emplace(typeid(Tp), std::move(mod));
+        return ref;
+      }
+      else
+        throw std::runtime_error("Module already exists");
+    }
 
+    template <typename Tp>
+    [[nodiscard]] Tp &get_module() const
+    {
+      static_assert(std::is_base_of<server_module, Tp>::value, "Extension must be derived from server_module");
+      if (auto it = modules.find(typeid(Tp)); it != modules.end())
+        return *static_cast<Tp *>(it->second.get());
+      throw std::runtime_error("Module not found");
+    }
+
+  protected:
     utils::u_ptr<network::response> index(const network::request &req);
     utils::u_ptr<network::response> assets(const network::request &req);
 
@@ -41,44 +79,6 @@ namespace coco
     utils::u_ptr<network::response> create_deliberative_rule(const network::request &req);
 
   private:
-    virtual void on_ws_open(network::ws_session &ws);
-    virtual void on_ws_message(network::ws_session &ws, std::string_view msg);
-    virtual void on_ws_close(network::ws_session &ws);
-    virtual void on_ws_error(network::ws_session &ws, const std::error_code &);
-
-    void new_type(const type &tp) override;
-    void new_item(const item &itm) override;
-    void updated_item(const item &itm) override;
-    void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
-
-#ifdef BUILD_DELIBERATIVE
-    void executor_created(coco_executor &exec) override;
-    void executor_deleted(coco_executor &exec) override;
-
-    void state_changed(coco_executor &exec) override;
-
-    void flaw_created(coco_executor &exec, const ratio::flaw &f) override;
-    void flaw_state_changed(coco_executor &exec, const ratio::flaw &f) override;
-    void flaw_cost_changed(coco_executor &exec, const ratio::flaw &f) override;
-    void flaw_position_changed(coco_executor &exec, const ratio::flaw &f) override;
-    void current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f) override;
-    void resolver_created(coco_executor &exec, const ratio::resolver &r) override;
-    void resolver_state_changed(coco_executor &exec, const ratio::resolver &r) override;
-    void current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r) override;
-    void causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r) override;
-
-    void executor_state_changed(coco_executor &exec, ratio::executor::executor_state state) override;
-    void tick(coco_executor &exec, const utils::rational &time) override;
-    void starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) override;
-    void start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) override;
-    void ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) override;
-    void end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) override;
-#endif
-
-  protected:
-    void broadcast(json::json &&msg);
-
-  private:
-    std::unordered_set<network::ws_session *> clients;
+    std::map<std::type_index, utils::u_ptr<server_module>> modules; // the server modules
   };
 } // namespace coco

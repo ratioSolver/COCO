@@ -5,6 +5,8 @@
 
 namespace coco
 {
+    db_module::db_module(coco_db &db) noexcept : db(db) {}
+
     coco_db::coco_db(json::json &&config) noexcept : config(std::move(config)) {}
 
     void coco_db::drop() noexcept {}

@@ -244,8 +244,9 @@ namespace coco
 
     json::json reactive_rule::to_json() const noexcept { return {{"content", content.c_str()}}; }
 
-    json::json coco::to_json() const noexcept
+    json::json coco::to_json() noexcept
     {
+        std::lock_guard<std::recursive_mutex> _(mtx);
         json::json jc;
         if (!types.empty())
         {

@@ -112,7 +112,7 @@ namespace coco
     [[nodiscard]] std::vector<utils::ref_wrapper<reactive_rule>> get_reactive_rules() noexcept;
     void create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
-    [[nodiscard]] json::json to_json() const noexcept;
+    [[nodiscard]] json::json to_json() noexcept;
 
   protected:
     void add_property_type(utils::u_ptr<property_type> pt);

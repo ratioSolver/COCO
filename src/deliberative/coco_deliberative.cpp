@@ -440,5 +440,8 @@ namespace coco
         for (auto &l : listeners)
             l->end(exec, atms);
     }
+
+    deliberative_listener::deliberative_listener(coco_deliberative &cd) noexcept : cd(cd) { cd.listeners.emplace_back(this); }
+    deliberative_listener::~deliberative_listener() { cd.listeners.erase(std::remove(cd.listeners.begin(), cd.listeners.end(), this), cd.listeners.end()); }
 #endif
 } // namespace coco

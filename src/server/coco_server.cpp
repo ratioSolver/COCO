@@ -1,21 +1,19 @@
 #include "coco_server.hpp"
+#include "coco.hpp"
 #include "coco_type.hpp"
 #include "coco_property.hpp"
 #include "coco_item.hpp"
-#include "coco_rule.hpp"
 #include "logging.hpp"
 
 namespace coco
 {
-    coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : listener(cc), server(host, port)
+    server_module::server_module(coco_server &srv) noexcept : srv(srv) {}
+    coco &server_module::get_coco() noexcept { return srv.cc; }
+
+    coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), server(host, port)
     {
-#ifdef BUILD_AUTH
-        add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request), false);
-        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request), false);
-#else
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
-#endif
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
         add_route(network::Get, "^/type/.*$", std::bind(&coco_server::get_type, this, network::placeholders::request));
@@ -34,16 +32,7 @@ namespace coco
 
         add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, network::placeholders::request));
         add_route(network::Post, "^/reactive_rule$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
-
-        add_route(network::Get, "^/deliberative_rules$", std::bind(&coco_server::get_deliberative_rules, this, network::placeholders::request));
-        add_route(network::Post, "^/deliberative_rule$", std::bind(&coco_server::create_deliberative_rule, this, network::placeholders::request));
-
-        add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
-
-#ifdef BUILD_AUTH
-    std::string coco_server::get_token(const std::string &username, const std::string &password) { return cc.get_token(username, password); }
-#endif
 
     utils::u_ptr<network::response> coco_server::index(const network::request &) { return utils::make_u_ptr<network::file_response>(CLIENT_DIR "/dist/index.html"); }
     utils::u_ptr<network::response> coco_server::assets(const network::request &req)
@@ -336,223 +325,5 @@ namespace coco
         {
             return utils::make_u_ptr<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
         }
-    }
-
-    utils::u_ptr<network::response> coco_server::get_deliberative_rules(const network::request &)
-    {
-        json::json is(json::json_type::array);
-        for (auto &dr : cc.get_deliberative_rules())
-        {
-            auto j_drs = dr->to_json();
-            j_drs["name"] = dr->get_name();
-            is.push_back(std::move(j_drs));
-        }
-        return utils::make_u_ptr<network::json_response>(std::move(is));
-    }
-    utils::u_ptr<network::response> coco_server::create_deliberative_rule(const network::request &req)
-    {
-        auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("content") || body["content"].get_type() != json::json_type::string)
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-        std::string name = body["name"];
-        std::string content = body["content"];
-        try
-        {
-            cc.create_deliberative_rule(name, content);
-            return utils::make_u_ptr<network::response>(network::status_code::no_content);
-        }
-        catch (const std::exception &e)
-        {
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
-        }
-    }
-
-    void coco_server::on_ws_open(network::ws_session &ws)
-    {
-        LOG_TRACE("New connection from " << ws.remote_endpoint());
-        std::lock_guard<std::recursive_mutex> _(get_mtx());
-
-        clients.insert(&ws);
-
-        auto jc = cc.to_json();
-        jc["msg_type"] = "coco";
-        ws.send(jc.dump());
-    }
-    void coco_server::on_ws_message(network::ws_session &ws, std::string_view msg)
-    {
-        std::lock_guard<std::recursive_mutex> _(get_mtx());
-        auto x = json::load(msg);
-        if (x.get_type() != json::json_type::object || !x.contains("type") || x["type"].get_type() != json::json_type::string)
-        {
-            ws.close();
-            return;
-        }
-    }
-    void coco_server::on_ws_close(network::ws_session &ws)
-    {
-        LOG_TRACE("Connection closed with " << ws.remote_endpoint());
-        std::lock_guard<std::recursive_mutex> _(get_mtx());
-        clients.erase(&ws);
-        LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
-    }
-    void coco_server::on_ws_error(network::ws_session &ws, [[maybe_unused]] const std::error_code &ec)
-    {
-        LOG_TRACE("Connection error with " << ws.remote_endpoint() << ": " << ec.message());
-        on_ws_close(ws);
-    }
-
-    void coco_server::new_type(const type &tp)
-    {
-        auto j_tp = tp.to_json();
-        j_tp["msg_type"] = "new_type";
-        j_tp["name"] = tp.get_name();
-        broadcast(std::move(j_tp));
-    }
-    void coco_server::new_item(const item &itm)
-    {
-        auto j_itm = itm.to_json();
-        j_itm["msg_type"] = "new_item";
-        j_itm["id"] = itm.get_id();
-        broadcast(std::move(j_itm));
-    }
-    void coco_server::updated_item(const item &itm)
-    {
-        auto j_itm = itm.to_json();
-        j_itm["msg_type"] = "updated_item";
-        j_itm["id"] = itm.get_id();
-        broadcast(std::move(j_itm));
-    }
-    void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
-
-#ifdef BUILD_DELIBERATIVE
-    void coco_server::executor_created(coco_executor &exec)
-    {
-        json::json j_exec = exec.to_json();
-        j_exec["msg_type"] = "new_executor";
-        j_exec["executor"] = static_cast<uint64_t>(exec.get_id());
-        broadcast(std::move(j_exec));
-    }
-    void coco_server::executor_deleted(coco_executor &exec)
-    {
-        json::json j_exec = {{"msg_type", "executor_deleted"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
-        broadcast(std::move(j_exec));
-    }
-
-    void coco_server::state_changed(coco_executor &exec)
-    {
-        json::json j_exec = exec.to_json();
-        j_exec["msg_type"] = "state_changed";
-        j_exec["executor"] = static_cast<uint64_t>(exec.get_id());
-        broadcast(std::move(j_exec));
-    }
-
-    void coco_server::flaw_created(coco_executor &exec, const ratio::flaw &f)
-    {
-        json::json j_msg = f.to_json();
-        j_msg["msg_type"] = "flaw_created";
-        j_msg["executor"] = static_cast<uint64_t>(exec.get_id());
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::flaw_state_changed(coco_executor &exec, const ratio::flaw &f)
-    {
-        json::json j_msg = {{"msg_type", "flaw_state_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", f.get_id()}, {"state", ratio::to_string(f.get_state())}};
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::flaw_cost_changed(coco_executor &exec, const ratio::flaw &f)
-    {
-        auto cost = f.get_estimated_cost();
-        json::json j_msg = {{"msg_type", "flaw_cost_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", f.get_id()}, {"cost", {{"num", cost.numerator()}, {"den", cost.denominator()}}}};
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::flaw_position_changed(coco_executor &exec, const ratio::flaw &f)
-    {
-        json::json j_msg = {{"msg_type", "flaw_position_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", f.get_id()}, {"position", f.get_position()}};
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f)
-    {
-        json::json j_msg = {{"msg_type", "current_flaw"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
-        if (f)
-            j_msg["id"] = static_cast<uint64_t>(f.value()->get_id());
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::resolver_created(coco_executor &exec, const ratio::resolver &r)
-    {
-        json::json j_r = r.to_json();
-        j_r["msg_type"] = "resolver_created";
-        j_r["executor"] = static_cast<uint64_t>(exec.get_id());
-        broadcast(std::move(j_r));
-    }
-    void coco_server::resolver_state_changed(coco_executor &exec, const ratio::resolver &r)
-    {
-        json::json j_r = {{"msg_type", "resolver_state_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", r.get_id()}, {"state", ratio::to_string(r.get_state())}};
-        broadcast(std::move(j_r));
-    }
-    void coco_server::current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r)
-    {
-        json::json j_r = {{"msg_type", "current_resolver"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
-        if (r)
-            j_r["id"] = static_cast<uint64_t>(r.value()->get_id());
-        broadcast(std::move(j_r));
-    }
-    void coco_server::causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r)
-    {
-        json::json j_msg = {{"msg_type", "causal_link_added"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"flaw", f.get_id()}, {"resolver", r.get_id()}};
-        broadcast(std::move(j_msg));
-    }
-
-    void coco_server::executor_state_changed(coco_executor &exec, ratio::executor::executor_state state)
-    {
-        json::json j_msg = {{"msg_type", "executor_state_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"state", static_cast<int>(state)}};
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::tick(coco_executor &exec, const utils::rational &time)
-    {
-        json::json j_msg = {{"msg_type", "tick"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"time", {{"num", time.numerator()}, {"den", time.denominator()}}}};
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
-    {
-        json::json j_msg = {{"msg_type", "starting"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
-        json::json j_atms(json::json_type::array);
-        for (auto &atm : atms)
-            j_atms.push_back(atm->to_json());
-        j_msg["atms"] = std::move(j_atms);
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
-    {
-        json::json j_msg = {{"msg_type", "start"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
-        json::json j_atms(json::json_type::array);
-        for (auto &atm : atms)
-            j_atms.push_back(atm->to_json());
-        j_msg["atms"] = std::move(j_atms);
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
-    {
-        json::json j_msg = {{"msg_type", "ending"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
-        json::json j_atms(json::json_type::array);
-        for (auto &atm : atms)
-            j_atms.push_back(atm->to_json());
-        j_msg["atms"] = std::move(j_atms);
-        broadcast(std::move(j_msg));
-    }
-    void coco_server::end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
-    {
-        json::json j_msg = {{"msg_type", "end"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
-        json::json j_atms(json::json_type::array);
-        for (auto &atm : atms)
-            j_atms.push_back(atm->to_json());
-        j_msg["atms"] = std::move(j_atms);
-        broadcast(std::move(j_msg));
-    }
-#endif
-
-    void coco_server::broadcast(json::json &&msg)
-    {
-        auto msg_str = msg.dump();
-        for (auto client : clients)
-            client->send(msg_str);
     }
 } // namespace coco

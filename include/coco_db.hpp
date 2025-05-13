@@ -33,7 +33,7 @@ namespace coco
   class db_module
   {
   public:
-    db_module(coco_db &db) noexcept : db(db) {}
+    db_module(coco_db &db) noexcept;
     virtual ~db_module() = default;
 
   protected:

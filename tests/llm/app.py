@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from jinja2 import Template
 from dotenv import load_dotenv
 import os
 from huggingface_hub import InferenceClient
@@ -26,13 +27,21 @@ def version():
     return jsonify({'llm_model': llm_model, 'llm_provider': llm_provider})
 
 
-@app.route('/llm', methods=['POST'])
+@app.route('/understand', methods=['POST'])
 def generate():
     data = request.get_json()
-    context = data.get('context')
+    intents = data.get('intents')
+    entities = data.get('entities')
+    messages = data.get('messages')
+
+    with open('understand.jinja2', 'r') as file:
+        template = Template(file.read())
+    prompt = template.render(intents=intents, entities=entities)
+    c_messages = [{'role': 'assistant', 'content': prompt}]
+    messages = c_messages + messages
 
     completion = client.chat.completions.create(
-        model=llm_model, messages=context)
+        model=llm_model, messages=messages)
     return jsonify({'role': completion.choices[0].message.role, 'content': completion.choices[0].message.content})
 
 

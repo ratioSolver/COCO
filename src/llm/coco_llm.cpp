@@ -68,30 +68,14 @@ namespace coco
     void coco_llm::understand(item &item, std::string_view message) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
+        json::json j_intents(json::json_type::array);
+        for (const auto &[_, intent] : intents)
+            j_intents.push_back({{"name", intent->get_name().c_str()}, {"description", intent->get_description().c_str()}});
+        json::json j_entities(json::json_type::array);
+        for (const auto &[_, entity] : entities)
+            j_entities.push_back({{"name", entity->get_name().c_str()}, {"description", entity->get_description().c_str()}, {"type", entity_type_to_string(entity->get_type()).c_str()}});
 
-        std::string prompt = "You are a natural language understanding model. Given a user input, perform the following tasks:\n";
-        prompt += "\n1. Intent Recognition\n";
-        prompt += "Identify the intents present in the user's input. For each intent, provide the name.\n";
-        prompt += "The intents are defined as follows:\n";
-        for (const auto &[name, intent] : intents)
-            prompt += " - " + name + ": " + intent->get_description() + "\n";
-        prompt += "\n2. Entity Extraction\n";
-        prompt += "Extract the entities from the user's input. For each entity, provide the name and value.\n";
-        prompt += "The entities are defined as follows:\n";
-        for (const auto &[name, entity] : entities)
-            prompt += " - " + name + " (" + entity_type_to_string(entity->get_type()) + "): " + entity->get_description() + "\n";
-        prompt += "\n3. Response Format\n";
-        prompt += "The response should contain the recognized intents and extracted entities from the user's input. The values of the entities should be in the same format as specified in the possible entities.\n";
-        prompt += "The response should be a valid JSON object. The keys in the JSON object should be 'intents' and 'entities'.\n";
-        prompt += "The 'intents' key should contain an array of recognized intents. The 'entities' key should contain an array array of objects, each with a 'entity' and 'value' key.\n";
-        prompt += "Do NOT include any other text or explanation in the response.\n";
-        LOG_TRACE("Prompt:\n"
-                  << prompt);
-
-        json::json context(json::json_type::array);
-        context.push_back({{"role", "system"}, {"content", prompt.c_str()}});
-        context.push_back({{"role", "user"}, {"content", message}});
-        auto res = client.post("/llm", {{"context", std::move(context)}});
+        auto res = client.post("/understand", {{"intents", std::move(j_intents)}, {"entities", std::move(j_entities)}, {"messages", std::vector<json::json>{{"role", "user"}, {"content", message}}}});
         if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to understand..");

@@ -61,7 +61,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     do
     {
         std::cout << "Enter a command (d to drop the database, q to quit): ";
-        std::cin >> user_input;
+        std::getline(std::cin, user_input);
         if (user_input == "d")
             db.drop();
 #ifdef BUILD_LLM

@@ -58,9 +58,17 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     cc.set_value(s_itm, json::json{{"parent", ch_itm.get_id().c_str()}});
 
     std::string user_input;
-    std::cin >> user_input;
-    if (user_input == "d")
-        db.drop();
+    do
+    {
+        std::cout << "Enter a command (d to drop the database, q to quit): ";
+        std::cin >> user_input;
+        if (user_input == "d")
+            db.drop();
+#ifdef BUILD_LLM
+        else
+            llm.understand(itm_0, user_input);
+#endif
+    } while (user_input != "d" && user_input != "q");
 
 #ifdef BUILD_SERVER
     srv.stop();

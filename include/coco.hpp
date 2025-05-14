@@ -252,9 +252,6 @@ namespace coco
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
   protected:
-    [[nodiscard]] std::string to_string(Fact *f, std::size_t buff_size = 256) const noexcept { return cc.to_string(f, buff_size); }
-
-  protected:
     coco &cc;
   };
 #endif

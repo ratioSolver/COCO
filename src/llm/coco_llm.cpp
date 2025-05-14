@@ -69,15 +69,24 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
 
-        std::string prompt = "You are a natural language understanding model. Given a user input, perform the following tasks:\n1. Intent Recognition: Identify which of the following intents (one or more) are present in the user's input.\nPossible intents and their descriptions are:\n";
+        std::string prompt = "You are a natural language understanding model. Given a user input, perform the following tasks:\n";
+        prompt += "\n1. Intent Recognition\n";
+        prompt += "Identify the intents present in the user's input. For each intent, provide the name.\n";
+        prompt += "The intents are defined as follows:\n";
         for (const auto &[name, intent] : intents)
-            prompt += "\n- " + name + ": " + intent->get_description();
-        prompt += "\n2. Extract the following entities from the user's input, if present. For each entity, provide the name and value.\nPossible entities, their types and descriptions are:\n";
+            prompt += " - " + name + ": " + intent->get_description() + "\n";
+        prompt += "\n2. Entity Extraction\n";
+        prompt += "Extract the entities from the user's input. For each entity, provide the name and value.\n";
+        prompt += "The entities are defined as follows:\n";
         for (const auto &[name, entity] : entities)
-            prompt += "\n- " + name + " (" + to_string(entity->get_type()) + "): " + entity->get_description();
-        prompt += "\n3. Provide a JSON response with the following structure:\n";
-        prompt += "{\n\"intents\": [\n {\"name\": \"intent_name\"},\n],\n\"entities\": [\n{\"entity\": \"entity_name\", \"value\": \"entity_value\"},\n]\n}\n";
-        prompt += "Instructions:\n- Use only the given intent and entity definitions.\n- Ignore any information not covered by the possible intents or entities.\n- If a value is not found for an entity, omit that entity.\n- Entities should match the specified type exactly.\n";
+            prompt += " - " + name + " (" + entity_type_to_string(entity->get_type()) + "): " + entity->get_description() + "\n";
+        prompt += "\n3. Response Format\n";
+        prompt += "The response should contain the recognized intents and extracted entities from the user's input. The values of the entities should be in the same format as specified in the possible entities.\n";
+        prompt += "The response should be a valid JSON object. The keys in the JSON object should be 'intents' and 'entities'.\n";
+        prompt += "The 'intents' key should contain an array of recognized intents. The 'entities' key should contain an array array of objects, each with a 'entity' and 'value' key.\n";
+        prompt += "Do NOT include any other text or explanation in the response.\n";
+        LOG_TRACE("Prompt:\n"
+                  << prompt);
 
         json::json context(json::json_type::array);
         context.push_back({{"role", "system"}, {"content", prompt.c_str()}});
@@ -88,10 +97,16 @@ namespace coco
             LOG_ERR("Failed to understand..");
             return;
         }
-        auto &json_res = static_cast<network::json_response &>(*res);
-        for (const auto &intent : json_res.get_body()["intents"].as_array())
+        auto &msgs = static_cast<network::json_response &>(*res).get_body().as_array();
+        auto llm_res = static_cast<std::string>(msgs[msgs.size() - 1]["content"]);
+        LOG_TRACE("Response:\n"
+                  << llm_res);
+        json::json j_res = json::load(llm_res);
+        for (const auto &intent : j_res["intents"].as_array())
         {
-            auto &intent_name = static_cast<const std::string>(intent["name"]);
+            auto &intent_name = static_cast<const std::string>(intent);
+            if (intents.find(intent_name) == intents.end())
+                LOG_WARN("Intent " << intent_name << " not found");
 
             FactBuilder *intent_fact_builder = CreateFactBuilder(get_env(), "intent");
             FBPutSlotSymbol(intent_fact_builder, "item_id", item.get_id().c_str());
@@ -102,9 +117,11 @@ namespace coco
             LOG_TRACE(to_string(intent_fact));
             FBDispose(intent_fact_builder);
         }
-        for (const auto &entity : json_res.get_body()["entities"].as_array())
+        for (const auto &entity : j_res["entities"].as_array())
         {
             auto &entity_name = static_cast<const std::string>(entity["entity"]);
+            if (entities.find(entity_name) == entities.end())
+                LOG_WARN("Entity " << entity_name << " not found");
 
             FactBuilder *entity_fact_builder = CreateFactBuilder(get_env(), "entity");
             FBPutSlotSymbol(entity_fact_builder, "item_id", item.get_id().c_str());

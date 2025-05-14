@@ -111,7 +111,7 @@ namespace coco
    * @param type The entity type to convert.
    * @return The string representation of the entity type.
    */
-  inline [[nodiscard]] std::string to_string(entity_type type)
+  [[nodiscard]] inline std::string to_string(entity_type type)
   {
     switch (type)
     {

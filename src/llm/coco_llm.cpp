@@ -87,7 +87,7 @@ namespace coco
         json::json j_res = json::load(llm_res);
         for (const auto &intent : j_res["intents"].as_array())
         {
-            auto &intent_name = static_cast<const std::string>(intent);
+            auto intent_name = static_cast<const std::string>(intent);
             if (intents.find(intent_name) == intents.end())
                 LOG_WARN("Intent " << intent_name << " not found");
 
@@ -102,7 +102,7 @@ namespace coco
         }
         for (const auto &entity : j_res["entities"].as_array())
         {
-            auto &entity_name = static_cast<const std::string>(entity["entity"]);
+            auto entity_name = static_cast<const std::string>(entity["entity"]);
             if (entities.find(entity_name) == entities.end())
                 LOG_WARN("Entity " << entity_name << " not found");
 

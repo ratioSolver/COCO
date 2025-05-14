@@ -30,15 +30,14 @@ def version():
 @app.route('/understand', methods=['POST'])
 def generate():
     data = request.get_json()
-    intents = data.get('intents')
-    entities = data.get('entities')
-    messages = data.get('messages')
 
     with open('understand.jinja2', 'r') as file:
         template = Template(file.read())
-    prompt = template.render(intents=intents, entities=entities)
-    c_messages = [{'role': 'assistant', 'content': prompt}]
-    messages = c_messages + messages
+    prompt = template.render(
+        intents=data.get('intents'),
+        entities=data.get('entities'))
+    messages = [{'role': 'assistant', 'content': prompt}] + \
+        data.get('messages')
 
     completion = client.chat.completions.create(
         model=llm_model, messages=messages)

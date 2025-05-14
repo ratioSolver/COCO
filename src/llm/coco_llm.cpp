@@ -14,7 +14,7 @@ namespace coco
         LOG_DEBUG(entity_deftemplate);
         Build(get_env(), entity_deftemplate);
 
-        AddUDF(get_env(), "understand", "v", 2, 2, "ys", understand, "understand", this);
+        AddUDF(get_env(), "understand", "v", 2, 2, "ys", understand_udf, "understand", this);
 
         auto res = client.get("/version");
         if (!res || res->get_status_code() != network::ok)
@@ -65,29 +65,15 @@ namespace coco
             throw std::runtime_error("Entity already exists");
     }
 
-    intent::intent(std::string_view name, std::string_view description) : name(name), description(description) {}
-    entity::entity(entity_type type, std::string_view name, std::string_view description) : type(type), name(name), description(description) {}
-
-    void understand(Environment *env, UDFContext *udfc, UDFValue *)
+    void coco_llm::understand(item &item, std::string_view message) noexcept
     {
-        LOG_DEBUG("Understanding..");
-
-        auto &llm = *reinterpret_cast<coco_llm *>(udfc->context);
-
-        UDFValue item_id;
-        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
-            return;
-        UDFValue message;
-        if (!UDFNextArgument(udfc, STRING_BIT, &message))
-            return;
-
-        [[maybe_unused]] auto &itm = llm.cc.get_item(item_id.lexemeValue->contents);
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
 
         std::string prompt = "You are a natural language understanding model. Given a user input, perform the following tasks:\n1. Intent Recognition: Identify which of the following intents (one or more) are present in the user's input.\nPossible intents and their descriptions are:\n";
-        for (const auto &[name, intent] : llm.intents)
+        for (const auto &[name, intent] : intents)
             prompt += "\n- " + name + ": " + intent->get_description();
         prompt += "\n2. Extract the following entities from the user's input, if present. For each entity, provide the name and value.\nPossible entities, their types and descriptions are:\n";
-        for (const auto &[name, entity] : llm.entities)
+        for (const auto &[name, entity] : entities)
             prompt += "\n- " + name + " (" + to_string(entity->get_type()) + "): " + entity->get_description();
         prompt += "\n3. Provide a JSON response with the following structure:\n";
         prompt += "{\n\"intents\": [\n {\"name\": \"intent_name\"},\n],\n\"entities\": [\n{\"entity\": \"entity_name\", \"value\": \"entity_value\"},\n]\n}\n";
@@ -95,38 +81,35 @@ namespace coco
 
         json::json context(json::json_type::array);
         context.push_back({{"role", "system"}, {"content", prompt.c_str()}});
-        context.push_back({{"role", "user"}, {"content", message.lexemeValue->contents}});
-
-        auto res = llm.client.post("/llm", {{"context", std::move(context)}});
+        context.push_back({{"role", "user"}, {"content", message}});
+        auto res = client.post("/llm", {{"context", std::move(context)}});
         if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to understand..");
             return;
         }
-
         auto &json_res = static_cast<network::json_response &>(*res);
         for (const auto &intent : json_res.get_body()["intents"].as_array())
         {
             auto &intent_name = static_cast<const std::string>(intent["name"]);
 
-            FactBuilder *intent_fact_builder = CreateFactBuilder(env, "intent");
-            FBPutSlotSymbol(intent_fact_builder, "item_id", item_id.lexemeValue->contents);
+            FactBuilder *intent_fact_builder = CreateFactBuilder(get_env(), "intent");
+            FBPutSlotSymbol(intent_fact_builder, "item_id", item.get_id().c_str());
             FBPutSlotSymbol(intent_fact_builder, "name", intent_name.c_str());
 
             auto intent_fact = FBAssert(intent_fact_builder);
             assert(intent_fact);
-            LOG_TRACE(llm.to_string(intent_fact));
+            LOG_TRACE(to_string(intent_fact));
             FBDispose(intent_fact_builder);
         }
-
         for (const auto &entity : json_res.get_body()["entities"].as_array())
         {
             auto &entity_name = static_cast<const std::string>(entity["entity"]);
 
-            FactBuilder *entity_fact_builder = CreateFactBuilder(env, "entity");
-            FBPutSlotSymbol(entity_fact_builder, "item_id", item_id.lexemeValue->contents);
+            FactBuilder *entity_fact_builder = CreateFactBuilder(get_env(), "entity");
+            FBPutSlotSymbol(entity_fact_builder, "item_id", item.get_id().c_str());
             FBPutSlotSymbol(entity_fact_builder, "name", entity_name.c_str());
-            switch (llm.entities.at(entity_name)->get_type())
+            switch (entities.at(entity_name)->get_type())
             {
             case string_type:
                 FBPutSlotString(entity_fact_builder, "value", static_cast<std::string>(entity["value"]).c_str());
@@ -147,8 +130,27 @@ namespace coco
 
             auto entity_fact = FBAssert(entity_fact_builder);
             assert(entity_fact);
-            LOG_TRACE(llm.to_string(entity_fact));
+            LOG_TRACE(to_string(entity_fact));
             FBDispose(entity_fact_builder);
         }
+    }
+
+    intent::intent(std::string_view name, std::string_view description) : name(name), description(description) {}
+    entity::entity(entity_type type, std::string_view name, std::string_view description) : type(type), name(name), description(description) {}
+
+    void understand_udf(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Understanding..");
+
+        auto &llm = *reinterpret_cast<coco_llm *>(udfc->context);
+
+        UDFValue item_id;
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
+            return;
+        UDFValue message;
+        if (!UDFNextArgument(udfc, STRING_BIT, &message))
+            return;
+
+        llm.understand(llm.cc.get_item(item_id.lexemeValue->contents), message.lexemeValue->contents);
     }
 } // namespace coco

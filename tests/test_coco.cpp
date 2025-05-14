@@ -7,9 +7,6 @@
 #else
 #include "coco_db.hpp"
 #endif
-#ifdef BUILD_TRANSFORMER
-#include "coco_transformer.hpp"
-#endif
 #ifdef BUILD_LLM
 #include "coco_llm.hpp"
 #endif
@@ -28,12 +25,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
     coco::coco cc(db);
 
-#ifdef BUILD_TRANSFORMER
-    coco::transformer t(cc);
-#endif
-
 #ifdef BUILD_LLM
-    coco::coco_llm llm(cc);
+    coco::coco_llm &llm = cc.add_module<coco::coco_llm>(cc);
+    llm.create_intent("greet", "The user greets the system");
+    llm.create_intent("bye", "The user says goodbye to the system");
+    llm.create_entity("name", "The name of the user", coco::string_type);
+    llm.create_entity("age", "The age of the user", coco::integer_type);
 #endif
 
 #ifdef BUILD_SERVER

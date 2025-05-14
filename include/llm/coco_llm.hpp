@@ -1,6 +1,7 @@
 #pragma once
 
 #include "coco_module.hpp"
+#include "coco_item.hpp"
 #include "client.hpp"
 
 namespace coco
@@ -30,8 +31,10 @@ namespace coco
     [[nodiscard]] std::vector<utils::ref_wrapper<entity>> get_entities() noexcept;
     void create_entity(std::string_view name, std::string_view description, entity_type type);
 
+    void understand(item &item, std::string_view message) noexcept;
+
   private:
-    friend void understand(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void understand_udf(Environment *env, UDFContext *udfc, UDFValue *out);
 
   private:
     std::map<std::string, utils::u_ptr<intent>, std::less<>> intents;  // The intents
@@ -130,5 +133,5 @@ namespace coco
     }
   }
 
-  void understand(Environment *env, UDFContext *udfc, UDFValue *out);
+  void understand_udf(Environment *env, UDFContext *udfc, UDFValue *out);
 } // namespace coco

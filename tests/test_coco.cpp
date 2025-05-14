@@ -33,7 +33,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
 
 #ifdef BUILD_LLM
-    coco::llm l(cc);
+    coco::coco_llm llm(cc);
 #endif
 
 #ifdef BUILD_SERVER

@@ -1,12 +1,43 @@
 #pragma once
 
-#include "coco.hpp"
+#include "coco_module.hpp"
 #include "client.hpp"
 
 namespace coco
 {
   constexpr const char *intent_deftemplate = "(deftemplate intent (slot item_id (type SYMBOL)) (slot name (type SYMBOL)))";
   constexpr const char *entity_deftemplate = "(deftemplate entity (slot item_id (type SYMBOL)) (slot name (type SYMBOL)) (slot value))";
+
+  class intent;
+  class entity;
+
+  enum entity_type
+  {
+    string_type,
+    symbol_type,
+    integer_type,
+    float_type,
+    boolean_type
+  };
+
+  class coco_llm final : public coco_module
+  {
+  public:
+    coco_llm(coco &cc, std::string_view host = LLM_HOST, unsigned short port = LLM_PORT) noexcept;
+
+    [[nodiscard]] std::vector<utils::ref_wrapper<intent>> get_intents() noexcept;
+    void create_intent(std::string_view name, std::string_view description);
+    [[nodiscard]] std::vector<utils::ref_wrapper<entity>> get_entities() noexcept;
+    void create_entity(std::string_view name, std::string_view description, entity_type type);
+
+  private:
+    friend void understand(Environment *env, UDFContext *udfc, UDFValue *out);
+
+  private:
+    std::map<std::string, utils::u_ptr<intent>, std::less<>> intents;  // The intents
+    std::map<std::string, utils::u_ptr<entity>, std::less<>> entities; // The entities
+    network::client client;                                            // The client used to communicate with the LLM server
+  };
 
   class intent final
   {
@@ -17,7 +48,7 @@ namespace coco
      * @param name The name of the intent.
      * @param description The description of the intent.
      */
-    intent(const std::string &name, const std::string &description) : name(name), description(description) {}
+    intent(std::string_view name, std::string_view description);
 
     /**
      * @brief Gets the name of the intent.
@@ -37,15 +68,6 @@ namespace coco
     std::string description; // The description of the intent
   };
 
-  enum entity_type
-  {
-    string_type,
-    symbol_type,
-    integer_type,
-    float_type,
-    boolean_type
-  };
-
   class entity final
   {
   public:
@@ -56,7 +78,7 @@ namespace coco
      * @param name The name of the entity.
      * @param description The description of the entity.
      */
-    entity(entity_type type, const std::string &name, const std::string &description) : type(type), name(name), description(description) {}
+    entity(entity_type type, std::string_view name, std::string_view description);
 
     /**
      * @brief Gets the type of the entity.
@@ -83,19 +105,30 @@ namespace coco
     std::string description; // The description of the entity
   };
 
-  class llm final : public listener
+  /**
+   * @brief Converts the entity type to a string representation.
+   *
+   * @param type The entity type to convert.
+   * @return The string representation of the entity type.
+   */
+  inline [[nodiscard]] std::string to_string(entity_type type)
   {
-  public:
-    llm(coco &cc, std::string_view host = LLM_HOST, unsigned short port = LLM_PORT) noexcept;
-
-  private:
-    friend void understand(Environment *env, UDFContext *udfc, UDFValue *out);
-
-  private:
-    network::client client;                           // The client used to communicate with the LLM server
-    std::unordered_map<std::string, intent> intents;  // The intents
-    std::unordered_map<std::string, entity> entities; // The entities
-  };
+    switch (type)
+    {
+    case string_type:
+      return "string";
+    case symbol_type:
+      return "symbol";
+    case integer_type:
+      return "integer";
+    case float_type:
+      return "float";
+    case boolean_type:
+      return "boolean";
+    default:
+      return "unknown";
+    }
+  }
 
   void understand(Environment *env, UDFContext *udfc, UDFValue *out);
 } // namespace coco

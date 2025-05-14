@@ -16,7 +16,7 @@ option(BUILD_DELIBERATIVE "Build CoCo deliberative" OFF)
 option(BUILD_LLM "Build CoCo LLM" OFF)
 option(BUILD_AUTH "Build CoCo authentication" OFF)
 
-if(BUILD_DELIBERATIVE OR BUILD_AUTH)
+if(BUILD_DELIBERATIVE OR BUILD_LLM OR BUILD_AUTH)
     set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB drivers" FORCE)
 endif()
 
@@ -139,8 +139,8 @@ if(BUILD_LLM)
     message(STATUS "LLM host: ${LLM_HOST}")
     message(STATUS "LLM port: ${LLM_PORT}")
 
-    target_sources(CoCo PRIVATE src/llm/coco_llm.cpp)
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/llm>)
+    target_sources(CoCo PRIVATE src/llm/coco_llm.cpp src/llm/llm_db.cpp)
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
     target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_LLM LLM_HOST="${LLM_HOST}" LLM_PORT=${LLM_PORT})

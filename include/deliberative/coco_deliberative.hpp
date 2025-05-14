@@ -24,7 +24,6 @@ namespace coco
 #ifdef BUILD_LISTENERS
     friend class deliberative_listener;
 #endif
-
   public:
     coco_deliberative(coco &cc) noexcept;
 

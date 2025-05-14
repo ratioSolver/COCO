@@ -97,8 +97,7 @@ namespace coco
             LOG_ERR("Failed to understand..");
             return;
         }
-        auto &msgs = static_cast<network::json_response &>(*res).get_body().as_array();
-        auto llm_res = static_cast<std::string>(msgs[msgs.size() - 1]["content"]);
+        auto llm_res = static_cast<std::string>(static_cast<network::json_response &>(*res).get_body()["content"]);
         LOG_TRACE("Response:\n"
                   << llm_res);
         json::json j_res = json::load(llm_res);

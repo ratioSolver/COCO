@@ -2,6 +2,7 @@
 
 #include "clips.h"
 #include <mutex>
+#include <string>
 
 namespace coco
 {

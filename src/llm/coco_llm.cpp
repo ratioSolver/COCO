@@ -156,19 +156,19 @@ namespace coco
         json::json prompt;
         if (auto it = current_slots.find(item.get_id()); it != current_slots.end())
         { // we have slots for this item
-            json::json j_slots(json::json_type::object);
+            json::json j_slots;
             for (const auto &[slot_name, val] : it->second.as_object())
                 if (slots.at(slot_name)->influences_context())
                     j_slots[slot_name] = val;
             prompt["slots"] = std::move(j_slots);
         }
-        json::json j_intents(json::json_type::array);
-        for (const auto &[_, intent] : intents)
-            j_intents.push_back({{"name", intent->get_name().c_str()}, {"description", intent->get_description().c_str()}});
+        json::json j_intents;
+        for (const auto &[intent_name, intent] : intents)
+            j_intents[intent_name] = intent->get_description().c_str();
         prompt["intents"] = std::move(j_intents);
-        json::json j_entities(json::json_type::array);
-        for (const auto &[_, entity] : entities)
-            j_entities.push_back({{"name", entity->get_name().c_str()}, {"description", entity->get_description().c_str()}, {"type", type_to_string(entity->get_type()).c_str()}});
+        json::json j_entities;
+        for (const auto &[entity_name, entity] : entities)
+            j_entities[entity_name] = {{"description", entity->get_description().c_str()}, {"type", type_to_string(entity->get_type()).c_str()}};
         prompt["entities"] = std::move(j_entities);
 
         json::json j_messages(json::json_type::array);

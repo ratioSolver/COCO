@@ -7,8 +7,8 @@ You are a natural language understanding (NLU) model. Given the current state an
 ## Current State
 {% if slots %}
 The current state of the conversation is as follows:
-{% for slot in slots %}
-- {{ slot.name }}: {{ slot.value }}
+{% for name, value in slots.items() %}
+- {{ name }}: {{ value }}
 {% endfor %}
 {% else %}
 The current state of the conversation is empty.
@@ -17,15 +17,15 @@ The current state of the conversation is empty.
 ## Intent Recognition  
 Identify all intents present in the user's input. For each intent, return only its name.  
 Available intents:
-{% for intent in intents %}
-- {{ intent.name }}: {{ intent.description }}
+{% for name, description in intents.items() %}
+- {{ name }}: {{ description }}
 {% endfor %}
 
 ## Entity Extraction  
 Extract all entities mentioned in the user's input. For each entity, return its name and the extracted value.  
 Available entities:
-{% for entity in entities %}
-- {{ entity.name }} ({{ entity.type }}): {{ entity.description }}
+{% for name, entity in entities.items() %}
+- {{ name }} ({{ entity.type }}): {{ entity.description }}
 {% endfor %}
 
 ## Response Format  

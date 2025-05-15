@@ -34,8 +34,10 @@ def generate():
     with open('understand.jinja2', 'r') as file:
         template = Template(file.read())
     prompt = template.render(
+        slots=data.get('slots', None),
         intents=data.get('intents'),
         entities=data.get('entities'))
+    logging.info(f"Prompt: {prompt}")
     messages = [{'role': 'assistant', 'content': prompt}] + \
         data.get('messages')
 

@@ -1,5 +1,5 @@
 # Task
-You are a natural language understanding (NLU) model. Given the current state and a user input, perform the following tasks:
+You are an AI model which given the current state and a user input, perform the following tasks:
 - Identify the intents present in the user's input.
 - Extract the entities mentioned in the user's input.
 - Return the results in a structured JSON format.
@@ -32,10 +32,11 @@ Available entities:
 Return the output as a JSON object with the following structure:
 {
   "intents": ["intent1", "intent2", ...],
-  "entities": [
-    {"entity": "entity_name", "value": "extracted_value"},
+  "entities": {
+    "entity1": "value1",
+    "entity2": "value2",
     ...
-  ]
+  }
 }
 The values of the extracted entities must follow the format specified in their definitions above.  
 Do NOT include any additional explanations or comments in the output. Return only the JSON object.

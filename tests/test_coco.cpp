@@ -31,10 +31,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     llm.create_intent("bye", "The user says goodbye to the system");
     llm.create_entity(coco::string_type, "name", "The name of the user");
     llm.create_entity(coco::integer_type, "age", "The age of the user");
+    llm.create_entity(coco::string_type, "robot_response", "A message in italian indicating a generated response or a comment to the user's input");
     llm.create_slot(coco::string_type, "name", "The name of the user");
     llm.create_slot(coco::integer_type, "age", "The age of the user");
-    cc.create_reactive_rule("set_name", "(defrule set_name ?f <- (entity (item_id ?id) (name name) (value ?value)) => (set_slots ?id (create$ name name) (create$ value ?value)) (retract ?f))");
-    cc.create_reactive_rule("set_age", "(defrule set_age ?f <- (entity (item_id ?id) (name age) (value ?value)) => (set_slots ?id (create$ age age) (create$ value ?value)) (retract ?f))");
+    cc.create_reactive_rule("set_name", "(defrule set_name ?f <- (entity (item_id ?id) (name name) (value ?value)) => (set_slots ?id (create$ name) (create$ ?value)) (retract ?f))");
+    cc.create_reactive_rule("set_age", "(defrule set_age ?f <- (entity (item_id ?id) (name age) (value ?value)) => (set_slots ?id (create$ age) (create$ ?value)) (retract ?f))");
 #endif
 
 #ifdef BUILD_SERVER

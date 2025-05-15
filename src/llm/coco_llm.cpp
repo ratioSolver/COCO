@@ -200,31 +200,30 @@ namespace coco
             LOG_TRACE(to_string(intent_fact));
             FBDispose(intent_fact_builder);
         }
-        for (const auto &entity : j_res["entities"].as_array())
+        for (const auto &[name, value] : j_res["entities"].as_object())
         {
-            auto entity_name = static_cast<const std::string>(entity["entity"]);
-            if (entities.find(entity_name) == entities.end())
-                LOG_WARN("Entity " << entity_name << " not found");
+            if (entities.find(name) == entities.end())
+                LOG_WARN("Entity " << name << " not found");
 
             FactBuilder *entity_fact_builder = CreateFactBuilder(get_env(), "entity");
             FBPutSlotSymbol(entity_fact_builder, "item_id", item.get_id().c_str());
-            FBPutSlotSymbol(entity_fact_builder, "name", entity_name.c_str());
-            switch (entities.at(entity_name)->get_type())
+            FBPutSlotSymbol(entity_fact_builder, "name", name.c_str());
+            switch (entities.at(name)->get_type())
             {
             case string_type:
-                FBPutSlotString(entity_fact_builder, "value", static_cast<const std::string>(entity["value"]).c_str());
+                FBPutSlotString(entity_fact_builder, "value", static_cast<const std::string>(value).c_str());
                 break;
             case symbol_type:
-                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<const std::string>(entity["value"]).c_str());
+                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<const std::string>(value).c_str());
                 break;
             case integer_type:
-                FBPutSlotInteger(entity_fact_builder, "value", static_cast<int64_t>(entity["value"]));
+                FBPutSlotInteger(entity_fact_builder, "value", static_cast<int64_t>(value));
                 break;
             case float_type:
-                FBPutSlotFloat(entity_fact_builder, "value", static_cast<double>(entity["value"]));
+                FBPutSlotFloat(entity_fact_builder, "value", static_cast<double>(value));
                 break;
             case boolean_type:
-                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<bool>(entity["value"]) ? "TRUE" : "FALSE");
+                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<bool>(value) ? "TRUE" : "FALSE");
                 break;
             }
 

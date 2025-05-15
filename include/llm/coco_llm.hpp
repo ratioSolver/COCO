@@ -29,14 +29,14 @@ namespace coco
     coco_llm(coco &cc, std::string_view host = LLM_HOST, unsigned short port = LLM_PORT) noexcept;
 
     [[nodiscard]] std::vector<utils::ref_wrapper<intent>> get_intents() noexcept;
-    void create_intent(std::string_view name, std::string_view description);
+    void create_intent(std::string_view name, std::string_view description, bool infere = true);
     [[nodiscard]] std::vector<utils::ref_wrapper<entity>> get_entities() noexcept;
-    void create_entity(data_type type, std::string_view name, std::string_view description);
+    void create_entity(data_type type, std::string_view name, std::string_view description, bool infere = true);
     [[nodiscard]] std::vector<utils::ref_wrapper<slot>> get_slots() noexcept;
-    void create_slot(data_type type, std::string_view name, std::string_view description, bool influence_context = true);
+    void create_slot(data_type type, std::string_view name, std::string_view description, bool influence_context = true, bool infere = true);
 
-    void set_slots(item &item, json::json &&props);
-    void understand(item &item, std::string_view message) noexcept;
+    void set_slots(item &item, json::json &&props, bool infere = true) noexcept;
+    void understand(item &item, std::string_view message, bool infere = true) noexcept;
 
   private:
     friend void set_slots_udf(Environment *env, UDFContext *udfc, UDFValue *out);

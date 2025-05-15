@@ -301,13 +301,18 @@ namespace coco
                 data[par.lexemeValue->contents] = val.floatValue->contents;
                 break;
             case STRING_TYPE:
+                if (dynamic_props.at(par.lexemeValue->contents)->is_complex())
+                    data[par.lexemeValue->contents] = json::load(val.lexemeValue->contents);
+                else
+                    data[par.lexemeValue->contents] = val.lexemeValue->contents;
+                break;
             case SYMBOL_TYPE:
                 if (std::string(val.lexemeValue->contents) == "TRUE")
                     data[par.lexemeValue->contents] = true;
                 else if (std::string(val.lexemeValue->contents) == "FALSE")
                     data[par.lexemeValue->contents] = false;
-                else if (dynamic_props.at(par.lexemeValue->contents)->is_complex())
-                    data[par.lexemeValue->contents] = json::load(val.lexemeValue->contents);
+                else if (std::string(val.lexemeValue->contents) == "nil")
+                    data[par.lexemeValue->contents] = nullptr;
                 else
                     data[par.lexemeValue->contents] = val.lexemeValue->contents;
                 break;

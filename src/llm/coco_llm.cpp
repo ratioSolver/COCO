@@ -9,12 +9,19 @@ namespace coco
     coco_llm::coco_llm(coco &cc, std::string_view host, unsigned short port) noexcept : coco_module(cc), client(host, port)
     {
         LOG_TRACE(intent_deftemplate);
-        Build(get_env(), intent_deftemplate);
+        [[maybe_unused]] auto build_intent_dt_err = Build(get_env(), intent_deftemplate);
+        assert(build_intent_dt_err == BE_NO_ERROR);
+        LOG_TRACE(entity_deftemplate);
+        [[maybe_unused]] auto build_entity_dt_err = Build(get_env(), entity_deftemplate);
+        assert(build_entity_dt_err == BE_NO_ERROR);
+        LOG_TRACE(slot_deftemplate);
+        [[maybe_unused]] auto build_slot_dt_err = Build(get_env(), slot_deftemplate);
+        assert(build_slot_dt_err == BE_NO_ERROR);
 
-        LOG_DEBUG(entity_deftemplate);
-        Build(get_env(), entity_deftemplate);
-
-        AddUDF(get_env(), "understand", "v", 2, 2, "ys", understand_udf, "understand", this);
+        [[maybe_unused]] auto understand_err = AddUDF(get_env(), "understand", "v", 2, 2, "ys", understand_udf, "understand_udf", this);
+        assert(understand_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto add_data_err = AddUDF(get_env(), "set_slots", "v", 3, 4, "ymml", set_slots_udf, "set_slots_udf", this);
+        assert(add_data_err == AUE_NO_ERROR);
 
         auto res = client.get("/version");
         if (!res || res->get_status_code() != network::ok)
@@ -30,7 +37,11 @@ namespace coco
         auto ents = db.get_entities();
         LOG_DEBUG("Retrieved " << ents.size() << " entities");
         for (const auto &c_entity : ents)
-            entities.emplace(c_entity.name, utils::make_u_ptr<entity>(static_cast<entity_type>(c_entity.type), c_entity.name, c_entity.description, c_entity.influence_context));
+            entities.emplace(c_entity.name, utils::make_u_ptr<entity>(static_cast<data_type>(c_entity.type), c_entity.name, c_entity.description));
+        auto slts = db.get_slots();
+        LOG_DEBUG("Retrieved " << slts.size() << " slots");
+        for (const auto &c_slot : slts)
+            slots.emplace(c_slot.name, utils::make_u_ptr<slot>(static_cast<data_type>(c_slot.type), c_slot.name, c_slot.description, c_slot.influence_context));
     }
 
     std::vector<utils::ref_wrapper<intent>> coco_llm::get_intents() noexcept
@@ -57,12 +68,78 @@ namespace coco
             result.emplace_back(*entity);
         return result;
     }
-    void coco_llm::create_entity(entity_type type, std::string_view name, std::string_view description, bool influence_context)
+    void coco_llm::create_entity(data_type type, std::string_view name, std::string_view description)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        cc.get_db().get_module<llm_db>().create_entity(type, name, description, influence_context);
-        if (!entities.emplace(name, utils::make_u_ptr<entity>(type, name, description, influence_context)).second)
+        cc.get_db().get_module<llm_db>().create_entity(type, name, description);
+        if (!entities.emplace(name, utils::make_u_ptr<entity>(type, name, description)).second)
             throw std::runtime_error("Entity already exists");
+    }
+
+    std::vector<utils::ref_wrapper<slot>> coco_llm::get_slots() noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        std::vector<utils::ref_wrapper<slot>> result;
+        for (const auto &[name, slot] : slots)
+            result.emplace_back(*slot);
+        return result;
+    }
+    void coco_llm::create_slot(data_type type, std::string_view name, std::string_view description, bool influence_context)
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        cc.get_db().get_module<llm_db>().create_slot(type, name, description, influence_context);
+        if (!slots.emplace(name, utils::make_u_ptr<slot>(type, name, description)).second)
+            throw std::runtime_error("Slot already exists");
+    }
+
+    void coco_llm::set_slots(item &item, json::json &&new_slots)
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+
+        for (const auto &[slot_name, val] : new_slots.as_object())
+            if (val.get_type() == json::json_type::null)
+            {
+                assert(slot_facts.count(item.get_id()));
+                assert(slot_facts.at(item.get_id()).count(slot_name));
+                assert(current_slots.count(item.get_id()));
+                assert(current_slots.at(item.get_id()).contains(slot_name));
+                Retract(slot_facts.at(item.get_id()).at(slot_name));
+                slot_facts.at(item.get_id()).erase(slot_name);
+                current_slots.at(item.get_id()).erase(slot_name);
+            }
+            else
+            {
+                FactBuilder *slot_fact_builder = CreateFactBuilder(get_env(), "slot");
+                FBPutSlotSymbol(slot_fact_builder, "item_id", item.get_id().c_str());
+                FBPutSlotSymbol(slot_fact_builder, "name", slot_name.c_str());
+                switch (this->slots.at(slot_name)->get_type())
+                {
+                case string_type:
+                    FBPutSlotString(slot_fact_builder, "value", static_cast<const std::string>(val).c_str());
+                    break;
+                case symbol_type:
+                    FBPutSlotSymbol(slot_fact_builder, "value", static_cast<const std::string>(val).c_str());
+                    break;
+                case integer_type:
+                    FBPutSlotInteger(slot_fact_builder, "value", static_cast<int64_t>(val));
+                    break;
+                case float_type:
+                    FBPutSlotFloat(slot_fact_builder, "value", static_cast<double>(val));
+                    break;
+                case boolean_type:
+                    FBPutSlotSymbol(slot_fact_builder, "value", static_cast<bool>(val) ? "TRUE" : "FALSE");
+                    break;
+                default:
+                    LOG_WARN("Unknown type for slot " + slot_name);
+                    break;
+                }
+                auto slot_fact = FBAssert(slot_fact_builder);
+                assert(slot_fact);
+                LOG_TRACE(to_string(slot_fact));
+                FBDispose(slot_fact_builder);
+                slot_facts[item.get_id()][slot_name] = slot_fact;
+                current_slots[item.get_id()][slot_name] = val;
+            }
     }
 
     void coco_llm::understand(item &item, std::string_view message) noexcept
@@ -114,44 +191,93 @@ namespace coco
             auto entity_name = static_cast<const std::string>(entity["entity"]);
             if (entities.find(entity_name) == entities.end())
                 LOG_WARN("Entity " << entity_name << " not found");
-            if (entity["value"].get_type() == json::json_type::null && slots[item.get_id()].contains(entity_name)) // If the value is null, remove the slot
-                slots[item.get_id()].erase(entity_name);
-            else
-            { // Otherwise, add the slot
-                slots[item.get_id()][entity_name] = entity["value"];
 
-                FactBuilder *entity_fact_builder = CreateFactBuilder(get_env(), "entity");
-                FBPutSlotSymbol(entity_fact_builder, "item_id", item.get_id().c_str());
-                FBPutSlotSymbol(entity_fact_builder, "name", entity_name.c_str());
-                switch (entities.at(entity_name)->get_type())
-                {
-                case string_type:
-                    FBPutSlotString(entity_fact_builder, "value", static_cast<const std::string>(entity["value"]).c_str());
-                    break;
-                case symbol_type:
-                    FBPutSlotSymbol(entity_fact_builder, "value", static_cast<const std::string>(entity["value"]).c_str());
-                    break;
-                case integer_type:
-                    FBPutSlotInteger(entity_fact_builder, "value", static_cast<int64_t>(entity["value"]));
-                    break;
-                case float_type:
-                    FBPutSlotFloat(entity_fact_builder, "value", static_cast<double>(entity["value"]));
-                    break;
-                case boolean_type:
-                    FBPutSlotSymbol(entity_fact_builder, "value", static_cast<bool>(entity["value"]) ? "TRUE" : "FALSE");
-                    break;
-                }
-
-                auto entity_fact = FBAssert(entity_fact_builder);
-                assert(entity_fact);
-                LOG_TRACE(to_string(entity_fact));
-                FBDispose(entity_fact_builder);
+            FactBuilder *entity_fact_builder = CreateFactBuilder(get_env(), "entity");
+            FBPutSlotSymbol(entity_fact_builder, "item_id", item.get_id().c_str());
+            FBPutSlotSymbol(entity_fact_builder, "name", entity_name.c_str());
+            switch (entities.at(entity_name)->get_type())
+            {
+            case string_type:
+                FBPutSlotString(entity_fact_builder, "value", static_cast<const std::string>(entity["value"]).c_str());
+                break;
+            case symbol_type:
+                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<const std::string>(entity["value"]).c_str());
+                break;
+            case integer_type:
+                FBPutSlotInteger(entity_fact_builder, "value", static_cast<int64_t>(entity["value"]));
+                break;
+            case float_type:
+                FBPutSlotFloat(entity_fact_builder, "value", static_cast<double>(entity["value"]));
+                break;
+            case boolean_type:
+                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<bool>(entity["value"]) ? "TRUE" : "FALSE");
+                break;
             }
+
+            auto entity_fact = FBAssert(entity_fact_builder);
+            assert(entity_fact);
+            LOG_TRACE(to_string(entity_fact));
+            FBDispose(entity_fact_builder);
         }
     }
 
     intent::intent(std::string_view name, std::string_view description) : name(name), description(description) {}
-    entity::entity(entity_type type, std::string_view name, std::string_view description, bool influence_context) : type(type), name(name), description(description), influence_context(influence_context) {}
+    entity::entity(data_type type, std::string_view name, std::string_view description) : type(type), name(name), description(description) {}
+    slot::slot(data_type type, std::string_view name, std::string_view description, bool influence_context) : type(type), name(name), description(description), influence_context(influence_context) {}
+
+    void set_slots_udf(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Setting slots..");
+
+        auto &llm = *reinterpret_cast<coco_llm *>(udfc->context);
+
+        UDFValue item_id; // we get the item id..
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
+            return;
+
+        UDFValue pars; // we get the parameters..
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &pars))
+            return;
+
+        UDFValue vals; // we get the values..
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &vals))
+            return;
+
+        json::json j_slots;
+        for (size_t i = 0; i < pars.multifieldValue->length; ++i)
+        {
+            auto &par = pars.multifieldValue->contents[i];
+            if (par.header->type != SYMBOL_TYPE)
+                return;
+            auto &val = vals.multifieldValue->contents[i];
+            switch (val.header->type)
+            {
+            case INTEGER_TYPE:
+                j_slots[par.lexemeValue->contents] = static_cast<int64_t>(val.integerValue->contents);
+                break;
+            case FLOAT_TYPE:
+                j_slots[par.lexemeValue->contents] = val.floatValue->contents;
+                break;
+            case STRING_TYPE:
+                j_slots[par.lexemeValue->contents] = val.lexemeValue->contents;
+                break;
+            case SYMBOL_TYPE:
+                if (std::string(val.lexemeValue->contents) == "TRUE")
+                    j_slots[par.lexemeValue->contents] = true;
+                else if (std::string(val.lexemeValue->contents) == "FALSE")
+                    j_slots[par.lexemeValue->contents] = false;
+                else if (std::string(val.lexemeValue->contents) == "nil")
+                    j_slots[par.lexemeValue->contents] = nullptr;
+                else
+                    j_slots[par.lexemeValue->contents] = val.lexemeValue->contents;
+                break;
+            default:
+                return;
+            }
+        }
+
+        llm.set_slots(llm.cc.get_item(item_id.lexemeValue->contents), std::move(j_slots));
+    }
 
     void understand_udf(Environment *, UDFContext *udfc, UDFValue *)
     {
@@ -159,10 +285,11 @@ namespace coco
 
         auto &llm = *reinterpret_cast<coco_llm *>(udfc->context);
 
-        UDFValue item_id;
+        UDFValue item_id; // we get the item id..
         if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
             return;
-        UDFValue message;
+
+        UDFValue message; // we get the message..
         if (!UDFNextArgument(udfc, STRING_BIT, &message))
             return;
 

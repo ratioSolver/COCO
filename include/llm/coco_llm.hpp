@@ -8,11 +8,13 @@ namespace coco
 {
   constexpr const char *intent_deftemplate = "(deftemplate intent (slot item_id (type SYMBOL)) (slot name (type SYMBOL)))";
   constexpr const char *entity_deftemplate = "(deftemplate entity (slot item_id (type SYMBOL)) (slot name (type SYMBOL)) (slot value))";
+  constexpr const char *slot_deftemplate = "(deftemplate slot (slot item_id (type SYMBOL)) (slot name (type SYMBOL)) (slot value))";
 
   class intent;
   class entity;
+  class slot;
 
-  enum entity_type
+  enum data_type
   {
     string_type,
     symbol_type,
@@ -29,17 +31,23 @@ namespace coco
     [[nodiscard]] std::vector<utils::ref_wrapper<intent>> get_intents() noexcept;
     void create_intent(std::string_view name, std::string_view description);
     [[nodiscard]] std::vector<utils::ref_wrapper<entity>> get_entities() noexcept;
-    void create_entity(entity_type type, std::string_view name, std::string_view description, bool influence_context = true);
+    void create_entity(data_type type, std::string_view name, std::string_view description);
+    [[nodiscard]] std::vector<utils::ref_wrapper<slot>> get_slots() noexcept;
+    void create_slot(data_type type, std::string_view name, std::string_view description, bool influence_context = true);
 
+    void set_slots(item &item, json::json &&props);
     void understand(item &item, std::string_view message) noexcept;
 
   private:
+    friend void set_slots_udf(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void understand_udf(Environment *env, UDFContext *udfc, UDFValue *out);
 
   private:
     std::map<std::string, utils::u_ptr<intent>, std::less<>> intents;  // The intents
     std::map<std::string, utils::u_ptr<entity>, std::less<>> entities; // The entities
-    std::unordered_map<std::string, json::json> slots;                 // The slots for a given item
+    std::map<std::string, utils::u_ptr<slot>, std::less<>> slots;      // The slots
+    std::map<std::string, std::map<std::string, Fact *>> slot_facts;   // The facts representing the slots for each item
+    std::unordered_map<std::string, json::json> current_slots;         // The slots for each item
     network::client client;                                            // The client used to communicate with the LLM server
   };
 
@@ -81,16 +89,15 @@ namespace coco
      * @param type The type of the entity.
      * @param name The name of the entity.
      * @param description The description of the entity.
-     * @param influence_context Whether the entity influences the context.
      */
-    entity(entity_type type, std::string_view name, std::string_view description, bool influence_context = true);
+    entity(data_type type, std::string_view name, std::string_view description);
 
     /**
      * @brief Gets the type of the entity.
      *
      * @return The type of the entity.
      */
-    [[nodiscard]] entity_type get_type() const { return type; }
+    [[nodiscard]] data_type get_type() const { return type; }
     /**
      * @brief Gets the name of the entity.
      *
@@ -103,37 +110,31 @@ namespace coco
      * @return The description of the entity.
      */
     [[nodiscard]] const std::string &get_description() const { return description; }
-    /**
-     * @brief Checks if the entity influences the context.
-     *
-     * @return True if the entity influences the context, false otherwise.
-     */
-    [[nodiscard]] bool influences_context() const { return influence_context; }
 
   private:
-    entity_type type;        // The type of the entity
+    data_type type;          // The type of the entity
     std::string name;        // The name of the entity
     std::string description; // The description of the entity
-    bool influence_context;  // Whether the entity influences the context
   };
 
   class slot final
   {
   public:
     /**
-     * @brief Constructs a slot with the given type, name, and description.
+     * @brief Constructs a slot with the given type, name, description, and influence context flag.
      *
      * @param type The type of the slot.
      * @param name The name of the slot.
      * @param description The description of the slot.
+     * @param influence_context Indicates if the slot influences the context.
      */
-    slot(entity_type type, std::string_view name, std::string_view description);
+    slot(data_type type, std::string_view name, std::string_view description, bool influence_context = true);
     /**
      * @brief Gets the type of the slot.
      *
      * @return The type of the slot.
      */
-    [[nodiscard]] entity_type get_type() const { return type; }
+    [[nodiscard]] data_type get_type() const { return type; }
     /**
      * @brief Gets the name of the slot.
      *
@@ -146,11 +147,18 @@ namespace coco
      * @return The description of the slot.
      */
     [[nodiscard]] const std::string &get_description() const { return description; }
+    /**
+     * @brief Checks if the slot influences the context.
+     *
+     * @return True if the slot influences the context, false otherwise.
+     */
+    [[nodiscard]] bool influences_context() const { return influence_context; }
 
   private:
-    entity_type type;        // The type of the slot
+    data_type type;          // The type of the slot
     std::string name;        // The name of the slot
     std::string description; // The description of the slot
+    bool influence_context;  // Indicates if the slot influences the context
   };
 
   /**
@@ -159,7 +167,7 @@ namespace coco
    * @param type The entity type to convert.
    * @return The string representation of the entity type.
    */
-  [[nodiscard]] inline std::string type_to_string(entity_type type)
+  [[nodiscard]] inline std::string type_to_string(data_type type)
   {
     switch (type)
     {
@@ -178,5 +186,6 @@ namespace coco
     }
   }
 
+  void set_slots_udf(Environment *env, UDFContext *udfc, UDFValue *out);
   void understand_udf(Environment *env, UDFContext *udfc, UDFValue *out);
 } // namespace coco

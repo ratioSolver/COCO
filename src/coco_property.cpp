@@ -19,7 +19,11 @@ namespace coco
             default_value = static_cast<bool>(j["default"]);
         return utils::make_u_ptr<bool_property>(*this, tp, dynamic, name, default_value);
     }
-    void bool_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotSymbol(property_fact_builder, name.data(), static_cast<bool>(value) ? "TRUE" : "FALSE"); }
+    void bool_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), static_cast<bool>(value) ? "TRUE" : "FALSE");
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
 
     int_property_type::int_property_type(coco &cc) noexcept : property_type(cc, int_kw) {}
     utils::u_ptr<property> int_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -35,7 +39,11 @@ namespace coco
             max = static_cast<long>(j["max"]);
         return utils::make_u_ptr<int_property>(*this, tp, dynamic, name, default_value, min, max);
     }
-    void int_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotInteger(property_fact_builder, name.data(), static_cast<long>(value)); }
+    void int_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FBPutSlotInteger(property_fact_builder, name.data(), static_cast<long>(value));
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
 
     float_property_type::float_property_type(coco &cc) noexcept : property_type(cc, float_kw) {}
     utils::u_ptr<property> float_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -51,7 +59,11 @@ namespace coco
             max = static_cast<double>(j["max"]);
         return utils::make_u_ptr<float_property>(*this, tp, dynamic, name, default_value, min, max);
     }
-    void float_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotFloat(property_fact_builder, name.data(), static_cast<double>(value)); }
+    void float_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FBPutSlotFloat(property_fact_builder, name.data(), static_cast<double>(value));
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
 
     string_property_type::string_property_type(coco &cc) noexcept : property_type(cc, string_kw) {}
     utils::u_ptr<property> string_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -61,7 +73,11 @@ namespace coco
             default_value = static_cast<std::string>(j["default"]);
         return utils::make_u_ptr<string_property>(*this, tp, dynamic, name, default_value);
     }
-    void string_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str()); }
+    void string_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
 
     symbol_property_type::symbol_property_type(coco &cc) noexcept : property_type(cc, symbol_kw) {}
     utils::u_ptr<property> symbol_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -83,7 +99,11 @@ namespace coco
         }
         return utils::make_u_ptr<symbol_property>(*this, tp, dynamic, name, multiple, std::move(values), default_value);
     }
-    void symbol_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str()); }
+    void symbol_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
 
     item_property_type::item_property_type(coco &cc) noexcept : property_type(cc, item_kw) {}
     utils::u_ptr<property> item_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -103,7 +123,11 @@ namespace coco
         }
         return utils::make_u_ptr<item_property>(*this, tp, dynamic, name, domain, multiple, default_value);
     }
-    void item_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str()); }
+    void item_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
 
     json_property_type::json_property_type(coco &cc) noexcept : property_type(cc, json_kw) {}
     utils::u_ptr<property> json_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -116,7 +140,11 @@ namespace coco
             default_value = j["default"];
         return utils::make_u_ptr<json_property>(*this, tp, dynamic, name, schema, default_value);
     }
-    void json_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept { FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str()); }
+    void json_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
 
     property::property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept : pt(pt), tp(tp), dynamic(dynamic), name(name) {}
     property::~property()

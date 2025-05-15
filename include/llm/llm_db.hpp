@@ -11,8 +11,10 @@ namespace coco
 
   struct db_entity
   {
-    std::string name, description;
     int type;
+    std::string name;
+    bool influence_context;
+    std::string description;
   };
 
   class llm_db : public mongo_module
@@ -24,7 +26,7 @@ namespace coco
     void create_intent(std::string_view name, std::string_view description);
 
     [[nodiscard]] std::vector<db_entity> get_entities() noexcept;
-    void create_entity(std::string_view name, std::string_view description, int type);
+    void create_entity(int type, std::string_view name, std::string_view description, bool influence_context = true);
 
   private:
     mongocxx::collection intents_collection, entities_collection;

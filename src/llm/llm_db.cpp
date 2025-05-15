@@ -46,19 +46,21 @@ namespace coco
         std::vector<db_entity> entities;
         for (const auto &doc : entities_collection.find({}))
         {
-            auto name = doc["name"].get_string().value;
-            auto description = doc["description"].get_string().value;
             auto type = doc["type"].get_int32().value;
-            entities.push_back({std::string(name), std::string(description), type});
+            auto name = doc["name"].get_string().value;
+            auto influence_context = doc["influence_context"].get_bool().value;
+            auto description = doc["description"].get_string().value;
+            entities.push_back({type, std::string(name), influence_context, std::string(description)});
         }
         return entities;
     }
-    void llm_db::create_entity(std::string_view name, std::string_view description, int type)
+    void llm_db::create_entity(int type, std::string_view name, std::string_view description, bool influence_context)
     {
         bsoncxx::builder::basic::document doc;
+        doc.append(bsoncxx::builder::basic::kvp("type", type));
         doc.append(bsoncxx::builder::basic::kvp("name", name.data()));
         doc.append(bsoncxx::builder::basic::kvp("description", description.data()));
-        doc.append(bsoncxx::builder::basic::kvp("type", type));
+        doc.append(bsoncxx::builder::basic::kvp("influence_context", influence_context));
         if (!entities_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert entity: " + std::string(name));
     }

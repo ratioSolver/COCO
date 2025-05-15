@@ -30,7 +30,7 @@ namespace coco
         auto ents = db.get_entities();
         LOG_DEBUG("Retrieved " << ents.size() << " entities");
         for (const auto &c_entity : ents)
-            entities.emplace(c_entity.name, utils::make_u_ptr<entity>(static_cast<entity_type>(c_entity.type), c_entity.name, c_entity.description));
+            entities.emplace(c_entity.name, utils::make_u_ptr<entity>(static_cast<entity_type>(c_entity.type), c_entity.name, c_entity.description, c_entity.influence_context));
     }
 
     std::vector<utils::ref_wrapper<intent>> coco_llm::get_intents() noexcept
@@ -57,25 +57,34 @@ namespace coco
             result.emplace_back(*entity);
         return result;
     }
-    void coco_llm::create_entity(std::string_view name, std::string_view description, entity_type type)
+    void coco_llm::create_entity(entity_type type, std::string_view name, std::string_view description, bool influence_context)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        cc.get_db().get_module<llm_db>().create_entity(name, description, type);
-        if (!entities.emplace(name, utils::make_u_ptr<entity>(type, name, description)).second)
+        cc.get_db().get_module<llm_db>().create_entity(type, name, description, influence_context);
+        if (!entities.emplace(name, utils::make_u_ptr<entity>(type, name, description, influence_context)).second)
             throw std::runtime_error("Entity already exists");
     }
 
     void coco_llm::understand(item &item, std::string_view message) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
+        json::json prompt;
+        if (auto it = slots.find(item.get_id()); it != slots.end())
+            prompt["slots"] = it->second;
         json::json j_intents(json::json_type::array);
         for (const auto &[_, intent] : intents)
             j_intents.push_back({{"name", intent->get_name().c_str()}, {"description", intent->get_description().c_str()}});
+        prompt["intents"] = std::move(j_intents);
         json::json j_entities(json::json_type::array);
         for (const auto &[_, entity] : entities)
-            j_entities.push_back({{"name", entity->get_name().c_str()}, {"description", entity->get_description().c_str()}, {"type", entity_type_to_string(entity->get_type()).c_str()}});
+            j_entities.push_back({{"name", entity->get_name().c_str()}, {"description", entity->get_description().c_str()}, {"type", type_to_string(entity->get_type()).c_str()}});
+        prompt["entities"] = std::move(j_entities);
 
-        auto res = client.post("/understand", {{"intents", std::move(j_intents)}, {"entities", std::move(j_entities)}, {"messages", std::vector<json::json>{{"role", "user"}, {"content", message}}}});
+        json::json j_messages(json::json_type::array);
+        j_messages.push_back({{"role", "user"}, {"content", message}});
+        prompt["messages"] = std::move(j_messages);
+
+        auto res = client.post("/understand", std::move(prompt));
         if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to understand..");
@@ -105,38 +114,44 @@ namespace coco
             auto entity_name = static_cast<const std::string>(entity["entity"]);
             if (entities.find(entity_name) == entities.end())
                 LOG_WARN("Entity " << entity_name << " not found");
+            if (entity["value"].get_type() == json::json_type::null && slots[item.get_id()].contains(entity_name)) // If the value is null, remove the slot
+                slots[item.get_id()].erase(entity_name);
+            else
+            { // Otherwise, add the slot
+                slots[item.get_id()][entity_name] = entity["value"];
 
-            FactBuilder *entity_fact_builder = CreateFactBuilder(get_env(), "entity");
-            FBPutSlotSymbol(entity_fact_builder, "item_id", item.get_id().c_str());
-            FBPutSlotSymbol(entity_fact_builder, "name", entity_name.c_str());
-            switch (entities.at(entity_name)->get_type())
-            {
-            case string_type:
-                FBPutSlotString(entity_fact_builder, "value", static_cast<std::string>(entity["value"]).c_str());
-                break;
-            case symbol_type:
-                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<std::string>(entity["value"]).c_str());
-                break;
-            case integer_type:
-                FBPutSlotInteger(entity_fact_builder, "value", static_cast<int64_t>(entity["value"]));
-                break;
-            case float_type:
-                FBPutSlotFloat(entity_fact_builder, "value", static_cast<double>(entity["value"]));
-                break;
-            case boolean_type:
-                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<bool>(entity["value"]) ? "TRUE" : "FALSE");
-                break;
+                FactBuilder *entity_fact_builder = CreateFactBuilder(get_env(), "entity");
+                FBPutSlotSymbol(entity_fact_builder, "item_id", item.get_id().c_str());
+                FBPutSlotSymbol(entity_fact_builder, "name", entity_name.c_str());
+                switch (entities.at(entity_name)->get_type())
+                {
+                case string_type:
+                    FBPutSlotString(entity_fact_builder, "value", static_cast<const std::string>(entity["value"]).c_str());
+                    break;
+                case symbol_type:
+                    FBPutSlotSymbol(entity_fact_builder, "value", static_cast<const std::string>(entity["value"]).c_str());
+                    break;
+                case integer_type:
+                    FBPutSlotInteger(entity_fact_builder, "value", static_cast<int64_t>(entity["value"]));
+                    break;
+                case float_type:
+                    FBPutSlotFloat(entity_fact_builder, "value", static_cast<double>(entity["value"]));
+                    break;
+                case boolean_type:
+                    FBPutSlotSymbol(entity_fact_builder, "value", static_cast<bool>(entity["value"]) ? "TRUE" : "FALSE");
+                    break;
+                }
+
+                auto entity_fact = FBAssert(entity_fact_builder);
+                assert(entity_fact);
+                LOG_TRACE(to_string(entity_fact));
+                FBDispose(entity_fact_builder);
             }
-
-            auto entity_fact = FBAssert(entity_fact_builder);
-            assert(entity_fact);
-            LOG_TRACE(to_string(entity_fact));
-            FBDispose(entity_fact_builder);
         }
     }
 
     intent::intent(std::string_view name, std::string_view description) : name(name), description(description) {}
-    entity::entity(entity_type type, std::string_view name, std::string_view description) : type(type), name(name), description(description) {}
+    entity::entity(entity_type type, std::string_view name, std::string_view description, bool influence_context) : type(type), name(name), description(description), influence_context(influence_context) {}
 
     void understand_udf(Environment *, UDFContext *udfc, UDFValue *)
     {

@@ -29,7 +29,7 @@ namespace coco
     [[nodiscard]] std::vector<utils::ref_wrapper<intent>> get_intents() noexcept;
     void create_intent(std::string_view name, std::string_view description);
     [[nodiscard]] std::vector<utils::ref_wrapper<entity>> get_entities() noexcept;
-    void create_entity(std::string_view name, std::string_view description, entity_type type);
+    void create_entity(entity_type type, std::string_view name, std::string_view description, bool influence_context = true);
 
     void understand(item &item, std::string_view message) noexcept;
 
@@ -39,6 +39,7 @@ namespace coco
   private:
     std::map<std::string, utils::u_ptr<intent>, std::less<>> intents;  // The intents
     std::map<std::string, utils::u_ptr<entity>, std::less<>> entities; // The entities
+    std::unordered_map<std::string, json::json> slots;                 // The slots for a given item
     network::client client;                                            // The client used to communicate with the LLM server
   };
 
@@ -80,8 +81,9 @@ namespace coco
      * @param type The type of the entity.
      * @param name The name of the entity.
      * @param description The description of the entity.
+     * @param influence_context Whether the entity influences the context.
      */
-    entity(entity_type type, std::string_view name, std::string_view description);
+    entity(entity_type type, std::string_view name, std::string_view description, bool influence_context = true);
 
     /**
      * @brief Gets the type of the entity.
@@ -101,11 +103,54 @@ namespace coco
      * @return The description of the entity.
      */
     [[nodiscard]] const std::string &get_description() const { return description; }
+    /**
+     * @brief Checks if the entity influences the context.
+     *
+     * @return True if the entity influences the context, false otherwise.
+     */
+    [[nodiscard]] bool influences_context() const { return influence_context; }
 
   private:
     entity_type type;        // The type of the entity
     std::string name;        // The name of the entity
     std::string description; // The description of the entity
+    bool influence_context;  // Whether the entity influences the context
+  };
+
+  class slot final
+  {
+  public:
+    /**
+     * @brief Constructs a slot with the given type, name, and description.
+     *
+     * @param type The type of the slot.
+     * @param name The name of the slot.
+     * @param description The description of the slot.
+     */
+    slot(entity_type type, std::string_view name, std::string_view description);
+    /**
+     * @brief Gets the type of the slot.
+     *
+     * @return The type of the slot.
+     */
+    [[nodiscard]] entity_type get_type() const { return type; }
+    /**
+     * @brief Gets the name of the slot.
+     *
+     * @return The name of the slot.
+     */
+    [[nodiscard]] const std::string &get_name() const { return name; }
+    /**
+     * @brief Gets the description of the slot.
+     *
+     * @return The description of the slot.
+     */
+    [[nodiscard]] const std::string &get_description() const { return description; }
+
+  private:
+    entity_type type;        // The type of the slot
+    std::string name;        // The name of the slot
+    std::string description; // The description of the slot
   };
 
   /**
@@ -114,7 +159,7 @@ namespace coco
    * @param type The entity type to convert.
    * @return The string representation of the entity type.
    */
-  [[nodiscard]] inline std::string entity_type_to_string(entity_type type)
+  [[nodiscard]] inline std::string type_to_string(entity_type type)
   {
     switch (type)
     {
@@ -129,7 +174,7 @@ namespace coco
     case boolean_type:
       return "boolean";
     default:
-      return "unknown";
+      throw std::invalid_argument("Invalid entity type");
     }
   }
 

@@ -29,8 +29,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     coco::coco_llm &llm = cc.add_module<coco::coco_llm>(cc);
     llm.create_intent("greet", "The user greets the system");
     llm.create_intent("bye", "The user says goodbye to the system");
-    llm.create_entity("name", "The name of the user", coco::string_type);
-    llm.create_entity("age", "The age of the user", coco::integer_type);
+    llm.create_entity(coco::string_type, "name", "The name of the user");
+    llm.create_entity(coco::integer_type, "age", "The age of the user");
 #endif
 
 #ifdef BUILD_SERVER

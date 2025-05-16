@@ -23,12 +23,6 @@ namespace coco
         [[maybe_unused]] auto add_data_err = AddUDF(get_env(), "set_slots", "v", 3, 4, "ymml", set_slots_udf, "set_slots_udf", this);
         assert(add_data_err == AUE_NO_ERROR);
 
-        auto res = client.get("/version");
-        if (!res || res->get_status_code() != network::ok)
-            LOG_ERR("Failed to connect to the LLM server");
-        else
-            LOG_DEBUG("Connected to the LLM server " << static_cast<network::json_response &>(*res).get_body());
-
         auto &db = cc.get_db().add_module<llm_db>(static_cast<mongo_db &>(cc.get_db()));
         auto ints = db.get_intents();
         LOG_DEBUG("Retrieved " << ints.size() << " intents");
@@ -153,38 +147,58 @@ namespace coco
     void coco_llm::understand(item &item, std::string_view message, bool infere) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        json::json prompt;
+        std::string prompt = "#Task\nYou are an AI model which given the current state and a user input, perform the following tasks:\n";
+        prompt += "1. Identify the intents present in the user's input.\n";
+        prompt += "2. Extract the entities mentioned in the user's input.\n";
+        prompt += "3. Return the results in a structured JSON format.\n";
+        prompt += "## Current State\n";
         if (auto it = current_slots.find(item.get_id()); it != current_slots.end())
-        { // we have slots for this item
-            json::json j_slots;
+        {
+            prompt += "The current state of the conversation is as follows:\n";
             for (const auto &[slot_name, val] : it->second.as_object())
-                if (slots.at(slot_name)->influences_context())
-                    j_slots[slot_name] = val;
-            prompt["slots"] = std::move(j_slots);
+                prompt += "- " + slot_name + ": " + static_cast<std::string>(val) + "\n";
         }
-        json::json j_intents;
-        for (const auto &[intent_name, intent] : intents)
-            j_intents[intent_name] = intent->get_description().c_str();
-        prompt["intents"] = std::move(j_intents);
-        json::json j_entities;
-        for (const auto &[entity_name, entity] : entities)
-            j_entities[entity_name] = {{"description", entity->get_description().c_str()}, {"type", type_to_string(entity->get_type()).c_str()}};
-        prompt["entities"] = std::move(j_entities);
+        else
+            prompt += "The current state of the conversation is empty.\n";
+        prompt += "## Intent Recognition\n";
+        prompt += "Identify all intents present in the user's input. For each intent, return only its name.\n";
+        prompt += "Available intents:\n";
+        for (const auto &[name, intent] : intents)
+            prompt += "- " + name + ": " + intent->get_description() + "\n";
+        prompt += "## Entity Extraction\n";
+        prompt += "Extract all entities mentioned in the user's input. For each entity, return its name and the extracted value.\n";
+        prompt += "Available entities:\n";
+        for (const auto &[name, entity] : entities)
+            prompt += "- " + name + " (" + type_to_string(entity->get_type()) + "): " + entity->get_description() + "\n";
+        prompt += "## Response Format\n";
+        prompt += "Return the output as a JSON object with the following structure:\n";
+        prompt += "{\n";
+        prompt += "  \"intents\": [\"intent1\", \"intent2\", ...],\n";
+        prompt += "  \"entities\": {\n";
+        prompt += "    \"entity1\": \"value1\",\n";
+        prompt += "    \"entity2\": \"value2\",\n";
+        prompt += "    ...\n";
+        prompt += "  }\n";
+        prompt += "}\n";
+        prompt += "The values of the extracted entities must follow the format specified in their definitions above.\n";
+        prompt += "Do NOT include any additional explanations or comments in the output. Return only the JSON object.\n";
 
-        json::json j_messages(json::json_type::array);
-        j_messages.push_back({{"role", "user"}, {"content", message}});
-        prompt["messages"] = std::move(j_messages);
+        json::json j_prompt;
+        j_prompt["model"] = LLM_MODEL;
+        j_prompt["messages"] = std::vector<json::json>{{{"role", "system"}, {"content", prompt.c_str()}}, {{"role", "user"}, {"content", message}}};
+        j_prompt["stream"] = false;
 
-        auto res = client.post("/understand", std::move(prompt));
+        auto res = client.post("/" LLM_PROVIDER "/v3/openai/chat/completions", std::move(j_prompt), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " LLM_API_KEY}});
         if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to understand..");
+            LOG_ERR(*res);
             return;
         }
-        auto llm_res = static_cast<std::string>(static_cast<network::json_response &>(*res).get_body()["content"]);
+        auto llm_res = static_cast<network::json_response &>(*res).get_body();
         LOG_TRACE("Response:\n"
                   << llm_res);
-        json::json j_res = json::load(llm_res);
+        json::json j_res = json::load(static_cast<std::string>(llm_res["choices"][0]["message"]["content"]));
         for (const auto &intent : j_res["intents"].as_array())
         {
             auto intent_name = static_cast<const std::string>(intent);

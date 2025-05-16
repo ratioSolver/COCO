@@ -31,7 +31,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     llm.create_intent("bye", "The user says goodbye to the system");
     llm.create_entity(coco::string_type, "user_name", "The name of the user");
     llm.create_entity(coco::integer_type, "user_age", "The age of the user");
-    llm.create_entity(coco::string_type, "robot_response", "A message in italian answering, commenting or requesting for clarification to the user's input, in the same tone used by the user");
+    llm.create_entity(coco::string_type, "robot_response", "A message in italian answering, commenting or requesting for clarification to the user's input, in the same tone used by the user. Try to be creative and funny.");
     llm.create_slot(coco::string_type, "user_name", "The name of the user");
     llm.create_slot(coco::integer_type, "user_age", "The age of the user");
     cc.create_reactive_rule("set_name", "(defrule set_name ?f <- (entity (item_id ?id) (name user_name) (value ?value)) => (set_slots ?id (create$ user_name) (create$ ?value)) (retract ?f))");

@@ -181,7 +181,7 @@ namespace coco
         prompt += "  }\n";
         prompt += "}\n";
         prompt += "The values of the extracted entities must follow the format specified in their definitions above.\n";
-        prompt += "Do NOT include any additional explanations or comments in the output. Return only the JSON object.\n";
+        prompt += "Do NOT include any additional formatting (such as '`') or explanations in the output. Return only the JSON object.\n";
 
         json::json j_prompt;
         j_prompt["model"] = LLM_MODEL;

@@ -93,4 +93,5 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
     }
     Plotly.react(this.element, data.flat(), this.layout, this.config);
   }
+  slots_updated(_: coco.taxonomy.Item): void { }
 }

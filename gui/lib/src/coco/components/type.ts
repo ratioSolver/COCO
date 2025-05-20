@@ -60,6 +60,8 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 
   new_type(type: coco.taxonomy.Type): void { this.add_child(new TypeElement(this.group, type)); }
   new_item(_: coco.taxonomy.Item): void { }
+  new_intent(_: coco.llm.Intent): void { }
+  new_entity(_: coco.llm.Entity): void { }
 }
 
 export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implements coco.taxonomy.TypeListener {

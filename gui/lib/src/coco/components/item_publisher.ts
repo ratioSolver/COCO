@@ -142,6 +142,7 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
   properties_updated(_: coco.taxonomy.Item): void { }
   values_updated(_: coco.taxonomy.Item): void { }
   new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Datum): void { this.set_value(); }
+  slots_updated(_: coco.taxonomy.Item): void { }
 
   private set_value() {
     const props = this.payload.get_type().get_all_dynamic_properties();

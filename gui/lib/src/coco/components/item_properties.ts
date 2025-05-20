@@ -49,6 +49,7 @@ export class ItemProperties extends Component<coco.taxonomy.Item, HTMLDivElement
   properties_updated(_: coco.taxonomy.Item): void { this.set_properties(); }
   values_updated(_: coco.taxonomy.Item): void { }
   new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Datum): void { }
+  slots_updated(_: coco.taxonomy.Item): void { }
 
   private set_properties() {
     const props = this.payload.get_type().get_all_static_properties();

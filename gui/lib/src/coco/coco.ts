@@ -8,6 +8,8 @@ export namespace coco {
     private readonly property_types = new Map<string, taxonomy.PropertyType<any>>();
     private readonly types: Map<string, taxonomy.Type>;
     private readonly items: Map<string, taxonomy.Item>;
+    private readonly intents: Map<string, llm.Intent>;
+    private readonly entities: Map<string, llm.Entity>;
     private readonly coco_listeners: Set<CoCoListener> = new Set();
 
     private constructor() {
@@ -20,6 +22,8 @@ export namespace coco {
       this.add_property_type(new taxonomy.JSONPropertyType(this));
       this.types = new Map();
       this.items = new Map();
+      this.intents = new Map();
+      this.entities = new Map();
     }
 
     static get_instance() {
@@ -49,6 +53,16 @@ export namespace coco {
             queue.push(par);
       }
       for (const listener of this.coco_listeners) listener.new_item(item);
+    }
+
+    new_intent(intent: llm.Intent): void {
+      this.intents.set(intent.get_name(), intent);
+      for (const listener of this.coco_listeners) listener.new_intent(intent);
+    }
+
+    new_entity(entity: llm.Entity): void {
+      this.entities.set(entity.get_name(), entity);
+      for (const listener of this.coco_listeners) listener.new_entity(entity);
     }
 
     /**
@@ -171,6 +185,9 @@ export namespace coco {
 
     new_type(type: taxonomy.Type): void;
     new_item(item: taxonomy.Item): void;
+
+    new_intent(intent: llm.Intent): void;
+    new_entity(entity: llm.Entity): void;
   }
 
   export namespace taxonomy {
@@ -540,14 +557,16 @@ export namespace coco {
       private readonly type: Type;
       private properties?: Record<string, unknown>;
       private datum?: Datum;
+      private slots?: Record<string, unknown>;
       private data: Datum[] = [];
       private readonly listeners = new Set<ItemListener>();
 
-      constructor(id: string, type: Type, properties?: Record<string, unknown>, value?: Datum) {
+      constructor(id: string, type: Type, properties?: Record<string, unknown>, value?: Datum, slots?: Record<string, unknown>) {
         this.id = id;
         this.type = type;
         this.properties = properties;
         this.datum = value;
+        this.slots = slots;
       }
 
       get_id(): string { return this.id; }
@@ -555,6 +574,7 @@ export namespace coco {
       get_properties(): Record<string, unknown> | undefined { return this.properties; }
       get_datum(): Datum | undefined { return this.datum; }
       get_data(): Datum[] { return this.data; }
+      get_slots(): Record<string, unknown> | undefined { return this.slots; }
 
       _set_properties(props?: Record<string, unknown>): void {
         this.properties = props;
@@ -569,6 +589,10 @@ export namespace coco {
         this.data.push(datum);
         for (const l of this.listeners) l.new_value(this, datum);
       }
+      _set_slots(slots?: Record<string, unknown>): void {
+        this.slots = slots;
+        for (const l of this.listeners) l.values_updated(this);
+      }
 
       add_item_listener(l: ItemListener): void { this.listeners.add(l); }
       remove_item_listener(l: ItemListener): void { this.listeners.delete(l); }
@@ -581,6 +605,7 @@ export namespace coco {
       properties_updated(item: Item): void;
       values_updated(item: Item): void;
       new_value(item: Item, v: Datum): void;
+      slots_updated(item: Item): void;
     }
   }
 
@@ -596,6 +621,48 @@ export namespace coco {
 
     get_id(): string { return this.id; }
     get_personal_data(): Record<string, unknown> { return this.personal_data; }
+  }
+
+  export namespace llm {
+
+    export class Intent {
+
+      private readonly name: string;
+      private readonly description: string;
+
+      constructor(name: string, description: string) {
+        this.name = name;
+        this.description = description;
+      }
+
+      get_name(): string { return this.name; }
+      get_description(): string { return this.description; }
+    }
+
+    export enum EntityType {
+      string,
+      int,
+      float,
+      bool,
+      symbol
+    }
+
+    export class Entity {
+
+      private readonly name: string;
+      private readonly type: EntityType;
+      private readonly description: string;
+
+      constructor(name: string, type: EntityType, description: string) {
+        this.name = name;
+        this.type = type;
+        this.description = description;
+      }
+
+      get_name(): string { return this.name; }
+      get_type(): EntityType { return this.type; }
+      get_description(): string { return this.description; }
+    }
   }
 }
 

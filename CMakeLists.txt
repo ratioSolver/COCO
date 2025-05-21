@@ -139,7 +139,7 @@ if(BUILD_LLM)
     set(LLM_HOST "router.huggingface.co" CACHE STRING "The LLM Host")
     set(LLM_PORT "443" CACHE STRING "The LLM Port")
     set(LLM_PROVIDER "novita" CACHE STRING "The LLM Provider")
-    set(LLM_MODEL "meta-llama/llama-3-70b-instruct" CACHE STRING "The LLM Model")
+    set(LLM_MODEL "meta-llama/llama-3.3-70b-instruct" CACHE STRING "The LLM Model")
     set(LLM_API_KEY "YOUR_API_KEY" CACHE STRING "The LLM API Key")
 
     message(STATUS "LLM host: ${LLM_HOST}")

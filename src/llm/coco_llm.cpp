@@ -173,9 +173,9 @@ namespace coco
         prompt += "## Current State\n";
         if (auto it = current_slots.find(item.get_id()); it != current_slots.end())
         {
-            prompt += "The current state of the conversation is as follows:\n";
+            prompt += "The current state of the conversation is:\n";
             for (const auto &[slot_name, val] : it->second.as_object())
-                prompt += "- " + slot_name + ": " + static_cast<std::string>(val) + "\n";
+                prompt += "- " + slot_name + "(" + slots.at(slot_name)->get_description() + "): " + static_cast<std::string>(val) + "\n";
         }
         else
             prompt += "The current state of the conversation is empty.\n";
@@ -200,7 +200,7 @@ namespace coco
         prompt += "  }\n";
         prompt += "}\n";
         prompt += "The values of the extracted entities must follow the format specified in their definitions above.\n";
-        prompt += "Do NOT include any additional formatting (such as '`') or explanations in the output. Return only the JSON object.\n";
+        prompt += "Do NOT include any additional formatting (such as '```') or explanations in the output. Return only the JSON object.\n";
 
         json::json j_prompt;
         j_prompt["model"] = LLM_MODEL;

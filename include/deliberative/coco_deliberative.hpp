@@ -1,7 +1,17 @@
 #include "coco_module.hpp"
-#ifdef BUILD_LISTENERS
 #include "plexa.hpp"
+#ifdef BUILD_LISTENERS
 #include "graph.hpp"
+#endif
+
+#ifdef BUILD_LISTENERS
+#define DELIBERATIVE_RULE_CREATED(rule) deliberative_rule_created(rule)
+#define EXECUTOR_CREATED(exec) executor_created(exec)
+#define EXECUTOR_DELETED(exec) executor_deleted(exec)
+#else
+#define DELIBERATIVE_RULE_CREATED(rule)
+#define EXECUTOR_CREATED(exec)
+#define EXECUTOR_DELETED(exec)
 #endif
 
 namespace coco
@@ -45,6 +55,8 @@ namespace coco
 
 #ifdef BUILD_LISTENERS
   private:
+    void deliberative_rule_created(const deliberative_rule &rule);
+
     void executor_created(coco_executor &exec);
     void executor_deleted(coco_executor &exec);
 
@@ -130,6 +142,8 @@ namespace coco
     virtual ~deliberative_listener();
 
   private:
+    virtual void deliberative_rule_created([[maybe_unused]] const deliberative_rule &rule) {}
+
     virtual void executor_created([[maybe_unused]] coco_executor &exec) {}
     virtual void executor_deleted([[maybe_unused]] coco_executor &exec) {}
 

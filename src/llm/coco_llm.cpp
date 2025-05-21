@@ -50,8 +50,11 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         get_coco().get_db().get_module<llm_db>().create_intent(name, description);
-        if (!intents.emplace(name, utils::make_u_ptr<intent>(name, description)).second)
+        auto it = intents.emplace(name, utils::make_u_ptr<intent>(name, description));
+        if (!it.second)
             throw std::runtime_error("Intent already exists");
+        else
+            INTENT_CREATED(*it.first->second);
         if (infere)
             Run(get_env(), -1);
     }
@@ -68,8 +71,11 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         get_coco().get_db().get_module<llm_db>().create_entity(type, name, description);
-        if (!entities.emplace(name, utils::make_u_ptr<entity>(type, name, description)).second)
+        auto it = entities.emplace(name, utils::make_u_ptr<entity>(type, name, description));
+        if (!it.second)
             throw std::runtime_error("Entity already exists");
+        else
+            ENTITY_CREATED(*it.first->second);
         if (infere)
             Run(get_env(), -1);
     }
@@ -86,8 +92,11 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         get_coco().get_db().get_module<llm_db>().create_slot(type, name, description, influence_context);
-        if (!slots.emplace(name, utils::make_u_ptr<slot>(type, name, description)).second)
+        auto it = slots.emplace(name, utils::make_u_ptr<slot>(type, name, description, influence_context));
+        if (!it.second)
             throw std::runtime_error("Slot already exists");
+        else
+            SLOT_CREATED(*it.first->second);
         if (infere)
             Run(get_env(), -1);
     }
@@ -250,6 +259,24 @@ namespace coco
             Run(get_env(), -1);
     }
 
+#ifdef BUILD_LISTENERS
+    void coco_llm::intent_created(const intent &i)
+    {
+        for (auto &listener : listeners)
+            listener->intent_created(i);
+    }
+    void coco_llm::entity_created(const entity &e)
+    {
+        for (auto &listener : listeners)
+            listener->entity_created(e);
+    }
+    void coco_llm::slot_created(const slot &s)
+    {
+        for (auto &listener : listeners)
+            listener->slot_created(s);
+    }
+#endif
+
     intent::intent(std::string_view name, std::string_view description) : name(name), description(description) {}
     json::json intent::to_json() const noexcept { return json::json{{"name", name.c_str()}, {"description", description.c_str()}}; }
     entity::entity(data_type type, std::string_view name, std::string_view description) : type(type), name(name), description(description) {}
@@ -327,4 +354,9 @@ namespace coco
 
         llm.understand(llm.get_coco().get_item(item_id.lexemeValue->contents), message.lexemeValue->contents, false);
     }
+
+#ifdef BUILD_LISTENERS
+    llm_listener::llm_listener(coco_llm &llm) noexcept : llm(llm) { llm.listeners.emplace_back(this); }
+    llm_listener::~llm_listener() { llm.listeners.erase(std::remove(llm.listeners.begin(), llm.listeners.end(), this), llm.listeners.end()); }
+#endif
 } // namespace coco

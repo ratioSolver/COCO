@@ -43,7 +43,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto srv_ft = std::async(std::launch::async, [&srv]
                              { srv.server::start(); });
 #ifdef ENABLE_SSL
-    srv.load_certificate("cert.pem", "key.pem");
+    srv.load_certificate("tests/cert.pem", "tests/key.pem");
 #endif
     std::this_thread::sleep_for(std::chrono::seconds(1));
 #endif

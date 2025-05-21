@@ -4,6 +4,16 @@
 #include "coco_item.hpp"
 #include "client.hpp"
 
+#ifdef BUILD_LISTENERS
+#define INTENT_CREATED(i) intent_created(i)
+#define ENTITY_CREATED(e) entity_created(e)
+#define SLOT_CREATED(s) slot_created(s)
+#else
+#define INTENT_CREATED(i)
+#define ENTITY_CREATED(e)
+#define SLOT_CREATED(s)
+#endif
+
 namespace coco
 {
   constexpr const char *intent_deftemplate = "(deftemplate intent (slot item_id (type SYMBOL)) (slot name (type SYMBOL)))";
@@ -23,8 +33,15 @@ namespace coco
     boolean_type
   };
 
+#ifdef BUILD_LISTENERS
+  class llm_listener;
+#endif
+
   class coco_llm final : public coco_module
   {
+#ifdef BUILD_LISTENERS
+    friend class llm_listener;
+#endif
   public:
     coco_llm(coco &cc, std::string_view host = LLM_HOST, unsigned short port = LLM_PORT) noexcept;
 
@@ -42,6 +59,13 @@ namespace coco
     friend void set_slots_udf(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void understand_udf(Environment *env, UDFContext *udfc, UDFValue *out);
 
+#ifdef BUILD_LISTENERS
+  private:
+    void intent_created(const intent &i);
+    void entity_created(const entity &e);
+    void slot_created(const slot &s);
+#endif
+
   private:
     std::map<std::string, utils::u_ptr<intent>, std::less<>> intents;  // The intents
     std::map<std::string, utils::u_ptr<entity>, std::less<>> entities; // The entities
@@ -49,6 +73,10 @@ namespace coco
     std::map<std::string, std::map<std::string, Fact *>> slot_facts;   // The facts representing the slots for each item
     std::unordered_map<std::string, json::json> current_slots;         // The slots for each item
     network::client client;                                            // The client used to communicate with the LLM server
+
+#ifdef BUILD_LISTENERS
+    std::vector<llm_listener *> listeners; // The LLM listeners..
+#endif
   };
 
   class intent final
@@ -166,6 +194,22 @@ namespace coco
     std::string description; // The description of the slot
     bool influence_context;  // Indicates if the slot influences the context
   };
+
+#ifdef BUILD_LISTENERS
+  class llm_listener
+  {
+  public:
+    llm_listener(coco_llm &llm) noexcept;
+    virtual ~llm_listener();
+
+    virtual void intent_created([[maybe_unused]] const intent &i) {}
+    virtual void entity_created([[maybe_unused]] const entity &e) {}
+    virtual void slot_created([[maybe_unused]] const slot &s) {}
+
+  protected:
+    coco_llm &llm; // The CoCo LLM object
+  };
+#endif
 
   /**
    * @brief Converts the entity type to a string representation.

@@ -64,8 +64,11 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         get_coco().get_db().get_module<deliberative_db>().create_deliberative_rule(rule_name, rule_content);
-        if (!deliberative_rules.emplace(rule_name, utils::make_u_ptr<deliberative_rule>(*this, rule_name, rule_content)).second)
+        auto it = deliberative_rules.emplace(rule_name, utils::make_u_ptr<deliberative_rule>(*this, rule_name, rule_content));
+        if (!it.second)
             throw std::invalid_argument("deliberative rule `" + std::string(rule_name) + "` already exists");
+        else
+            DELIBERATIVE_RULE_CREATED(*it.first->second);
     }
 
     deliberative_rule::deliberative_rule(coco_deliberative &cd, std::string_view name, std::string_view content) noexcept : cd(cd), name(name), content(content) {}
@@ -76,12 +79,13 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         auto &exec = *executors.emplace(name, utils::make_u_ptr<coco_executor>(*this, name)).first->second.get();
-        executor_created(exec);
+        EXECUTOR_CREATED(exec);
         return exec;
     }
     void coco_deliberative::delete_executor(coco_executor &exec)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
+        EXECUTOR_DELETED(exec);
         executors.erase(exec.get_name());
     }
 
@@ -347,6 +351,12 @@ namespace coco
     }
 
 #ifdef BUILD_LISTENERS
+    void coco_deliberative::deliberative_rule_created(const deliberative_rule &rule)
+    {
+        for (auto &l : listeners)
+            l->deliberative_rule_created(rule);
+    }
+
     void coco_deliberative::executor_created(coco_executor &exec)
     {
         for (auto &l : listeners)

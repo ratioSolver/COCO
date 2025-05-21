@@ -1,6 +1,7 @@
 #pragma once
 
 #include "coco_module.hpp"
+#include "coco.hpp"
 #include "server.hpp"
 #include <unordered_set>
 #include <typeindex>
@@ -11,18 +12,27 @@ namespace coco
 
   class server_module
   {
+    friend class coco_server;
+
   public:
     server_module(coco_server &srv) noexcept;
     virtual ~server_module() = default;
 
   protected:
-    coco &get_coco() noexcept;
+    [[nodiscard]] coco &get_coco() noexcept;
+
+  private:
+    virtual void on_ws_open(network::ws_session &) {}
+    virtual void on_ws_message(network::ws_session &, std::string_view) {}
+    virtual void on_ws_close(network::ws_session &) {}
+    virtual void on_ws_error(network::ws_session &, const std::error_code &) {}
+    virtual void broadcast(json::json &) {}
 
   protected:
     coco_server &srv;
   };
 
-  class coco_server : public coco_module, public network::server
+  class coco_server : public coco_module, public listener, public network::server
   {
     friend class server_module;
 
@@ -53,7 +63,15 @@ namespace coco
       throw std::runtime_error("Module not found");
     }
 
-  protected:
+    void broadcast(json::json &&msg);
+
+  private:
+    void new_type(const type &tp) override;
+    void new_item(const item &itm) override;
+    void updated_item(const item &itm) override;
+    void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
+
+  private:
     utils::u_ptr<network::response> index(const network::request &req);
     utils::u_ptr<network::response> assets(const network::request &req);
 

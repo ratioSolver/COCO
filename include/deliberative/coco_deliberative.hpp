@@ -68,6 +68,10 @@ namespace coco
     void end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
 #endif
 
+  private:
+    void to_json(json::json &j) const noexcept override;
+
+  private:
     std::map<std::string, utils::u_ptr<deliberative_rule>, std::less<>> deliberative_rules; // The deliberative rules..
     std::unordered_map<std::string, utils::u_ptr<coco_executor>> executors;                 // the executors..
 

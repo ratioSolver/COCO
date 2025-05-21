@@ -1,17 +1,18 @@
 #include "deliberative_server.hpp"
+#include "coco_executor.hpp"
 
 namespace coco
 {
-    deliberative_server::deliberative_server(coco_server &srv) noexcept : server_module(srv)
+    deliberative_server::deliberative_server(coco_server &srv, coco_deliberative &cd) noexcept : server_module(srv), deliberative_listener(cd)
     {
-        srv.add_route(network::Get, "^/deliberative_rules$", std::bind(&coco_server::get_deliberative_rules, this, network::placeholders::request));
-        srv.add_route(network::Post, "^/deliberative_rule$", std::bind(&coco_server::create_deliberative_rule, this, network::placeholders::request));
+        srv.add_route(network::Get, "^/deliberative_rules$", std::bind(&deliberative_server::get_deliberative_rules, this, network::placeholders::request));
+        srv.add_route(network::Post, "^/deliberative_rules$", std::bind(&deliberative_server::create_deliberative_rule, this, network::placeholders::request));
     }
 
     utils::u_ptr<network::response> deliberative_server::get_deliberative_rules(const network::request &)
     {
         json::json is(json::json_type::array);
-        for (auto &dr : cc.get_deliberative_rules())
+        for (auto &dr : cd.get_deliberative_rules())
         {
             auto j_drs = dr->to_json();
             j_drs["name"] = dr->get_name();
@@ -28,7 +29,7 @@ namespace coco
         std::string content = body["content"];
         try
         {
-            cc.create_deliberative_rule(name, content);
+            cd.create_deliberative_rule(name, content);
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)

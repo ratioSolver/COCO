@@ -8,9 +8,9 @@
 namespace coco
 {
     server_module::server_module(coco_server &srv) noexcept : srv(srv) {}
-    coco &server_module::get_coco() noexcept { return srv.cc; }
+    coco &server_module::get_coco() noexcept { return srv.get_coco(); }
 
-    coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), server(host, port)
+    coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), server(host, port)
     {
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
@@ -34,6 +34,35 @@ namespace coco
         add_route(network::Post, "^/reactive_rules$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
     }
 
+    void coco_server::broadcast(json::json &&msg)
+    {
+        for (auto &[_, mod] : modules)
+            mod->broadcast(msg);
+    }
+
+    void coco_server::new_type(const type &tp)
+    {
+        auto j_tp = tp.to_json();
+        j_tp["msg_type"] = "new_type";
+        j_tp["name"] = tp.get_name();
+        broadcast(std::move(j_tp));
+    }
+    void coco_server::new_item(const item &itm)
+    {
+        auto j_itm = itm.to_json();
+        j_itm["msg_type"] = "new_item";
+        j_itm["id"] = itm.get_id();
+        broadcast(std::move(j_itm));
+    }
+    void coco_server::updated_item(const item &itm)
+    {
+        auto j_itm = itm.to_json();
+        j_itm["msg_type"] = "updated_item";
+        j_itm["id"] = itm.get_id();
+        broadcast(std::move(j_itm));
+    }
+    void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
+
     utils::u_ptr<network::response> coco_server::index(const network::request &) { return utils::make_u_ptr<network::file_response>(CLIENT_DIR "/dist/index.html"); }
     utils::u_ptr<network::response> coco_server::assets(const network::request &req)
     {
@@ -46,7 +75,7 @@ namespace coco
     utils::u_ptr<network::response> coco_server::get_types(const network::request &)
     {
         json::json ts(json::json_type::array);
-        for (auto &tp : cc.get_types())
+        for (auto &tp : get_coco().get_types())
         {
             auto j_tp = tp->to_json();
             j_tp["name"] = tp->get_name();
@@ -58,7 +87,7 @@ namespace coco
     {
         try
         { // get type by name in the path
-            auto &tp = cc.get_type(req.get_target().substr(7));
+            auto &tp = get_coco().get_type(req.get_target().substr(7));
             auto j_tp = tp.to_json();
             j_tp["name"] = tp.get_name();
             return utils::make_u_ptr<network::json_response>(std::move(j_tp));
@@ -87,7 +116,7 @@ namespace coco
                     return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
                 try
                 {
-                    auto &tp = cc.get_type(static_cast<std::string>(p));
+                    auto &tp = get_coco().get_type(static_cast<std::string>(p));
                     parents.emplace_back(tp);
                 }
                 catch (const std::exception &)
@@ -109,14 +138,14 @@ namespace coco
         if (body.contains("data"))
             data = std::move(body["data"]);
 
-        [[maybe_unused]] auto &tp = cc.create_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
+        [[maybe_unused]] auto &tp = get_coco().create_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
         return utils::make_u_ptr<network::response>(network::status_code::no_content);
     }
     utils::u_ptr<network::response> coco_server::delete_type(const network::request &req)
     {
         try
         { // get type by name in the path
-            cc.delete_type(cc.get_type(req.get_target().substr(7)));
+            get_coco().delete_type(get_coco().get_type(req.get_target().substr(7)));
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &)
@@ -128,7 +157,7 @@ namespace coco
     utils::u_ptr<network::response> coco_server::get_items(const network::request &)
     {
         json::json is(json::json_type::array);
-        for (auto &itm : cc.get_items())
+        for (auto &itm : get_coco().get_items())
         {
             auto j_itm = itm->to_json();
             j_itm["id"] = itm->get_id();
@@ -140,7 +169,7 @@ namespace coco
     {
         try
         { // get item by id in the path
-            auto &itm = cc.get_item(req.get_target().substr(7));
+            auto &itm = get_coco().get_item(req.get_target().substr(7));
             auto j_tp = itm.to_json();
             j_tp["id"] = itm.get_id();
             return utils::make_u_ptr<network::json_response>(std::move(j_tp));
@@ -160,7 +189,7 @@ namespace coco
         type *tp;
         try
         {
-            tp = &cc.get_type(type_name);
+            tp = &get_coco().get_type(type_name);
         }
         catch (const std::exception &)
         {
@@ -169,7 +198,7 @@ namespace coco
         try
         {
             json::json props = body.contains("properties") ? body["properties"] : json::json();
-            auto &itm = cc.create_item(*tp, std::move(props));
+            auto &itm = get_coco().create_item(*tp, std::move(props));
             return utils::make_u_ptr<network::string_response>(std::string(itm.get_id()));
         }
         catch (const std::exception &e)
@@ -181,7 +210,7 @@ namespace coco
     {
         try
         { // get item by id in the path
-            cc.delete_item(cc.get_item(req.get_target().substr(7)));
+            get_coco().delete_item(get_coco().get_item(req.get_target().substr(7)));
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &)
@@ -202,7 +231,7 @@ namespace coco
         item *itm;
         try
         {
-            itm = &cc.get_item(id);
+            itm = &get_coco().get_item(id);
         }
         catch (const std::exception &)
         {
@@ -210,7 +239,7 @@ namespace coco
         }
         std::chrono::system_clock::time_point to = params.count("to") ? std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("to"))}) : std::chrono::system_clock::time_point();
         std::chrono::system_clock::time_point from = params.count("from") ? std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("from"))}) : to - std::chrono::hours{24 * 7};
-        return utils::make_u_ptr<network::json_response>(cc.get_values(*itm, from, to));
+        return utils::make_u_ptr<network::json_response>(get_coco().get_values(*itm, from, to));
     }
     utils::u_ptr<network::response> coco_server::set_datum(const network::request &req)
     { // get item by id in the path
@@ -224,7 +253,7 @@ namespace coco
         item *itm;
         try
         {
-            itm = &cc.get_item(id);
+            itm = &get_coco().get_item(id);
         }
         catch (const std::exception &)
         {
@@ -236,10 +265,10 @@ namespace coco
         if (params.count("timestamp"))
         {
             std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("timestamp"))});
-            cc.set_value(*itm, json::json(body), timestamp);
+            get_coco().set_value(*itm, json::json(body), timestamp);
         }
         else
-            cc.set_value(*itm, json::json(body));
+            get_coco().set_value(*itm, json::json(body));
         return utils::make_u_ptr<network::response>(network::status_code::no_content);
     }
 
@@ -255,7 +284,7 @@ namespace coco
         type *tp;
         try
         {
-            tp = &cc.get_type(name);
+            tp = &get_coco().get_type(name);
         }
         catch (const std::exception &)
         {
@@ -301,7 +330,7 @@ namespace coco
     utils::u_ptr<network::response> coco_server::get_reactive_rules(const network::request &)
     {
         json::json is(json::json_type::array);
-        for (auto &rr : cc.get_reactive_rules())
+        for (auto &rr : get_coco().get_reactive_rules())
         {
             auto j_rrs = rr->to_json();
             j_rrs["name"] = rr->get_name();
@@ -318,7 +347,7 @@ namespace coco
         std::string content = body["content"];
         try
         {
-            cc.create_reactive_rule(name, content);
+            get_coco().create_reactive_rule(name, content);
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)

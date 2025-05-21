@@ -12,32 +12,32 @@ namespace coco
     {
         try
         {
-            [[maybe_unused]] auto &tp = cc.get_type(user_kw);
+            [[maybe_unused]] auto &tp = get_coco().get_type(user_kw);
         }
         catch (const std::invalid_argument &)
         { // Type does not exist, create it
-            [[maybe_unused]] auto &tp = cc.create_type(user_kw, {}, {}, {}, {});
+            [[maybe_unused]] auto &tp = get_coco().create_type(user_kw, {}, {}, {}, {});
         }
-        cc.get_db().add_module<auth_db>(static_cast<mongo_db &>(cc.get_db()));
+        get_coco().get_db().add_module<auth_db>(static_cast<mongo_db &>(get_coco().get_db()));
     }
 
     std::string coco_auth::get_token(std::string_view username, std::string_view password)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        auto user = cc.get_db().get_module<auth_db>().get_user(username, password);
+        auto user = get_coco().get_db().get_module<auth_db>().get_user(username, password);
         return user.id;
     }
 
     item &coco_auth::create_user(std::string_view username, std::string_view password, json::json &&personal_data)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        auto &tp = cc.get_type(user_kw);
-        auto &itm = cc.create_item(tp);
-        cc.get_db().get_module<auth_db>().create_user(itm.get_id(), username, password, std::move(personal_data));
+        auto &tp = get_coco().get_type(user_kw);
+        auto &itm = get_coco().create_item(tp);
+        get_coco().get_db().get_module<auth_db>().create_user(itm.get_id(), username, password, std::move(personal_data));
         return itm;
     }
 
-    server_auth::server_auth(coco_server &srv) noexcept : server_module(srv), listener(get_coco())
+    server_auth::server_auth(coco_server &srv) noexcept : server_module(srv)
     {
         srv.add_route(network::verb::Post, "^/login$", std::bind(&server_auth::login, this, std::placeholders::_1));
 
@@ -65,29 +65,6 @@ namespace coco
         }
     }
 
-    void server_auth::new_type(const type &tp)
-    {
-        auto j_tp = tp.to_json();
-        j_tp["msg_type"] = "new_type";
-        j_tp["name"] = tp.get_name();
-        broadcast(std::move(j_tp));
-    }
-    void server_auth::new_item(const item &itm)
-    {
-        auto j_itm = itm.to_json();
-        j_itm["msg_type"] = "new_item";
-        j_itm["id"] = itm.get_id();
-        broadcast(std::move(j_itm));
-    }
-    void server_auth::updated_item(const item &itm)
-    {
-        auto j_itm = itm.to_json();
-        j_itm["msg_type"] = "updated_item";
-        j_itm["id"] = itm.get_id();
-        broadcast(std::move(j_itm));
-    }
-    void server_auth::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
-
     void server_auth::on_ws_open(network::ws_session &ws)
     {
         LOG_TRACE("New connection from " << ws.remote_endpoint());
@@ -95,7 +72,7 @@ namespace coco
         std::lock_guard<std::mutex> _(mtx);
         clients.insert(&ws);
 
-        auto jc = cc.to_json();
+        auto jc = get_coco().to_json();
         jc["msg_type"] = "coco";
         ws.send(jc.dump());
     }
@@ -121,7 +98,7 @@ namespace coco
         on_ws_close(ws);
     }
 
-    void server_auth::broadcast(json::json &&msg)
+    void server_auth::broadcast(json::json &msg)
     {
         auto msg_str = msg.dump();
         for (auto client : clients)

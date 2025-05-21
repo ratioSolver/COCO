@@ -7,33 +7,10 @@
 
 namespace coco
 {
-    server_noauth::server_noauth(coco_server &srv) noexcept : server_module(srv), listener(get_coco())
+    server_noauth::server_noauth(coco_server &srv) noexcept : server_module(srv)
     {
         srv.add_ws_route("/coco").on_open(std::bind(&server_noauth::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&server_noauth::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&server_noauth::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&server_noauth::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
-
-    void server_noauth::new_type(const type &tp)
-    {
-        auto j_tp = tp.to_json();
-        j_tp["msg_type"] = "new_type";
-        j_tp["name"] = tp.get_name();
-        broadcast(std::move(j_tp));
-    }
-    void server_noauth::new_item(const item &itm)
-    {
-        auto j_itm = itm.to_json();
-        j_itm["msg_type"] = "new_item";
-        j_itm["id"] = itm.get_id();
-        broadcast(std::move(j_itm));
-    }
-    void server_noauth::updated_item(const item &itm)
-    {
-        auto j_itm = itm.to_json();
-        j_itm["msg_type"] = "updated_item";
-        j_itm["id"] = itm.get_id();
-        broadcast(std::move(j_itm));
-    }
-    void server_noauth::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
 
     void server_noauth::on_ws_open(network::ws_session &ws)
     {
@@ -42,7 +19,7 @@ namespace coco
         std::lock_guard<std::mutex> _(mtx);
         clients.insert(&ws);
 
-        auto jc = cc.to_json();
+        auto jc = get_coco().to_json();
         jc["msg_type"] = "coco";
         ws.send(jc.dump());
     }
@@ -68,7 +45,7 @@ namespace coco
         on_ws_close(ws);
     }
 
-    void server_noauth::broadcast(json::json &&msg)
+    void server_noauth::broadcast(json::json &msg)
     {
         auto msg_str = msg.dump();
         for (auto client : clients)

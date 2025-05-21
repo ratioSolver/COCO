@@ -251,7 +251,7 @@ namespace coco
 
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
-  protected:
+  private:
     coco &cc;
   };
 #endif

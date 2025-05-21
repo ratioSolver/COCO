@@ -262,6 +262,15 @@ namespace coco
                 jitms[id] = itm->to_json();
             jc["items"] = std::move(jitms);
         }
+        if (!reactive_rules.empty())
+        {
+            json::json jrrs;
+            for (auto &[name, rr] : reactive_rules)
+                jrrs[name] = rr->to_json();
+            jc["reactive_rules"] = std::move(jrrs);
+        }
+        for (auto &[_, mdl] : modules)
+            mdl->to_json(jc);
         return jc;
     }
 

@@ -44,7 +44,7 @@ namespace coco
         [[maybe_unused]] auto delete_executor_err = AddUDF(get_env(), "delete_executor", "v", 1, 1, "l", delete_exec, "delete_executor", this);
 
         LOG_DEBUG("Retrieving all deliberative rules");
-        auto &db = cc.get_db().add_module<deliberative_db>(static_cast<mongo_db &>(cc.get_db()));
+        auto &db = get_coco().get_db().add_module<deliberative_db>(static_cast<mongo_db &>(get_coco().get_db()));
         auto drs = db.get_deliberative_rules();
         LOG_DEBUG("Retrieved " << drs.size() << " deliberative rules");
         for (auto &rule : drs)
@@ -63,7 +63,7 @@ namespace coco
     void coco_deliberative::create_deliberative_rule(std::string_view rule_name, std::string_view rule_content)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        cc.get_db().get_module<deliberative_db>().create_deliberative_rule(rule_name, rule_content);
+        get_coco().get_db().get_module<deliberative_db>().create_deliberative_rule(rule_name, rule_content);
         if (!deliberative_rules.emplace(rule_name, utils::make_u_ptr<deliberative_rule>(*this, rule_name, rule_content)).second)
             throw std::invalid_argument("deliberative rule `" + std::string(rule_name) + "` already exists");
     }
@@ -444,4 +444,17 @@ namespace coco
     deliberative_listener::deliberative_listener(coco_deliberative &cd) noexcept : cd(cd) { cd.listeners.emplace_back(this); }
     deliberative_listener::~deliberative_listener() { cd.listeners.erase(std::remove(cd.listeners.begin(), cd.listeners.end(), this), cd.listeners.end()); }
 #endif
+
+    void coco_deliberative::to_json(json::json &j) const noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        json::json j_execs(json::json_type::array);
+        for (auto &e : executors)
+            j_execs.push_back(e.second->to_json());
+        j["executors"] = j_execs;
+        json::json j_rules(json::json_type::array);
+        for (auto &r : deliberative_rules)
+            j_rules.push_back(r.second->to_json());
+        j["deliberative_rules"] = j_rules;
+    }
 } // namespace coco

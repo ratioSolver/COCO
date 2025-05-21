@@ -23,7 +23,7 @@ namespace coco
         [[maybe_unused]] auto add_data_err = AddUDF(get_env(), "set_slots", "v", 3, 4, "ymml", set_slots_udf, "set_slots_udf", this);
         assert(add_data_err == AUE_NO_ERROR);
 
-        auto &db = cc.get_db().add_module<llm_db>(static_cast<mongo_db &>(cc.get_db()));
+        auto &db = get_coco().get_db().add_module<llm_db>(static_cast<mongo_db &>(get_coco().get_db()));
         auto ints = db.get_intents();
         LOG_DEBUG("Retrieved " << ints.size() << " intents");
         for (const auto &c_intent : ints)
@@ -49,7 +49,7 @@ namespace coco
     void coco_llm::create_intent(std::string_view name, std::string_view description, bool infere)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        cc.get_db().get_module<llm_db>().create_intent(name, description);
+        get_coco().get_db().get_module<llm_db>().create_intent(name, description);
         if (!intents.emplace(name, utils::make_u_ptr<intent>(name, description)).second)
             throw std::runtime_error("Intent already exists");
         if (infere)
@@ -67,7 +67,7 @@ namespace coco
     void coco_llm::create_entity(data_type type, std::string_view name, std::string_view description, bool infere)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        cc.get_db().get_module<llm_db>().create_entity(type, name, description);
+        get_coco().get_db().get_module<llm_db>().create_entity(type, name, description);
         if (!entities.emplace(name, utils::make_u_ptr<entity>(type, name, description)).second)
             throw std::runtime_error("Entity already exists");
         if (infere)
@@ -85,7 +85,7 @@ namespace coco
     void coco_llm::create_slot(data_type type, std::string_view name, std::string_view description, bool influence_context, bool infere)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        cc.get_db().get_module<llm_db>().create_slot(type, name, description, influence_context);
+        get_coco().get_db().get_module<llm_db>().create_slot(type, name, description, influence_context);
         if (!slots.emplace(name, utils::make_u_ptr<slot>(type, name, description)).second)
             throw std::runtime_error("Slot already exists");
         if (infere)
@@ -308,7 +308,7 @@ namespace coco
             }
         }
 
-        llm.set_slots(llm.cc.get_item(item_id.lexemeValue->contents), std::move(j_slots), false);
+        llm.set_slots(llm.get_coco().get_item(item_id.lexemeValue->contents), std::move(j_slots), false);
     }
 
     void understand_udf(Environment *, UDFContext *udfc, UDFValue *)
@@ -325,6 +325,6 @@ namespace coco
         if (!UDFNextArgument(udfc, STRING_BIT, &message))
             return;
 
-        llm.understand(llm.cc.get_item(item_id.lexemeValue->contents), message.lexemeValue->contents, false);
+        llm.understand(llm.get_coco().get_item(item_id.lexemeValue->contents), message.lexemeValue->contents, false);
     }
 } // namespace coco

@@ -5,6 +5,8 @@ namespace coco
 {
     coco_module::coco_module(coco &cc) noexcept : cc(cc) {}
 
+    coco &coco_module::get_coco() noexcept { return cc; }
+
     std::recursive_mutex &coco_module::get_mtx() const { return cc.mtx; }
     Environment *coco_module::get_env() const { return cc.env; }
 

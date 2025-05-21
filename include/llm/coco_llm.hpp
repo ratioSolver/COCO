@@ -75,6 +75,8 @@ namespace coco
      */
     [[nodiscard]] const std::string &get_description() const { return description; }
 
+    [[nodiscard]] json::json to_json() const noexcept;
+
   private:
     std::string name;        // The name of the intent
     std::string description; // The description of the intent
@@ -110,6 +112,8 @@ namespace coco
      * @return The description of the entity.
      */
     [[nodiscard]] const std::string &get_description() const { return description; }
+
+    [[nodiscard]] json::json to_json() const noexcept;
 
   private:
     data_type type;          // The type of the entity
@@ -153,6 +157,8 @@ namespace coco
      * @return True if the slot influences the context, false otherwise.
      */
     [[nodiscard]] bool influences_context() const { return influence_context; }
+
+    [[nodiscard]] json::json to_json() const noexcept;
 
   private:
     data_type type;          // The type of the slot

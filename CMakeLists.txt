@@ -147,6 +147,11 @@ if(BUILD_LLM)
 
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/llm>)
     target_sources(CoCo PRIVATE src/llm/coco_llm.cpp src/llm/llm_db.cpp)
+
+    if (BUILD_COCO_SERVER)
+        target_sources(CoCo PRIVATE src/llm/llm_server.cpp)
+    endif()
+
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
     target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_LLM LLM_HOST="${LLM_HOST}" LLM_PORT=${LLM_PORT} LLM_PROVIDER="${LLM_PROVIDER}" LLM_MODEL="${LLM_MODEL}" LLM_API_KEY="${LLM_API_KEY}")

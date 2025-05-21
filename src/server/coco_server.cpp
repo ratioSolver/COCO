@@ -16,14 +16,14 @@ namespace coco
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
-        add_route(network::Get, "^/type/.*$", std::bind(&coco_server::get_type, this, network::placeholders::request));
-        add_route(network::Post, "^/type$", std::bind(&coco_server::create_type, this, network::placeholders::request));
-        add_route(network::Delete, "^/type/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
+        add_route(network::Get, "^/types/.*$", std::bind(&coco_server::get_type, this, network::placeholders::request));
+        add_route(network::Post, "^/types$", std::bind(&coco_server::create_type, this, network::placeholders::request));
+        add_route(network::Delete, "^/types/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
 
         add_route(network::Get, "^/items$", std::bind(&coco_server::get_items, this, network::placeholders::request));
-        add_route(network::Get, "^/item/.*$", std::bind(&coco_server::get_item, this, network::placeholders::request));
-        add_route(network::Post, "^/item$", std::bind(&coco_server::create_item, this, network::placeholders::request));
-        add_route(network::Delete, "^/item/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
+        add_route(network::Get, "^/items/.*$", std::bind(&coco_server::get_item, this, network::placeholders::request));
+        add_route(network::Post, "^/items$", std::bind(&coco_server::create_item, this, network::placeholders::request));
+        add_route(network::Delete, "^/items/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
 
         add_route(network::Get, "^/data/.*$", std::bind(&coco_server::get_data, this, network::placeholders::request));
         add_route(network::Post, "^/data/.*$", std::bind(&coco_server::set_datum, this, network::placeholders::request));
@@ -31,7 +31,7 @@ namespace coco
         add_route(network::Get, "^/fake/.*$", std::bind(&coco_server::fake, this, network::placeholders::request));
 
         add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, network::placeholders::request));
-        add_route(network::Post, "^/reactive_rule$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
+        add_route(network::Post, "^/reactive_rules$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
     }
 
     utils::u_ptr<network::response> coco_server::index(const network::request &) { return utils::make_u_ptr<network::file_response>(CLIENT_DIR "/dist/index.html"); }
@@ -58,7 +58,7 @@ namespace coco
     {
         try
         { // get type by name in the path
-            auto &tp = cc.get_type(req.get_target().substr(6));
+            auto &tp = cc.get_type(req.get_target().substr(7));
             auto j_tp = tp.to_json();
             j_tp["name"] = tp.get_name();
             return utils::make_u_ptr<network::json_response>(std::move(j_tp));
@@ -116,7 +116,7 @@ namespace coco
     {
         try
         { // get type by name in the path
-            cc.delete_type(cc.get_type(req.get_target().substr(6)));
+            cc.delete_type(cc.get_type(req.get_target().substr(7)));
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &)
@@ -140,7 +140,7 @@ namespace coco
     {
         try
         { // get item by id in the path
-            auto &itm = cc.get_item(req.get_target().substr(6));
+            auto &itm = cc.get_item(req.get_target().substr(7));
             auto j_tp = itm.to_json();
             j_tp["id"] = itm.get_id();
             return utils::make_u_ptr<network::json_response>(std::move(j_tp));
@@ -181,7 +181,7 @@ namespace coco
     {
         try
         { // get item by id in the path
-            cc.delete_item(cc.get_item(req.get_target().substr(6)));
+            cc.delete_item(cc.get_item(req.get_target().substr(7)));
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &)

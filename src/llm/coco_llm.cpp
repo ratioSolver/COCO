@@ -251,8 +251,11 @@ namespace coco
     }
 
     intent::intent(std::string_view name, std::string_view description) : name(name), description(description) {}
+    json::json intent::to_json() const noexcept { return json::json{{"name", name.c_str()}, {"description", description.c_str()}}; }
     entity::entity(data_type type, std::string_view name, std::string_view description) : type(type), name(name), description(description) {}
+    json::json entity::to_json() const noexcept { return json::json{{"type", type_to_string(type).c_str()}, {"name", name.c_str()}, {"description", description.c_str()}}; }
     slot::slot(data_type type, std::string_view name, std::string_view description, bool influence_context) : type(type), name(name), description(description), influence_context(influence_context) {}
+    json::json slot::to_json() const noexcept { return json::json{{"type", type_to_string(type).c_str()}, {"name", name.c_str()}, {"description", description.c_str()}, {"influence_context", influence_context}}; }
 
     void set_slots_udf(Environment *, UDFContext *udfc, UDFValue *)
     {

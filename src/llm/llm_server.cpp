@@ -2,16 +2,35 @@
 
 namespace coco
 {
-    llm_server::llm_server(coco_server &srv, coco_llm &cl) noexcept : server_module(srv), cl(cl)
+    llm_server::llm_server(coco_server &srv, coco_llm &llm) noexcept : server_module(srv), llm_listener(llm), llm(llm)
     {
         srv.add_route(network::Get, "^/intents$", std::bind(&llm_server::get_intents, this, network::placeholders::request));
         srv.add_route(network::Get, "^/entities$", std::bind(&llm_server::get_entities, this, network::placeholders::request));
     }
 
+    void llm_server::intent_created([[maybe_unused]] const intent &i)
+    {
+        auto j_it = i.to_json();
+        j_it["msg_type"] = "new_intent";
+        srv.broadcast(std::move(j_it));
+    }
+    void llm_server::entity_created([[maybe_unused]] const entity &e)
+    {
+        auto j_it = e.to_json();
+        j_it["msg_type"] = "new_entity";
+        srv.broadcast(std::move(j_it));
+    }
+    void llm_server::slot_created([[maybe_unused]] const slot &s)
+    {
+        auto j_it = s.to_json();
+        j_it["msg_type"] = "new_slot";
+        srv.broadcast(std::move(j_it));
+    }
+
     utils::u_ptr<network::response> llm_server::get_intents(const network::request &)
     {
         json::json is(json::json_type::array);
-        for (auto &it : cl.get_intents())
+        for (auto &it : llm.get_intents())
         {
             auto j_it = it->to_json();
             j_it["name"] = it->get_name();
@@ -29,7 +48,7 @@ namespace coco
         std::string description = body["description"];
         try
         {
-            cl.create_intent(name, description);
+            llm.create_intent(name, description);
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)
@@ -41,7 +60,7 @@ namespace coco
     utils::u_ptr<network::response> llm_server::get_entities(const network::request &)
     {
         json::json is(json::json_type::array);
-        for (auto &it : cl.get_entities())
+        for (auto &it : llm.get_entities())
         {
             auto j_it = it->to_json();
             j_it["name"] = it->get_name();
@@ -73,7 +92,7 @@ namespace coco
         std::string description = body["description"];
         try
         {
-            cl.create_entity(type_name, name, description);
+            llm.create_entity(type_name, name, description);
             return utils::make_u_ptr<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)

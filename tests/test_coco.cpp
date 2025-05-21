@@ -12,7 +12,16 @@
 #endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
+#ifdef BUILD_LLM
+#include "llm_server.hpp"
+#endif
 #include <thread>
+#endif
+#ifdef BUILD_AUTH
+#include "coco_auth.hpp"
+#include "auth_db.hpp"
+#else
+#include "coco_noauth.hpp"
 #endif
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
@@ -25,17 +34,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
     coco::coco cc(db);
 
+#ifdef BUILD_AUTH
+    coco::coco_auth &auth = cc.add_module<coco::coco_auth>(cc);
+#endif
+
 #ifdef BUILD_LLM
     coco::coco_llm &llm = cc.add_module<coco::coco_llm>(cc);
-    llm.create_intent("greet", "The user greets the system");
-    llm.create_intent("bye", "The user says goodbye to the system");
-    llm.create_entity(coco::string_type, "user_name", "The name of the user");
-    llm.create_entity(coco::integer_type, "user_age", "The age of the user");
-    llm.create_entity(coco::string_type, "robot_response", "A message in italian answering, commenting or requesting for clarification to the user's input, in the same tone used by the user. Try to be creative and funny.");
-    llm.create_slot(coco::string_type, "user_name", "The name of the user");
-    llm.create_slot(coco::integer_type, "user_age", "The age of the user");
-    cc.create_reactive_rule("set_name", "(defrule set_name ?f <- (entity (item_id ?id) (name user_name) (value ?value)) => (set_slots ?id (create$ user_name) (create$ ?value)) (retract ?f))");
-    cc.create_reactive_rule("set_age", "(defrule set_age ?f <- (entity (item_id ?id) (name user_age) (value ?value)) => (set_slots ?id (create$ user_age) (create$ ?value)) (retract ?f))");
 #endif
 
 #ifdef BUILD_SERVER
@@ -45,7 +49,27 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #ifdef ENABLE_SSL
     srv.load_certificate("tests/cert.pem", "tests/key.pem");
 #endif
+#ifdef BUILD_AUTH
+    srv.add_module<coco::server_auth>(srv);
+#else
+    srv.add_module<coco::server_noauth>(srv);
+#endif
+#ifdef BUILD_LLM
+    srv.add_module<coco::llm_server>(srv, llm);
+#endif
     std::this_thread::sleep_for(std::chrono::seconds(1));
+#endif
+
+#ifdef BUILD_LLM
+    llm.create_intent("greet", "The user greets the system");
+    llm.create_intent("bye", "The user says goodbye to the system");
+    llm.create_entity(coco::string_type, "user_name", "The name of the user");
+    llm.create_entity(coco::integer_type, "user_age", "The age of the user");
+    llm.create_entity(coco::string_type, "robot_response", "A message in italian answering, commenting or requesting for clarification to the user's input, in the same tone used by the user. Try to be creative and funny.");
+    llm.create_slot(coco::string_type, "user_name", "The name of the user");
+    llm.create_slot(coco::integer_type, "user_age", "The age of the user");
+    cc.create_reactive_rule("set_name", "(defrule set_name ?f <- (entity (item_id ?id) (name user_name) (value ?value)) => (set_slots ?id (create$ user_name) (create$ ?value)) (retract ?f))");
+    cc.create_reactive_rule("set_age", "(defrule set_age ?f <- (entity (item_id ?id) (name user_age) (value ?value)) => (set_slots ?id (create$ user_age) (create$ ?value)) (retract ?f))");
 #endif
 
     auto &tp = cc.create_type("ParentType", {}, json::json(), json::json{{"online", {"type", "bool"}}});

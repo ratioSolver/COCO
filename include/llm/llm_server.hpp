@@ -5,10 +5,15 @@
 
 namespace coco
 {
-  class llm_server : public server_module
+  class llm_server : public server_module, public llm_listener
   {
   public:
-    llm_server(coco_server &srv, coco_llm &cl) noexcept;
+    llm_server(coco_server &srv, coco_llm &llm) noexcept;
+
+  private:
+    void intent_created([[maybe_unused]] const intent &i) override;
+    void entity_created([[maybe_unused]] const entity &e) override;
+    void slot_created([[maybe_unused]] const slot &s) override;
 
   private:
     utils::u_ptr<network::response> get_intents(const network::request &);
@@ -17,6 +22,6 @@ namespace coco
     utils::u_ptr<network::response> create_entity(const network::request &req);
 
   private:
-    coco_llm &cl; // The LLM module
+    coco_llm &llm; // The LLM module
   };
 } // namespace coco

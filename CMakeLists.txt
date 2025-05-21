@@ -90,8 +90,10 @@ if(BUILD_COCO_SERVER)
         set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
 
         target_sources(CoCo PRIVATE src/auth/coco_auth.cpp src/auth/auth_db.cpp)
+        target_compile_definitions(CoCo PUBLIC BUILD_AUTH)
     else()
         target_sources(CoCo PRIVATE src/auth/coco_noauth.cpp)
+        target_compile_definitions(CoCo PUBLIC BUILD_NOAUTH)
     endif()
 
     add_custom_target(npm_lib_install ALL COMMAND npm install WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/lib COMMENT "Installing the TypeScript library" VERBATIM)

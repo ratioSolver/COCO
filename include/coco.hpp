@@ -111,6 +111,7 @@ namespace coco
 
     [[nodiscard]] item &get_item(std::string_view id);
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt, bool infere = true) noexcept;
+    void set_properties(item &itm, json::json &&props, bool infere = true) noexcept;
     [[nodiscard]] json::json get_values(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to = std::chrono::system_clock::now());
     void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now(), bool infere = true);
     void delete_item(item &itm, bool infere = true) noexcept;
@@ -130,6 +131,7 @@ namespace coco
 
     type &make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
 
+    friend void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
 #ifdef BUILD_LISTENERS
@@ -228,6 +230,7 @@ namespace coco
     std::string content; // the content of the rule.
   };
 
+  void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
   void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
   void multifield_to_json(Environment *env, UDFContext *udfc, UDFValue *out);
 

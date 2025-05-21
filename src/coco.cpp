@@ -20,6 +20,8 @@ namespace coco
         add_property_type(utils::make_u_ptr<item_property_type>(*this));
         add_property_type(utils::make_u_ptr<json_property_type>(*this));
 
+        [[maybe_unused]] auto set_props_err = AddUDF(env, "set_props", "v", 3, 3, "ymm", set_props, "set_props", this);
+        assert(set_props_err == AUE_NO_ERROR);
         [[maybe_unused]] auto add_data_err = AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
         assert(add_data_err == AUE_NO_ERROR);
         [[maybe_unused]] auto to_json_err = AddUDF(env, "to_json", "s", 1, 1, "m", multifield_to_json, "multifield_to_json", this);
@@ -162,6 +164,14 @@ namespace coco
             Run(env, -1);
         return itm;
     }
+    void coco::set_properties(item &itm, json::json &&props, bool infere) noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        db.set_properties(itm.get_id(), props);
+        itm.set_properties(std::move(props));
+        if (infere)
+            Run(env, -1);
+    }
     json::json coco::get_values(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
@@ -275,6 +285,62 @@ namespace coco
         for (auto &[_, mdl] : modules)
             mdl->to_json(jc);
         return jc;
+    }
+
+    void set_props(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Setting properties..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue item_id; // we get the item id..
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
+            return;
+        auto &itm = *cc.items.at(item_id.lexemeValue->contents);
+        std::map<std::string, utils::ref_wrapper<const property>> static_props = itm.get_type().get_all_static_properties();
+
+        UDFValue pars; // we get the parameters..
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &pars))
+            return;
+
+        UDFValue vals; // we get the values..
+        if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &vals))
+            return;
+
+        json::json data;
+        for (size_t i = 0; i < pars.multifieldValue->length; ++i)
+        {
+            auto &par = pars.multifieldValue->contents[i];
+            if (par.header->type != SYMBOL_TYPE)
+                return;
+            auto &val = vals.multifieldValue->contents[i];
+            switch (val.header->type)
+            {
+            case INTEGER_TYPE:
+                data[par.lexemeValue->contents] = static_cast<int64_t>(val.integerValue->contents);
+                break;
+            case FLOAT_TYPE:
+                data[par.lexemeValue->contents] = val.floatValue->contents;
+                break;
+            case STRING_TYPE:
+                data[par.lexemeValue->contents] = val.lexemeValue->contents;
+                break;
+            case SYMBOL_TYPE:
+                if (std::string(val.lexemeValue->contents) == "TRUE")
+                    data[par.lexemeValue->contents] = true;
+                else if (std::string(val.lexemeValue->contents) == "FALSE")
+                    data[par.lexemeValue->contents] = false;
+                else if (std::string(val.lexemeValue->contents) == "nil")
+                    data[par.lexemeValue->contents] = nullptr;
+                else
+                    data[par.lexemeValue->contents] = val.lexemeValue->contents;
+                break;
+            default:
+                return;
+            }
+        }
+
+        cc.set_properties(itm, std::move(data), false);
     }
 
     void add_data(Environment *, UDFContext *udfc, UDFValue *)

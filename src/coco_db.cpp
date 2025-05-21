@@ -78,6 +78,12 @@ namespace coco
         }
         return std::to_string(counter++);
     }
+    void coco_db::set_properties(std::string_view itm_id, const json::json &props)
+    {
+        LOG_WARN(std::string("Setting properties for item ") + itm_id.data());
+        if (!props.as_object().empty())
+            LOG_WARN(std::string("Properties: ") + props.dump());
+    }
     json::json coco_db::get_values(std::string_view itm_id, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
     {
         LOG_WARN(std::string("Getting values for item ") + itm_id.data());

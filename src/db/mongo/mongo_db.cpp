@@ -140,6 +140,20 @@ namespace coco
             throw std::invalid_argument("Failed to insert " + std::string(type) + " item");
         return result->inserted_id().get_oid().value.to_string();
     }
+    void mongo_db::set_properties(std::string_view itm_id, const json::json &props)
+    {
+        bsoncxx::builder::basic::document filter_doc;
+        filter_doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}));
+
+        bsoncxx::builder::basic::document update_fields;
+        update_fields.append(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())));
+
+        bsoncxx::builder::basic::document update_doc;
+        update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
+
+        if (!items_collection.update_one(filter_doc.view(), update_doc.view()))
+            throw std::invalid_argument("Failed to set properties for item: " + std::string(itm_id));
+    }
     json::json mongo_db::get_values(std::string_view itm_id, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
     {
         bsoncxx::builder::basic::document query;

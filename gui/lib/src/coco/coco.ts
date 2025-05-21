@@ -127,6 +127,11 @@ export namespace coco {
             const nim = message as NewItemMessage;
             this.new_item(this.make_item(nim.id, nim));
             break;
+          case 'updated_item':
+            const uim = message as UpdatedItemMessage;
+            const item = this.get_item(uim.id);
+            item._set_properties(uim.properties);
+            break;
           case 'new_data':
             const ndm = message as NewItemMessage;
             this.get_item(ndm.id)._set_datum({ data: ndm.value!.data, timestamp: new Date(ndm.value!.timestamp) });
@@ -700,6 +705,11 @@ interface NewTypeMessage extends TypeMessage {
 
 interface NewItemMessage extends ItemMessage {
   id: string;
+}
+
+interface UpdatedItemMessage {
+  id: string;
+  properties: Record<string, unknown>;
 }
 
 interface NewDataMessage extends ValueMessage {

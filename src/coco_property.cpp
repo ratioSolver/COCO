@@ -101,7 +101,7 @@ namespace coco
     }
     void symbol_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
+        [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
         assert(put_slot_err == PSE_NO_ERROR);
     }
 

@@ -10,6 +10,12 @@
 #include <random>
 #include <typeindex>
 
+#ifdef BUILD_LISTENERS
+#define CREATED_REACTIVE_RULE(rr) created_reactive_rule(rr)
+#else
+#define CREATED_REACTIVE_RULE(rr)
+#endif
+
 namespace coco
 {
   constexpr const char *type_deftemplate = "(deftemplate type (slot name (type SYMBOL)))";
@@ -133,14 +139,14 @@ namespace coco
      *
      * @param tp The created type.
      */
-    void new_type(const type &tp) const;
+    void created_type(const type &tp) const;
 
     /**
      * @brief Notifies when the item is created.
      *
      * @param itm The created item.
      */
-    void new_item(const item &itm) const;
+    void created_item(const item &itm) const;
 
     /**
      * @brief Notifies when the item is created.
@@ -157,6 +163,13 @@ namespace coco
      * @param timestamp The timestamp of the data.
      */
     void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) const;
+
+    /**
+     * @brief Notifies when the item is deleted.
+     *
+     * @param itm The deleted item.
+     */
+    void created_reactive_rule(const reactive_rule &rr) const;
 #endif
 
   protected:
@@ -233,14 +246,14 @@ namespace coco
      *
      * @param tp The created type.
      */
-    virtual void new_type([[maybe_unused]] const type &tp) {}
+    virtual void created_type([[maybe_unused]] const type &tp) {}
 
     /**
      * @brief Notifies when the item is created.
      *
      * @param itm The created item.
      */
-    virtual void new_item([[maybe_unused]] const item &itm) {}
+    virtual void created_item([[maybe_unused]] const item &itm) {}
 
     /**
      * @brief Notifies when the item is updated.
@@ -249,7 +262,21 @@ namespace coco
      */
     virtual void updated_item([[maybe_unused]] const item &itm) {}
 
+    /**
+     * @brief Notifies when new data is added to the item.
+     *
+     * @param itm The item.
+     * @param data The data.
+     * @param timestamp The timestamp of the data.
+     */
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
+
+    /**
+     * @brief Notifies when the reactive rule is created.
+     *
+     * @param rr The created reactive rule.
+     */
+    virtual void created_reactive_rule([[maybe_unused]] const reactive_rule &rr) {}
 
   private:
     coco &cc;

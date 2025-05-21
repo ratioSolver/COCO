@@ -6,11 +6,11 @@
 #include <cassert>
 
 #ifdef BUILD_LISTENERS
-#define NEW_ITEM() tp.get_coco().new_item(*this)
+#define CREATED_ITEM() tp.get_coco().created_item(*this)
 #define UPDATED_ITEM() tp.get_coco().updated_item(*this)
 #define NEW_DATA(data, timestamp) tp.get_coco().new_data(*this, data, timestamp)
 #else
-#define NEW_ITEM()
+#define CREATED_ITEM()
 #define UPDATED_ITEM()
 #define NEW_DATA(data, timestamp)
 #endif
@@ -38,7 +38,7 @@ namespace coco
         if (val.has_value())
             set_value(std::move(*val));
 
-        NEW_ITEM();
+        CREATED_ITEM();
     }
     item::~item() noexcept
     {
@@ -104,7 +104,7 @@ namespace coco
                 }
 
                 if (j_val.get_type() == json::json_type::null)
-                    this->properties.erase(p_name); // we remove the property
+                    this->value_facts.erase(p_name); // we remove the property
                 else if (prop->second->validate(j_val))
                 {
                     FactBuilder *value_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second->get_deftemplate_name().c_str());

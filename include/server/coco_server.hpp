@@ -66,8 +66,8 @@ namespace coco
     void broadcast(json::json &&msg);
 
   private:
-    void new_type(const type &tp) override;
-    void new_item(const item &itm) override;
+    void created_type(const type &tp) override;
+    void created_item(const item &itm) override;
     void updated_item(const item &itm) override;
     void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
 

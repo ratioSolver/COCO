@@ -8,19 +8,19 @@ namespace coco
         srv.add_route(network::Get, "^/entities$", std::bind(&llm_server::get_entities, this, network::placeholders::request));
     }
 
-    void llm_server::intent_created([[maybe_unused]] const intent &i)
+    void llm_server::created_intent([[maybe_unused]] const intent &i)
     {
         auto j_it = i.to_json();
         j_it["msg_type"] = "new_intent";
         srv.broadcast(std::move(j_it));
     }
-    void llm_server::entity_created([[maybe_unused]] const entity &e)
+    void llm_server::created_entity([[maybe_unused]] const entity &e)
     {
         auto j_it = e.to_json();
         j_it["msg_type"] = "new_entity";
         srv.broadcast(std::move(j_it));
     }
-    void llm_server::slot_created([[maybe_unused]] const slot &s)
+    void llm_server::created_slot([[maybe_unused]] const slot &s)
     {
         auto j_it = s.to_json();
         j_it["msg_type"] = "new_slot";

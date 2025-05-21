@@ -4,16 +4,6 @@
 #include "graph.hpp"
 #endif
 
-#ifdef BUILD_LISTENERS
-#define DELIBERATIVE_RULE_CREATED(rule) deliberative_rule_created(rule)
-#define EXECUTOR_CREATED(exec) executor_created(exec)
-#define EXECUTOR_DELETED(exec) executor_deleted(exec)
-#else
-#define DELIBERATIVE_RULE_CREATED(rule)
-#define EXECUTOR_CREATED(exec)
-#define EXECUTOR_DELETED(exec)
-#endif
-
 namespace coco
 {
   constexpr const char *executor_deftemplate = "(deftemplate executor (slot name (type SYMBOL)) (slot state (allowed-values reasoning idle adapting executing finished failed)))";
@@ -55,10 +45,10 @@ namespace coco
 
 #ifdef BUILD_LISTENERS
   private:
-    void deliberative_rule_created(const deliberative_rule &rule);
+    void created_deliberative_rule(const deliberative_rule &rule);
 
-    void executor_created(coco_executor &exec);
-    void executor_deleted(coco_executor &exec);
+    void created_executor(coco_executor &exec);
+    void deleted_executor(coco_executor &exec);
 
     void state_changed(coco_executor &exec);
 

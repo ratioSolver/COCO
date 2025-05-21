@@ -5,6 +5,16 @@
 #include "logging.hpp"
 #include <cassert>
 
+#ifdef BUILD_LISTENERS
+#define CREATED_DELIBERATIVE_RULE(rule) created_deliberative_rule(rule)
+#define CREATED_EXECUTOR(exec) created_executor(exec)
+#define DELETED_EXECUTOR(exec) deleted_executor(exec)
+#else
+#define CREATED_DELIBERATIVE_RULE(rule)
+#define CREATED_EXECUTOR(exec)
+#define DELETED_EXECUTOR(exec)
+#endif
+
 namespace coco
 {
     coco_deliberative::coco_deliberative(coco &cc) noexcept : coco_module(cc)
@@ -68,7 +78,7 @@ namespace coco
         if (!it.second)
             throw std::invalid_argument("deliberative rule `" + std::string(rule_name) + "` already exists");
         else
-            DELIBERATIVE_RULE_CREATED(*it.first->second);
+            CREATED_DELIBERATIVE_RULE(*it.first->second);
     }
 
     deliberative_rule::deliberative_rule(coco_deliberative &cd, std::string_view name, std::string_view content) noexcept : cd(cd), name(name), content(content) {}
@@ -78,15 +88,25 @@ namespace coco
     coco_executor &coco_deliberative::create_executor(std::string_view name)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        auto &exec = *executors.emplace(name, utils::make_u_ptr<coco_executor>(*this, name)).first->second.get();
-        EXECUTOR_CREATED(exec);
-        return exec;
+        auto it = executors.emplace(name, utils::make_u_ptr<coco_executor>(*this, name));
+        if (!it.second)
+            throw std::invalid_argument("executor `" + std::string(name) + "` already exists");
+        else
+        {
+            CREATED_EXECUTOR(*it.first->second);
+            return *it.first->second;
+        }
     }
     void coco_deliberative::delete_executor(coco_executor &exec)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        EXECUTOR_DELETED(exec);
-        executors.erase(exec.get_name());
+        if (auto it = executors.find(exec.get_name()); it != executors.end())
+        {
+            DELETED_EXECUTOR(exec);
+            executors.erase(exec.get_name());
+        }
+        else
+            throw std::invalid_argument("executor `" + exec.get_name() + "` does not exist");
     }
 
     void create_exec_script(Environment *, UDFContext *udfc, UDFValue *)
@@ -351,18 +371,18 @@ namespace coco
     }
 
 #ifdef BUILD_LISTENERS
-    void coco_deliberative::deliberative_rule_created(const deliberative_rule &rule)
+    void coco_deliberative::created_deliberative_rule(const deliberative_rule &rule)
     {
         for (auto &l : listeners)
             l->deliberative_rule_created(rule);
     }
 
-    void coco_deliberative::executor_created(coco_executor &exec)
+    void coco_deliberative::created_executor(coco_executor &exec)
     {
         for (auto &l : listeners)
             l->executor_created(exec);
     }
-    void coco_deliberative::executor_deleted(coco_executor &exec)
+    void coco_deliberative::deleted_executor(coco_executor &exec)
     {
         for (auto &l : listeners)
             l->executor_deleted(exec);

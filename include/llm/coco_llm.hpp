@@ -4,16 +4,6 @@
 #include "coco_item.hpp"
 #include "client.hpp"
 
-#ifdef BUILD_LISTENERS
-#define INTENT_CREATED(i) intent_created(i)
-#define ENTITY_CREATED(e) entity_created(e)
-#define SLOT_CREATED(s) slot_created(s)
-#else
-#define INTENT_CREATED(i)
-#define ENTITY_CREATED(e)
-#define SLOT_CREATED(s)
-#endif
-
 namespace coco
 {
   constexpr const char *intent_deftemplate = "(deftemplate intent (slot item_id (type SYMBOL)) (slot name (type SYMBOL)))";
@@ -61,9 +51,9 @@ namespace coco
 
 #ifdef BUILD_LISTENERS
   private:
-    void intent_created(const intent &i);
-    void entity_created(const entity &e);
-    void slot_created(const slot &s);
+    void created_intent(const intent &i);
+    void created_entity(const entity &e);
+    void created_slot(const slot &s);
 #endif
 
   private:
@@ -202,9 +192,9 @@ namespace coco
     llm_listener(coco_llm &llm) noexcept;
     virtual ~llm_listener();
 
-    virtual void intent_created([[maybe_unused]] const intent &i) {}
-    virtual void entity_created([[maybe_unused]] const entity &e) {}
-    virtual void slot_created([[maybe_unused]] const slot &s) {}
+    virtual void created_intent([[maybe_unused]] const intent &i) {}
+    virtual void created_entity([[maybe_unused]] const entity &e) {}
+    virtual void created_slot([[maybe_unused]] const slot &s) {}
 
   protected:
     coco_llm &llm; // The CoCo LLM object

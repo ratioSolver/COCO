@@ -11,9 +11,9 @@ namespace coco
     llm_server(coco_server &srv, coco_llm &llm) noexcept;
 
   private:
-    void intent_created([[maybe_unused]] const intent &i) override;
-    void entity_created([[maybe_unused]] const entity &e) override;
-    void slot_created([[maybe_unused]] const slot &s) override;
+    void created_intent([[maybe_unused]] const intent &i) override;
+    void created_entity([[maybe_unused]] const entity &e) override;
+    void created_slot([[maybe_unused]] const slot &s) override;
 
   private:
     utils::u_ptr<network::response> get_intents(const network::request &);

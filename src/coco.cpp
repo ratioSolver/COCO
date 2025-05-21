@@ -198,8 +198,11 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.create_reactive_rule(rule_name, rule_content);
-        if (!reactive_rules.emplace(rule_name, utils::make_u_ptr<reactive_rule>(*this, rule_name, rule_content)).second)
+        auto it = reactive_rules.emplace(rule_name, utils::make_u_ptr<reactive_rule>(*this, rule_name, rule_content));
+        if (!it.second)
             throw std::invalid_argument("reactive rule `" + std::string(rule_name) + "` already exists");
+        else
+            CREATED_REACTIVE_RULE(*it.first->second);
         if (infere)
             Run(env, -1);
     }
@@ -373,15 +376,15 @@ namespace coco
     }
 
 #ifdef BUILD_LISTENERS
-    void coco::new_type(const type &tp) const
+    void coco::created_type(const type &tp) const
     {
         for (auto &l : listeners)
-            l->new_type(tp);
+            l->created_type(tp);
     }
-    void coco::new_item(const item &itm) const
+    void coco::created_item(const item &itm) const
     {
         for (auto &l : listeners)
-            l->new_item(itm);
+            l->created_item(itm);
     }
     void coco::updated_item(const item &itm) const
     {
@@ -392,6 +395,11 @@ namespace coco
     {
         for (auto &l : listeners)
             l->new_data(itm, data, timestamp);
+    }
+    void coco::created_reactive_rule(const reactive_rule &rr) const
+    {
+        for (auto &l : listeners)
+            l->created_reactive_rule(rr);
     }
 
     listener::listener(coco &cc) noexcept : cc(cc) { cc.listeners.emplace_back(this); }

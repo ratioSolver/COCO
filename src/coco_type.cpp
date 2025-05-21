@@ -7,9 +7,9 @@
 #include <cassert>
 
 #ifdef BUILD_LISTENERS
-#define NEW_TYPE() cc.new_type(*this)
+#define CREATED_TYPE() cc.created_type(*this)
 #else
-#define NEW_TYPE()
+#define CREATED_TYPE()
 #endif
 
 namespace coco
@@ -27,7 +27,7 @@ namespace coco
             static_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, false, name, prop));
         for (auto &[name, prop] : dynamic_props.as_object())
             dynamic_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, true, name, prop));
-        NEW_TYPE();
+        CREATED_TYPE();
     }
     type::~type()
     {

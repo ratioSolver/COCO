@@ -40,14 +40,14 @@ namespace coco
             mod->broadcast(msg);
     }
 
-    void coco_server::new_type(const type &tp)
+    void coco_server::created_type(const type &tp)
     {
         auto j_tp = tp.to_json();
         j_tp["msg_type"] = "new_type";
         j_tp["name"] = tp.get_name();
         broadcast(std::move(j_tp));
     }
-    void coco_server::new_item(const item &itm)
+    void coco_server::created_item(const item &itm)
     {
         auto j_itm = itm.to_json();
         j_itm["msg_type"] = "new_item";

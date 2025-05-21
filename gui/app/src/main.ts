@@ -3,7 +3,7 @@ import { coco, Offcanvas } from 'ratio-coco-lib';
 import { Offcanvas as BootstrapOffcanvas } from 'bootstrap';
 import './styles.css'
 
-Settings.get_instance().load_settings({ hostname: location.host, port: 8080, ws_path: 'coco' });
+Settings.get_instance().load_settings({ protocol: 'https', hostname: location.host, port: 8080, ws_path: 'coco' });
 
 const offcanvas_id = 'coco-offcanvas';
 

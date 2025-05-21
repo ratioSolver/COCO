@@ -4,6 +4,16 @@
 #include "logging.hpp"
 #include <cassert>
 
+#ifdef BUILD_LISTENERS
+#define CREATED_INTENT(i) created_intent(i)
+#define CREATED_ENTITY(e) created_entity(e)
+#define CREATED_SLOT(s) created_slot(s)
+#else
+#define CREATED_INTENT(i)
+#define CREATED_ENTITY(e)
+#define CREATED_SLOT(s)
+#endif
+
 namespace coco
 {
     coco_llm::coco_llm(coco &cc, std::string_view host, unsigned short port) noexcept : coco_module(cc), client(host, port)
@@ -54,7 +64,7 @@ namespace coco
         if (!it.second)
             throw std::runtime_error("Intent already exists");
         else
-            INTENT_CREATED(*it.first->second);
+            CREATED_INTENT(*it.first->second);
         if (infere)
             Run(get_env(), -1);
     }
@@ -75,7 +85,7 @@ namespace coco
         if (!it.second)
             throw std::runtime_error("Entity already exists");
         else
-            ENTITY_CREATED(*it.first->second);
+            CREATED_ENTITY(*it.first->second);
         if (infere)
             Run(get_env(), -1);
     }
@@ -96,7 +106,7 @@ namespace coco
         if (!it.second)
             throw std::runtime_error("Slot already exists");
         else
-            SLOT_CREATED(*it.first->second);
+            CREATED_SLOT(*it.first->second);
         if (infere)
             Run(get_env(), -1);
     }
@@ -260,20 +270,20 @@ namespace coco
     }
 
 #ifdef BUILD_LISTENERS
-    void coco_llm::intent_created(const intent &i)
+    void coco_llm::created_intent(const intent &i)
     {
         for (auto &listener : listeners)
-            listener->intent_created(i);
+            listener->created_intent(i);
     }
-    void coco_llm::entity_created(const entity &e)
+    void coco_llm::created_entity(const entity &e)
     {
         for (auto &listener : listeners)
-            listener->entity_created(e);
+            listener->created_entity(e);
     }
-    void coco_llm::slot_created(const slot &s)
+    void coco_llm::created_slot(const slot &s)
     {
         for (auto &listener : listeners)
-            listener->slot_created(s);
+            listener->created_slot(s);
     }
 #endif
 

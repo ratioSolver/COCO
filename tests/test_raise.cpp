@@ -14,6 +14,10 @@
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 {
+    bool interactive = false;
+    if (argc > 1 && std::string(argv[1]) == "--interactive")
+        interactive = true;
+
 #ifdef BUILD_MONGODB
     mongocxx::instance inst{}; // This should be done only once.
     coco::mongo_db db;
@@ -31,10 +35,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                              { srv.server::start(); });
 #endif
 
-    std::string user_input;
-    std::cin >> user_input;
-    if (user_input == "d")
-        db.drop();
+    if (interactive)
+    {
+        std::string user_input;
+        std::cin >> user_input;
+        if (user_input == "d")
+            db.drop();
+    }
 
 #ifdef BUILD_SERVER
     srv.stop();

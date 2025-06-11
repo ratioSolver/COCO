@@ -11,8 +11,8 @@ namespace coco
     deliberative_server(coco_server &srv, coco_deliberative &cd) noexcept;
 
   private:
-    utils::u_ptr<network::response> get_deliberative_rules(const network::request &);
-    utils::u_ptr<network::response> create_deliberative_rule(const network::request &);
+    std::unique_ptr<network::response> get_deliberative_rules(const network::request &);
+    std::unique_ptr<network::response> create_deliberative_rule(const network::request &);
 
   private:
     void executor_created(coco_executor &exec) override;

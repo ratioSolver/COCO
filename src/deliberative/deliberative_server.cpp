@@ -9,7 +9,7 @@ namespace coco
         srv.add_route(network::Post, "^/deliberative_rules$", std::bind(&deliberative_server::create_deliberative_rule, this, network::placeholders::request));
     }
 
-    utils::u_ptr<network::response> deliberative_server::get_deliberative_rules(const network::request &)
+    std::unique_ptr<network::response> deliberative_server::get_deliberative_rules(const network::request &)
     {
         json::json is(json::json_type::array);
         for (auto &dr : cd.get_deliberative_rules())
@@ -18,23 +18,23 @@ namespace coco
             j_drs["name"] = dr->get_name();
             is.push_back(std::move(j_drs));
         }
-        return utils::make_u_ptr<network::json_response>(std::move(is));
+        return std::make_unique<network::json_response>(std::move(is));
     }
-    utils::u_ptr<network::response> deliberative_server::create_deliberative_rule(const network::request &req)
+    std::unique_ptr<network::response> deliberative_server::create_deliberative_rule(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("content") || body["content"].get_type() != json::json_type::string)
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string name = body["name"];
         std::string content = body["content"];
         try
         {
             cd.create_deliberative_rule(name, content);
-            return utils::make_u_ptr<network::response>(network::status_code::no_content);
+            return std::make_unique<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)
         {
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
+            return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
         }
     }
 

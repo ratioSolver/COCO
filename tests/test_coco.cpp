@@ -15,13 +15,13 @@
 #ifdef BUILD_LLM
 #include "llm_server.hpp"
 #endif
-#include <thread>
-#endif
 #ifdef BUILD_AUTH
 #include "coco_auth.hpp"
 #include "auth_db.hpp"
 #else
 #include "coco_noauth.hpp"
+#endif
+#include <thread>
 #endif
 
 int main()

@@ -22,10 +22,10 @@ namespace coco
     [[nodiscard]] coco &get_coco() noexcept;
 
   private:
-    virtual void on_ws_open(network::ws_session &) {}
-    virtual void on_ws_message(network::ws_session &, std::string_view) {}
-    virtual void on_ws_close(network::ws_session &) {}
-    virtual void on_ws_error(network::ws_session &, const std::error_code &) {}
+    virtual void on_ws_open(network::ws_server_session_base &) {}
+    virtual void on_ws_message(network::ws_server_session_base &, const network::message &) {}
+    virtual void on_ws_close(network::ws_server_session_base &) {}
+    virtual void on_ws_error(network::ws_server_session_base &, const std::error_code &) {}
     virtual void broadcast(json::json &) {}
 
   protected:
@@ -72,29 +72,29 @@ namespace coco
     void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
 
   private:
-    utils::u_ptr<network::response> index(const network::request &req);
-    utils::u_ptr<network::response> assets(const network::request &req);
+    std::unique_ptr<network::response> index(const network::request &req);
+    std::unique_ptr<network::response> assets(const network::request &req);
 
-    utils::u_ptr<network::response> get_types(const network::request &req);
-    utils::u_ptr<network::response> get_type(const network::request &req);
-    utils::u_ptr<network::response> create_type(const network::request &req);
-    utils::u_ptr<network::response> delete_type(const network::request &req);
+    std::unique_ptr<network::response> get_types(const network::request &req);
+    std::unique_ptr<network::response> get_type(const network::request &req);
+    std::unique_ptr<network::response> create_type(const network::request &req);
+    std::unique_ptr<network::response> delete_type(const network::request &req);
 
-    utils::u_ptr<network::response> get_items(const network::request &req);
-    utils::u_ptr<network::response> get_item(const network::request &req);
-    utils::u_ptr<network::response> create_item(const network::request &req);
-    utils::u_ptr<network::response> delete_item(const network::request &req);
+    std::unique_ptr<network::response> get_items(const network::request &req);
+    std::unique_ptr<network::response> get_item(const network::request &req);
+    std::unique_ptr<network::response> create_item(const network::request &req);
+    std::unique_ptr<network::response> delete_item(const network::request &req);
 
-    utils::u_ptr<network::response> get_data(const network::request &req);
-    utils::u_ptr<network::response> set_datum(const network::request &req);
+    std::unique_ptr<network::response> get_data(const network::request &req);
+    std::unique_ptr<network::response> set_datum(const network::request &req);
 
-    utils::u_ptr<network::response> fake(const network::request &req);
+    std::unique_ptr<network::response> fake(const network::request &req);
 
-    utils::u_ptr<network::response> get_reactive_rules(const network::request &req);
-    utils::u_ptr<network::response> create_reactive_rule(const network::request &req);
+    std::unique_ptr<network::response> get_reactive_rules(const network::request &req);
+    std::unique_ptr<network::response> create_reactive_rule(const network::request &req);
 
-    utils::u_ptr<network::response> get_deliberative_rules(const network::request &req);
-    utils::u_ptr<network::response> create_deliberative_rule(const network::request &req);
+    std::unique_ptr<network::response> get_deliberative_rules(const network::request &req);
+    std::unique_ptr<network::response> create_deliberative_rule(const network::request &req);
 
   private:
     std::map<std::type_index, utils::u_ptr<server_module>> modules; // the server modules

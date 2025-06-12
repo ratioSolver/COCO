@@ -5,7 +5,7 @@ import { chart } from "./chart";
 
 export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
 
-  private readonly layout: Partial<Layout> & { [key: `yaxis${number}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: 'Time', type: 'date' }, showlegend: false };
+  private readonly layout: Partial<Layout> & { [key: `yaxis${number}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: { text: 'Time' }, type: 'date' }, showlegend: false };
   private readonly config = { responsive: true, displaylogo: false };
   private readonly charts: Map<string, chart.Chart<unknown>> = new Map();
   private readonly yaxis: Map<string, string> = new Map();
@@ -37,7 +37,7 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
       const gen = chart.ChartManager.get_instance().get_chart_generator(prop.get_type().get_name());
       const c = gen.make_chart(prop, values.has(name) ? values.get(name)! : []);
       this.charts.set(name, c);
-      const layout = { title: name, domain: [start_domain + domain_separator, start_domain + domain_size - domain_separator], zeroline: false, showticklabels: gen.show_tick_labels(), showgrid: gen.show_grid(), range: c.get_range() };
+      const layout = { title: { text: name }, domain: [start_domain + domain_separator, start_domain + domain_size - domain_separator], zeroline: false, showticklabels: gen.show_tick_labels(), showgrid: gen.show_grid(), range: c.get_range() };
       if (i == 1) {
         this.yaxis.set(name, 'y');
         this.layout['yaxis'] = layout;

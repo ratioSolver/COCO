@@ -14,8 +14,8 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
+    "@ratiosolver/coco": "^0.0.2",
     "@ratiosolver/flick": "^0.0.3",
-    "@ratiosolver/coco": "^0.0.1",
     "bootstrap": "^5.3.6"
   }
 }

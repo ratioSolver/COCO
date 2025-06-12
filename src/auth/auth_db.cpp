@@ -18,7 +18,7 @@ namespace coco
         auto doc = users_collection.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("username", username.data())));
         if (!doc)
             throw std::invalid_argument("User not found: " + std::string(username));
-        if (auto salt = doc->view()["salt"].get_string().value.to_string(); utils::encode_password(password, salt) != doc->view()["password"].get_string().value.to_string())
+        if (auto salt = doc->view()["salt"].get_string().value; utils::encode_password(password, salt) != doc->view()["password"].get_string().value)
             throw std::invalid_argument("Invalid password for user: " + std::string(username));
         if (doc->view().find("personal_data") == doc->view().end())
             return db_user{std::string(doc->view()["_id"].get_string().value), std::string(doc->view()["username"].get_string().value), json::json{}};

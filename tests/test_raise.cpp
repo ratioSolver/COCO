@@ -32,7 +32,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     srv.load_certificate("cert.pem", "key.pem");
 #endif
     auto srv_ft = std::async(std::launch::async, [&srv]
-                             { srv.server::start(); });
+                             { srv.start(); });
 #endif
 
     if (interactive)

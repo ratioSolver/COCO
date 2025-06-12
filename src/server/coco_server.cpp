@@ -10,7 +10,11 @@ namespace coco
     server_module::server_module(coco_server &srv) noexcept : srv(srv) {}
     coco &server_module::get_coco() noexcept { return srv.get_coco(); }
 
+#ifdef ENABLE_SSL
+    coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), ssl_server(host, port)
+#else
     coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), server(host, port)
+#endif
     {
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));

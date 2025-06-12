@@ -27,7 +27,7 @@ namespace coco
         srv.broadcast(std::move(j_it));
     }
 
-    utils::u_ptr<network::response> llm_server::get_intents(const network::request &)
+    std::unique_ptr<network::response> llm_server::get_intents(const network::request &)
     {
         json::json is(json::json_type::array);
         for (auto &it : llm.get_intents())
@@ -36,28 +36,28 @@ namespace coco
             j_it["name"] = it->get_name();
             is.push_back(std::move(j_it));
         }
-        return utils::make_u_ptr<network::json_response>(std::move(is));
+        return std::make_unique<network::json_response>(std::move(is));
     }
 
-    utils::u_ptr<network::response> llm_server::create_intent(const network::request &req)
+    std::unique_ptr<network::response> llm_server::create_intent(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("description") || body["description"].get_type() != json::json_type::string)
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string name = body["name"];
         std::string description = body["description"];
         try
         {
             llm.create_intent(name, description);
-            return utils::make_u_ptr<network::response>(network::status_code::no_content);
+            return std::make_unique<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)
         {
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
+            return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
         }
     }
 
-    utils::u_ptr<network::response> llm_server::get_entities(const network::request &)
+    std::unique_ptr<network::response> llm_server::get_entities(const network::request &)
     {
         json::json is(json::json_type::array);
         for (auto &it : llm.get_entities())
@@ -66,14 +66,14 @@ namespace coco
             j_it["name"] = it->get_name();
             is.push_back(std::move(j_it));
         }
-        return utils::make_u_ptr<network::json_response>(std::move(is));
+        return std::make_unique<network::json_response>(std::move(is));
     }
 
-    utils::u_ptr<network::response> llm_server::create_entity(const network::request &req)
+    std::unique_ptr<network::response> llm_server::create_entity(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("type") || body["type"].get_type() != json::json_type::string || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("description") || body["description"].get_type() != json::json_type::string)
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string type = body["type"];
         data_type type_name;
         if (type == "string")
@@ -87,17 +87,17 @@ namespace coco
         else if (type == "bool")
             type_name = data_type::boolean_type;
         else
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid type"}}), network::status_code::bad_request);
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid type"}}), network::status_code::bad_request);
         std::string name = body["name"];
         std::string description = body["description"];
         try
         {
             llm.create_entity(type_name, name, description);
-            return utils::make_u_ptr<network::response>(network::status_code::no_content);
+            return std::make_unique<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)
         {
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
+            return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
         }
     }
 } // namespace coco

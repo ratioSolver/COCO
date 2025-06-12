@@ -16,10 +16,10 @@ namespace coco
     void created_slot([[maybe_unused]] const slot &s) override;
 
   private:
-    utils::u_ptr<network::response> get_intents(const network::request &);
-    utils::u_ptr<network::response> create_intent(const network::request &req);
-    utils::u_ptr<network::response> get_entities(const network::request &);
-    utils::u_ptr<network::response> create_entity(const network::request &req);
+    std::unique_ptr<network::response> get_intents(const network::request &);
+    std::unique_ptr<network::response> create_intent(const network::request &req);
+    std::unique_ptr<network::response> get_entities(const network::request &);
+    std::unique_ptr<network::response> create_entity(const network::request &req);
 
   private:
     coco_llm &llm; // The LLM module

@@ -35,17 +35,17 @@ int main()
     coco::coco cc(db);
 
 #ifdef BUILD_AUTH
-    coco::coco_auth &auth = cc.add_module<coco::coco_auth>(cc);
+    cc.add_module<coco::coco_auth>(cc);
 #endif
 
 #ifdef BUILD_LLM
-    coco::coco_llm &llm = cc.add_module<coco::coco_llm>(cc);
+    [[maybe_unused]] coco::coco_llm &llm = cc.add_module<coco::coco_llm>(cc);
 #endif
 
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);
     auto srv_ft = std::async(std::launch::async, [&srv]
-                             { srv.server::start(); });
+                             { srv.start(); });
 #ifdef ENABLE_SSL
     srv.load_certificate("tests/cert.pem", "tests/key.pem");
 #endif

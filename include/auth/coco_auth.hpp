@@ -24,18 +24,18 @@ namespace coco
     server_auth(coco_server &srv) noexcept;
 
   private:
-    utils::u_ptr<network::response> login(const network::request &req);
+    std::unique_ptr<network::response> login(const network::request &req);
 
   private:
-    void on_ws_open(network::ws_session &ws) override;
-    void on_ws_message(network::ws_session &ws, std::string_view msg) override;
-    void on_ws_close(network::ws_session &ws) override;
-    void on_ws_error(network::ws_session &ws, const std::error_code &) override;
+    void on_ws_open(network::ws_server_session_base &ws) override;
+    void on_ws_message(network::ws_server_session_base &ws, const network::message &msg) override;
+    void on_ws_close(network::ws_server_session_base &ws) override;
+    void on_ws_error(network::ws_server_session_base &ws, const std::error_code &) override;
 
     void broadcast(json::json &msg) override;
 
   private:
     std::mutex mtx;
-    std::unordered_set<network::ws_session *> clients;
+    std::unordered_set<network::ws_server_session_base *> clients;
   };
 } // namespace coco

@@ -44,11 +44,11 @@ namespace coco
         srv.add_ws_route("/coco").on_open(std::bind(&server_auth::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&server_auth::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&server_auth::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&server_auth::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
 
-    utils::u_ptr<network::response> server_auth::login(const network::request &req)
+    std::unique_ptr<network::response> server_auth::login(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (body.get_type() != json::json_type::object || !body.contains("username") || body["username"].get_type() != json::json_type::string || !body.contains("password") || body["password"].get_type() != json::json_type::string)
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string username = body["username"];
         std::string password = body["password"];
 
@@ -56,16 +56,16 @@ namespace coco
         {
             auto token = get_coco().get_module<coco_auth>().get_token(username, password);
             if (token.empty())
-                return utils::make_u_ptr<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
-            return utils::make_u_ptr<network::json_response>(json::json({{"token", token.c_str()}}), network::status_code::ok);
+                return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
+            return std::make_unique<network::json_response>(json::json({{"token", token.c_str()}}), network::status_code::ok);
         }
         catch (const std::invalid_argument &)
         {
-            return utils::make_u_ptr<network::json_response>(json::json({{"message", "Invalid credentials"}}), network::status_code::unauthorized);
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid credentials"}}), network::status_code::unauthorized);
         }
     }
 
-    void server_auth::on_ws_open(network::ws_session &ws)
+    void server_auth::on_ws_open(network::ws_server_session_base &ws)
     {
         LOG_TRACE("New connection from " << ws.remote_endpoint());
 
@@ -76,23 +76,23 @@ namespace coco
         jc["msg_type"] = "coco";
         ws.send(jc.dump());
     }
-    void server_auth::on_ws_message(network::ws_session &ws, std::string_view msg)
+    void server_auth::on_ws_message(network::ws_server_session_base &ws, const network::message &msg)
     {
-        auto x = json::load(msg);
+        auto x = json::load(msg.get_payload());
         if (x.get_type() != json::json_type::object || !x.contains("type") || x["type"].get_type() != json::json_type::string)
         {
             ws.close();
             return;
         }
     }
-    void server_auth::on_ws_close(network::ws_session &ws)
+    void server_auth::on_ws_close(network::ws_server_session_base &ws)
     {
         LOG_TRACE("Connection closed with " << ws.remote_endpoint());
         std::lock_guard<std::mutex> _(mtx);
         clients.erase(&ws);
         LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
     }
-    void server_auth::on_ws_error(network::ws_session &ws, [[maybe_unused]] const std::error_code &ec)
+    void server_auth::on_ws_error(network::ws_server_session_base &ws, [[maybe_unused]] const std::error_code &ec)
     {
         LOG_TRACE("Connection error with " << ws.remote_endpoint() << ": " << ec.message());
         on_ws_close(ws);

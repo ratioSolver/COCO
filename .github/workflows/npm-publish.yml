@@ -11,7 +11,7 @@ on:
 
 jobs:
   coco:
-    name: Publish coco-gui-lib
+    name: Publish CoCo Library
     runs-on: ubuntu-latest
     defaults:
       run:

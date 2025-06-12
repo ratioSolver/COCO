@@ -32,6 +32,10 @@ message(STATUS "Build CoCo deliberative: ${BUILD_DELIBERATIVE}")
 message(STATUS "Build CoCo LLM: ${BUILD_LLM}")
 message(STATUS "Build CoCo authentication: ${BUILD_AUTH}")
 
+if(BUILD_AUTH)
+    set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
+endif()
+
 add_library(CoCo src/coco.cpp src/coco_module.cpp src/coco_property.cpp src/coco_type.cpp src/coco_item.cpp src/coco_db.cpp)
 target_compile_features(CoCo PUBLIC cxx_std_17)
 target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> ${CLIPS_INCLUDE_DIR})
@@ -60,8 +64,6 @@ if(BUILD_MONGODB)
     target_compile_definitions(CoCo PUBLIC BUILD_MONGODB MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 
     if(BUILD_AUTH)
-        set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
-
         set(MONGODB_USERS_HOST "localhost" CACHE STRING "The MongoDB Users Host")
         set(MONGODB_USERS_PORT "27018" CACHE STRING "The MongoDB Users Port")
 

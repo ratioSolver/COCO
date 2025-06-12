@@ -1,4 +1,4 @@
-import { Component, UListComponent, Selector, SelectorGroup, App } from "ratio-core";
+import { Component, UListComponent, Selector, SelectorGroup, App } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faCube } from '@fortawesome/free-solid-svg-icons'

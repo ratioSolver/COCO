@@ -1,4 +1,4 @@
-import { App, Component, SelectorGroup } from "ratio-core";
+import { App, Component, SelectorGroup } from "@ratiosolver/flick";
 import { TypeList } from "./type";
 import { ItemList } from "./item";
 import { TaxonomyElement } from "./taxonomy";

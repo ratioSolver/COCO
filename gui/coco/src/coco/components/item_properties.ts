@@ -1,4 +1,4 @@
-import { blink, Component } from "ratio-core";
+import { blink, Component } from "@ratiosolver/flick";
 import { coco } from "../coco";
 
 export class ItemProperties extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
@@ -59,7 +59,7 @@ export class ItemProperties extends Component<coco.taxonomy.Item, HTMLDivElement
       if (ps)
         for (const [name, val] of Object.entries(ps)) {
           const p_val = this.p_values.get(name)!;
-          blink(p_val, 500);
+          blink(p_val);
           p_val.textContent = props.get(name)!.get_type().to_string(val);
         }
     } else

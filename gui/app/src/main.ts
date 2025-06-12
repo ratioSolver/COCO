@@ -1,5 +1,5 @@
-import { AppComponent, Connection, Settings } from 'ratio-core';
-import { coco, Offcanvas } from 'ratio-coco-lib';
+import { AppComponent, Connection, Settings } from '@ratiosolver/flick';
+import { coco, Offcanvas } from '@ratiosolver/coco';
 import { Offcanvas as BootstrapOffcanvas } from 'bootstrap';
 import './styles.css'
 

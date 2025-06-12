@@ -1,4 +1,4 @@
-import { App, Settings } from "ratio-core";
+import { App, Settings } from "@ratiosolver/flick";
 
 export namespace coco {
 

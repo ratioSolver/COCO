@@ -1,4 +1,4 @@
-import { blink, Component } from "ratio-core";
+import { blink, Component } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import { publisher } from "./publisher";
 
@@ -105,19 +105,23 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
           if (check.checked)
             pars.push(name);
         coco.CoCo.get_instance().fake_data(item.get_type(), pars).then(fake => {
+          const els: HTMLElement[] = [];
           for (const [name, v] of Object.entries(fake)) {
             const v_val = this.v_values.get(name)!;
-            blink(v_val.get_element().children[0] as HTMLElement, 500);
+            els.push(v_val.get_element().children[0] as HTMLElement);
             v_val.set_value(v);
           }
+          blink(els);
         });
       } else
         coco.CoCo.get_instance().fake_data(item.get_type()).then(fake => {
+          const els: HTMLElement[] = [];
           for (const [name, v] of Object.entries(fake)) {
             const v_val = this.v_values.get(name)!;
-            blink(v_val.get_element().children[0] as HTMLElement, 500);
+            els.push(v_val.get_element().children[0] as HTMLElement);
             v_val.set_value(v);
           }
+          blink(els);
         });
     });
     b_div.append(fake_button);
@@ -149,13 +153,16 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
     if (props.size > 0) {
       this.element.hidden = false;
       const val = this.payload.get_datum();
-      if (val)
+      if (val) {
+        const els: HTMLElement[] = [];
         for (const [name, v] of Object.entries(val.data)) {
           const v_val = this.v_values.get(name)!;
-          blink(v_val.get_element().children[0] as HTMLElement, 500);
+          els.push(v_val.get_element().children[0] as HTMLElement);
           if (!this.v_checks.get(name)!.checked)
             v_val.set_value(v);
         }
+        blink(els);
+      }
     } else
       this.element.hidden = true;
   }

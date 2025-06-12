@@ -1,4 +1,4 @@
-import { App, Component, Selector, SelectorGroup } from "ratio-core";
+import { App, Component, Selector, SelectorGroup } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import cytoscape from 'cytoscape';
 import { library, icon } from '@fortawesome/fontawesome-svg-core'

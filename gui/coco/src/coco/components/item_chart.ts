@@ -1,4 +1,4 @@
-import { Component } from "ratio-core";
+import { Component } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import Plotly, { Layout, PlotData } from "plotly.js-dist-min";
 import { chart } from "./chart";

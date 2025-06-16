@@ -25,6 +25,7 @@ namespace coco
 
   private:
     std::unique_ptr<network::response> login(const network::request &req);
+    std::unique_ptr<network::response> create_user(const network::request &req);
 
   private:
     void on_ws_open(network::ws_server_session_base &ws) override;

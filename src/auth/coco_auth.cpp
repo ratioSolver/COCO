@@ -40,6 +40,7 @@ namespace coco
     server_auth::server_auth(coco_server &srv) noexcept : server_module(srv)
     {
         srv.add_route(network::verb::Post, "^/login$", std::bind(&server_auth::login, this, std::placeholders::_1));
+        srv.add_route(network::verb::Post, "^/create_user$", std::bind(&server_auth::create_user, this, std::placeholders::_1));
 
         srv.add_ws_route("/coco").on_open(std::bind(&server_auth::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&server_auth::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&server_auth::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&server_auth::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
@@ -62,6 +63,28 @@ namespace coco
         catch (const std::invalid_argument &)
         {
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid credentials"}}), network::status_code::unauthorized);
+        }
+    }
+
+    std::unique_ptr<network::response> server_auth::create_user(const network::request &req)
+    {
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (body.get_type() != json::json_type::object || !body.contains("username") || body["username"].get_type() != json::json_type::string || !body.contains("password") || body["password"].get_type() != json::json_type::string)
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        std::string username = body["username"];
+        std::string password = body["password"];
+        json::json personal_data = json::json(json::json_type::object);
+        if (body.contains("personal_data") && body["personal_data"].get_type() == json::json_type::object)
+            personal_data = body["personal_data"];
+
+        try
+        {
+            auto &itm = get_coco().get_module<coco_auth>().create_user(username, password, std::move(personal_data));
+            return std::make_unique<network::json_response>(json::json({{"token", get_coco().get_module<coco_auth>().get_token(username, password)}}), network::status_code::created);
+        }
+        catch (const std::invalid_argument &e)
+        {
+            return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::bad_request);
         }
     }
 

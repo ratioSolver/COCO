@@ -52,7 +52,7 @@ namespace coco
 
     void item::set_properties(json::json &&props)
     {
-        std::map<std::string, utils::ref_wrapper<const property>> static_props = tp.get_all_static_properties();
+        std::map<std::string, std::reference_wrapper<const property>> static_props = tp.get_all_static_properties();
 
         for (const auto &[p_name, val] : props.as_object())
             if (auto prop = static_props.find(p_name); prop != static_props.end())
@@ -65,11 +65,11 @@ namespace coco
 
                 if (val.get_type() == json::json_type::null)
                     this->properties.erase(p_name); // we remove the property
-                else if (prop->second->validate(val))
+                else if (prop->second.get().validate(val))
                 {
-                    FactBuilder *property_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second->get_deftemplate_name().c_str());
+                    FactBuilder *property_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second.get().get_deftemplate_name().c_str());
                     FBPutSlotSymbol(property_fact_builder, "item_id", id.c_str());
-                    prop->second->get_property_type().set_value(property_fact_builder, p_name, val);
+                    prop->second.get().get_property_type().set_value(property_fact_builder, p_name, val);
                     auto property_fact = FBAssert(property_fact_builder);
                     assert(property_fact);
                     LOG_TRACE(tp.get_coco().to_string(property_fact));
@@ -87,7 +87,7 @@ namespace coco
 
     void item::set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val)
     {
-        std::map<std::string, utils::ref_wrapper<const property>> dynamic_props = tp.get_all_dynamic_properties();
+        std::map<std::string, std::reference_wrapper<const property>> dynamic_props = tp.get_all_dynamic_properties();
 
         if (!value.has_value())
             value = std::make_pair(json::json(), val.second);
@@ -105,11 +105,11 @@ namespace coco
 
                 if (j_val.get_type() == json::json_type::null)
                     this->value_facts.erase(p_name); // we remove the property
-                else if (prop->second->validate(j_val))
+                else if (prop->second.get().validate(j_val))
                 {
-                    FactBuilder *value_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second->get_deftemplate_name().c_str());
+                    FactBuilder *value_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second.get().get_deftemplate_name().c_str());
                     FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
-                    prop->second->get_property_type().set_value(value_fact_builder, p_name, j_val);
+                    prop->second.get().get_property_type().set_value(value_fact_builder, p_name, j_val);
                     FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
                     auto value_fact = FBAssert(value_fact_builder);
                     assert(value_fact);

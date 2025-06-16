@@ -12,12 +12,12 @@ namespace coco
     property_type::property_type(coco &cc, std::string_view name) noexcept : cc(cc), name(name) {}
 
     bool_property_type::bool_property_type(coco &cc) noexcept : property_type(cc, bool_kw) {}
-    utils::u_ptr<property> bool_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    std::unique_ptr<property> bool_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
         std::optional<bool> default_value;
         if (j.contains("default"))
             default_value = static_cast<bool>(j["default"]);
-        return utils::make_u_ptr<bool_property>(*this, tp, dynamic, name, default_value);
+        return std::make_unique<bool_property>(*this, tp, dynamic, name, default_value);
     }
     void bool_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
@@ -26,7 +26,7 @@ namespace coco
     }
 
     int_property_type::int_property_type(coco &cc) noexcept : property_type(cc, int_kw) {}
-    utils::u_ptr<property> int_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    std::unique_ptr<property> int_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
         std::optional<long> default_value;
         if (j.contains("default"))
@@ -37,7 +37,7 @@ namespace coco
         std::optional<long> max;
         if (j.contains("max"))
             max = static_cast<long>(j["max"]);
-        return utils::make_u_ptr<int_property>(*this, tp, dynamic, name, default_value, min, max);
+        return std::make_unique<int_property>(*this, tp, dynamic, name, default_value, min, max);
     }
     void int_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
@@ -46,7 +46,7 @@ namespace coco
     }
 
     float_property_type::float_property_type(coco &cc) noexcept : property_type(cc, float_kw) {}
-    utils::u_ptr<property> float_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    std::unique_ptr<property> float_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
         std::optional<double> default_value;
         if (j.contains("default"))
@@ -57,7 +57,7 @@ namespace coco
         std::optional<double> max;
         if (j.contains("max"))
             max = static_cast<double>(j["max"]);
-        return utils::make_u_ptr<float_property>(*this, tp, dynamic, name, default_value, min, max);
+        return std::make_unique<float_property>(*this, tp, dynamic, name, default_value, min, max);
     }
     void float_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
@@ -66,12 +66,12 @@ namespace coco
     }
 
     string_property_type::string_property_type(coco &cc) noexcept : property_type(cc, string_kw) {}
-    utils::u_ptr<property> string_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    std::unique_ptr<property> string_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
         std::optional<std::string> default_value;
         if (j.contains("default"))
             default_value = static_cast<std::string>(j["default"]);
-        return utils::make_u_ptr<string_property>(*this, tp, dynamic, name, default_value);
+        return std::make_unique<string_property>(*this, tp, dynamic, name, default_value);
     }
     void string_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
@@ -80,7 +80,7 @@ namespace coco
     }
 
     symbol_property_type::symbol_property_type(coco &cc) noexcept : property_type(cc, symbol_kw) {}
-    utils::u_ptr<property> symbol_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    std::unique_ptr<property> symbol_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
         bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
         std::vector<std::string> values;
@@ -97,7 +97,7 @@ namespace coco
             def_v.emplace_back(static_cast<std::string>(j["default"]));
             default_value = std::move(def_v);
         }
-        return utils::make_u_ptr<symbol_property>(*this, tp, dynamic, name, multiple, std::move(values), default_value);
+        return std::make_unique<symbol_property>(*this, tp, dynamic, name, multiple, std::move(values), default_value);
     }
     void symbol_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
@@ -106,14 +106,14 @@ namespace coco
     }
 
     item_property_type::item_property_type(coco &cc) noexcept : property_type(cc, item_kw) {}
-    utils::u_ptr<property> item_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    std::unique_ptr<property> item_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
         type &domain = cc.get_type(static_cast<std::string>(j["domain"]));
         bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
-        std::optional<std::vector<utils::ref_wrapper<item>>> default_value;
+        std::optional<std::vector<std::reference_wrapper<item>>> default_value;
         if (j.contains("default"))
         {
-            std::vector<utils::ref_wrapper<item>> def_v;
+            std::vector<std::reference_wrapper<item>> def_v;
             if (multiple)
                 for (const auto &v : j["default"].as_array())
                     def_v.emplace_back(cc.get_item(static_cast<std::string>(v)));
@@ -121,7 +121,7 @@ namespace coco
                 def_v.emplace_back(cc.get_item(static_cast<std::string>(j["default"])));
             default_value = std::move(def_v);
         }
-        return utils::make_u_ptr<item_property>(*this, tp, dynamic, name, domain, multiple, default_value);
+        return std::make_unique<item_property>(*this, tp, dynamic, name, domain, multiple, default_value);
     }
     void item_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
@@ -130,7 +130,7 @@ namespace coco
     }
 
     json_property_type::json_property_type(coco &cc) noexcept : property_type(cc, json_kw) {}
-    utils::u_ptr<property> json_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
+    std::unique_ptr<property> json_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
         std::optional<json::json> schema;
         if (j.contains("schema"))
@@ -138,7 +138,7 @@ namespace coco
         std::optional<json::json> default_value;
         if (j.contains("default"))
             default_value = j["default"];
-        return utils::make_u_ptr<json_property>(*this, tp, dynamic, name, schema, default_value);
+        return std::make_unique<json_property>(*this, tp, dynamic, name, schema, default_value);
     }
     void json_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
@@ -417,12 +417,12 @@ namespace coco
             return values[dist(get_gen())].c_str();
     }
 
-    item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple, std::optional<std::vector<utils::ref_wrapper<item>>> default_value) noexcept : property(pt, tp, dynamic, name), domain(domain), multiple(multiple), default_value(default_value)
+    item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple, std::optional<std::vector<std::reference_wrapper<item>>> default_value) noexcept : property(pt, tp, dynamic, name), domain(domain), multiple(multiple), default_value(default_value)
     {
         assert(!default_value.has_value() || default_value->empty() || std::all_of(default_value->begin(), default_value->end(), [&domain](const auto &val)
                                                                                    { 
                                                                                         std::queue<const type *> q;
-                                                                                        q.push(&val->get_type());
+                                                                                        q.push(&val.get().get_type());
                                                                                         while (!q.empty())
                                                                                         {
                                                                                             auto tp = q.front();
@@ -430,7 +430,7 @@ namespace coco
                                                                                             if (tp == &domain)
                                                                                                 return true;
                                                                                             for (const auto &[_, p] : tp->get_parents())
-                                                                                                q.push(&*p);
+                                                                                                q.push(&p.get());
                                                                                         }
                                                                                         return false; }));
         assert(!default_value.has_value() || !multiple || default_value->size() <= 1);
@@ -446,7 +446,7 @@ namespace coco
         {
             deftemplate += " (default";
             for (const auto &val : *default_value)
-                deftemplate += " " + val->get_id();
+                deftemplate += " " + val.get().get_id();
             deftemplate += ")";
         }
         deftemplate += ')';
@@ -480,7 +480,7 @@ namespace coco
         {
             auto j_def_vals = json::json(json::json_type::array);
             for (const auto &val : *default_value)
-                j_def_vals.push_back(val->get_id().c_str());
+                j_def_vals.push_back(val.get().get_id().c_str());
             j["default"] = j_def_vals;
         }
         return j;
@@ -494,11 +494,11 @@ namespace coco
             std::uniform_int_distribution<std::size_t> dist_size(0, dom.size());
             json::json j(json::json_type::array);
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
-                j.push_back(dom[dist(get_gen())]->get_id().c_str());
+                j.push_back(dom[dist(get_gen())].get().get_id().c_str());
             return j;
         }
         else // Generate a single value.
-            return dom[dist(get_gen())]->get_id().c_str();
+            return dom[dist(get_gen())].get().get_id().c_str();
     }
 
     json_property::json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema, std::optional<json::json> default_value) noexcept : property(pt, tp, dynamic, name), schema(schema), default_value(default_value)

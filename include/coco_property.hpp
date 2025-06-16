@@ -1,8 +1,8 @@
 #pragma once
 
 #include "json.hpp"
-#include "memory.hpp"
 #include "clips.h"
+#include <memory>
 #include <random>
 #include <optional>
 
@@ -45,7 +45,7 @@ namespace coco
     [[nodiscard]] const std::string &get_name() const noexcept { return name; }
 
   private:
-    [[nodiscard]] virtual utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept = 0;
+    [[nodiscard]] virtual std::unique_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept = 0;
 
     /**
      * Sets the value of the property.
@@ -69,7 +69,7 @@ namespace coco
     bool_property_type(coco &cc) noexcept;
 
   private:
-    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+    [[nodiscard]] std::unique_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
 
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
@@ -80,7 +80,7 @@ namespace coco
     int_property_type(coco &cc) noexcept;
 
   private:
-    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+    [[nodiscard]] std::unique_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
 
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
@@ -91,7 +91,7 @@ namespace coco
     float_property_type(coco &cc) noexcept;
 
   private:
-    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+    [[nodiscard]] std::unique_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
 
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
@@ -102,7 +102,7 @@ namespace coco
     string_property_type(coco &cc) noexcept;
 
   private:
-    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+    [[nodiscard]] std::unique_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
 
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
@@ -113,7 +113,7 @@ namespace coco
     symbol_property_type(coco &cc) noexcept;
 
   private:
-    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+    [[nodiscard]] std::unique_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
 
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
@@ -124,7 +124,7 @@ namespace coco
     item_property_type(coco &cc) noexcept;
 
   private:
-    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+    [[nodiscard]] std::unique_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
 
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
@@ -135,7 +135,7 @@ namespace coco
     json_property_type(coco &cc) noexcept;
 
   private:
-    [[nodiscard]] utils::u_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
+    [[nodiscard]] std::unique_ptr<property> new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept override;
 
     void set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept override;
   };
@@ -297,7 +297,7 @@ namespace coco
   class item_property final : public property
   {
   public:
-    item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple = false, std::optional<std::vector<utils::ref_wrapper<item>>> default_value = std::nullopt) noexcept;
+    item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple = false, std::optional<std::vector<std::reference_wrapper<item>>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
@@ -308,9 +308,9 @@ namespace coco
     [[nodiscard]] json::json fake() const noexcept override;
 
   private:
-    const type &domain;                                                 // The domain of the property.
-    bool multiple;                                                      // Indicates whether the property can have multiple values.
-    std::optional<std::vector<utils::ref_wrapper<item>>> default_value; // The default value for the property.
+    const type &domain;                                                     // The domain of the property.
+    bool multiple;                                                          // Indicates whether the property can have multiple values.
+    std::optional<std::vector<std::reference_wrapper<item>>> default_value; // The default value for the property.
   };
 
   class json_property final : public property

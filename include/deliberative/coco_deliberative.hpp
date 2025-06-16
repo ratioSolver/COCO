@@ -27,7 +27,7 @@ namespace coco
   public:
     coco_deliberative(coco &cc) noexcept;
 
-    [[nodiscard]] std::vector<utils::ref_wrapper<deliberative_rule>> get_deliberative_rules() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<deliberative_rule>> get_deliberative_rules() noexcept;
     void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content);
 
     [[nodiscard]] coco_executor &create_executor(std::string_view name);
@@ -56,26 +56,26 @@ namespace coco
     void flaw_state_changed(coco_executor &exec, const ratio::flaw &f);
     void flaw_cost_changed(coco_executor &exec, const ratio::flaw &f);
     void flaw_position_changed(coco_executor &exec, const ratio::flaw &f);
-    void current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f);
+    void current_flaw(coco_executor &exec, std::optional<std::reference_wrapper<ratio::flaw>> f);
     void resolver_created(coco_executor &exec, const ratio::resolver &r);
     void resolver_state_changed(coco_executor &exec, const ratio::resolver &r);
-    void current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r);
+    void current_resolver(coco_executor &exec, std::optional<std::reference_wrapper<ratio::resolver>> r);
     void causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r);
 
     void executor_state_changed(coco_executor &exec, ratio::executor::executor_state state);
     void tick(coco_executor &exec, const utils::rational &time);
-    void starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
-    void start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
-    void ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
-    void end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms);
+    void starting(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms);
+    void start(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms);
+    void ending(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms);
+    void end(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms);
 #endif
 
   private:
     void to_json(json::json &j) const noexcept override;
 
   private:
-    std::map<std::string, utils::u_ptr<deliberative_rule>, std::less<>> deliberative_rules; // The deliberative rules..
-    std::unordered_map<std::string, utils::u_ptr<coco_executor>> executors;                 // the executors..
+    std::map<std::string, std::unique_ptr<deliberative_rule>, std::less<>> deliberative_rules; // The deliberative rules..
+    std::unordered_map<std::string, std::unique_ptr<coco_executor>> executors;                 // the executors..
 
 #ifdef BUILD_LISTENERS
   private:
@@ -143,18 +143,18 @@ namespace coco
     virtual void flaw_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
     virtual void flaw_cost_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
     virtual void flaw_position_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f) {}
-    virtual void current_flaw([[maybe_unused]] coco_executor &exec, [[maybe_unused]] std::optional<utils::ref_wrapper<ratio::flaw>> f) {}
+    virtual void current_flaw([[maybe_unused]] coco_executor &exec, [[maybe_unused]] std::optional<std::reference_wrapper<ratio::flaw>> f) {}
     virtual void resolver_created([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
     virtual void resolver_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::resolver &r) {}
-    virtual void current_resolver([[maybe_unused]] coco_executor &exec, [[maybe_unused]] std::optional<utils::ref_wrapper<ratio::resolver>> r) {}
+    virtual void current_resolver([[maybe_unused]] coco_executor &exec, [[maybe_unused]] std::optional<std::reference_wrapper<ratio::resolver>> r) {}
     virtual void causal_link_added([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const ratio::flaw &f, [[maybe_unused]] const ratio::resolver &r) {}
 
     virtual void executor_state_changed([[maybe_unused]] coco_executor &exec, [[maybe_unused]] ratio::executor::executor_state state) {}
     virtual void tick([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const utils::rational &time) {}
-    virtual void starting([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    virtual void start([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    virtual void ending([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
-    virtual void end([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms) {}
+    virtual void starting([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<riddle::atom_term>> &atms) {}
+    virtual void start([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<riddle::atom_term>> &atms) {}
+    virtual void ending([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<riddle::atom_term>> &atms) {}
+    virtual void end([[maybe_unused]] coco_executor &exec, [[maybe_unused]] const std::vector<std::reference_wrapper<riddle::atom_term>> &atms) {}
 
   protected:
     coco_deliberative &cd; // reference to the coco_deliberative object

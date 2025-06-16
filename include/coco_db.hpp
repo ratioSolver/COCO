@@ -1,8 +1,8 @@
 #pragma once
 
 #include "json.hpp"
-#include "memory.hpp"
 #include <unordered_map>
+#include <memory>
 #include <typeindex>
 #include <optional>
 #include <chrono>
@@ -53,7 +53,7 @@ namespace coco
       static_assert(std::is_base_of<db_module, Tp>::value, "Module must be derived from db_module");
       if (auto it = modules.find(typeid(Tp)); it == modules.end())
       {
-        auto mod = utils::make_u_ptr<Tp>(std::forward<Args>(args)...);
+        auto mod = std::make_unique<Tp>(std::forward<Args>(args)...);
         auto &ref = *mod;
         modules.emplace(typeid(Tp), std::move(mod));
         return ref;
@@ -92,6 +92,6 @@ namespace coco
     const json::json config;
 
   private:
-    std::unordered_map<std::type_index, utils::u_ptr<db_module>> modules; // The modules..
+    std::unordered_map<std::type_index, std::unique_ptr<db_module>> modules; // The modules..
   };
 } // namespace coco

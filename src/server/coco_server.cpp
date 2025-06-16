@@ -81,8 +81,8 @@ namespace coco
         json::json ts(json::json_type::array);
         for (auto &tp : get_coco().get_types())
         {
-            auto j_tp = tp->to_json();
-            j_tp["name"] = tp->get_name();
+            auto j_tp = tp.get().to_json();
+            j_tp["name"] = tp.get().get_name();
             ts.push_back(std::move(j_tp));
         }
         return std::make_unique<network::json_response>(std::move(ts));
@@ -109,7 +109,7 @@ namespace coco
 
         std::string name = body["name"];
 
-        std::vector<utils::ref_wrapper<const type>> parents;
+        std::vector<std::reference_wrapper<const type>> parents;
         if (body.contains("parents"))
         {
             if (body["parents"].get_type() != json::json_type::array)
@@ -163,8 +163,8 @@ namespace coco
         json::json is(json::json_type::array);
         for (auto &itm : get_coco().get_items())
         {
-            auto j_itm = itm->to_json();
-            j_itm["id"] = itm->get_id();
+            auto j_itm = itm.get().to_json();
+            j_itm["id"] = itm.get().get_id();
             is.push_back(std::move(j_itm));
         }
         return std::make_unique<network::json_response>(std::move(is));
@@ -295,7 +295,7 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
         }
 
-        std::unordered_map<std::string, utils::ref_wrapper<property>> props;
+        std::unordered_map<std::string, std::reference_wrapper<property>> props;
         std::queue<const type *> q;
         q.push(tp);
         while (!q.empty())
@@ -305,7 +305,7 @@ namespace coco
             for (const auto &[name, p] : tp->get_dynamic_properties())
                 props.emplace(name, *p);
             for (const auto &[_, p] : tp->get_parents())
-                q.push(&*p);
+                q.push(&p.get());
         }
 
         json::json j;
@@ -316,7 +316,7 @@ namespace coco
                 const auto pars = json::load(network::decode(params.at("parameters")));
                 for (const auto &par : pars.as_array())
                     if (auto it = props.find(static_cast<std::string>(par)); it != props.end())
-                        j[it->first] = it->second->fake();
+                        j[it->first] = it->second.get().fake();
                     else
                         return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             }
@@ -326,7 +326,7 @@ namespace coco
             }
         else // fake all properties
             for (auto &[name, prop] : props)
-                j[name] = prop->fake();
+                j[name] = prop.get().fake();
 
         return std::make_unique<network::json_response>(std::move(j));
     }
@@ -336,8 +336,8 @@ namespace coco
         json::json is(json::json_type::array);
         for (auto &rr : get_coco().get_reactive_rules())
         {
-            auto j_rrs = rr->to_json();
-            j_rrs["name"] = rr->get_name();
+            auto j_rrs = rr.get().to_json();
+            j_rrs["name"] = rr.get().get_name();
             is.push_back(std::move(j_rrs));
         }
         return std::make_unique<network::json_response>(std::move(is));

@@ -58,13 +58,13 @@ namespace coco
         auto drs = db.get_deliberative_rules();
         LOG_DEBUG("Retrieved " << drs.size() << " deliberative rules");
         for (auto &rule : drs)
-            deliberative_rules.emplace(rule.name, utils::make_u_ptr<deliberative_rule>(*this, rule.name, rule.content));
+            deliberative_rules.emplace(rule.name, std::make_unique<deliberative_rule>(*this, rule.name, rule.content));
     }
 
-    std::vector<utils::ref_wrapper<deliberative_rule>> coco_deliberative::get_deliberative_rules() noexcept
+    std::vector<std::reference_wrapper<deliberative_rule>> coco_deliberative::get_deliberative_rules() noexcept
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        std::vector<utils::ref_wrapper<deliberative_rule>> res;
+        std::vector<std::reference_wrapper<deliberative_rule>> res;
         res.reserve(deliberative_rules.size());
         for (auto &r : deliberative_rules)
             res.push_back(*r.second);
@@ -74,7 +74,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         get_coco().get_db().get_module<deliberative_db>().create_deliberative_rule(rule_name, rule_content);
-        auto it = deliberative_rules.emplace(rule_name, utils::make_u_ptr<deliberative_rule>(*this, rule_name, rule_content));
+        auto it = deliberative_rules.emplace(rule_name, std::make_unique<deliberative_rule>(*this, rule_name, rule_content));
         if (!it.second)
             throw std::invalid_argument("deliberative rule `" + std::string(rule_name) + "` already exists");
         else
@@ -88,7 +88,7 @@ namespace coco
     coco_executor &coco_deliberative::create_executor(std::string_view name)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        auto it = executors.emplace(name, utils::make_u_ptr<coco_executor>(*this, name));
+        auto it = executors.emplace(name, std::make_unique<coco_executor>(*this, name));
         if (!it.second)
             throw std::invalid_argument("executor `" + std::string(name) + "` already exists");
         else
@@ -414,7 +414,7 @@ namespace coco
         for (auto &l : listeners)
             l->flaw_position_changed(exec, f);
     }
-    void coco_deliberative::current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f)
+    void coco_deliberative::current_flaw(coco_executor &exec, std::optional<std::reference_wrapper<ratio::flaw>> f)
     {
         for (auto &l : listeners)
             l->current_flaw(exec, f);
@@ -429,7 +429,7 @@ namespace coco
         for (auto &l : listeners)
             l->resolver_state_changed(exec, r);
     }
-    void coco_deliberative::current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r)
+    void coco_deliberative::current_resolver(coco_executor &exec, std::optional<std::reference_wrapper<ratio::resolver>> r)
     {
         for (auto &l : listeners)
             l->current_resolver(exec, r);
@@ -450,22 +450,22 @@ namespace coco
         for (auto &l : listeners)
             l->tick(exec, time);
     }
-    void coco_deliberative::starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    void coco_deliberative::starting(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms)
     {
         for (auto &l : listeners)
             l->starting(exec, atms);
     }
-    void coco_deliberative::start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    void coco_deliberative::start(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms)
     {
         for (auto &l : listeners)
             l->start(exec, atms);
     }
-    void coco_deliberative::ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    void coco_deliberative::ending(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms)
     {
         for (auto &l : listeners)
             l->ending(exec, atms);
     }
-    void coco_deliberative::end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    void coco_deliberative::end(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms)
     {
         for (auto &l : listeners)
             l->end(exec, atms);

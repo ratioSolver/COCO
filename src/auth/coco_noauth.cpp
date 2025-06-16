@@ -14,8 +14,6 @@ namespace coco
 
     void server_noauth::on_ws_open(network::ws_server_session_base &ws)
     {
-        LOG_TRACE("New connection from " << ws.remote_endpoint());
-
         std::lock_guard<std::mutex> _(mtx);
         clients.insert(&ws);
 
@@ -34,14 +32,13 @@ namespace coco
     }
     void server_noauth::on_ws_close(network::ws_server_session_base &ws)
     {
-        LOG_TRACE("Connection closed with " << ws.remote_endpoint());
         std::lock_guard<std::mutex> _(mtx);
         clients.erase(&ws);
         LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
     }
     void server_noauth::on_ws_error(network::ws_server_session_base &ws, [[maybe_unused]] const std::error_code &ec)
     {
-        LOG_TRACE("Connection error with " << ws.remote_endpoint() << ": " << ec.message());
+        LOG_TRACE("Connection error: " << ec.message());
         on_ws_close(ws);
     }
 

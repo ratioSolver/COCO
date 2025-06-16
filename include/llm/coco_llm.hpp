@@ -35,11 +35,11 @@ namespace coco
   public:
     coco_llm(coco &cc, std::string_view host = LLM_HOST, unsigned short port = LLM_PORT) noexcept;
 
-    [[nodiscard]] std::vector<utils::ref_wrapper<intent>> get_intents() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<intent>> get_intents() noexcept;
     void create_intent(std::string_view name, std::string_view description, bool infere = true);
-    [[nodiscard]] std::vector<utils::ref_wrapper<entity>> get_entities() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<entity>> get_entities() noexcept;
     void create_entity(data_type type, std::string_view name, std::string_view description, bool infere = true);
-    [[nodiscard]] std::vector<utils::ref_wrapper<slot>> get_slots() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<slot>> get_slots() noexcept;
     void create_slot(data_type type, std::string_view name, std::string_view description, bool influence_context = true, bool infere = true);
 
     void set_slots(item &item, json::json &&props, bool infere = true) noexcept;
@@ -57,12 +57,12 @@ namespace coco
 #endif
 
   private:
-    std::map<std::string, utils::u_ptr<intent>, std::less<>> intents;  // The intents
-    std::map<std::string, utils::u_ptr<entity>, std::less<>> entities; // The entities
-    std::map<std::string, utils::u_ptr<slot>, std::less<>> slots;      // The slots
-    std::map<std::string, std::map<std::string, Fact *>> slot_facts;   // The facts representing the slots for each item
-    std::unordered_map<std::string, json::json> current_slots;         // The slots for each item
-    network::client client;                                            // The client used to communicate with the LLM server
+    std::map<std::string, std::unique_ptr<intent>, std::less<>> intents;  // The intents
+    std::map<std::string, std::unique_ptr<entity>, std::less<>> entities; // The entities
+    std::map<std::string, std::unique_ptr<slot>, std::less<>> slots;      // The slots
+    std::map<std::string, std::map<std::string, Fact *>> slot_facts;      // The facts representing the slots for each item
+    std::unordered_map<std::string, json::json> current_slots;            // The slots for each item
+    network::client client;                                               // The client used to communicate with the LLM server
 
 #ifdef BUILD_LISTENERS
     std::vector<llm_listener *> listeners; // The LLM listeners..

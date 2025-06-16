@@ -49,7 +49,7 @@ namespace coco
       static_assert(std::is_base_of<server_module, Tp>::value, "Extension must be derived from server_module");
       if (auto it = modules.find(typeid(Tp)); it == modules.end())
       {
-        auto mod = utils::make_u_ptr<Tp>(std::forward<Args>(args)...);
+        auto mod = std::make_unique<Tp>(std::forward<Args>(args)...);
         auto &ref = *mod;
         modules.emplace(typeid(Tp), std::move(mod));
         return ref;
@@ -101,6 +101,6 @@ namespace coco
     std::unique_ptr<network::response> create_deliberative_rule(const network::request &req);
 
   private:
-    std::map<std::type_index, utils::u_ptr<server_module>> modules; // the server modules
+    std::map<std::type_index, std::unique_ptr<server_module>> modules; // the server modules
   };
 } // namespace coco

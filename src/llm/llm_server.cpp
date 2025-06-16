@@ -32,8 +32,8 @@ namespace coco
         json::json is(json::json_type::array);
         for (auto &it : llm.get_intents())
         {
-            auto j_it = it->to_json();
-            j_it["name"] = it->get_name();
+            auto j_it = it.get().to_json();
+            j_it["name"] = it.get().get_name();
             is.push_back(std::move(j_it));
         }
         return std::make_unique<network::json_response>(std::move(is));
@@ -62,8 +62,8 @@ namespace coco
         json::json is(json::json_type::array);
         for (auto &it : llm.get_entities())
         {
-            auto j_it = it->to_json();
-            j_it["name"] = it->get_name();
+            auto j_it = it.get().to_json();
+            j_it["name"] = it.get().get_name();
             is.push_back(std::move(j_it));
         }
         return std::make_unique<network::json_response>(std::move(is));

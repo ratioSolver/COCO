@@ -1,11 +1,11 @@
 #pragma once
 
 #include "json.hpp"
-#include "memory.hpp"
 #include "clips.h"
 #include <chrono>
 #include <optional>
 #include <unordered_map>
+#include <memory>
 #include <mutex>
 #include <random>
 #include <typeindex>
@@ -59,7 +59,7 @@ namespace coco
       static_assert(std::is_base_of<coco_module, Tp>::value, "Extension must be derived from coco_module");
       if (auto it = modules.find(typeid(Tp)); it == modules.end())
       {
-        auto mod = utils::make_u_ptr<Tp>(std::forward<Args>(args)...);
+        auto mod = std::make_unique<Tp>(std::forward<Args>(args)...);
         auto &ref = *mod;
         modules.emplace(typeid(Tp), std::move(mod));
         return ref;
@@ -84,7 +84,7 @@ namespace coco
      *
      * @return A vector of types.
      */
-    [[nodiscard]] std::vector<utils::ref_wrapper<type>> get_types() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<type>> get_types() noexcept;
 
     /**
      * @brief Retrieves a type with the specified name.
@@ -96,8 +96,8 @@ namespace coco
      * @throws std::invalid_argument if the type does not exist.
      */
     [[nodiscard]] type &get_type(std::string_view name);
-    [[nodiscard]] type &create_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json(), bool infere = true) noexcept;
-    void set_parents(type &tp, std::vector<utils::ref_wrapper<const type>> &&parents, bool infere = true) noexcept;
+    [[nodiscard]] type &create_type(std::string_view name, std::vector<std::reference_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json(), bool infere = true) noexcept;
+    void set_parents(type &tp, std::vector<std::reference_wrapper<const type>> &&parents, bool infere = true) noexcept;
     void delete_type(type &tp, bool infere = true) noexcept;
 
     /**
@@ -107,7 +107,7 @@ namespace coco
      *
      * @return A vector of items.
      */
-    [[nodiscard]] std::vector<utils::ref_wrapper<item>> get_items() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<item>> get_items() noexcept;
 
     [[nodiscard]] item &get_item(std::string_view id);
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt, bool infere = true) noexcept;
@@ -116,20 +116,20 @@ namespace coco
     void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now(), bool infere = true);
     void delete_item(item &itm, bool infere = true) noexcept;
 
-    [[nodiscard]] std::vector<utils::ref_wrapper<reactive_rule>> get_reactive_rules() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<reactive_rule>> get_reactive_rules() noexcept;
     void create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
     [[nodiscard]] json::json to_json() noexcept;
 
   protected:
-    void add_property_type(utils::u_ptr<property_type> pt);
+    void add_property_type(std::unique_ptr<property_type> pt);
 
     [[nodiscard]] std::string to_string(Fact *f, std::size_t buff_size = 256) const noexcept;
 
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
-    type &make_type(std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
+    type &make_type(std::string_view name, std::vector<std::reference_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
 
     friend void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
@@ -175,16 +175,16 @@ namespace coco
 #endif
 
   protected:
-    coco_db &db;                                                                    // The database..
-    std::unordered_map<std::type_index, utils::u_ptr<coco_module>> modules;         // The modules..
-    json::json schemas;                                                             // The JSON schemas..
-    std::mt19937 gen;                                                               // The random number generator..
-    std::map<std::string, utils::u_ptr<property_type>, std::less<>> property_types; // The property types..
-    std::recursive_mutex mtx;                                                       // The mutex for the core..
-    Environment *env;                                                               // The CLIPS environment..
-    std::map<std::string, utils::u_ptr<type>, std::less<>> types;                   // The types managed by CoCo by name.
-    std::unordered_map<std::string, utils::u_ptr<item>> items;                      // The items by their ID..
-    std::map<std::string, utils::u_ptr<reactive_rule>, std::less<>> reactive_rules; // The reactive rules..
+    coco_db &db;                                                                       // The database..
+    std::unordered_map<std::type_index, std::unique_ptr<coco_module>> modules;         // The modules..
+    json::json schemas;                                                                // The JSON schemas..
+    std::mt19937 gen;                                                                  // The random number generator..
+    std::map<std::string, std::unique_ptr<property_type>, std::less<>> property_types; // The property types..
+    std::recursive_mutex mtx;                                                          // The mutex for the core..
+    Environment *env;                                                                  // The CLIPS environment..
+    std::map<std::string, std::unique_ptr<type>, std::less<>> types;                   // The types managed by CoCo by name.
+    std::unordered_map<std::string, std::unique_ptr<item>> items;                      // The items by their ID..
+    std::map<std::string, std::unique_ptr<reactive_rule>, std::less<>> reactive_rules; // The reactive rules..
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif

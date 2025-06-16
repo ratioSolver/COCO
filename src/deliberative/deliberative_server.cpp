@@ -14,8 +14,8 @@ namespace coco
         json::json is(json::json_type::array);
         for (auto &dr : cd.get_deliberative_rules())
         {
-            auto j_drs = dr->to_json();
-            j_drs["name"] = dr->get_name();
+            auto j_drs = dr.get().to_json();
+            j_drs["name"] = dr.get().get_name();
             is.push_back(std::move(j_drs));
         }
         return std::make_unique<network::json_response>(std::move(is));
@@ -82,11 +82,11 @@ namespace coco
         json::json j_msg = {{"msg_type", "flaw_position_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", f.get_id()}, {"position", f.get_position()}};
         srv.broadcast(std::move(j_msg));
     }
-    void deliberative_server::current_flaw(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::flaw>> f)
+    void deliberative_server::current_flaw(coco_executor &exec, std::optional<std::reference_wrapper<ratio::flaw>> f)
     {
         json::json j_msg = {{"msg_type", "current_flaw"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
         if (f)
-            j_msg["id"] = static_cast<uint64_t>(f.value()->get_id());
+            j_msg["id"] = static_cast<uint64_t>(f.value().get().get_id());
         srv.broadcast(std::move(j_msg));
     }
     void deliberative_server::resolver_created(coco_executor &exec, const ratio::resolver &r)
@@ -101,11 +101,11 @@ namespace coco
         json::json j_r = {{"msg_type", "resolver_state_changed"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"id", r.get_id()}, {"state", ratio::to_string(r.get_state())}};
         srv.broadcast(std::move(j_r));
     }
-    void deliberative_server::current_resolver(coco_executor &exec, std::optional<utils::ref_wrapper<ratio::resolver>> r)
+    void deliberative_server::current_resolver(coco_executor &exec, std::optional<std::reference_wrapper<ratio::resolver>> r)
     {
         json::json j_r = {{"msg_type", "current_resolver"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
         if (r)
-            j_r["id"] = static_cast<uint64_t>(r.value()->get_id());
+            j_r["id"] = static_cast<uint64_t>(r.value().get().get_id());
         srv.broadcast(std::move(j_r));
     }
     void deliberative_server::causal_link_added(coco_executor &exec, const ratio::flaw &f, const ratio::resolver &r)
@@ -124,39 +124,39 @@ namespace coco
         json::json j_msg = {{"msg_type", "tick"}, {"executor", static_cast<uint64_t>(exec.get_id())}, {"time", {{"num", time.numerator()}, {"den", time.denominator()}}}};
         srv.broadcast(std::move(j_msg));
     }
-    void deliberative_server::starting(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    void deliberative_server::starting(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms)
     {
         json::json j_msg = {{"msg_type", "starting"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
         json::json j_atms(json::json_type::array);
         for (auto &atm : atms)
-            j_atms.push_back(atm->to_json());
+            j_atms.push_back(atm.get().to_json());
         j_msg["atms"] = std::move(j_atms);
         srv.broadcast(std::move(j_msg));
     }
-    void deliberative_server::start(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    void deliberative_server::start(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms)
     {
         json::json j_msg = {{"msg_type", "start"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
         json::json j_atms(json::json_type::array);
         for (auto &atm : atms)
-            j_atms.push_back(atm->to_json());
+            j_atms.push_back(atm.get().to_json());
         j_msg["atms"] = std::move(j_atms);
         srv.broadcast(std::move(j_msg));
     }
-    void deliberative_server::ending(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    void deliberative_server::ending(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms)
     {
         json::json j_msg = {{"msg_type", "ending"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
         json::json j_atms(json::json_type::array);
         for (auto &atm : atms)
-            j_atms.push_back(atm->to_json());
+            j_atms.push_back(atm.get().to_json());
         j_msg["atms"] = std::move(j_atms);
         srv.broadcast(std::move(j_msg));
     }
-    void deliberative_server::end(coco_executor &exec, const std::vector<utils::ref_wrapper<riddle::atom_term>> &atms)
+    void deliberative_server::end(coco_executor &exec, const std::vector<std::reference_wrapper<riddle::atom_term>> &atms)
     {
         json::json j_msg = {{"msg_type", "end"}, {"executor", static_cast<uint64_t>(exec.get_id())}};
         json::json j_atms(json::json_type::array);
         for (auto &atm : atms)
-            j_atms.push_back(atm->to_json());
+            j_atms.push_back(atm.get().to_json());
         j_msg["atms"] = std::move(j_atms);
         srv.broadcast(std::move(j_msg));
     }

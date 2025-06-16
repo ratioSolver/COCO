@@ -37,21 +37,21 @@ namespace coco
         auto ints = db.get_intents();
         LOG_DEBUG("Retrieved " << ints.size() << " intents");
         for (const auto &c_intent : ints)
-            intents.emplace(c_intent.name, utils::make_u_ptr<intent>(c_intent.name, c_intent.description));
+            intents.emplace(c_intent.name, std::make_unique<intent>(c_intent.name, c_intent.description));
         auto ents = db.get_entities();
         LOG_DEBUG("Retrieved " << ents.size() << " entities");
         for (const auto &c_entity : ents)
-            entities.emplace(c_entity.name, utils::make_u_ptr<entity>(static_cast<data_type>(c_entity.type), c_entity.name, c_entity.description));
+            entities.emplace(c_entity.name, std::make_unique<entity>(static_cast<data_type>(c_entity.type), c_entity.name, c_entity.description));
         auto slts = db.get_slots();
         LOG_DEBUG("Retrieved " << slts.size() << " slots");
         for (const auto &c_slot : slts)
-            slots.emplace(c_slot.name, utils::make_u_ptr<slot>(static_cast<data_type>(c_slot.type), c_slot.name, c_slot.description, c_slot.influence_context));
+            slots.emplace(c_slot.name, std::make_unique<slot>(static_cast<data_type>(c_slot.type), c_slot.name, c_slot.description, c_slot.influence_context));
     }
 
-    std::vector<utils::ref_wrapper<intent>> coco_llm::get_intents() noexcept
+    std::vector<std::reference_wrapper<intent>> coco_llm::get_intents() noexcept
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        std::vector<utils::ref_wrapper<intent>> result;
+        std::vector<std::reference_wrapper<intent>> result;
         for (const auto &[name, intent] : intents)
             result.emplace_back(*intent);
         return result;
@@ -60,7 +60,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         get_coco().get_db().get_module<llm_db>().create_intent(name, description);
-        auto it = intents.emplace(name, utils::make_u_ptr<intent>(name, description));
+        auto it = intents.emplace(name, std::make_unique<intent>(name, description));
         if (!it.second)
             throw std::runtime_error("Intent already exists");
         else
@@ -69,10 +69,10 @@ namespace coco
             Run(get_env(), -1);
     }
 
-    std::vector<utils::ref_wrapper<entity>> coco_llm::get_entities() noexcept
+    std::vector<std::reference_wrapper<entity>> coco_llm::get_entities() noexcept
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        std::vector<utils::ref_wrapper<entity>> result;
+        std::vector<std::reference_wrapper<entity>> result;
         for (const auto &[name, entity] : entities)
             result.emplace_back(*entity);
         return result;
@@ -81,7 +81,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         get_coco().get_db().get_module<llm_db>().create_entity(type, name, description);
-        auto it = entities.emplace(name, utils::make_u_ptr<entity>(type, name, description));
+        auto it = entities.emplace(name, std::make_unique<entity>(type, name, description));
         if (!it.second)
             throw std::runtime_error("Entity already exists");
         else
@@ -90,10 +90,10 @@ namespace coco
             Run(get_env(), -1);
     }
 
-    std::vector<utils::ref_wrapper<slot>> coco_llm::get_slots() noexcept
+    std::vector<std::reference_wrapper<slot>> coco_llm::get_slots() noexcept
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
-        std::vector<utils::ref_wrapper<slot>> result;
+        std::vector<std::reference_wrapper<slot>> result;
         for (const auto &[name, slot] : slots)
             result.emplace_back(*slot);
         return result;
@@ -102,7 +102,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         get_coco().get_db().get_module<llm_db>().create_slot(type, name, description, influence_context);
-        auto it = slots.emplace(name, utils::make_u_ptr<slot>(type, name, description, influence_context));
+        auto it = slots.emplace(name, std::make_unique<slot>(type, name, description, influence_context));
         if (!it.second)
             throw std::runtime_error("Slot already exists");
         else

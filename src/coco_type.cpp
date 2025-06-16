@@ -14,7 +14,7 @@
 
 namespace coco
 {
-    type::type(coco &cc, std::string_view name, std::vector<utils::ref_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data))
+    type::type(coco &cc, std::string_view name, std::vector<std::reference_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data))
     {
         FactBuilder *type_fact_builder = CreateFactBuilder(cc.env, "type");
         FBPutSlotSymbol(type_fact_builder, "name", name.data());
@@ -38,9 +38,9 @@ namespace coco
         Retract(type_fact);
     }
 
-    const std::map<std::string, utils::ref_wrapper<const property>> type::get_all_static_properties() const noexcept
+    const std::map<std::string, std::reference_wrapper<const property>> type::get_all_static_properties() const noexcept
     {
-        std::map<std::string, utils::ref_wrapper<const property>> static_props;
+        std::map<std::string, std::reference_wrapper<const property>> static_props;
         std::queue<const type *> q;
         q.push(this);
 
@@ -53,14 +53,14 @@ namespace coco
                 static_props.emplace(p_name, *p);
 
             for (const auto &tp : t->parents)
-                q.push(&*tp.second);
+                q.push(&tp.second.get());
         }
         return static_props;
     }
 
-    const std::map<std::string, utils::ref_wrapper<const property>> type::get_all_dynamic_properties() const noexcept
+    const std::map<std::string, std::reference_wrapper<const property>> type::get_all_dynamic_properties() const noexcept
     {
-        std::map<std::string, utils::ref_wrapper<const property>> dynamic_props;
+        std::map<std::string, std::reference_wrapper<const property>> dynamic_props;
         std::queue<const type *> q;
         q.push(this);
 
@@ -73,12 +73,12 @@ namespace coco
                 dynamic_props.emplace(p_name, *p);
 
             for (const auto &tp : t->parents)
-                q.push(&*tp.second);
+                q.push(&tp.second.get());
         }
         return dynamic_props;
     }
 
-    void type::set_parents(std::vector<utils::ref_wrapper<const type>> &&parents) noexcept
+    void type::set_parents(std::vector<std::reference_wrapper<const type>> &&parents) noexcept
     {
         // we retract the current parent facts (if any)..
         for (auto &p : parent_facts)
@@ -89,19 +89,19 @@ namespace coco
         {
             FactBuilder *is_a_fact_builder = CreateFactBuilder(cc.env, "is_a");
             FBPutSlotSymbol(is_a_fact_builder, "type", name.c_str());
-            FBPutSlotSymbol(is_a_fact_builder, "parent", p->name.c_str());
+            FBPutSlotSymbol(is_a_fact_builder, "parent", p.get().name.c_str());
             auto parent_fact = FBAssert(is_a_fact_builder);
             assert(parent_fact);
             LOG_TRACE(cc.to_string(parent_fact));
             FBDispose(is_a_fact_builder);
-            this->parents.emplace(p->name, p);
-            parent_facts.emplace(p->name, parent_fact);
+            this->parents.emplace(p.get().name, p);
+            parent_facts.emplace(p.get().name, parent_fact);
         }
     }
 
-    std::vector<utils::ref_wrapper<item>> type::get_instances() const noexcept
+    std::vector<std::reference_wrapper<item>> type::get_instances() const noexcept
     {
-        std::vector<utils::ref_wrapper<item>> res;
+        std::vector<std::reference_wrapper<item>> res;
         for (const auto &id : instances)
             res.emplace_back(cc.get_item(id));
         return res;
@@ -109,7 +109,7 @@ namespace coco
 
     item &type::make_item(std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val)
     {
-        auto itm_ptr = utils::make_u_ptr<item>(*this, id, std::move(props), std::move(val));
+        auto itm_ptr = std::make_unique<item>(*this, id, std::move(props), std::move(val));
         auto &itm = *itm_ptr;
         if (!cc.items.emplace(id.data(), std::move(itm_ptr)).second)
             throw std::invalid_argument("item `" + std::string(id) + "` already exists");
@@ -126,7 +126,7 @@ namespace coco
         {
             json::json j_pars(json::json_type::array);
             for (const auto &p : parents)
-                j_pars.push_back(p.second->name.c_str());
+                j_pars.push_back(p.second.get().name.c_str());
             j["parents"] = j_pars;
         }
         if (!static_properties.empty())

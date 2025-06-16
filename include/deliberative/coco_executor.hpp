@@ -25,18 +25,18 @@ namespace coco
     void flaw_state_changed(const ratio::flaw &) override;
     void flaw_cost_changed(const ratio::flaw &) override;
     void flaw_position_changed(const ratio::flaw &) override;
-    void current_flaw(std::optional<utils::ref_wrapper<ratio::flaw>>) override;
+    void current_flaw(std::optional<std::reference_wrapper<ratio::flaw>>) override;
     void resolver_created(const ratio::resolver &) override;
     void resolver_state_changed(const ratio::resolver &) override;
-    void current_resolver(std::optional<utils::ref_wrapper<ratio::resolver>>) override;
+    void current_resolver(std::optional<std::reference_wrapper<ratio::resolver>>) override;
     void causal_link_added(const ratio::flaw &, const ratio::resolver &) override;
 
     void executor_state_changed(ratio::executor::executor_state) override;
     void tick(const utils::rational &) override;
-    void starting(const std::vector<utils::ref_wrapper<riddle::atom_term>> &) override;
-    void start(const std::vector<utils::ref_wrapper<riddle::atom_term>> &) override;
-    void ending(const std::vector<utils::ref_wrapper<riddle::atom_term>> &) override;
-    void end(const std::vector<utils::ref_wrapper<riddle::atom_term>> &) override;
+    void starting(const std::vector<std::reference_wrapper<riddle::atom_term>> &) override;
+    void start(const std::vector<std::reference_wrapper<riddle::atom_term>> &) override;
+    void ending(const std::vector<std::reference_wrapper<riddle::atom_term>> &) override;
+    void end(const std::vector<std::reference_wrapper<riddle::atom_term>> &) override;
 #endif
 
   private:

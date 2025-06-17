@@ -3,7 +3,7 @@ import { coco, Offcanvas } from '@ratiosolver/coco';
 import { Offcanvas as BootstrapOffcanvas } from 'bootstrap';
 import './styles.css'
 
-Settings.get_instance().load_settings({ protocol: 'http', hostname: location.host, port: 8080, ws_path: 'coco' });
+Settings.get_instance().load_settings({ ws_path: '/coco' });
 
 const offcanvas_id = 'coco-offcanvas';
 

@@ -19,6 +19,7 @@ namespace coco
 
   protected:
     [[nodiscard]] coco &get_coco() noexcept;
+    [[nodiscard]] const coco &get_coco() const noexcept;
 
     [[nodiscard]] std::recursive_mutex &get_mtx() const;
     [[nodiscard]] Environment *get_env() const;

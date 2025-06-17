@@ -65,7 +65,7 @@ if(BUILD_MONGODB)
 
     if(BUILD_AUTH)
         set(MONGODB_USERS_HOST "localhost" CACHE STRING "The MongoDB Users Host")
-        set(MONGODB_USERS_PORT "27018" CACHE STRING "The MongoDB Users Port")
+        set(MONGODB_USERS_PORT "27017" CACHE STRING "The MongoDB Users Port")
 
         message(STATUS "MongoDB users host: ${MONGODB_USERS_HOST}")
         message(STATUS "MongoDB users port: ${MONGODB_USERS_PORT}")

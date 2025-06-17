@@ -13,8 +13,10 @@ namespace coco
   public:
     coco_auth(coco &cc) noexcept;
 
+    [[nodiscard]] bool is_valid_token(std::string_view token) const noexcept;
     [[nodiscard]] std::string get_token(std::string_view username, std::string_view password);
 
+    [[nodiscard]] std::vector<std::reference_wrapper<item>> get_users() noexcept;
     [[nodiscard]] item &create_user(std::string_view username, std::string_view password, json::json &&personal_data = {});
   };
 
@@ -25,6 +27,7 @@ namespace coco
 
   private:
     std::unique_ptr<network::response> login(const network::request &req);
+    std::unique_ptr<network::response> get_users(const network::request &req);
     std::unique_ptr<network::response> create_user(const network::request &req);
 
   private:
@@ -37,6 +40,6 @@ namespace coco
 
   private:
     std::mutex mtx;
-    std::unordered_set<network::ws_server_session_base *> clients;
+    std::unordered_map<network::ws_server_session_base *, std::string> clients;
   };
 } // namespace coco

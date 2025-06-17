@@ -6,10 +6,16 @@
 namespace coco
 {
     db_module::db_module(coco_db &db) noexcept : db(db) {}
+    void db_module::drop() noexcept {}
 
     coco_db::coco_db(json::json &&config) noexcept : config(std::move(config)) {}
 
-    void coco_db::drop() noexcept {}
+    void coco_db::drop() noexcept
+    {
+        LOG_WARN("Dropping database..");
+        for (auto &[_, mod] : modules)
+            mod->drop();
+    }
 
     std::vector<db_type> coco_db::get_types() noexcept
     {

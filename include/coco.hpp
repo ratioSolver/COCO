@@ -52,6 +52,7 @@ namespace coco
     ~coco();
 
     [[nodiscard]] coco_db &get_db() noexcept { return db; }
+    [[nodiscard]] const coco_db &get_db() const noexcept { return db; }
 
     template <typename Tp, typename... Args>
     Tp &add_module(Args &&...args)
@@ -109,6 +110,25 @@ namespace coco
      */
     [[nodiscard]] std::vector<std::reference_wrapper<item>> get_items() noexcept;
 
+    /**
+     * @brief Retrieves all items of a specific type.
+     *
+     * This function retrieves all items that belong to the specified type.
+     *
+     * @param tp The type of the items to retrieve.
+     * @return A vector of references to the items of the specified type.
+     */
+    [[nodiscard]] std::vector<std::reference_wrapper<item>> get_items(const type &tp) noexcept;
+
+    /**
+     * @brief Retrieves an item with the specified ID.
+     *
+     * This function retrieves the item with the specified ID.
+     *
+     * @param id The ID of the item.
+     * @return A reference to the item.
+     * @throws std::invalid_argument if the item does not exist.
+     */
     [[nodiscard]] item &get_item(std::string_view id);
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt, bool infere = true) noexcept;
     void set_properties(item &itm, json::json &&props, bool infere = true) noexcept;

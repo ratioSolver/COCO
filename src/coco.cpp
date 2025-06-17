@@ -148,6 +148,16 @@ namespace coco
         return res;
     }
 
+    std::vector<std::reference_wrapper<item>> coco::get_items(const type &tp) noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        std::vector<std::reference_wrapper<item>> res;
+        res.reserve(tp.get_instances().size());
+        for (auto &i : tp.get_instances())
+            res.push_back(i);
+        return res;
+    }
+
     item &coco::get_item(std::string_view id)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);

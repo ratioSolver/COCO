@@ -16,16 +16,27 @@ namespace coco
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
             LOG_DEBUG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
 
+        assert(db);
+        assert(types_collection);
+        assert(items_collection);
+        assert(item_data_collection);
+        assert(reactive_rules_collection);
+
         if (item_data_collection.list_indexes().begin() == item_data_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for item data collection");
             item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
+        if (reactive_rules_collection.list_indexes().begin() == reactive_rules_collection.list_indexes().end())
+        {
+            LOG_DEBUG("Creating indexes for reactive rules collection");
+            reactive_rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
+        }
     }
 
     void mongo_db::drop() noexcept
     {
-        LOG_WARN("Dropping database..");
+        coco_db::drop();
         db.drop();
     }
 

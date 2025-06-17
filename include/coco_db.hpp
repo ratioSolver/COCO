@@ -32,9 +32,14 @@ namespace coco
 
   class db_module
   {
+    friend class coco_db;
+
   public:
     db_module(coco_db &db) noexcept;
     virtual ~db_module() = default;
+
+  private:
+    virtual void drop() noexcept;
 
   protected:
     coco_db &db;

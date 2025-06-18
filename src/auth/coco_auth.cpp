@@ -161,6 +161,14 @@ namespace coco
 
                 clients.at(&ws) = token;
 
+                // Send user data
+                auto usr = get_coco().get_db().get_module<auth_db>().get_user(token);
+                json::json resp{{"msg_type", "login"}};
+                if (usr.personal_data.size())
+                    resp["personal_data"] = usr.personal_data;
+                ws.send(resp.dump());
+
+                // Send current state
                 auto jc = get_coco().to_json();
                 jc["msg_type"] = "coco";
                 ws.send(jc.dump());

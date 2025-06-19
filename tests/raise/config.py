@@ -17,7 +17,7 @@ fake = Faker('it_IT')
 
 def create_types(session: requests.Session, url: str):
     # Create the user type..
-    response = session.post(url + '/type', json={
+    response = session.post(url + '/types', json={
         'name': 'User',
         'static_properties': {
             'name': {'type': 'string'},

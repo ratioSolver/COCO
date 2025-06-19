@@ -22,6 +22,8 @@ endif()
 
 if(BUILD_AUTH)
     set(BUILD_COCO_SERVER ON CACHE BOOL "Build the CoCo server" FORCE)
+    set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
+    set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
 endif()
 
 message(STATUS "CoCo name: ${COCO_NAME}")
@@ -31,10 +33,6 @@ message(STATUS "Build MQTT middleware: ${BUILD_MQTT}")
 message(STATUS "Build CoCo deliberative: ${BUILD_DELIBERATIVE}")
 message(STATUS "Build CoCo LLM: ${BUILD_LLM}")
 message(STATUS "Build CoCo authentication: ${BUILD_AUTH}")
-
-if(BUILD_AUTH)
-    set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
-endif()
 
 add_library(CoCo src/coco.cpp src/coco_module.cpp src/coco_property.cpp src/coco_type.cpp src/coco_item.cpp src/coco_db.cpp)
 target_compile_features(CoCo PUBLIC cxx_std_17)
@@ -89,8 +87,6 @@ if(BUILD_COCO_SERVER)
     target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_SERVER CLIENT_DIR="${CLIENT_DIR}")
 
     if(BUILD_AUTH)
-        set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
-
         target_sources(CoCo PRIVATE src/auth/coco_auth.cpp src/auth/auth_db.cpp)
         target_compile_definitions(CoCo PUBLIC BUILD_AUTH)
     else()

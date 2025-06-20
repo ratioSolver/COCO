@@ -121,12 +121,12 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
       if (static_props)
         for (const [name, prop] of static_props)
           if (prop instanceof coco.taxonomy.ItemProperty)
-            this.cy!.add({ group: 'edges', data: { id: `sp-${tp.get_name()}-${prop.get_domain().get_name()}`, type: 'static_property', name: name, source: tp.get_name(), target: prop.get_domain().get_name() } });
+            this.cy!.add({ group: 'edges', data: { id: `sp-${tp.get_name()}-${name}-${prop.get_domain().get_name()}`, type: 'static_property', name: name, source: tp.get_name(), target: prop.get_domain().get_name() } });
       const dynamic_props = tp.get_dynamic_properties();
       if (dynamic_props)
         for (const [name, prop] of dynamic_props)
           if (prop instanceof coco.taxonomy.ItemProperty)
-            this.cy!.add({ group: 'edges', data: { id: `dp-${tp.get_name()}-${prop.get_domain().get_name()}`, type: 'dynamic_property', name: name, source: tp.get_name(), target: prop.get_domain().get_name() } });
+            this.cy!.add({ group: 'edges', data: { id: `dp-${tp.get_name()}-${name}-${prop.get_domain().get_name()}`, type: 'dynamic_property', name: name, source: tp.get_name(), target: prop.get_domain().get_name() } });
     }
 
     this.cy.layout(this.layout).run();
@@ -160,7 +160,7 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
     if (static_props)
       for (const [name, prop] of static_props)
         if (prop instanceof coco.taxonomy.ItemProperty)
-          this.cy!.add({ group: 'edges', data: { id: `sp-${type.get_name()}-${prop.get_domain().get_name()}`, type: 'static_property', name: name, source: type.get_name(), target: prop.get_domain().get_name() } });
+          this.cy!.add({ group: 'edges', data: { id: `sp-${type.get_name()}-${name}-${prop.get_domain().get_name()}`, type: 'static_property', name: name, source: type.get_name(), target: prop.get_domain().get_name() } });
   }
   dynamic_properties_updated(type: coco.taxonomy.Type): void {
     this.cy!.elements(`edge[id ^= "dp-${type.get_name()}"]`).remove();
@@ -168,7 +168,7 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
     if (dynamic_props)
       for (const [name, prop] of dynamic_props)
         if (prop instanceof coco.taxonomy.ItemProperty)
-          this.cy!.add({ group: 'edges', data: { id: `dp-${type.get_name()}-${prop.get_domain().get_name()}`, type: 'dynamic_property', name: name, source: type.get_name(), target: prop.get_domain().get_name() } });
+          this.cy!.add({ group: 'edges', data: { id: `dp-${type.get_name()}-${name}-${prop.get_domain().get_name()}`, type: 'dynamic_property', name: name, source: type.get_name(), target: prop.get_domain().get_name() } });
   }
 
   new_item(_: coco.taxonomy.Item): void { }

@@ -203,7 +203,7 @@ namespace coco
         {
             json::json props = body.contains("properties") ? body["properties"] : json::json();
             auto &itm = get_coco().create_item(*tp, std::move(props));
-            return std::make_unique<network::string_response>(std::string(itm.get_id()));
+            return std::make_unique<network::string_response>(std::string(itm.get_id()), network::status_code::created);
         }
         catch (const std::exception &e)
         {

@@ -206,7 +206,7 @@ def create_items(session: requests.Session, url: str) -> list[str]:
     for _ in range(10):
         first_name = fake.first_name()
 
-        response = session.post(url + '/item', json={
+        response = session.post(url + '/items', json={
             'type': 'User',
             'properties': {
                 'name': first_name,

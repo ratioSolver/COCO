@@ -94,7 +94,8 @@ namespace coco
             if (multiple)
                 for (const auto &v : j["default"].as_array())
                     def_v.emplace_back(static_cast<std::string>(v));
-            def_v.emplace_back(static_cast<std::string>(j["default"]));
+            else
+                def_v.emplace_back(static_cast<std::string>(j["default"]));
             default_value = std::move(def_v);
         }
         return std::make_unique<symbol_property>(*this, tp, dynamic, name, multiple, std::move(values), default_value);

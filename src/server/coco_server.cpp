@@ -36,6 +36,88 @@ namespace coco
 
         add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, network::placeholders::request));
         add_route(network::Post, "^/reactive_rules$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
+
+        add_route(network::Get, "^/openapi\\.json$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
+
+        json::json schemas{{"property",
+                            {{"oneOf", std::vector<json::json>{{"$ref", "#/components/schemas/int_property"}, {"$ref", "#/components/schemas/float_property"}, {"$ref", "#/components/schemas/string_property"}, {"$ref", "#/components/schemas/symbol_property"}, {"$ref", "#/components/schemas/item_property"}, {"$ref", "#/components/schemas/json_property"}}}}},
+                           {"int_property",
+                            {{"type", "object"},
+                             {"properties",
+                              {{"type", {{"type", "string"}, {"enum", {"int"}}}},
+                               {"default", {{"type", "integer"}}},
+                               {"min", {{"type", "integer"}}},
+                               {"max", {{"type", "integer"}}}}},
+                             {"required", std::vector<json::json>{"type"}}}},
+                           {"float_property",
+                            {{"type", "object"},
+                             {"properties",
+                              {{"type", {{"type", "string"}, {"enum", {"float"}}}},
+                               {"default", {{"type", "number"}}},
+                               {"min", {{"type", "number"}}},
+                               {"max", {{"type", "number"}}}}},
+                             {"required", std::vector<json::json>{"type"}}}},
+                           {"string_property",
+                            {{"type", "object"},
+                             {"properties",
+                              {{"type", {{"type", "string"}, {"enum", {"string"}}}},
+                               {"default", {{"type", "string"}}}}},
+                             {"required", std::vector<json::json>{"type"}}}},
+                           {"symbol_property",
+                            {{"type", "object"},
+                             {"properties",
+                              {{"type", {{"type", "string"}, {"enum", {"symbol"}}}},
+                               {"values", {{"type", "array"}, {"items", {{"type", "string"}}}}},
+                               {"multiple", {{"type", "boolean"}}},
+                               {"default", {{"oneOf", std::vector<json::json>{{{"type", "string"}}, {{"type", "array"}, {"items", {{"type", "string"}}}}}}}}}},
+                             {"required", std::vector<json::json>{"type"}}}},
+                           {"item_property",
+                            {{"type", "object"},
+                             {"properties",
+                              {{"type", {{"type", "string"}, {"enum", {"item"}}}},
+                               {"domain", {{"type", "string"}, {"format", "uuid"}}},
+                               {"values", {{"type", "array"}, {"items", {{"type", "string"}}}}},
+                               {"multiple", {{"type", "boolean"}}},
+                               {"default", {{"oneOf", std::vector<json::json>{{{"type", "string"}, {"format", "uuid"}}, {{"type", "array"}, {"items", {{"type", "string"}, {"format", "uuid"}}}}}}}}}},
+                             {"required", std::vector<json::json>{"type", "type_id"}}}},
+                           {"json_property",
+                            {{"type", "object"},
+                             {"properties",
+                              {{"type", {{"type", "string"}, {"enum", {"json"}}}},
+                               {"schema", {{"type", "object"}}},
+                               {"default", {{"type", "object"}}}}},
+                             {"required", std::vector<json::json>{"type", "schema"}}}},
+                           {"type",
+                            {{"type", "object"},
+                             {"description", "A " COCO_NAME " type is a collection of static and dynamic properties that define the structure and behavior of items."},
+                             {"properties",
+                              {{"name", {{"type", "string"}}},
+                               {"parents", {{"type", "array"}, {"items", {{"type", "string"}}}}},
+                               {"static_properties", {{"type", "array"}, {"items", {"$ref", "#/components/schemas/property"}}}},
+                               {"dynamic_properties", {{"type", "array"}, {"items", {"$ref", "#/components/schemas/property"}}}},
+                               {"data", {{"type", "object"}}}}},
+                             {"required", {"name"}}}},
+                           {"item",
+                            {{"type", "object"},
+                             {"description", "An item is an instance of a type, which can have static properties and dynamic data."},
+                             {"properties",
+                              {{"id", {{"type", "string"}, {"format", "uuid"}}},
+                               {"type", {{"type", "string"}}},
+                               {"properties", {{"type", "object"}, {"description", "Static properties of the item defined by its type."}}}}}}},
+                           {"data",
+                            {{"type", "object"},
+                             {"properties",
+                              {{"data", {{"type", "object"}}}}}}}};
+
+        openapi_spec = json::json({{"openapi", "3.1.0"},
+                                   {"info",
+                                    {{"title", COCO_NAME " Server API"},
+                                     {"version", "1.0.0"},
+                                     {"description", "API for the " COCO_NAME " server."}}},
+                                   {"components",
+                                    {{"schemas", schemas}}},
+                                   {"paths", {}}});
+        LOG_DEBUG(openapi_spec.dump());
     }
 
     void coco_server::broadcast(json::json &&msg)
@@ -359,4 +441,6 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
         }
     }
+
+    std::unique_ptr<network::response> coco_server::get_openapi_spec(const network::request &) { return std::make_unique<network::json_response>(openapi_spec); }
 } // namespace coco

@@ -1,6 +1,6 @@
 {
   "name": "@ratiosolver/coco",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,6 +20,7 @@
     "@types/d3-scale": "^4.0.9",
     "@types/d3-scale-chromatic": "^3.1.0",
     "@types/plotly.js-dist-min": "^2.3.4",
+    "@types/swagger-ui": "^5.21.1",
     "typescript": "~5.8.3"
   },
   "peerDependencies": {
@@ -36,6 +37,7 @@
     "cytoscape-popper": "^4.0.1",
     "d3-scale": "^4.0.2",
     "d3-scale-chromatic": "^3.1.0",
-    "plotly.js-dist-min": "^2.34.0"
+    "plotly.js-dist-min": "^2.34.0",
+    "swagger-ui": "^5.25.2"
   }
 }

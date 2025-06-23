@@ -71,7 +71,7 @@ export class AsyncElement extends Component<void, HTMLLIElement> implements Sele
 
   select(): void {
     this.a.classList.add('active');
-    App.get_instance().selected_component(new APIComponent(Settings.get_instance().get_host() + '/async'));
+    App.get_instance().selected_component(new APIComponent(Settings.get_instance().get_host() + '/asyncapi'));
   }
   unselect(): void { this.a.classList.remove('active'); }
 }

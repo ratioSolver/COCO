@@ -101,11 +101,13 @@ namespace coco
     std::unique_ptr<network::response> create_deliberative_rule(const network::request &req);
 
     std::unique_ptr<network::response> get_openapi_spec(const network::request &req);
+    std::unique_ptr<network::response> get_asyncapi_spec(const network::request &req);
 
   private:
     std::map<std::type_index, std::unique_ptr<server_module>> modules; // the server modules
 
   protected:
-    json::json openapi_spec; // OpenAPI specification for the server
+    json::json openapi_spec;  // OpenAPI specification for the server
+    json::json asyncapi_spec; // AsyncAPI specification for the server
   };
 } // namespace coco

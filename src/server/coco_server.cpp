@@ -37,7 +37,8 @@ namespace coco
         add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, network::placeholders::request));
         add_route(network::Post, "^/reactive_rules$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
 
-        add_route(network::Get, "^/openapi\\.json$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
+        add_route(network::Get, "^/openapi$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
+        add_route(network::Get, "^/asyncapi$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
 
         json::json schemas{{"property",
                             {{"oneOf", std::vector<json::json>{{"$ref", "#/components/schemas/int_property"}, {"$ref", "#/components/schemas/float_property"}, {"$ref", "#/components/schemas/string_property"}, {"$ref", "#/components/schemas/symbol_property"}, {"$ref", "#/components/schemas/item_property"}, {"$ref", "#/components/schemas/json_property"}}}}},
@@ -118,6 +119,16 @@ namespace coco
                                     {{"schemas", schemas}}},
                                    {"paths", {}}});
         LOG_DEBUG(openapi_spec.dump());
+
+        asyncapi_spec = json::json({{"asyncapi", "3.0.0"},
+                                    {"info",
+                                     {{"title", COCO_NAME " Server API"},
+                                      {"version", "1.0.0"},
+                                      {"description", "API for the " COCO_NAME " server."}}},
+                                    {"channels", {}},
+                                    {"components",
+                                     {{"schemas", schemas}}}});
+        LOG_DEBUG(asyncapi_spec.dump());
     }
 
     void coco_server::broadcast(json::json &&msg)
@@ -443,4 +454,5 @@ namespace coco
     }
 
     std::unique_ptr<network::response> coco_server::get_openapi_spec(const network::request &) { return std::make_unique<network::json_response>(openapi_spec); }
+    std::unique_ptr<network::response> coco_server::get_asyncapi_spec(const network::request &) { return std::make_unique<network::json_response>(asyncapi_spec); }
 } // namespace coco

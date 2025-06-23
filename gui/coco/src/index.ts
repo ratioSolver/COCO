@@ -21,10 +21,8 @@ import {
   limitShift
 } from '@floating-ui/dom';
 
-// // @ts-ignore
-// import cytoscapePopper from 'cytoscape-popper';
-
 export { coco } from './coco/coco';
+export { APIElement } from './coco/components/api';
 export { Offcanvas } from './coco/components/offcanvas';
 export { TaxonomyGraph } from './coco/components/taxonomy';
 export { TypeElement, TypeList, Type } from './coco/components/type'

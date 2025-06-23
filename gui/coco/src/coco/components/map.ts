@@ -8,8 +8,8 @@ library.add(faMap);
 
 export class MapElement extends UListElement<void> implements Selector {
 
-  constructor(group: SelectorGroup) {
-    super(group, undefined, icon(faMap).node[0], 'Map', () => new MapComponent());
+  constructor(group: SelectorGroup, map_factory: () => MapComponent = () => new MapComponent()) {
+    super(group, undefined, icon(faMap).node[0], 'Map', map_factory);
   }
 }
 

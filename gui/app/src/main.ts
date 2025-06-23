@@ -13,7 +13,7 @@ class CoCoApp extends AppComponent {
     super();
 
     // Create and add brand element
-    this.navbar.add_child(new BrandComponent('CoCo', 'favicon.ico', offcanvas_id));
+    this.navbar.add_child(new BrandComponent('CoCo', 'favicon.ico', 32, 32, offcanvas_id));
 
     this.add_child(new Offcanvas(offcanvas_id));
 

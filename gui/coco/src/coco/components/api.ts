@@ -22,7 +22,7 @@ export class APIElement extends Component<void, HTMLLIElement> implements Select
     const icn = icon(faFileCode).node[0];
     icn.classList.add('me-2');
     this.a.append(icn);
-    this.a.append(document.createTextNode('Taxonomy'));
+    this.a.append(document.createTextNode('OpenAPI'));
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
       group.set_selected(this);
@@ -57,7 +57,7 @@ export class AsyncElement extends Component<void, HTMLLIElement> implements Sele
     const icn = icon(faRightLeft).node[0];
     icn.classList.add('me-2');
     this.a.append(icn);
-    this.a.append(document.createTextNode('Taxonomy'));
+    this.a.append(document.createTextNode('AsyncAPI'));
     this.a.addEventListener('click', (event) => {
       event.preventDefault();
       group.set_selected(this);

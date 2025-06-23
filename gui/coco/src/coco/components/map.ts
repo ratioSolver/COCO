@@ -1,46 +1,16 @@
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
-import { App, Component, Selector, SelectorGroup } from '@ratiosolver/flick';
+import { Component, Selector, SelectorGroup, UListElement } from '@ratiosolver/flick';
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faMap } from '@fortawesome/free-solid-svg-icons'
 
 library.add(faMap);
 
-export class MapElement extends Component<void, HTMLLIElement> implements Selector {
+export class MapElement extends UListElement<void> implements Selector {
 
-  private group: SelectorGroup;
-  private a: HTMLAnchorElement;
-  private map_factory: () => MapComponent;
-
-  constructor(group: SelectorGroup, map_factory: () => MapComponent = () => new MapComponent()) {
-    super(undefined, document.createElement('li'));
-    this.group = group;
-    this.map_factory = map_factory;
-    this.element.classList.add('nav-item', 'list-group-item');
-
-    this.a = document.createElement('a');
-    this.a.classList.add('nav-link', 'd-flex', 'align-items-center');
-    this.a.href = '#';
-    const icn = icon(faMap).node[0];
-    icn.classList.add('me-2');
-    this.a.append(icn);
-    this.a.append(document.createTextNode('OpenAPI'));
-    this.a.addEventListener('click', (event) => {
-      event.preventDefault();
-      group.set_selected(this);
-    });
-
-    this.element.append(this.a);
-    group.add_selector(this);
+  constructor(group: SelectorGroup) {
+    super(group, undefined, icon(faMap).node[0], 'Map', () => new MapComponent());
   }
-
-  override unmounting(): void { this.group.remove_selector(this); }
-
-  select(): void {
-    this.a.classList.add('active');
-    App.get_instance().selected_component(this.map_factory());
-  }
-  unselect(): void { this.a.classList.remove('active'); }
 }
 
 export interface Layer {
@@ -59,15 +29,13 @@ export class MapLayer<P = any> implements Layer {
 
 export class MapComponent extends Component<void, HTMLDivElement> {
 
-  private map: L.Map | undefined;
+  protected map: L.Map | undefined;
 
   constructor() {
     super(undefined, document.createElement('div'));
     this.element.style.width = '100%';
     this.element.style.height = '100%';
   }
-
-  get_map(): L.Map { return this.map!; }
 
   override mounted(): void {
     this.map = L.map(this.element);

@@ -1,4 +1,4 @@
-import { Component, UListComponent, Selector, SelectorGroup, App } from "@ratiosolver/flick";
+import { Component, UListComponent, SelectorGroup, UListElement } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
@@ -8,39 +8,11 @@ import { ItemPublisher } from "./item_publisher";
 
 library.add(faCopy, faTag);
 
-export class ItemElement extends Component<coco.taxonomy.Item, HTMLLIElement> implements Selector {
-
-  private group: SelectorGroup;
-  private a: HTMLAnchorElement;
+export class ItemElement extends UListElement<coco.taxonomy.Item> {
 
   constructor(group: SelectorGroup, item: coco.taxonomy.Item) {
-    super(item, document.createElement('li'));
-    this.group = group;
-    this.element.classList.add('nav-item', 'list-group-item');
-
-    this.a = document.createElement('a');
-    this.a.classList.add('nav-link', 'd-flex', 'align-items-center');
-    this.a.href = '#';
-    const icn = icon(faTag).node[0];
-    icn.classList.add('me-2');
-    this.a.append(icn);
-    this.a.append(document.createTextNode(item.to_string()));
-    this.a.addEventListener('click', (event) => {
-      event.preventDefault();
-      group.set_selected(this);
-    });
-
-    this.element.append(this.a);
-    group.add_selector(this);
+    super(group, item, icon(faTag).node[0], item.to_string(), () => new Item(item));
   }
-
-  override unmounting(): void { this.group.remove_selector(this); }
-
-  select(): void {
-    this.a.classList.add('active');
-    App.get_instance().selected_component(new Item(this.payload));
-  }
-  unselect(): void { this.a.classList.remove('active'); }
 }
 
 export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco.CoCoListener {

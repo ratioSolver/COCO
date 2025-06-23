@@ -1,48 +1,26 @@
-import { Component, UListComponent, Selector, SelectorGroup, App } from "@ratiosolver/flick";
+import { Component, UListComponent, SelectorGroup, UListElement } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faCube } from '@fortawesome/free-solid-svg-icons'
 
 library.add(faCopy, faCube);
 
-export class TypeElement extends Component<coco.taxonomy.Type, HTMLLIElement> implements coco.taxonomy.TypeListener, Selector {
-
-  private group: SelectorGroup;
-  private a: HTMLAnchorElement;
+export class TypeElement extends UListElement<coco.taxonomy.Type> implements coco.taxonomy.TypeListener {
 
   constructor(group: SelectorGroup, type: coco.taxonomy.Type) {
-    super(type, document.createElement('li'));
-    this.group = group;
-    this.element.classList.add('nav-item', 'list-group-item');
-
-    this.a = document.createElement('a');
-    this.a.classList.add('nav-link', 'd-flex', 'align-items-center');
-    this.a.href = '#';
-    const icn = icon(faCube).node[0];
-    icn.classList.add('me-2');
-    this.a.append(icn);
-    this.a.append(document.createTextNode(type.get_name()));
-    this.a.addEventListener('click', (event) => {
-      event.preventDefault();
-      group.set_selected(this);
-    });
-
-    this.element.append(this.a);
-    group.add_selector(this);
+    super(group, type, icon(faCube).node[0], type.get_name(), () => new Type(type));
+    this.payload.add_type_listener(this);
   }
-
-  override unmounting(): void { this.group.remove_selector(this); }
 
   parents_updated(_: coco.taxonomy.Type): void { }
   data_updated(_: coco.taxonomy.Type): void { }
   static_properties_updated(_: coco.taxonomy.Type): void { }
   dynamic_properties_updated(_: coco.taxonomy.Type): void { }
 
-  select(): void {
-    this.a.classList.add('active');
-    App.get_instance().selected_component(new Type(this.payload));
+  override unmounting(): void {
+    super.unmounting();
+    this.payload.remove_type_listener(this);
   }
-  unselect(): void { this.a.classList.remove('active'); }
 }
 
 export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco.CoCoListener {

@@ -41,6 +41,7 @@ namespace coco
     friend class coco_module;
     friend class type;
     friend class item;
+    friend class property_type;
     friend class property;
     friend class reactive_rule;
 #ifdef BUILD_LISTENERS

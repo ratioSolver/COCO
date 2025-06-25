@@ -629,7 +629,7 @@ export namespace coco {
       }
       _set_slots(slots?: Record<string, unknown>): void {
         this.slots = slots;
-        for (const l of this.listeners) l.values_updated(this);
+        for (const l of this.listeners) l.slots_updated(this);
       }
 
       add_item_listener(l: ItemListener): void { this.listeners.add(l); }

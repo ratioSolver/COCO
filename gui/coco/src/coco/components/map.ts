@@ -526,6 +526,19 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
   }
 }
 
+export function is_type_located(type: coco.taxonomy.Type): boolean {
+  const data = type.get_data();
+  if (data && 'location' in data)
+    return true;
+  const static_props = type.get_all_static_properties();
+  if (static_props && 'location' in static_props)
+    return true;
+  const dynamic_props = type.get_all_dynamic_properties();
+  if (dynamic_props && 'lat' in dynamic_props && 'lng' in dynamic_props)
+    return true;
+  return false;
+}
+
 function is_static_located(item: coco.taxonomy.Item): boolean {
   const props = item.get_properties();
   return !!(props && 'location' in props);

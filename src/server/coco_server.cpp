@@ -239,7 +239,7 @@ namespace coco
             data = std::move(body["data"]);
 
         [[maybe_unused]] auto &tp = get_coco().create_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
-        return std::make_unique<network::response>(network::status_code::no_content);
+        return std::make_unique<network::response>(network::status_code::created);
     }
     std::unique_ptr<network::response> coco_server::delete_type(const network::request &req)
     {
@@ -448,7 +448,7 @@ namespace coco
         try
         {
             get_coco().create_reactive_rule(name, content);
-            return std::make_unique<network::response>(network::status_code::no_content);
+            return std::make_unique<network::response>(network::status_code::created);
         }
         catch (const std::exception &e)
         {

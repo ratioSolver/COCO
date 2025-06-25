@@ -154,7 +154,7 @@ export class CircleLayer<P> extends MapLayer<P> {
 
     for (const el of els) {
       const circle = L.circleMarker<P>(this.latlng_factory(el), {
-        radius: this.radius_factory ? this.radius_factory(el) : 10,
+        radius: this.radius_factory ? this.radius_factory(el) : 5,
         color: this.color_factory ? this.color_factory(el) : '#3388ff',
       });
 
@@ -349,11 +349,23 @@ export class ItemCircleLayer extends CircleLayer<coco.taxonomy.Item> implements 
   constructor(type: coco.taxonomy.Type) {
     super(latlng_factory, Array.from(type.get_instances()).filter(is_static_located));
     this.type = type;
+
     const data = type.get_data();
     if (data && 'radius' in data)
       this.set_radius_factory(() => data.radius);
     if (data && 'color' in data)
       this.set_color_factory(() => data.color);
+    const static_props = type.get_all_static_properties();
+    if (static_props && 'radius' in static_props)
+      this.set_radius_factory((item: coco.taxonomy.Item) => item.get_properties()!.radius as number);
+    if (static_props && 'color' in static_props)
+      this.set_color_factory((item: coco.taxonomy.Item) => item.get_properties()!.color as string);
+    const dynamic_props = type.get_all_dynamic_properties();
+    if (dynamic_props && 'radius' in dynamic_props)
+      this.set_radius_factory((item: coco.taxonomy.Item) => item.get_datum()!.data.radius as number);
+    if (dynamic_props && 'color' in dynamic_props)
+      this.set_color_factory((item: coco.taxonomy.Item) => item.get_datum()!.data.color as string);
+
     this.set_popup_factory(popup_factory);
     for (const item of this.type.get_instances())
       if (is_static_located(item) || is_dynamic_located(item)) {
@@ -410,18 +422,35 @@ export class ItemCircleLayer extends CircleLayer<coco.taxonomy.Item> implements 
 export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco.CoCoListener, coco.taxonomy.ItemListener {
 
   private type: coco.taxonomy.Type;
-  private icon: L.Icon | null = null;
 
   constructor(type: coco.taxonomy.Type) {
     super(latlng_factory, Array.from(type.get_instances()).filter(is_static_located));
     this.type = type;
+
     const data = type.get_data();
     if (data && 'iconUrl' in data) {
-      this.icon = L.icon({ iconUrl: data.iconUrl });
+      const icon = L.icon({ iconUrl: data.iconUrl });
       if ('iconSize' in data)
-        this.icon.options.iconSize = [data.iconSize[0], data.iconSize[1]];
-      this.set_icon_factory(this.item_icon_factory);
+        icon.options.iconSize = [data.iconSize[0], data.iconSize[1]];
+      this.set_icon_factory(() => icon);
     }
+    const static_props = type.get_all_static_properties();
+    if (static_props && 'iconUrl' in static_props)
+      this.set_icon_factory((item: coco.taxonomy.Item) => {
+        const icon = L.icon({ iconUrl: item.get_properties()!.iconUrl as string });
+        if ('iconWidth' in item.get_properties()! && 'iconHeight' in item.get_properties()!)
+          icon.options.iconSize = [item.get_properties()!.iconWidth as number, item.get_properties()!.iconHeight as number];
+        return icon;
+      });
+    const dynamic_props = type.get_all_dynamic_properties();
+    if (dynamic_props && 'iconUrl' in dynamic_props)
+      this.set_icon_factory((item: coco.taxonomy.Item) => {
+        const icon = L.icon({ iconUrl: item.get_datum()!.data.iconUrl as string });
+        if ('iconWidth' in item.get_datum()!.data && 'iconHeight' in item.get_datum()!.data)
+          icon.options.iconSize = [item.get_datum()!.data.iconWidth as number, item.get_datum()!.data.iconHeight as number];
+        return icon;
+      });
+
     this.set_popup_factory(popup_factory);
     for (const item of this.type.get_instances())
       if (is_static_located(item) || is_dynamic_located(item)) {
@@ -474,7 +503,18 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
       item.remove_item_listener(this);
   }
 
-  private item_icon_factory(_item: coco.taxonomy.Item): L.Icon { return this.icon!; }
+  static is_icon_layer(type: coco.taxonomy.Type): boolean {
+    const data = type.get_data();
+    if (data && 'iconUrl' in data)
+      return true;
+    const static_props = type.get_all_static_properties();
+    if (static_props && 'iconUrl' in static_props)
+      return true;
+    const dynamic_props = type.get_all_dynamic_properties();
+    if (dynamic_props && 'iconUrl' in dynamic_props)
+      return true;
+    return false;
+  }
 }
 
 function is_static_located(item: coco.taxonomy.Item): boolean {

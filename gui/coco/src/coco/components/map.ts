@@ -526,15 +526,22 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
   }
 }
 
-export function is_type_located(type: coco.taxonomy.Type): boolean {
-  const data = type.get_data();
-  if (data && 'location' in data)
-    return true;
+/**
+ * Determines whether a given type is considered "located", i.e., if it has location-related properties.
+ *
+ * A type is considered located if:
+ * - It has a static property named 'location', or
+ * - It has dynamic properties named both 'lat' and 'lng'.
+ *
+ * @param type - The taxonomy type to check for location properties.
+ * @returns `true` if the type is located, otherwise `false`.
+ */
+export function is_located(type: coco.taxonomy.Type): boolean {
   const static_props = type.get_all_static_properties();
-  if (static_props && 'location' in static_props)
+  if (static_props.has('location'))
     return true;
   const dynamic_props = type.get_all_dynamic_properties();
-  if (dynamic_props && 'lat' in dynamic_props && 'lng' in dynamic_props)
+  if (dynamic_props.has('lat') && dynamic_props.has('lng'))
     return true;
   return false;
 }

@@ -1,6 +1,6 @@
 {
   "name": "@ratiosolver/coco",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,8 +25,8 @@
     "typescript": "~5.8.3"
   },
   "peerDependencies": {
-    "@ratiosolver/flick": "^0.0.39",
-    "@ratiosolver/solver": "^0.0.36",
+    "@ratiosolver/flick": "^0.0.40",
+    "@ratiosolver/solver": "^0.0.37",
     "bootstrap": "^5.3.6",
     "leaflet": "^1.9.4"
   },

@@ -133,25 +133,13 @@ export class CircleLayer<P> extends MapLayer<P> {
 
   private elements = new Map<P, L.CircleMarker<P>>();
   private latlng_factory: (element: P) => L.LatLngExpression;
-  private radius_factory: (element: P) => number;
-  private color_factory: (element: P) => string;
-  private popup_factory: (element: P) => string;
+  private radius_factory?: (element: P) => number;
+  private color_factory?: (element: P) => string;
+  private popup_factory?: (element: P) => string;
 
-  /**
-   * Creates an instance of the class with customizable factories for latitude/longitude, radius, color, and popup content.
-   *
-   * @param latlng_factory - A function that takes an element of type `P` and returns a Leaflet `LatLngExpression` representing the element's position.
-   * @param elements - An optional array of elements of type `P` to be added initially. Defaults to an empty array.
-   * @param radius_factory - An optional function that takes an element of type `P` and returns a number representing the radius. Defaults to a function returning 5.
-   * @param color_factory - An optional function that takes an element of type `P` and returns a string representing the color. Defaults to a function returning `'blue'`.
-   * @param popup_factory - An optional function that takes an element of type `P` and returns a string for the popup content. Defaults to a function returning an empty string.
-   */
-  constructor(latlng_factory: (element: P) => L.LatLngExpression, elements: P[] = [], radius_factory: (element: P) => number = () => 5, color_factory: (element: P) => string = () => 'blue', popup_factory: (element: P) => string = () => '') {
+  constructor(latlng_factory: (element: P) => L.LatLngExpression, elements: P[] = []) {
     super();
     this.latlng_factory = latlng_factory;
-    this.radius_factory = radius_factory;
-    this.color_factory = color_factory;
-    this.popup_factory = popup_factory;
     this.add_elements(elements);
   }
 
@@ -166,10 +154,8 @@ export class CircleLayer<P> extends MapLayer<P> {
 
     for (const el of els) {
       const circle = L.circleMarker<P>(this.latlng_factory(el), {
-        radius: this.radius_factory(el),
-        color: this.color_factory(el),
-        fillColor: this.color_factory(el),
-        fillOpacity: 0.5
+        radius: this.radius_factory ? this.radius_factory(el) : 10,
+        color: this.color_factory ? this.color_factory(el) : '#3388ff',
       });
 
       if (this.popup_factory)
@@ -177,6 +163,35 @@ export class CircleLayer<P> extends MapLayer<P> {
 
       this.layer.addLayer(circle);
       this.elements.set(el, circle);
+    }
+  }
+
+  /**
+   * Checks if an element is already present in the layer.
+   *
+   * @param el - The element of type `P` to check for existence in the layer.
+   * @returns A boolean indicating whether the element exists in the layer.
+   */
+  has_element(el: P): boolean { return this.elements.has(el); }
+
+  /**
+   * Updates the position, radius, color, and popup content of existing elements in the layer.
+   *
+   * @param els - A single element of type `P` or an array of elements of type `P` to be updated in the layer.
+   */
+  update_elements(els: P | P[]): void {
+    if (!Array.isArray(els))
+      els = [els];
+
+    for (const el of els) {
+      const circle = this.elements.get(el)!;
+      circle.setLatLng(this.latlng_factory(el));
+      if (this.radius_factory)
+        circle.setRadius(this.radius_factory(el));
+      if (this.color_factory)
+        circle.setStyle({ color: this.color_factory(el) });
+      if (this.popup_factory)
+        circle.setPopupContent(this.popup_factory(el));
     }
   }
 
@@ -193,6 +208,39 @@ export class CircleLayer<P> extends MapLayer<P> {
       this.layer.removeLayer(this.elements.get(el)!);
       this.elements.delete(el);
     }
+  }
+
+  /**
+   * Sets the factory function for creating the radius of the circle markers in the layer.
+   *
+   * @param factory - A function that takes an element of type `P` and returns a number for the radius.
+   */
+  protected set_radius_factory(factory: (element: P) => number): void {
+    this.radius_factory = factory;
+    for (const [el, circle] of this.elements)
+      circle.setRadius(factory(el));
+  }
+
+  /**
+   * Sets the factory function for creating the color of the circle markers in the layer.
+   *
+   * @param factory - A function that takes an element of type `P` and returns a string for the color.
+   */
+  protected set_color_factory(factory: (element: P) => string): void {
+    this.color_factory = factory;
+    for (const [el, circle] of this.elements)
+      circle.setStyle({ color: factory(el) });
+  }
+
+  /**
+   * Sets the factory function for creating popup content for the circle markers in the layer.
+   *
+   * @param factory - A function that takes an element of type `P` and returns a string for the popup content.
+   */
+  protected set_popup_factory(factory: (element: P) => string): void {
+    this.popup_factory = factory;
+    for (const [el, circle] of this.elements)
+      circle.setPopupContent(factory(el));
   }
 }
 
@@ -294,24 +342,21 @@ export class IconLayer<P> extends MapLayer<P> {
   }
 }
 
-export class StaticIconLayer extends IconLayer<coco.taxonomy.Item> implements coco.CoCoListener, coco.taxonomy.ItemListener {
+export class ItemCircleLayer extends CircleLayer<coco.taxonomy.Item> implements coco.CoCoListener, coco.taxonomy.ItemListener {
 
   private type: coco.taxonomy.Type;
-  private icon: L.Icon | null = null;
 
   constructor(type: coco.taxonomy.Type) {
-    super(StaticIconLayer.latlng_factory, Array.from(type.get_instances()).filter(StaticIconLayer.is_static_located));
+    super(latlng_factory, Array.from(type.get_instances()).filter(is_static_located));
     this.type = type;
     const data = type.get_data();
-    if (data && 'iconUrl' in data) {
-      this.icon = L.icon({ iconUrl: data.iconUrl });
-      if ('iconSize' in data)
-        this.icon.options.iconSize = [data.iconSize[0], data.iconSize[1]];
-      this.set_icon_factory(this.static_icon_factory);
-    }
+    if (data && 'radius' in data)
+      this.set_radius_factory(() => data.radius);
+    if (data && 'color' in data)
+      this.set_color_factory(() => data.color);
     this.set_popup_factory(popup_factory);
     for (const item of this.type.get_instances())
-      if (StaticIconLayer.is_static_located(item)) {
+      if (is_static_located(item) || is_dynamic_located(item)) {
         this.add_elements(item);
         item.add_item_listener(this);
       }
@@ -320,7 +365,7 @@ export class StaticIconLayer extends IconLayer<coco.taxonomy.Item> implements co
 
   new_type(_type: coco.taxonomy.Type): void { }
   new_item(item: coco.taxonomy.Item): void {
-    if (item.get_type().get_all_parents().has(this.type) && StaticIconLayer.is_static_located(item)) {
+    if (item.get_type().get_all_parents().has(this.type) && (is_static_located(item) || is_dynamic_located(item))) {
       this.add_elements(item);
       item.add_item_listener(this);
     }
@@ -329,13 +374,30 @@ export class StaticIconLayer extends IconLayer<coco.taxonomy.Item> implements co
   new_entity(_entity: coco.llm.Entity): void { }
 
   properties_updated(item: coco.taxonomy.Item): void {
-    if (StaticIconLayer.is_static_located(item))
-      this.update_elements(item);
+    if (is_static_located(item)) {
+      if (!this.has_element(item)) {
+        this.add_elements(item);
+        item.add_item_listener(this);
+      }
+      else
+        this.update_elements(item);
+    }
     else
       this.remove_elements(item);
   }
   values_updated(_item: coco.taxonomy.Item): void { }
-  new_value(_item: coco.taxonomy.Item, _v: coco.taxonomy.Datum): void { }
+  new_value(item: coco.taxonomy.Item, _v: coco.taxonomy.Datum): void {
+    if (is_dynamic_located(item)) {
+      if (!this.has_element(item)) {
+        this.add_elements(item);
+        item.add_item_listener(this);
+      }
+      else
+        this.update_elements(item);
+    }
+    else
+      this.remove_elements(item);
+  }
   slots_updated(_item: coco.taxonomy.Item): void { }
 
   unmount(): void {
@@ -343,38 +405,26 @@ export class StaticIconLayer extends IconLayer<coco.taxonomy.Item> implements co
     for (const item of this.type.get_instances())
       item.remove_item_listener(this);
   }
-
-  private static is_static_located(item: coco.taxonomy.Item): boolean {
-    const props = item.get_properties();
-    return !!(props && 'location' in props);
-  }
-
-  private static latlng_factory(item: coco.taxonomy.Item): L.LatLngExpression {
-    const loc = coco.CoCo.get_instance().get_item(item.get_properties()!.location as string);
-    return [loc.get_properties()!.lat as number, loc.get_properties()!.lng as number];
-  }
-
-  private static_icon_factory(_item: coco.taxonomy.Item): L.Icon { return this.icon!; }
 }
 
-export class DynamicIconLayer extends IconLayer<coco.taxonomy.Item> implements coco.CoCoListener, coco.taxonomy.ItemListener {
+export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco.CoCoListener, coco.taxonomy.ItemListener {
 
   private type: coco.taxonomy.Type;
   private icon: L.Icon | null = null;
 
   constructor(type: coco.taxonomy.Type) {
-    super(DynamicIconLayer.latlng_factory, Array.from(type.get_instances()).filter(DynamicIconLayer.is_dynamic_located));
+    super(latlng_factory, Array.from(type.get_instances()).filter(is_static_located));
     this.type = type;
     const data = type.get_data();
     if (data && 'iconUrl' in data) {
       this.icon = L.icon({ iconUrl: data.iconUrl });
       if ('iconSize' in data)
         this.icon.options.iconSize = [data.iconSize[0], data.iconSize[1]];
-      this.set_icon_factory(this.static_icon_factory);
+      this.set_icon_factory(this.item_icon_factory);
     }
     this.set_popup_factory(popup_factory);
     for (const item of this.type.get_instances())
-      if (DynamicIconLayer.is_dynamic_located(item)) {
+      if (is_static_located(item) || is_dynamic_located(item)) {
         this.add_elements(item);
         item.add_item_listener(this);
       }
@@ -383,7 +433,7 @@ export class DynamicIconLayer extends IconLayer<coco.taxonomy.Item> implements c
 
   new_type(_type: coco.taxonomy.Type): void { }
   new_item(item: coco.taxonomy.Item): void {
-    if (item.get_type().get_all_parents().has(this.type) && DynamicIconLayer.is_dynamic_located(item)) {
+    if (item.get_type().get_all_parents().has(this.type) && (is_static_located(item) || is_dynamic_located(item))) {
       this.add_elements(item);
       item.add_item_listener(this);
     }
@@ -391,11 +441,28 @@ export class DynamicIconLayer extends IconLayer<coco.taxonomy.Item> implements c
   new_intent(_intent: coco.llm.Intent): void { }
   new_entity(_entity: coco.llm.Entity): void { }
 
-  properties_updated(_item: coco.taxonomy.Item): void { }
+  properties_updated(item: coco.taxonomy.Item): void {
+    if (is_static_located(item)) {
+      if (!this.has_element(item)) {
+        this.add_elements(item);
+        item.add_item_listener(this);
+      }
+      else
+        this.update_elements(item);
+    }
+    else
+      this.remove_elements(item);
+  }
   values_updated(_item: coco.taxonomy.Item): void { }
-  new_value(item: coco.taxonomy.Item, v: coco.taxonomy.Datum): void {
-    if ('lat' in v && 'lng' in v)
-      this.update_elements(item);
+  new_value(item: coco.taxonomy.Item, _v: coco.taxonomy.Datum): void {
+    if (is_dynamic_located(item)) {
+      if (!this.has_element(item)) {
+        this.add_elements(item);
+        item.add_item_listener(this);
+      }
+      else
+        this.update_elements(item);
+    }
     else
       this.remove_elements(item);
   }
@@ -407,16 +474,28 @@ export class DynamicIconLayer extends IconLayer<coco.taxonomy.Item> implements c
       item.remove_item_listener(this);
   }
 
-  private static is_dynamic_located(item: coco.taxonomy.Item): boolean {
-    const data = item.get_datum()?.data;
-    return !!(data && 'lat' in data && 'lng' in data);
-  }
+  private item_icon_factory(_item: coco.taxonomy.Item): L.Icon { return this.icon!; }
+}
 
-  private static latlng_factory(item: coco.taxonomy.Item): L.LatLngExpression {
+function is_static_located(item: coco.taxonomy.Item): boolean {
+  const props = item.get_properties();
+  return !!(props && 'location' in props);
+}
+
+function is_dynamic_located(item: coco.taxonomy.Item): boolean {
+  const data = item.get_datum()?.data;
+  return !!(data && 'lat' in data && 'lng' in data);
+}
+
+function latlng_factory(item: coco.taxonomy.Item): L.LatLngExpression {
+  if (is_static_located(item)) {
+    const loc = coco.CoCo.get_instance().get_item(item.get_properties()!.location as string);
+    return [loc.get_properties()!.lat as number, loc.get_properties()!.lng as number];
+  }
+  else if (is_dynamic_located(item))
     return [item.get_datum()!.data.lat as number, item.get_datum()!.data.lng as number];
-  }
-
-  private static_icon_factory(_item: coco.taxonomy.Item): L.Icon { return this.icon!; }
+  else
+    throw new Error(`Item ${item.to_string()} is not static or dynamic located.`);
 }
 
 function popup_factory(item: coco.taxonomy.Item): string {

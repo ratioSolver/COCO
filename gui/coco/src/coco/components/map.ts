@@ -25,6 +25,8 @@ export interface Layer {
 
   add_to(map: L.Map): void;
   remove_from(map: L.Map): void;
+
+  unmount(): void;
 }
 
 export class MapLayer<P = any> implements Layer {
@@ -33,6 +35,11 @@ export class MapLayer<P = any> implements Layer {
 
   add_to(map: L.Map): void { this.layer.addTo(map); }
   remove_from(map: L.Map): void { this.layer.removeFrom(map); }
+
+  unmount(): void {
+    this.layer.clearLayers();
+    this.layer.remove();
+  }
 }
 
 export class MapComponent extends Component<void, HTMLDivElement> {
@@ -412,7 +419,8 @@ export class ItemCircleLayer extends CircleLayer<coco.taxonomy.Item> implements 
   }
   slots_updated(_item: coco.taxonomy.Item): void { }
 
-  unmount(): void {
+  override unmount(): void {
+    super.unmount();
     coco.CoCo.get_instance().remove_coco_listener(this);
     for (const item of this.type.get_instances())
       item.remove_item_listener(this);
@@ -497,7 +505,8 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
   }
   slots_updated(_item: coco.taxonomy.Item): void { }
 
-  unmount(): void {
+  override unmount(): void {
+    super.unmount();
     coco.CoCo.get_instance().remove_coco_listener(this);
     for (const item of this.type.get_instances())
       item.remove_item_listener(this);

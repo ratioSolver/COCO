@@ -496,6 +496,20 @@ export namespace coco {
 
       get_name(): string { return this.name; }
       get_parents(): Type[] | undefined { return this.parents; }
+      get_all_parents(): Set<Type> {
+        const parents = new Set<Type>();
+        const q: Type[] = [this];
+        while (q.length > 0) {
+          const t = q.shift()!;
+          if (!parents.has(t)) {
+            parents.add(t);
+            if (t.parents)
+              for (const par of t.parents)
+                q.push(par);
+          }
+        }
+        return parents;
+      }
       get_data(): Record<string, any> | undefined { return this.data; }
       get_static_properties(): Map<string, Property<unknown>> | undefined { return this.static_properties; }
       get_all_static_properties(): Map<string, Property<unknown>> {

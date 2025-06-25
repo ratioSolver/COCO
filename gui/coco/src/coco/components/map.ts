@@ -239,6 +239,24 @@ export class IconLayer<P> extends MapLayer<P> {
   }
 
   /**
+   * Updates the position, icon, and popup content of existing elements in the layer.
+   *
+   * @param els - A single element of type `P` or an array of elements of type `P` to be updated in the layer.
+   */
+  update_elements(els: P | P[]): void {
+    if (!Array.isArray(els))
+      els = [els];
+
+    for (const el of els) {
+      const marker = this.elements.get(el)!;
+      marker.setLatLng(this.latlng_factory(el));
+      marker.setIcon(this.icon_factory(el));
+      if (this.popup_factory)
+        marker.setPopupContent(this.popup_factory(el));
+    }
+  }
+
+  /**
    * Removes elements from the layer.
    *
    * @param els - A single element of type `P` or an array of elements of type `P` to be removed from the layer.

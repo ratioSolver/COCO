@@ -363,14 +363,14 @@ export class ItemCircleLayer extends CircleLayer<coco.taxonomy.Item> implements 
     if (data && 'color' in data)
       this.set_color_factory(() => data.color);
     const static_props = type.get_all_static_properties();
-    if (static_props && 'radius' in static_props)
+    if (static_props && static_props.has('radius'))
       this.set_radius_factory((item: coco.taxonomy.Item) => item.get_properties()!.radius as number);
-    if (static_props && 'color' in static_props)
+    if (static_props && static_props.has('color'))
       this.set_color_factory((item: coco.taxonomy.Item) => item.get_properties()!.color as string);
     const dynamic_props = type.get_all_dynamic_properties();
-    if (dynamic_props && 'radius' in dynamic_props)
+    if (dynamic_props && dynamic_props.has('radius'))
       this.set_radius_factory((item: coco.taxonomy.Item) => item.get_datum()!.data.radius as number);
-    if (dynamic_props && 'color' in dynamic_props)
+    if (dynamic_props && dynamic_props.has('color'))
       this.set_color_factory((item: coco.taxonomy.Item) => item.get_datum()!.data.color as string);
 
     this.set_popup_factory(popup_factory);
@@ -443,7 +443,7 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
       this.set_icon_factory(() => icon);
     }
     const static_props = type.get_all_static_properties();
-    if (static_props && 'iconUrl' in static_props)
+    if (static_props && static_props.has('iconUrl'))
       this.set_icon_factory((item: coco.taxonomy.Item) => {
         const icon = L.icon({ iconUrl: item.get_properties()!.iconUrl as string });
         if ('iconWidth' in item.get_properties()! && 'iconHeight' in item.get_properties()!)
@@ -451,7 +451,7 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
         return icon;
       });
     const dynamic_props = type.get_all_dynamic_properties();
-    if (dynamic_props && 'iconUrl' in dynamic_props)
+    if (dynamic_props && dynamic_props.has('iconUrl'))
       this.set_icon_factory((item: coco.taxonomy.Item) => {
         const icon = L.icon({ iconUrl: item.get_datum()!.data.iconUrl as string });
         if ('iconWidth' in item.get_datum()!.data && 'iconHeight' in item.get_datum()!.data)
@@ -517,10 +517,10 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
     if (data && 'iconUrl' in data)
       return true;
     const static_props = type.get_all_static_properties();
-    if (static_props && 'iconUrl' in static_props)
+    if (static_props && static_props.has('iconUrl'))
       return true;
     const dynamic_props = type.get_all_dynamic_properties();
-    if (dynamic_props && 'iconUrl' in dynamic_props)
+    if (dynamic_props && dynamic_props.has('iconUrl'))
       return true;
     return false;
   }

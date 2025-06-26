@@ -20,7 +20,7 @@ namespace coco
         add_property_type(std::make_unique<item_property_type>(*this));
         add_property_type(std::make_unique<json_property_type>(*this));
 
-        [[maybe_unused]] auto set_props_err = AddUDF(env, "set_props", "v", 3, 3, "ymm", set_props, "set_props", this);
+        [[maybe_unused]] auto set_props_err = AddUDF(env, "set_properties", "v", 3, 3, "ymm", set_props, "set_props", this);
         assert(set_props_err == AUE_NO_ERROR);
         [[maybe_unused]] auto add_data_err = AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
         assert(add_data_err == AUE_NO_ERROR);

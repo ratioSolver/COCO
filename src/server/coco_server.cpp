@@ -106,11 +106,17 @@ namespace coco
                              {"properties",
                               {{"id", {{"type", "string"}, {"format", "uuid"}}},
                                {"type", {{"type", "string"}}},
-                               {"properties", {{"type", "object"}, {"description", "Static properties of the item defined by its type."}}}}}}},
+                               {"properties", {{"type", "object"}, {"description", "Static data of the item defined by its type."}}}}}}},
                            {"data",
                             {{"type", "object"},
                              {"properties",
-                              {{"data", {{"type", "object"}}}}}}}};
+                              {{"data", {{"type", "object"}, {"description", "Dynamic data of the item defined by its type."}}}}}}},
+                           {"reactive_rule",
+                            {{"type", "object"},
+                             {"description", "A reactive rule is a CLIPS rule that can be triggered by changes in the system."},
+                             {"properties",
+                              {{"name", {{"type", "string"}}},
+                               {"content", {{"type", "string"}, {"description", "The content of the reactive rule in CLIPS format."}}}}}}}};
 
         openapi_spec = json::json({{"openapi", "3.1.0"},
                                    {"info",
@@ -198,7 +204,24 @@ namespace coco
                                           {{"204",
                                             {{"description", "Item deleted successfully"}}},
                                            {"404",
-                                            {{"description", "Item not found"}}}}}}}}}}}});
+                                            {{"description", "Item not found"}}}}}}}}},
+                                     {"/reactive_rules",
+                                      {{"get",
+                                        {{"summary", "Retrieve all the " COCO_NAME " reactive rules"},
+                                         {"description", "Endpoint to fetch all the reactive rules"},
+                                         {"responses",
+                                          {{"200",
+                                            {{"description", "Successful response with the stored reactive rules"},
+                                             {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/reactive_rule"}}}}}}}}}}}}}}},
+                                       {"post",
+                                        {{"summary", "Create a new " COCO_NAME " reactive rule"},
+                                         {"description", "Endpoint to create a new reactive rule"},
+                                         {"requestBody",
+                                          {{"required", true},
+                                           {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/reactive_rule"}}}}}}}}},
+                                         {"responses",
+                                          {{"204",
+                                            {{"description", "Reactive rule created successfully"}}}}}}}}}}}});
         LOG_DEBUG(openapi_spec.dump());
 
         asyncapi_spec = json::json({{"asyncapi", "3.0.0"},

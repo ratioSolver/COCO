@@ -158,24 +158,16 @@ namespace coco
 
         bsoncxx::builder::basic::document update_doc; // Prepare the update document
 
-        bsoncxx::builder::basic::document set_fields;   // Fields to set
-        bsoncxx::builder::basic::document unset_fields; // Fields to unset
+        bsoncxx::builder::basic::document update_fields; // Fields to set
 
         // Iterate through properties and build set/unset operations
         for (const auto &[nm, prop] : props.as_object())
-            if (prop == nullptr)
-                unset_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, ""));
-            else
-                set_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::from_json(prop.dump())));
+            update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::from_json(prop.dump())));
 
-        if (!set_fields.view().empty())
-            update_doc.append(bsoncxx::builder::basic::kvp("$set", set_fields.view()));
-        if (!unset_fields.view().empty())
-            update_doc.append(bsoncxx::builder::basic::kvp("$unset", unset_fields.view()));
+        update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
 
-        if (!set_fields.view().empty() || !unset_fields.view().empty())
-            if (!items_collection.update_one(filter_doc.view(), update_doc.view()))
-                throw std::invalid_argument("Failed to set properties for item: " + std::string(itm_id));
+        if (!items_collection.update_one(filter_doc.view(), update_doc.view()))
+            throw std::invalid_argument("Failed to set properties for item: " + std::string(itm_id));
     }
     json::json mongo_db::get_values(std::string_view itm_id, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
     {
@@ -195,27 +187,19 @@ namespace coco
 
         bsoncxx::builder::basic::document update_doc; // Prepare the update document
 
-        bsoncxx::builder::basic::document set_fields;   // Fields to set
-        bsoncxx::builder::basic::document unset_fields; // Fields to unset
+        bsoncxx::builder::basic::document update_fields; // Fields to set
 
         // Iterate through properties and build set/unset operations
         for (const auto &[nm, v] : val.as_object())
-            if (v == nullptr)
-                unset_fields.append(bsoncxx::builder::basic::kvp("data." + nm, ""));
-            else
-                set_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::from_json(v.dump())));
+            update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::from_json(v.dump())));
 
-        if (!set_fields.view().empty())
-            update_doc.append(bsoncxx::builder::basic::kvp("$set", set_fields.view()));
-        if (!unset_fields.view().empty())
-            update_doc.append(bsoncxx::builder::basic::kvp("$unset", unset_fields.view()));
+        update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
 
         mongocxx::options::update update_opts;
         update_opts.upsert(true); // Create a new document if no document matches the filter
 
-        if (!set_fields.view().empty() || !unset_fields.view().empty())
-            if (!item_data_collection.update_one(filter_doc.view(), update_doc.view(), update_opts))
-                throw std::invalid_argument("Failed to set value for item: " + std::string(itm_id));
+        if (!item_data_collection.update_one(filter_doc.view(), update_doc.view(), update_opts))
+            throw std::invalid_argument("Failed to set value for item: " + std::string(itm_id));
     }
     void mongo_db::delete_item(std::string_view itm_id)
     {

@@ -24,7 +24,7 @@ namespace coco
     void server_noauth::on_ws_message(network::ws_server_session_base &ws, const network::message &msg)
     {
         auto x = json::load(msg.get_payload());
-        if (x.get_type() != json::json_type::object || !x.contains("msg_type") || x["msg_type"].get_type() != json::json_type::string)
+        if (!x.is_object() || !x.contains("msg_type") || !x["msg_type"].is_string())
         {
             ws.close();
             return;

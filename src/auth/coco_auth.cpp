@@ -74,7 +74,7 @@ namespace coco
     {
         LOG_TRACE("Login request received");
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("username") || body["username"].get_type() != json::json_type::string || !body.contains("password") || body["password"].get_type() != json::json_type::string)
+        if (!body.is_object() || !body.contains("username") || !body["username"].is_string() || !body.contains("password") || !body["password"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string username = body["username"];
         std::string password = body["password"];
@@ -109,12 +109,12 @@ namespace coco
     {
         LOG_TRACE("Create user request received");
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("username") || body["username"].get_type() != json::json_type::string || !body.contains("password") || body["password"].get_type() != json::json_type::string)
+        if (!body.is_object() || !body.contains("username") || !body["username"].is_string() || !body.contains("password") || !body["password"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string username = body["username"];
         std::string password = body["password"];
         json::json personal_data = json::json(json::json_type::object);
-        if (body.contains("personal_data") && body["personal_data"].get_type() == json::json_type::object)
+        if (body.contains("personal_data"))
             personal_data = body["personal_data"];
 
         try
@@ -138,7 +138,7 @@ namespace coco
     void server_auth::on_ws_message(network::ws_server_session_base &ws, const network::message &msg)
     {
         auto x = json::load(msg.get_payload());
-        if (x.get_type() != json::json_type::object || !x.contains("msg_type") || x["msg_type"].get_type() != json::json_type::string)
+        if (!x.is_object() || !x.contains("msg_type") || !x["msg_type"].is_string())
         {
             ws.close();
             return;
@@ -147,7 +147,7 @@ namespace coco
         std::string msg_type = x["msg_type"];
         if (msg_type == "login")
         {
-            if (!x.contains("token") || x["token"].get_type() != json::json_type::string)
+            if (!x.contains("token") || !x["token"].is_string())
             {
                 ws.close();
                 return;

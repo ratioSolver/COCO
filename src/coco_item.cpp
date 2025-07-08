@@ -63,7 +63,7 @@ namespace coco
                     properties_facts.erase(f);
                 }
 
-                if (val.get_type() == json::json_type::null)
+                if (val.is_null())
                     this->properties.erase(p_name); // we remove the property
                 else if (prop->second.get().validate(val))
                 {
@@ -103,7 +103,7 @@ namespace coco
                     value_facts.erase(f);
                 }
 
-                if (j_val.get_type() == json::json_type::null)
+                if (j_val.is_null())
                     this->value_facts.erase(p_name); // we remove the property
                 else if (prop->second.get().validate(j_val))
                 {

@@ -162,7 +162,26 @@ namespace coco
 
         // Iterate through properties and build set/unset operations
         for (const auto &[nm, prop] : props.as_object())
-            update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::from_json(prop.dump())));
+            switch (prop.get_type())
+            {
+            case json::json_type::null:
+                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::types::b_null{}));
+                break;
+            case json::json_type::boolean:
+                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, static_cast<bool>(prop)));
+                break;
+            case json::json_type::number:
+                if (prop.is_float())
+                    update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, static_cast<double>(prop)));
+                else
+                    update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, static_cast<int64_t>(prop)));
+                break;
+            case json::json_type::string:
+                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, static_cast<std::string>(prop)));
+                break;
+            default:
+                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::from_json(prop.dump())));
+            }
 
         update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
 
@@ -191,7 +210,26 @@ namespace coco
 
         // Iterate through properties and build set/unset operations
         for (const auto &[nm, v] : val.as_object())
-            update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::from_json(v.dump())));
+            switch (v.get_type())
+            {
+            case json::json_type::null:
+                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::types::b_null{}));
+                break;
+            case json::json_type::boolean:
+                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, static_cast<bool>(v)));
+                break;
+            case json::json_type::number:
+                if (v.is_float())
+                    update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, static_cast<double>(v)));
+                else
+                    update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, static_cast<int64_t>(v)));
+                break;
+            case json::json_type::string:
+                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, static_cast<std::string>(v)));
+                break;
+            default:
+                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::from_json(v.dump())));
+            }
 
         update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
 

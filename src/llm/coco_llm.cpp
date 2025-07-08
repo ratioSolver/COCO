@@ -116,7 +116,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(get_mtx());
 
         for (const auto &[slot_name, val] : new_slots.as_object())
-            if (val.get_type() == json::json_type::null)
+            if (val.is_null())
             {
                 assert(slot_facts.count(item.get_id()));
                 assert(slot_facts.at(item.get_id()).count(slot_name));

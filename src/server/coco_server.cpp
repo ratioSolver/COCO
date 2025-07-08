@@ -338,7 +338,7 @@ namespace coco
     std::unique_ptr<network::response> coco_server::create_type(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string)
+        if (!body.is_object() || !body.contains("name") || !body["name"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
 
         std::string name = body["name"];
@@ -346,11 +346,11 @@ namespace coco
         std::vector<std::reference_wrapper<const type>> parents;
         if (body.contains("parents"))
         {
-            if (body["parents"].get_type() != json::json_type::array)
+            if (!body["parents"].is_array())
                 return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             for (auto &p : body["parents"].as_array())
             {
-                if (p.get_type() != json::json_type::string)
+                if (!p.is_string())
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
                 try
                 {
@@ -420,7 +420,7 @@ namespace coco
     std::unique_ptr<network::response> coco_server::create_item(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("type") || body["type"].get_type() != json::json_type::string)
+        if (!body.is_object() || !body.contains("type") || !body["type"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
 
         std::string type_name = body["type"];
@@ -498,7 +498,7 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
         }
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object)
+        if (!body.is_object())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         if (params.count("timestamp"))
         {
@@ -579,7 +579,7 @@ namespace coco
     std::unique_ptr<network::response> coco_server::create_reactive_rule(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("content") || body["content"].get_type() != json::json_type::string)
+        if (!body.is_object() || !body.contains("name") || !body["name"].is_string() || !body.contains("content") || !body["content"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string name = body["name"];
         std::string content = body["content"];

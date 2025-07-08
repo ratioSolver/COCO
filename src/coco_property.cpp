@@ -139,7 +139,7 @@ namespace coco
     }
     void symbol_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
-        if (value.get_type() == json::json_type::array)
+        if (value.is_array())
         {
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
@@ -177,7 +177,7 @@ namespace coco
     }
     void item_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
-        if (value.get_type() == json::json_type::array)
+        if (value.is_array())
         {
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
@@ -262,7 +262,7 @@ namespace coco
         [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
         assert(prop_dt == BE_NO_ERROR);
     }
-    bool bool_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::boolean; }
+    bool bool_property::validate(const json::json &j) const noexcept { return j.is_boolean(); }
     json::json bool_property::to_json() const noexcept
     {
         json::json j;
@@ -331,7 +331,7 @@ namespace coco
     }
     bool int_property::validate(const json::json &j) const noexcept
     {
-        if (j.get_type() != json::json_type::number)
+        if (!j.is_integer())
             return false;
         long value = j;
         if ((min.has_value() && *min > value) || (max.has_value() && *max < value))
@@ -410,7 +410,7 @@ namespace coco
     }
     bool float_property::validate(const json::json &j) const noexcept
     {
-        if (j.get_type() != json::json_type::number)
+        if (!j.is_float())
             return false;
         double value = j;
         if ((min.has_value() && *min > value) || (max.has_value() && *max < value))
@@ -479,7 +479,7 @@ namespace coco
         [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
         assert(prop_dt == BE_NO_ERROR);
     }
-    bool string_property::validate(const json::json &j) const noexcept { return j.get_type() == json::json_type::string; }
+    bool string_property::validate(const json::json &j) const noexcept { return j.is_string(); }
     json::json string_property::to_json() const noexcept
     {
         json::json j;
@@ -559,13 +559,13 @@ namespace coco
     {
         if (multiple)
         {
-            if (j.get_type() != json::json_type::array)
+            if (!j.is_array())
                 return false;
             return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const auto &val)
-                               { return val.get_type() == json::json_type::string; });
+                               { return val.is_string(); });
         }
         else
-            return j.get_type() == json::json_type::string;
+            return j.is_string();
     }
     json::json symbol_property::to_json() const noexcept
     {
@@ -648,13 +648,13 @@ namespace coco
     {
         if (multiple)
         {
-            if (j.get_type() != json::json_type::array)
+            if (!j.is_array())
                 return false;
             return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const auto &val)
-                               { return val.get_type() == json::json_type::string; });
+                               { return val.is_string(); });
         }
         else
-            return j.get_type() == json::json_type::string;
+            return j.is_string();
     }
     json::json item_property::to_json() const noexcept
     {

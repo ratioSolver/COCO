@@ -42,7 +42,7 @@ namespace coco
     std::unique_ptr<network::response> llm_server::create_intent(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("description") || body["description"].get_type() != json::json_type::string)
+        if (!body.is_object() || !body.contains("name") || !body["name"].is_string() || !body.contains("description") || !body["description"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string name = body["name"];
         std::string description = body["description"];
@@ -72,7 +72,7 @@ namespace coco
     std::unique_ptr<network::response> llm_server::create_entity(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("type") || body["type"].get_type() != json::json_type::string || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("description") || body["description"].get_type() != json::json_type::string)
+        if (!body.is_object() || !body.contains("type") || !body["type"].is_string() || !body.contains("name") || !body["name"].is_string() || !body.contains("description") || !body["description"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string type = body["type"];
         data_type type_name;

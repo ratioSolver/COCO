@@ -23,7 +23,7 @@ namespace coco
     std::unique_ptr<network::response> deliberative_server::create_deliberative_rule(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (body.get_type() != json::json_type::object || !body.contains("name") || body["name"].get_type() != json::json_type::string || !body.contains("content") || body["content"].get_type() != json::json_type::string)
+        if (!body.is_object() || !body.contains("name") || !body["name"].is_string() || !body.contains("content") || !body["content"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string name = body["name"];
         std::string content = body["content"];

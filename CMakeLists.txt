@@ -78,7 +78,12 @@ if(BUILD_COCO_SERVER)
     endif()
 
     set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gui/app CACHE STRING "Client directory")
+    set(BUILD_APP ON CACHE BOOL "Build the CoCo TypeScript application")
+    set(BUILD_ANDROID ON CACHE BOOL "Build the CoCo Android application")
+
     message(STATUS "Client directory: ${CLIENT_DIR}")
+    message(STATUS "Build TypeScript application: ${BUILD_APP}")
+    message(STATUS "Build Android application: ${BUILD_ANDROID}")
 
     target_sources(CoCo PRIVATE src/server/coco_server.cpp)
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/server> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/auth>)
@@ -96,8 +101,15 @@ if(BUILD_COCO_SERVER)
 
     add_custom_target(npm_coco_install ALL COMMAND npm install WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/coco COMMENT "Installing the CoCo TypeScript library" VERBATIM)
     add_custom_target(npm_coco_build ALL COMMAND npm run build WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/coco COMMENT "Building the CoCo TypeScript library" VERBATIM DEPENDS npm_coco_install)
-    add_custom_target(npm_app_install ALL COMMAND npm install WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Installing the TypeScript application" VERBATIM DEPENDS npm_coco_build)
-    add_custom_target(npm_app_build ALL COMMAND npm run build WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Building the TypeScript application" VERBATIM DEPENDS npm_app_install)
+
+    if(BUILD_APP)
+        add_custom_target(npm_app_install ALL COMMAND npm install WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Installing the TypeScript application" VERBATIM DEPENDS npm_coco_build)
+        add_custom_target(npm_app_build ALL COMMAND npm run build WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Building the TypeScript application" VERBATIM DEPENDS npm_app_install)
+    endif()
+
+    if(BUILD_ANDROID)
+        add_custom_target(mobile_coco_build ALL COMMAND ./gradlew build WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/mobile COMMENT "Building the CoCo mobile application" VERBATIM)
+    endif()
 endif()
 
 if(BUILD_MQTT)

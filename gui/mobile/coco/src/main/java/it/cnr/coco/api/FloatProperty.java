@@ -1,4 +1,4 @@
-package it.cnr.coco.model;
+package it.cnr.coco.api;
 
 public class FloatProperty implements Property {
 

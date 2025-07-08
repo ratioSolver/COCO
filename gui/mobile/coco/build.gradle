@@ -1,0 +1,27 @@
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
+
+android {
+    namespace = 'it.cnr.coco'
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "it.cnr.coco"
+        minSdk = 21
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = false
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.firebase:firebase-messaging:24.0.0'
+}

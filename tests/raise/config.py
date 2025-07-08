@@ -226,7 +226,7 @@ def create_items(session: requests.Session, url: str) -> list[str]:
                 'young_pci_autism': fake.boolean()
             }})
 
-        if response.status_code != 200:
+        if response.status_code != 201:
             logger.error('Failed to create item User')
             return []
         else:
@@ -278,7 +278,7 @@ def fake_data(session: requests.Session, url: str, user_id: str):
             'lon']
 
     response = session.get(url + '/fake/User?parameters=' + json.dumps(pars))
-    if response.status_code != 200:
+    if response.status_code != 201:
         logger.error('Failed to create fake data')
         return
     else:

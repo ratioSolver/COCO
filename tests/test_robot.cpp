@@ -104,9 +104,26 @@ int main()
     cc.create_reactive_rule("set_robot_listening", "(defrule set_robot_listening ?f <- (entity (item_id ?robot) (name robot_ask) (value ?value)) => (add_data ?robot (create$ listening) (create$ ?value)) (retract ?f))");
 #endif
 
-#ifdef BUILD_SERVER
-    std::this_thread::sleep_for(std::chrono::seconds(100));
+#ifdef INTERACTIVE_TEST
+    std::string user_input;
+    do
+    {
+        std::cout << "Enter a command (d to drop the database, q to quit): ";
+        std::getline(std::cin, user_input);
+        if (user_input == "d")
+            db.drop();
+#ifdef BUILD_LLM
+        else
+            llm.understand(itm_0, user_input);
+#endif
+    } while (user_input != "d" && user_input != "q");
+#else
     db.drop();
+#endif
+
+#ifdef BUILD_SERVER
     srv.stop();
 #endif
+
+    return 0;
 }

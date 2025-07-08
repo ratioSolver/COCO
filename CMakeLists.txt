@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.21)
 project(CoCo VERSION 0.2.0 LANGUAGES CXX)
 
+# Option to enable interactive test mode globally
+option(INTERACTIVE_TEST "Enable interactive test mode" OFF)
+if(INTERACTIVE_TEST)
+    add_compile_definitions(INTERACTIVE_TEST)
+endif()
+
 include(CTest)
 enable_testing()
 

@@ -86,7 +86,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto &s_itm = cc.create_item(s_tp);
     cc.set_value(s_itm, json::json{{"parent", ch_itm.get_id().c_str()}});
 
-#ifndef NDEBUG
+#ifdef INTERACTIVE_TEST
     std::string user_input;
     do
     {
@@ -99,6 +99,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             llm.understand(itm_0, user_input);
 #endif
     } while (user_input != "d" && user_input != "q");
+#else
+    db.drop();
 #endif
 
 #ifdef BUILD_SERVER

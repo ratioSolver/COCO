@@ -31,11 +31,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                              { srv.start(); });
 #endif
 
-#ifndef NDEBUG
+#ifdef INTERACTIVE_TEST
     std::string user_input;
     std::cin >> user_input;
     if (user_input == "d")
         db.drop();
+#else
+    db.drop();
 #endif
 
 #ifdef BUILD_SERVER

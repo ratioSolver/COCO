@@ -1,17 +1,16 @@
 package it.cnr.coco.api;
 
+import androidx.annotation.NonNull;
+import it.cnr.coco.api.Type;
 import com.google.gson.JsonElement;
 
 public class Item {
 
-    private String id;
-    private String type;
+    private final String id;
+    private final Type type;
     private JsonElement properties;
 
-    public Item() {
-    }
-
-    public Item(String id, String type, JsonElement properties) {
+    public Item(@NonNull String id, @NonNull Type type, JsonElement properties) {
         this.id = id;
         this.type = type;
         this.properties = properties;
@@ -21,16 +20,8 @@ public class Item {
         return id;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getType() {
+    public Type getType() {
         return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 
     public JsonElement getProperties() {

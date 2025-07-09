@@ -1,21 +1,19 @@
 package it.cnr.coco.api;
 
+import androidx.annotation.NonNull;
 import com.google.gson.JsonElement;
 import java.util.Map;
 import it.cnr.coco.api.Property;
 
 public class Type {
 
-    private String name;
-    private String[] parents;
+    private final String name;
+    private Map<String, Type> parents;
     private JsonElement data;
     private Map<String, Property> static_properties;
     private Map<String, Property> dynamic_properties;
 
-    public Type() {
-    }
-
-    public Type(String name, String[] parents, JsonElement data,
+    public Type(@NonNull String name, Map<String, Type> parents, JsonElement data,
             Map<String, Property> static_properties,
             Map<String, Property> dynamic_properties) {
         this.name = name;
@@ -29,15 +27,11 @@ public class Type {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String[] getParents() {
+    public Map<String, Type> getParents() {
         return parents;
     }
 
-    public void setParents(String[] parents) {
+    public void setParents(Map<String, Type> parents) {
         this.parents = parents;
     }
 

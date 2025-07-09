@@ -7,10 +7,12 @@ import it.cnr.coco.Settings;
 
 public class MessagingService extends FirebaseMessagingService {
 
+    private static final String TAG = "MessagingService";
+
     @Override
     public void onNewToken(String token) {
         super.onNewToken(token);
-        Log.d("MessagingService", "New token: " + token);
+        Log.d(TAG, "New token: " + token);
     }
 
     @Override

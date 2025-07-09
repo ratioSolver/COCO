@@ -3,6 +3,9 @@
 #include "coco_server.hpp"
 #include "coco_module.hpp"
 #include "coco_item.hpp"
+#ifdef BUILD_FCM
+#include "client.hpp"
+#endif
 
 namespace coco
 {
@@ -56,6 +59,16 @@ namespace coco
      * @return item& A reference to the created user item.
      */
     [[nodiscard]] item &create_user(std::string_view username, std::string_view password, json::json &&personal_data = {});
+
+#ifdef BUILD_FCM
+    void send_notification(const std::string &token, const std::string &title, const std::string &body);
+
+  private:
+    friend void send_notification_udf(Environment *env, UDFContext *udfc, UDFValue *out);
+
+  private:
+    network::client client; // FCM client for push notifications
+#endif
   };
 
   class server_auth : public server_module
@@ -80,4 +93,8 @@ namespace coco
     std::mutex mtx;
     std::unordered_map<network::ws_server_session_base *, std::string> clients;
   };
+
+#ifdef BUILD_FCM
+  void send_notification_udf(Environment *env, UDFContext *udfc, UDFValue *out);
+#endif
 } // namespace coco

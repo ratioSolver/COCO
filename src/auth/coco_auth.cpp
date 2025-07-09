@@ -8,8 +8,17 @@
 
 namespace coco
 {
+#ifdef BUILD_FCM
+    coco_auth::coco_auth(coco &cc) noexcept : coco_module(cc), client("fcm.googleapis.com", 443)
+#else
     coco_auth::coco_auth(coco &cc) noexcept : coco_module(cc)
+#endif
     {
+#ifdef BUILD_FCM
+        [[maybe_unused]] auto send_notification_err = AddUDF(get_env(), "send_notification", "v", 3, 3, "yss", send_notification_udf, "send_notification_udf", this);
+        assert(send_notification_err == AUE_NO_ERROR);
+#endif
+
         try
         {
             [[maybe_unused]] auto &tp = get_coco().get_type(user_kw);
@@ -60,6 +69,14 @@ namespace coco
         get_coco().get_db().get_module<auth_db>().create_user(itm.get_id(), username, password, std::move(personal_data));
         return itm;
     }
+
+#ifdef BUILD_FCM
+    void coco_auth::send_notification(const std::string &token, const std::string &title, const std::string &body)
+    {
+        json::json j_message{{"message", {{"token", token.c_str()}, {"notification", {{"title", title.c_str()}, {"body", body.c_str()}}}}}};
+        auto res = client.post("/v1/projects/" COCO_NAME "/messages:send", std::move(j_message), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " FCM_API_KEY}});
+    }
+#endif
 
     server_auth::server_auth(coco_server &srv) noexcept : server_module(srv)
     {
@@ -196,4 +213,27 @@ namespace coco
         for (auto client : clients)
             client.first->send(msg_str);
     }
+
+#ifdef BUILD_FCM
+    void send_notification_udf(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Sending notification via FCM");
+
+        auto &auth = *reinterpret_cast<coco_auth *>(udfc->context);
+
+        UDFValue user_id; // we get the user ID from the first argument
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &user_id))
+            return;
+
+        UDFValue title; // we get the title from the second argument
+        if (!UDFNextArgument(udfc, STRING_BIT, &title))
+            return;
+
+        UDFValue body; // we get the body from the third argument
+        if (!UDFNextArgument(udfc, STRING_BIT, &body))
+            return;
+
+        auth.send_notification(user_id.lexemeValue->contents, title.lexemeValue->contents, body.lexemeValue->contents);
+    }
+#endif
 } // namespace coco

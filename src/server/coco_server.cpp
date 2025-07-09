@@ -16,8 +16,10 @@ namespace coco
     coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), server(host, port)
 #endif
     {
+#ifdef BUILD_WEB_APP
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
         add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
+#endif
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
         add_route(network::Get, "^/types/.*$", std::bind(&coco_server::get_type, this, network::placeholders::request));
@@ -301,6 +303,7 @@ namespace coco
     }
     void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
 
+#ifdef BUILD_WEB_APP
     std::unique_ptr<network::response> coco_server::index(const network::request &) { return std::make_unique<network::file_response>(CLIENT_DIR "/dist/index.html"); }
     std::unique_ptr<network::response> coco_server::assets(const network::request &req)
     {
@@ -309,6 +312,7 @@ namespace coco
             target = target.substr(0, target.find('?'));
         return std::make_unique<network::file_response>(CLIENT_DIR "/dist" + target);
     }
+#endif
 
     std::unique_ptr<network::response> coco_server::get_types(const network::request &)
     {

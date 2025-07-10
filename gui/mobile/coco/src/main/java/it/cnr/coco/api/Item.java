@@ -1,7 +1,7 @@
 package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
-import it.cnr.coco.api.Type;
+
 import com.google.gson.JsonElement;
 
 public class Item {

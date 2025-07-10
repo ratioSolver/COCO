@@ -1,9 +1,6 @@
 package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
-import it.cnr.coco.api.Property;
-import it.cnr.coco.api.Type;
-import it.cnr.coco.api.Item;
 
 public class ItemProperty implements Property {
 

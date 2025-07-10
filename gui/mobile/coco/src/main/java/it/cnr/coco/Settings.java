@@ -1,6 +1,7 @@
 package it.cnr.coco;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class Settings {
 
@@ -66,7 +67,7 @@ public class Settings {
         if (settings.containsKey("hostname"))
             this.hostname = settings.get("hostname");
         if (settings.containsKey("port"))
-            this.port = Integer.parseInt(settings.get("port"));
+            this.port = Integer.parseInt(Objects.requireNonNull(settings.get("port")));
         if (settings.containsKey("ws_path"))
             this.ws_path = settings.get("ws_path");
     }

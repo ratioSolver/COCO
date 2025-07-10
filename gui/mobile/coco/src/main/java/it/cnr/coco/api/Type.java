@@ -1,9 +1,10 @@
 package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
+
 import com.google.gson.JsonElement;
+
 import java.util.Map;
-import it.cnr.coco.api.Property;
 
 public class Type {
 

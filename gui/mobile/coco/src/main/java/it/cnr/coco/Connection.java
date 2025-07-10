@@ -1,28 +1,32 @@
 package it.cnr.coco;
 
+import static android.content.Context.MODE_PRIVATE;
+
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import it.cnr.coco.Settings;
-import java.util.HashMap;
-import java.util.Map;
-import android.content.Context;
-import com.google.gson.Gson;
-import okhttp3.OkHttpClient;
-import okhttp3.WebSocket;
-import okhttp3.WebSocketListener;
-import okhttp3.WebSocket;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.Callback;
-import okhttp3.Call;
-import okhttp3.RequestBody;
-import okhttp3.MediaType;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
+
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
-import static android.content.Context.MODE_PRIVATE;
+
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
 
 public class Connection extends WebSocketListener {
 
@@ -53,16 +57,15 @@ public class Connection extends WebSocketListener {
         body.put("password", password);
         final Request.Builder builder = new Request.Builder()
                 .url(Settings.getInstance().getHost() + "/login")
-                .post(RequestBody.create(MediaType.parse("application/json"), gson.toJson(body)));
+                .post(RequestBody.create(gson.toJson(body), MediaType.parse("application/json")));
         client.newCall(builder.build()).enqueue(new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 Log.e(TAG, "Login failed", e);
-                e.printStackTrace();
             }
 
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();
                     Map<String, String> responseMap = gson.fromJson(responseBody, new TypeToken<Map<String, String>>() {
@@ -86,18 +89,17 @@ public class Connection extends WebSocketListener {
             body.put("personal_data", personal_data);
         final Request.Builder builder = new Request.Builder()
                 .url(Settings.getInstance().getHost() + "/users")
-                .post(RequestBody.create(MediaType.parse("application/json"), gson.toJson(body)));
+                .post(RequestBody.create(gson.toJson(body), MediaType.parse("application/json")));
         if (token != null)
             builder.addHeader("Authorization", "Bearer " + token);
         client.newCall(builder.build()).enqueue(new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 Log.e(TAG, "User creation failed", e);
-                e.printStackTrace();
             }
 
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
                     String responseBody = response.body().string();
                     Map<String, String> responseMap = gson.fromJson(responseBody, new TypeToken<Map<String, String>>() {
@@ -122,7 +124,7 @@ public class Connection extends WebSocketListener {
     }
 
     @Override
-    public void onOpen(WebSocket webSocket, Response response) {
+    public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
         Log.d(TAG, "WebSocket connection opened");
         FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
@@ -140,17 +142,17 @@ public class Connection extends WebSocketListener {
     }
 
     @Override
-    public void onMessage(WebSocket webSocket, String text) {
+    public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
     }
 
     @Override
-    public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+    public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, Response response) {
         Log.e(TAG, "WebSocket connection failed", t);
         handler.postDelayed(() -> connect(token), RECONNECT_DELAY_MS);
     }
 
     @Override
-    public void onClosed(WebSocket webSocket, int code, String reason) {
+    public void onClosed(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
         Log.d(TAG, "WebSocket connection closed: " + reason);
     }
 }

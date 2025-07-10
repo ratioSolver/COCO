@@ -1,16 +1,18 @@
 package it.cnr.coco;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import androidx.annotation.NonNull;
 import android.widget.EditText;
-import android.content.Intent;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 public class CreateUserActivity extends Activity implements ConnectionListener {
 
     @Override
-    protected void onCreate(@NonNull Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_user); // Set the layout for this activity
 

@@ -2,7 +2,7 @@ package it.cnr.coco;
 
 import static android.content.Context.MODE_PRIVATE;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import androidx.annotation.NonNull;
@@ -11,7 +11,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import it.cnr.coco.LogInActivity;
 
-public class MainActivity extends Activity implements ConnectionListener {
+public class MainActivity extends AppCompatActivity implements ConnectionListener {
 
     private static final String TAG = "MainActivity";
 

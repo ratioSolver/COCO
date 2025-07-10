@@ -1,12 +1,23 @@
 package it.cnr.coco;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import java.util.Map;
 import java.util.Objects;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+
 public class Settings {
 
+    private static final String COCO_SETTINGS = "coco_settings";
+    private static final String TAG = "Settings";
     private static Settings instance;
 
+    private Context ctx;
     private boolean secure = true;
     private String hostname = "coco.cnr.it";
     private int port = 443;
@@ -20,13 +31,15 @@ public class Settings {
             instance = new Settings();
         return instance;
     }
-    
+
     public boolean isSecure() {
         return secure;
     }
 
     public void setSecure(boolean secure) {
+        Log.d(TAG, "Setting secure: " + secure);
         this.secure = secure;
+        ctx.getSharedPreferences(COCO_SETTINGS, MODE_PRIVATE).edit().putBoolean("secure", secure).apply();
     }
 
     public String getHostname() {
@@ -34,7 +47,9 @@ public class Settings {
     }
 
     public void setHostname(String hostname) {
+        Log.d(TAG, "Setting hostname: " + hostname);
         this.hostname = hostname;
+        ctx.getSharedPreferences(COCO_SETTINGS, MODE_PRIVATE).edit().putString("hostname", hostname).apply();
     }
 
     public int getPort() {
@@ -42,7 +57,9 @@ public class Settings {
     }
 
     public void setPort(int port) {
+        Log.d(TAG, "Setting port: " + port);
         this.port = port;
+        ctx.getSharedPreferences(COCO_SETTINGS, MODE_PRIVATE).edit().putInt("port", port).apply();
     }
 
     public String getWsPath() {
@@ -50,7 +67,9 @@ public class Settings {
     }
 
     public void setWsPath(String ws_path) {
+        Log.d(TAG, "Setting WebSocket path: " + ws_path);
         this.ws_path = ws_path;
+        ctx.getSharedPreferences(COCO_SETTINGS, MODE_PRIVATE).edit().putString("ws_path", ws_path).apply();
     }
 
     public String getHost() {
@@ -61,14 +80,16 @@ public class Settings {
         return (secure ? "wss://" : "ws://") + hostname + ":" + port + ws_path;
     }
 
-    public void load(Map<String, String> settings) {
-        if (settings.containsKey("secure"))
-            this.secure = Boolean.parseBoolean(settings.get("secure"));
-        if (settings.containsKey("hostname"))
-            this.hostname = settings.get("hostname");
-        if (settings.containsKey("port"))
-            this.port = Integer.parseInt(Objects.requireNonNull(settings.get("port")));
-        if (settings.containsKey("ws_path"))
-            this.ws_path = settings.get("ws_path");
+    public void load(@NonNull Context ctx) {
+        this.ctx = ctx;
+        SharedPreferences prefs = ctx.getSharedPreferences(COCO_SETTINGS, MODE_PRIVATE);
+        if (prefs.contains("secure"))
+            this.secure = prefs.getBoolean("secure", true);
+        if (prefs.contains("hostname"))
+            this.hostname = prefs.getString("hostname", "coco.cnr.it");
+        if (prefs.contains("port"))
+            this.port = prefs.getInt("port", 443);
+        if (prefs.contains("ws_path"))
+            this.ws_path = prefs.getString("ws_path", "/coco");
     }
 }

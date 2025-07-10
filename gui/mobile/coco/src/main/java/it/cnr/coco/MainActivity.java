@@ -30,7 +30,9 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
             startActivity(new Intent(this, LogInActivity.class));
         }
 
-        Connection.getInstance().addListener(this);
+        Settings.getInstance().load(this); // Load settings from shared preferences
+
+        Connection.getInstance().addListener(this); // Register this activity as a listener for connection events
     }
 
     @Override
@@ -42,7 +44,9 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_settings) {
-            Log.d(TAG, "Settings clicked");
+            Intent intent = new Intent(this, SettingsActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
             return true;
         }
         return super.onOptionsItemSelected(item);

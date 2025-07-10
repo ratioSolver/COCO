@@ -33,6 +33,7 @@ import okhttp3.WebSocketListener;
 public class Connection extends WebSocketListener {
 
     private static Connection instance;
+    private static final String COCO_CONNECTION = "connection";
     private static final String TAG = "Connection";
     private static final String MSG_TYPE = "msg_type";
     private static final int RECONNECT_DELAY_MS = 5000; // 5 seconds
@@ -76,7 +77,7 @@ public class Connection extends WebSocketListener {
                     Map<String, String> responseMap = gson.fromJson(responseBody, new TypeToken<Map<String, String>>() {
                     }.getType());
                     token = responseMap.get("token");
-                    ctx.getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putString("token", token).apply();
+                    ctx.getSharedPreferences(COCO_CONNECTION, MODE_PRIVATE).edit().putString("token", token).apply();
                     connect(token);
                 } else {
                     Log.e(TAG, "Login failed: " + response.message());
@@ -115,7 +116,7 @@ public class Connection extends WebSocketListener {
                     Map<String, String> responseMap = gson.fromJson(responseBody, new TypeToken<Map<String, String>>() {
                     }.getType());
                     token = responseMap.get("token");
-                    ctx.getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putString("token", token).apply();
+                    ctx.getSharedPreferences(COCO_CONNECTION, MODE_PRIVATE).edit().putString("token", token).apply();
                     connect(token);
                 } else {
                     Log.e(TAG, "User creation failed: " + response.message());

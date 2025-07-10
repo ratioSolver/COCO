@@ -17,6 +17,8 @@ import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -39,6 +41,7 @@ public class Connection extends WebSocketListener {
     private final OkHttpClient client;
     private WebSocket socket;
     private String token;
+    private Set<ConnectionListener> listeners = new HashSet<>();
 
     private Connection() {
         client = new OkHttpClient();
@@ -50,7 +53,7 @@ public class Connection extends WebSocketListener {
         return instance;
     }
 
-    public void login(Context ctx, String username, String password) {
+    public void login(@NonNull Context ctx, @NonNull String username, @NonNull String password) {
         Log.d(TAG, "Logging in with username: " + username);
         final Map<String, String> body = new HashMap<>();
         body.put("username", username);
@@ -62,6 +65,8 @@ public class Connection extends WebSocketListener {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 Log.e(TAG, "Login failed", e);
+                for (ConnectionListener listener : listeners)
+                    listener.onConnectionFailed("Login failed: " + e.getMessage());
             }
 
             @Override
@@ -75,12 +80,15 @@ public class Connection extends WebSocketListener {
                     connect(token);
                 } else {
                     Log.e(TAG, "Login failed: " + response.message());
+                    for (ConnectionListener listener : listeners)
+                        listener.onConnectionFailed("Login failed: " + response.message());
                 }
             }
         });
     }
 
-    public void createUser(Context ctx, String username, String password, JsonElement personal_data) {
+    public void createUser(@NonNull Context ctx, @NonNull String username, @NonNull String password,
+            JsonElement personal_data) {
         Log.d(TAG, "Creating user with username: " + username);
         final Map<String, Object> body = new HashMap<>();
         body.put("username", username);
@@ -96,6 +104,8 @@ public class Connection extends WebSocketListener {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 Log.e(TAG, "User creation failed", e);
+                for (ConnectionListener listener : listeners)
+                    listener.onConnectionFailed("User creation failed: " + e.getMessage());
             }
 
             @Override
@@ -109,6 +119,8 @@ public class Connection extends WebSocketListener {
                     connect(token);
                 } else {
                     Log.e(TAG, "User creation failed: " + response.message());
+                    for (ConnectionListener listener : listeners)
+                        listener.onConnectionFailed("User creation failed: " + response.message());
                 }
             }
         });
@@ -137,22 +149,46 @@ public class Connection extends WebSocketListener {
                 webSocket.send(gson.toJson(body));
             } else {
                 Log.e("Connection", "Failed to get FCM token", task.getException());
+                for (ConnectionListener listener : listeners)
+                    listener.onConnectionFailed("Failed to get FCM token");
             }
         });
     }
 
     @Override
     public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
+        Log.d(TAG, "WebSocket message received: " + text);
+        Map<String, Object> message = gson.fromJson(text, new TypeToken<Map<String, Object>>() {
+        }.getType());
+        String msgType = (String) message.get(MSG_TYPE);
+
+        if ("login".equals(msgType)) {
+            Log.d(TAG, "Login successful");
+            for (ConnectionListener listener : listeners)
+                listener.onConnectionEstablished();
+        }
     }
 
     @Override
     public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, Response response) {
         Log.e(TAG, "WebSocket connection failed", t);
+        for (ConnectionListener listener : listeners)
+            listener.onConnectionFailed("WebSocket connection failed: " + t.getMessage());
         handler.postDelayed(() -> connect(token), RECONNECT_DELAY_MS);
     }
 
     @Override
     public void onClosed(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
         Log.d(TAG, "WebSocket connection closed: " + reason);
+        for (ConnectionListener listener : listeners)
+            listener.onConnectionClosed();
+    }
+
+    public void addListener(@NonNull ConnectionListener listener) {
+        listeners.add(listener);
+    }
+
+    public void removeListener(@NonNull ConnectionListener listener) {
+        listeners.remove(listener);
     }
 }

@@ -49,6 +49,14 @@ if(BUILD_DELIBERATIVE)
     set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
 endif()
 
+if(BUILD_FCM)
+    set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
+    set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
+
+    set(FCM_CLIENT_EMAIL "YOUR_CLIENT_EMAIL" CACHE STRING "The Firebase Cloud Messaging Client Email")
+    set(FCM_PRIVATE_KEY "YOUR_PRIVATE_KEY" CACHE STRING "The Firebase Cloud Messaging Private Key")
+endif()
+
 if(BUILD_MQTT)
     set(MQTT_HOST "localhost" CACHE STRING "The MQTT Host")
     set(MQTT_PORT "1883" CACHE STRING "The MQTT Port")
@@ -168,6 +176,7 @@ if(BUILD_FCM)
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/fcm>)
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
+    target_compile_definitions(CoCo PUBLIC BUILD_FCM FCM_CLIENT_EMAIL="${FCM_CLIENT_EMAIL}" FCM_PRIVATE_KEY="${FCM_PRIVATE_KEY}")
 endif()
 
 if(BUILD_MQTT)

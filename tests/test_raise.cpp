@@ -7,6 +7,9 @@
 #else
 #include "coco_db.hpp"
 #endif
+#ifdef BUILD_FCM
+#include "coco_fcm.hpp"
+#endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
 #include <thread>
@@ -29,6 +32,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
     auto srv_ft = std::async(std::launch::async, [&srv]
                              { srv.start(); });
+#endif
+
+#ifdef BUILD_FCM
+    auto &fcm = cc.add_module<coco::coco_fcm>(cc);
+    fcm.send_notification("token", "Test Title", "Test Body");
 #endif
 
 #ifdef INTERACTIVE_TEST

@@ -12,7 +12,8 @@ namespace coco
   public:
     coco_fcm(coco &cc) noexcept;
 
-    void send_notification(const std::string &token, const std::string &title, const std::string &body);
+    void add_token(std::string_view id, std::string_view token);
+    void send_notification(std::string_view id, std::string_view title, std::string_view body);
 
   private:
     friend void send_notification_udf(Environment *env, UDFContext *udfc, UDFValue *out);

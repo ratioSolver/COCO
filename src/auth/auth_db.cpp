@@ -63,11 +63,11 @@ namespace coco
         return users;
     }
 
-    void auth_db::create_user(std::string_view itm_id, std::string_view username, std::string_view password, json::json &&personal_data)
+    void auth_db::create_user(std::string_view id, std::string_view username, std::string_view password, json::json &&personal_data)
     {
         auto [salt, pass] = utils::encode_password(password);
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("_id", itm_id.data()));
+        doc.append(bsoncxx::builder::basic::kvp("_id", id.data()));
         doc.append(bsoncxx::builder::basic::kvp("username", username.data()));
         doc.append(bsoncxx::builder::basic::kvp("password", pass.data()));
         doc.append(bsoncxx::builder::basic::kvp("salt", salt.data()));

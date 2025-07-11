@@ -5,22 +5,24 @@ namespace coco
     llm_server::llm_server(coco_server &srv, coco_llm &llm) noexcept : server_module(srv), llm_listener(llm), llm(llm)
     {
         srv.add_route(network::Get, "^/intents$", std::bind(&llm_server::get_intents, this, network::placeholders::request));
+        srv.add_route(network::Post, "^/intents$", std::bind(&llm_server::create_intent, this, network::placeholders::request));
         srv.add_route(network::Get, "^/entities$", std::bind(&llm_server::get_entities, this, network::placeholders::request));
+        srv.add_route(network::Post, "^/entities$", std::bind(&llm_server::create_entity, this, network::placeholders::request));
     }
 
-    void llm_server::created_intent([[maybe_unused]] const intent &i)
+    void llm_server::created_intent(const intent &i)
     {
         auto j_it = i.to_json();
         j_it["msg_type"] = "new_intent";
         srv.broadcast(std::move(j_it));
     }
-    void llm_server::created_entity([[maybe_unused]] const entity &e)
+    void llm_server::created_entity(const entity &e)
     {
         auto j_it = e.to_json();
         j_it["msg_type"] = "new_entity";
         srv.broadcast(std::move(j_it));
     }
-    void llm_server::created_slot([[maybe_unused]] const slot &s)
+    void llm_server::created_slot(const slot &s)
     {
         auto j_it = s.to_json();
         j_it["msg_type"] = "new_slot";

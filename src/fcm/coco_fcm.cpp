@@ -1,4 +1,6 @@
 #include "coco_fcm.hpp"
+#include "coco.hpp"
+#include "fcm_db.hpp"
 #include "base64.hpp"
 #include "crypto.hpp"
 #include "logging.hpp"
@@ -9,14 +11,27 @@ namespace coco
     {
         [[maybe_unused]] auto send_notification_err = AddUDF(get_env(), "send_notification", "v", 3, 3, "yss", send_notification_udf, "send_notification_udf", this);
         assert(send_notification_err == AUE_NO_ERROR);
+
+        auto &db = get_coco().get_db().add_module<fcm_db>(static_cast<mongo_db &>(get_coco().get_db()));
     }
 
-    void coco_fcm::send_notification(const std::string &token, const std::string &title, const std::string &body)
+    void coco_fcm::add_token(std::string_view id, std::string_view token) { get_coco().get_db().get_module<fcm_db>().add_token(id, token); }
+
+    void coco_fcm::send_notification(std::string_view id, std::string_view title, std::string_view body)
     {
         if (access_token.empty() || std::chrono::system_clock::now() >= access_token_expiration)
             refresh_access_token();
-        json::json j_message{{"message", {{"token", token.c_str()}, {"notification", {{"title", title.c_str()}, {"body", body.c_str()}}}}}};
-        auto res = client.post("/v1/projects/" COCO_NAME "/messages:send", std::move(j_message), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " + access_token}});
+        auto &db = get_coco().get_db().get_module<fcm_db>();
+        for (const auto &token : db.get_tokens(id))
+        {
+            json::json j_message{{"message", {{"token", token.c_str()}, {"notification", {{"title", title.data()}, {"body", body.data()}}}}}};
+            auto res = client.post("/v1/projects/" COCO_NAME "/messages:send", std::move(j_message), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " + access_token}});
+            if (res->get_status_code() == network::status_code::forbidden)
+            {
+                LOG_DEBUG("FCM access token is invalid or expired, refreshing...");
+                db.remove_token(id, token);
+            }
+        }
     }
 
     void coco_fcm::refresh_access_token()

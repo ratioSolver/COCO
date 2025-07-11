@@ -17,6 +17,9 @@
 #else
 #include "coco_noauth.hpp"
 #endif
+#ifdef BUILD_FCM
+#include "fcm_server.hpp"
+#endif
 #include <thread>
 #endif
 
@@ -29,6 +32,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     coco::coco_db db;
 #endif
     coco::coco cc(db);
+
+#ifdef BUILD_FCM
+    [[maybe_unused]] auto &fcm = cc.add_module<coco::coco_fcm>(cc);
+#endif
 
 #ifdef BUILD_AUTH
     cc.add_module<coco::coco_auth>(cc);
@@ -44,13 +51,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #else
     srv.add_module<coco::server_noauth>(srv);
 #endif
+#ifdef BUILD_FCM
+    srv.add_module<coco::fcm_server>(srv, fcm);
+#endif
     auto srv_ft = std::async(std::launch::async, [&srv]
                              { srv.start(); });
-#endif
-
-#ifdef BUILD_FCM
-    auto &fcm = cc.add_module<coco::coco_fcm>(cc);
-    // fcm.send_notification("token", "Test Title", "Test Body");
 #endif
 
 #ifdef INTERACTIVE_TEST

@@ -9,6 +9,8 @@ namespace coco
 {
     server_module::server_module(coco_server &srv) noexcept : srv(srv) {}
     coco &server_module::get_coco() noexcept { return srv.get_coco(); }
+    json::json &server_module::get_openapi_spec() { return srv.openapi_spec; }
+    json::json &server_module::get_asyncapi_spec() { return srv.asyncapi_spec; }
 
 #ifdef ENABLE_SSL
     coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), ssl_server(host, port)

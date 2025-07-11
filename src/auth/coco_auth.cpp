@@ -66,6 +66,54 @@ namespace coco
         srv.add_route(network::verb::Post, "^/login$", std::bind(&server_auth::login, this, std::placeholders::_1));
         srv.add_route(network::verb::Get, "^/users$", std::bind(&server_auth::get_users, this, std::placeholders::_1));
         srv.add_route(network::verb::Post, "^/users$", std::bind(&server_auth::create_user, this, std::placeholders::_1));
+
+        get_openapi_spec()["components"]["schemas"]["user"] = {
+            {"type", "object"},
+            {"description", "A user item with authentication capabilities."},
+            {"properties",
+             {{"id", {{"type", "string"}, {"description", "Unique identifier for the user."}}},
+              {"username", {{"type", "string"}, {"description", "Username of the user."}}},
+              {"password", {{"type", "string"}, {"description", "Password of the user."}}},
+              {"personal_data", {{"type", "object"}, {"description", "Personal data of the user."}}}}},
+            {"required", std::vector<json::json>{"id", "username", "password"}}};
+
+        get_openapi_spec()["paths"]["/login"] = {"post",
+                                                 {{"summary", "User login."},
+                                                  {"description", "Endpoint to authenticate a user and obtain a token."},
+                                                  {"requestBody",
+                                                   {{"required", true},
+                                                    {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"username", {{"type", "string"}, {"description", "Username of the user"}}}, {"password", {{"type", "string"}, {"description", "Password of the user"}}}}}}}}}}}}},
+                                                  {"responses",
+                                                   {{"200",
+                                                     {{"description", "Token generated successfully."},
+                                                      {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}, {"description", "Authentication token"}}}}}}}}}}}}},
+                                                    {"400",
+                                                     {{"description", "Invalid request."}}},
+                                                    {"401",
+                                                     {{"description", "Unauthorized."}}}}}}};
+        get_openapi_spec()["paths"]["/users"] = {{"get",
+                                                  {{"summary", "Get all users."},
+                                                   {"description", "Endpoint to retrieve a list of all users."},
+                                                   {"responses",
+                                                    {{"200",
+                                                      {{"description", "List of users retrieved successfully."},
+                                                       {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}},
+                                                     {"401",
+                                                      {{"description", "Unauthorized."}}}}}}},
+                                                 {"post",
+                                                  {{"summary", "Create a new user."},
+                                                   {"description", "Endpoint to create a new user."},
+                                                   {"requestBody",
+                                                    {{"required", true},
+                                                     {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/user"}}}}}}}}},
+                                                   {"responses",
+                                                    {{"201",
+                                                      {{"description", "User created successfully."},
+                                                       {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}, {"description", "Authentication token"}}}}}}}}}}}}},
+                                                     {"400",
+                                                      {{"description", "Invalid request."}}},
+                                                     {"401",
+                                                      {{"description", "Unauthorized."}}}}}}}};
     }
 
     std::unique_ptr<network::response> server_auth::login(const network::request &req)

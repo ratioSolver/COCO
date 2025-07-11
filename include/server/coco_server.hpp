@@ -21,6 +21,9 @@ namespace coco
   protected:
     [[nodiscard]] coco &get_coco() noexcept;
 
+    [[nodiscard]] json::json &get_openapi_spec();
+    [[nodiscard]] json::json &get_asyncapi_spec();
+
   private:
     virtual void on_ws_open(network::ws_server_session_base &) {}
     virtual void on_ws_message(network::ws_server_session_base &, const network::message &) {}

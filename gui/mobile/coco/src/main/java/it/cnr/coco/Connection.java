@@ -54,6 +54,28 @@ public class Connection extends WebSocketListener {
         return instance;
     }
 
+    /**
+     * Returns the authentication token associated with this connection.
+     *
+     * @return the current authentication token as a {@code String}
+     */
+    public String getToken() {
+        return token;
+    }
+
+    /**
+     * Attempts to log in a user with the provided username and password.
+     * Sends a POST request to the server's /login endpoint with the credentials as
+     * JSON.
+     * On successful login, retrieves the authentication token from the response,
+     * saves it in the shared preferences, and initiates a connection using the
+     * token.
+     * Notifies registered {@link ConnectionListener}s of success or failure.
+     *
+     * @param ctx      the Android context, used for accessing shared preferences
+     * @param username the username to log in with (must not be null)
+     * @param password the password to log in with (must not be null)
+     */
     public void login(@NonNull Context ctx, @NonNull String username, @NonNull String password) {
         Log.d(TAG, "Logging in with username: " + username);
         final Map<String, String> body = new HashMap<>();
@@ -88,6 +110,19 @@ public class Connection extends WebSocketListener {
         });
     }
 
+    /**
+     * Creates a new user by sending a POST request to the server with the provided
+     * username, password, and optional personal data. If the request is
+     * successful, stores the received authentication token in shared preferences
+     * and attempts to connect using the new token. Notifies registered listeners of
+     * success or failure.
+     *
+     * @param ctx           the Android context used for accessing shared
+     *                      preferences
+     * @param username      the username for the new user (must not be null)
+     * @param password      the password for the new user (must not be null)
+     * @param personal_data optional personal data as a JsonElement; may be null
+     */
     public void createUser(@NonNull Context ctx, @NonNull String username, @NonNull String password,
             JsonElement personal_data) {
         Log.d(TAG, "Creating user with username: " + username);
@@ -127,6 +162,35 @@ public class Connection extends WebSocketListener {
         });
     }
 
+    public void newToken(@NonNull String id, @NonNull String token) {
+        Log.d(TAG, "Adding new token for user ID: " + id);
+        final Map<String, String> body = new HashMap<>();
+        body.put("id", id);
+        body.put("token", token);
+        final Request.Builder builder = new Request.Builder()
+                .url(Settings.getInstance().getHost() + "/fcm_tokens")
+                .post(RequestBody.create(gson.toJson(body), MediaType.parse("application/json")));
+        if (this.token != null)
+            builder.addHeader("Authorization", "Bearer " + this.token);
+        client.newCall(builder.build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e(TAG, "Failed to add new token", e);
+                for (ConnectionListener listener : listeners)
+                    listener.onConnectionFailed("Failed to add new token: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    Log.e(TAG, "Failed to add new token: " + response.message());
+                    for (ConnectionListener listener : listeners)
+                        listener.onConnectionFailed("Failed to add new token: " + response.message());
+                }
+            }
+        });
+    }
+
     public void connect(String token) {
         this.token = token;
         if (socket != null)
@@ -136,18 +200,26 @@ public class Connection extends WebSocketListener {
         socket = client.newWebSocket(request, this);
     }
 
+    public void disconnect() {
+        if (socket != null) {
+            socket.close(1000, "User requested disconnect");
+            socket = null;
+        }
+    }
+
     @Override
     public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
         Log.d(TAG, "WebSocket connection opened");
+        Map<String, String> body = new HashMap<>();
+        body.put(MSG_TYPE, "login");
+        body.put("token", token);
+        webSocket.send(gson.toJson(body));
         FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 Log.d(TAG, "FCM token retrieved successfully");
                 String fcm_token = task.getResult();
-                Map<String, String> body = new HashMap<>();
-                body.put(MSG_TYPE, "login");
-                body.put("token", token);
-                body.put("fcm_token", fcm_token);
-                webSocket.send(gson.toJson(body));
+                Log.d(TAG, "FCM Token: " + fcm_token);
+                newToken(token, fcm_token);
             } else {
                 Log.e("Connection", "Failed to get FCM token", task.getException());
                 for (ConnectionListener listener : listeners)

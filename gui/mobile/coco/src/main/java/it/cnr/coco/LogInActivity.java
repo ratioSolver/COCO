@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -46,6 +47,7 @@ public class LogInActivity extends Activity implements ConnectionListener {
 
     @Override
     public void onConnectionFailed(String errorMessage) {
+        runOnUiThread(() -> Toast.makeText(this, "Login failed: " + errorMessage, Toast.LENGTH_LONG).show());
     }
 
     @Override

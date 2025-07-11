@@ -33,7 +33,7 @@ import okhttp3.WebSocketListener;
 public class Connection extends WebSocketListener {
 
     private static Connection instance;
-    private static final String COCO_CONNECTION = "connection";
+    public static final String COCO_CONNECTION = "coco_connection";
     private static final String TAG = "Connection";
     private static final String MSG_TYPE = "msg_type";
     private static final int RECONNECT_DELAY_MS = 5000; // 5 seconds
@@ -42,6 +42,7 @@ public class Connection extends WebSocketListener {
     private final OkHttpClient client;
     private WebSocket socket;
     private String token;
+    private boolean connected = false;
     private Set<ConnectionListener> listeners = new HashSet<>();
 
     private Connection() {
@@ -52,6 +53,15 @@ public class Connection extends WebSocketListener {
         if (instance == null)
             instance = new Connection();
         return instance;
+    }
+
+    /**
+     * Returns whether the connection is currently established.
+     *
+     * @return {@code true} if connected, {@code false} otherwise
+     */
+    public boolean isConnected() {
+        return connected;
     }
 
     /**
@@ -237,6 +247,7 @@ public class Connection extends WebSocketListener {
 
         if ("login".equals(msgType)) {
             Log.d(TAG, "Login successful");
+            connected = true;
             for (ConnectionListener listener : listeners)
                 listener.onConnectionEstablished();
         }
@@ -245,6 +256,7 @@ public class Connection extends WebSocketListener {
     @Override
     public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, Response response) {
         Log.e(TAG, "WebSocket connection failed", t);
+        connected = false;
         for (ConnectionListener listener : listeners)
             listener.onConnectionFailed("WebSocket connection failed: " + t.getMessage());
         handler.postDelayed(() -> connect(token), RECONNECT_DELAY_MS);
@@ -253,6 +265,7 @@ public class Connection extends WebSocketListener {
     @Override
     public void onClosed(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
         Log.d(TAG, "WebSocket connection closed: " + reason);
+        connected = false;
         for (ConnectionListener listener : listeners)
             listener.onConnectionClosed();
     }

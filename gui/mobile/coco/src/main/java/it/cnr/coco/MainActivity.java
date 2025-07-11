@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,17 +23,19 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        String token = getSharedPreferences("coco_prefs", MODE_PRIVATE).getString("token", null);
-        if (token != null)
-            Connection.getInstance().connect(token);
-        else {
-            Log.d(TAG, "No token found, redirecting to login");
-            startActivity(new Intent(this, LogInActivity.class));
-        }
-
-        Settings.getInstance().load(this); // Load settings from shared preferences
-
         Connection.getInstance().addListener(this); // Register this activity as a listener for connection events
+
+        if (!Connection.getInstance().isConnected()) {
+            String token = getSharedPreferences(Connection.COCO_CONNECTION, MODE_PRIVATE).getString("token", null);
+            if (token != null)
+                Connection.getInstance().connect(token);
+        } else {
+            Log.d(TAG, "No token found, redirecting to login");
+            Intent intent = new Intent(this, LogInActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            finish(); // Close this activity
+        }
     }
 
     @Override
@@ -58,10 +61,23 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
 
     @Override
     public void onConnectionFailed(String errorMessage) {
+        runOnUiThread(() -> {
+            Log.e(TAG, "Connection failed: " + errorMessage);
+            Toast.makeText(this, "Connection failed: " + errorMessage, Toast.LENGTH_LONG).show();
+            Intent intent = new Intent(this, LogInActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            finish();
+        });
     }
 
     @Override
     public void onConnectionClosed() {
+        Log.d(TAG, "Connection closed, redirecting to login");
+        Intent intent = new Intent(this, LogInActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish(); // Close this activity
     }
 
     @Override

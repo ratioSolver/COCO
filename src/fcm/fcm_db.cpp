@@ -8,7 +8,7 @@ namespace coco
     void fcm_db::add_token(std::string_view id, std::string_view token)
     {
         bsoncxx::builder::basic::document filter, update;
-        filter.append(bsoncxx::builder::basic::kvp("_id", id.data()));
+        filter.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{id.data()}));
         update.append(bsoncxx::builder::basic::kvp("$addToSet", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("tokens", token.data()))));
         fcm_collection.update_one(filter.view(), update.view(), mongocxx::options::update{}.upsert(true));
     }
@@ -16,7 +16,7 @@ namespace coco
     void fcm_db::remove_token(std::string_view id, std::string_view token)
     {
         bsoncxx::builder::basic::document filter, update;
-        filter.append(bsoncxx::builder::basic::kvp("_id", id.data()));
+        filter.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{id.data()}));
         update.append(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("tokens", token.data()))));
         fcm_collection.update_one(filter.view(), update.view());
     }
@@ -25,7 +25,7 @@ namespace coco
     {
         std::vector<std::string> tokens;
         bsoncxx::builder::basic::document filter;
-        filter.append(bsoncxx::builder::basic::kvp("_id", id.data()));
+        filter.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{id.data()}));
         auto doc = fcm_collection.find_one(filter.view());
         if (doc && doc->view().find("tokens") != doc->view().end())
         {

@@ -12,9 +12,12 @@ public class MessagingService extends FirebaseMessagingService {
     private static final String TAG = "MessagingService";
 
     @Override
-    public void onNewToken(@NonNull String token) {
-        super.onNewToken(token);
-        Log.d(TAG, "New token: " + token);
+    public void onNewToken(@NonNull String fcm_token) {
+        super.onNewToken(fcm_token);
+        Log.d(TAG, "New token: " + fcm_token);
+        String token = getSharedPreferences(Connection.COCO_CONNECTION, MODE_PRIVATE).getString("token", null);
+        if (token != null)
+            Connection.getInstance().newToken(token, fcm_token);
     }
 
     @Override

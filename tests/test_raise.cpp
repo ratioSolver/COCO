@@ -12,6 +12,11 @@
 #endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
+#ifdef BUILD_AUTH
+#include "coco_auth.hpp"
+#else
+#include "coco_noauth.hpp"
+#endif
 #include <thread>
 #endif
 
@@ -25,10 +30,19 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
     coco::coco cc(db);
 
+#ifdef BUILD_AUTH
+    cc.add_module<coco::coco_auth>(cc);
+#endif
+
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);
 #ifdef ENABLE_SSL
-    srv.load_certificate("cert.pem", "key.pem");
+    srv.load_certificate("tests/cert.pem", "tests/key.pem");
+#endif
+#ifdef BUILD_AUTH
+    srv.add_module<coco::server_auth>(srv);
+#else
+    srv.add_module<coco::server_noauth>(srv);
 #endif
     auto srv_ft = std::async(std::launch::async, [&srv]
                              { srv.start(); });
@@ -36,7 +50,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
 #ifdef BUILD_FCM
     auto &fcm = cc.add_module<coco::coco_fcm>(cc);
-    fcm.send_notification("token", "Test Title", "Test Body");
+    // fcm.send_notification("token", "Test Title", "Test Body");
 #endif
 
 #ifdef INTERACTIVE_TEST

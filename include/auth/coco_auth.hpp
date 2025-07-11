@@ -79,5 +79,6 @@ namespace coco
   private:
     std::mutex mtx;
     std::unordered_map<network::ws_server_session_base *, std::string> clients;
+    std::unordered_map<std::string, std::set<network::ws_server_session_base *>> devices;
   };
 } // namespace coco

@@ -42,6 +42,8 @@ namespace coco
         add_route(network::Get, "^/openapi$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
         add_route(network::Get, "^/asyncapi$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
 
+        add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
+
         json::json schemas{{"property",
                             {{"description", "A property definition that can be one of several types: integer, float, string, symbol, item reference, or JSON object."},
                              {"oneOf", std::vector<json::json>{{"$ref", "#/components/schemas/int_property"}, {"$ref", "#/components/schemas/float_property"}, {"$ref", "#/components/schemas/string_property"}, {"$ref", "#/components/schemas/symbol_property"}, {"$ref", "#/components/schemas/item_property"}, {"$ref", "#/components/schemas/json_property"}}}}},
@@ -274,6 +276,26 @@ namespace coco
         LOG_DEBUG(asyncapi_spec.dump());
     }
 
+    void coco_server::on_ws_open(network::ws_server_session_base &ws)
+    {
+        for (auto &[_, mod] : modules)
+            mod->on_ws_open(ws);
+    }
+    void coco_server::on_ws_message(network::ws_server_session_base &ws, const network::message &msg)
+    {
+        for (auto &[_, mod] : modules)
+            mod->on_ws_message(ws, msg);
+    }
+    void coco_server::on_ws_close(network::ws_server_session_base &ws)
+    {
+        for (auto &[_, mod] : modules)
+            mod->on_ws_close(ws);
+    }
+    void coco_server::on_ws_error(network::ws_server_session_base &ws, const std::error_code &ec)
+    {
+        for (auto &[_, mod] : modules)
+            mod->on_ws_error(ws, ec);
+    }
     void coco_server::broadcast(json::json &&msg)
     {
         for (auto &[_, mod] : modules)

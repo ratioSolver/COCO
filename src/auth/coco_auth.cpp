@@ -66,8 +66,6 @@ namespace coco
         srv.add_route(network::verb::Post, "^/login$", std::bind(&server_auth::login, this, std::placeholders::_1));
         srv.add_route(network::verb::Get, "^/users$", std::bind(&server_auth::get_users, this, std::placeholders::_1));
         srv.add_route(network::verb::Post, "^/users$", std::bind(&server_auth::create_user, this, std::placeholders::_1));
-
-        srv.add_ws_route("/coco").on_open(std::bind(&server_auth::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&server_auth::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&server_auth::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&server_auth::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
     }
 
     std::unique_ptr<network::response> server_auth::login(const network::request &req)
@@ -160,6 +158,7 @@ namespace coco
                 LOG_DEBUG("User authenticated successfully");
 
                 clients.at(&ws) = token;
+                devices[token].emplace(&ws);
 
                 // Send user data
                 auto usr = get_coco().get_db().get_module<auth_db>().get_user(token);
@@ -181,6 +180,9 @@ namespace coco
     {
         LOG_TRACE("Connection closed");
         std::lock_guard<std::mutex> _(mtx);
+        auto token = clients.at(&ws);
+        if (devices.count(token))
+            devices.at(token).erase(&ws);
         clients.erase(&ws);
         LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
     }
@@ -193,7 +195,7 @@ namespace coco
     void server_auth::broadcast(json::json &msg)
     {
         auto msg_str = msg.dump();
-        for (auto client : clients)
-            client.first->send(msg_str);
+        for (auto &[ws, _] : clients)
+            ws->send(msg_str);
     }
 } // namespace coco

@@ -17,7 +17,6 @@
 #endif
 #ifdef BUILD_AUTH
 #include "coco_auth.hpp"
-#include "auth_db.hpp"
 #else
 #include "coco_noauth.hpp"
 #endif

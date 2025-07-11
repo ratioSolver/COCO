@@ -142,11 +142,11 @@ public class Connection extends WebSocketListener {
         FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 Log.d(TAG, "FCM token retrieved successfully");
-                String fcm = task.getResult();
+                String fcm_token = task.getResult();
                 Map<String, String> body = new HashMap<>();
                 body.put(MSG_TYPE, "login");
                 body.put("token", token);
-                body.put("fcm", fcm);
+                body.put("fcm_token", fcm_token);
                 webSocket.send(gson.toJson(body));
             } else {
                 Log.e("Connection", "Failed to get FCM token", task.getException());

@@ -12,14 +12,13 @@
 #endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
-#ifdef BUILD_LLM
-#include "llm_server.hpp"
-#endif
 #ifdef BUILD_AUTH
 #include "coco_auth.hpp"
-#include "auth_db.hpp"
 #else
 #include "coco_noauth.hpp"
+#endif
+#ifdef BUILD_LLM
+#include "llm_server.hpp"
 #endif
 #include <thread>
 #endif

@@ -7,10 +7,7 @@
 
 namespace coco
 {
-    server_noauth::server_noauth(coco_server &srv) noexcept : server_module(srv)
-    {
-        srv.add_ws_route("/coco").on_open(std::bind(&server_noauth::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&server_noauth::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&server_noauth::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&server_noauth::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
-    }
+    server_noauth::server_noauth(coco_server &srv) noexcept : server_module(srv) {}
 
     void server_noauth::on_ws_open(network::ws_server_session_base &ws)
     {

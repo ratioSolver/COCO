@@ -78,12 +78,12 @@ int main()
     // Create the 'User' type
     auto &user_tp = cc.create_type("User", {}, json::json{{"name", {"type", "string"}}, {"age", {"type", "int"}}}, {});
     // Create a user
-    [[maybe_unused]] auto &user_itm = cc.create_item(user_tp);
+    auto &user_itm = cc.create_item(user_tp);
 
     // Create the 'Robot' type
     auto &robot_tp = cc.create_type("Robot", {}, {}, json::json{{"saying", {"type", "string"}}, {"understood", {"type", "string"}}, {"robot_face", {{"type", "symbol"}, {"values", {"happy", "sad", "angry", "surprised", "neutral"}}}}, {"user", {{"type", "item"}, {"domain", "User"}}}, {"listening", {"type", "bool"}}});
     // Create a robot
-    [[maybe_unused]] auto &robot_itm = cc.create_item(robot_tp);
+    auto &robot_itm = cc.create_item(robot_tp);
 
     // Set the user the robot is interacting with
     cc.set_value(robot_itm, {{"user", user_itm.get_id().c_str()}});
@@ -113,7 +113,7 @@ int main()
             db.drop();
 #ifdef BUILD_LLM
         else
-            llm.understand(itm_0, user_input);
+            cc.set_value(robot_itm, json::json{{"understood", user_input.c_str()}});
 #endif
     } while (user_input != "d" && user_input != "q");
 #else

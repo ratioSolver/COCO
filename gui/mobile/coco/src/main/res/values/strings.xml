@@ -5,6 +5,7 @@
     <string name="hostname_hint">Hostname</string>
     <string name="port_hint">Port</string>
     <string name="username_hint">Username</string>
+    <string name="confirm_password_hint">Confirm Password</string>
     <string name="password_hint">Password</string>
     <string name="login_button_text">Log In</string>
     <string name="create_user_button_text">Create User</string>

@@ -12,7 +12,7 @@ namespace coco
         [[maybe_unused]] auto send_notification_err = AddUDF(get_env(), "send_notification", "v", 3, 3, "yss", send_notification_udf, "send_notification_udf", this);
         assert(send_notification_err == AUE_NO_ERROR);
 
-        auto &db = get_coco().get_db().add_module<fcm_db>(static_cast<mongo_db &>(get_coco().get_db()));
+        get_coco().get_db().add_module<fcm_db>(static_cast<mongo_db &>(get_coco().get_db()));
     }
 
     void coco_fcm::add_token(std::string_view id, std::string_view token) { get_coco().get_db().get_module<fcm_db>().add_token(id, token); }

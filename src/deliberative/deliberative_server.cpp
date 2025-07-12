@@ -7,6 +7,33 @@ namespace coco
     {
         srv.add_route(network::Get, "^/deliberative_rules$", std::bind(&deliberative_server::get_deliberative_rules, this, network::placeholders::request));
         srv.add_route(network::Post, "^/deliberative_rules$", std::bind(&deliberative_server::create_deliberative_rule, this, network::placeholders::request));
+
+        // Define schemas for deliberative rules
+        get_schemas()["deliberative_rule"] = {
+            {"type", "object"},
+            {"description", "A deliberative rule is a RiDDLe rule that can be applied to achieve some goals."},
+            {"properties",
+             {{"name", {{"type", "string"}}},
+              {"content", {{"type", "string"}, {"description", "The content of the deliberative rule in RiDDLe format."}}}}},
+            {"required", std::vector<json::json>{"name", "content"}}};
+
+        // Define OpenAPI paths for deliberative rules
+        get_paths()["/deliberative_rules"] = {{"get",
+                                               {{"summary", "Retrieve all the " COCO_NAME " deliberative rules."},
+                                                {"description", "Endpoint to fetch all the deliberative rules."},
+                                                {"responses",
+                                                 {{"200",
+                                                   {{"description", "Successful response with the stored deliberative rules."},
+                                                    {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}}}}}}}},
+                                              {"post",
+                                               {{"summary", "Create a new " COCO_NAME " deliberative rule."},
+                                                {"description", "Endpoint to create a new deliberative rule."},
+                                                {"requestBody",
+                                                 {{"required", true},
+                                                  {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}},
+                                                {"responses",
+                                                 {{"204",
+                                                   {{"description", "Deliberative rule created successfully."}}}}}}}};
     }
 
     std::unique_ptr<network::response> deliberative_server::get_deliberative_rules(const network::request &)

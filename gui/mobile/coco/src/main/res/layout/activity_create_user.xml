@@ -18,6 +18,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
+    <EditText
+        android:id="@+id/confirm_password"
+        android:hint="@string/confirm_password_hint"
+        android:inputType="textPassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
     <Button
         android:id="@+id/create_user_button"
         android:text="@string/create_user_button_text"

@@ -21,8 +21,8 @@ namespace coco
   protected:
     [[nodiscard]] coco &get_coco() noexcept;
 
-    [[nodiscard]] json::json &get_openapi_spec();
-    [[nodiscard]] json::json &get_asyncapi_spec();
+    [[nodiscard]] json::json &get_schemas();
+    [[nodiscard]] json::json &get_paths();
 
   private:
     virtual void on_ws_open(network::ws_server_session_base &) {}
@@ -118,7 +118,7 @@ namespace coco
     std::map<std::type_index, std::unique_ptr<server_module>> modules; // the server modules
 
   protected:
-    json::json openapi_spec;  // OpenAPI specification for the server
-    json::json asyncapi_spec; // AsyncAPI specification for the server
+    json::json schemas; // JSON schemas for OpenAPI and AsyncAPI specifications
+    json::json paths;   // Paths for OpenAPI specification
   };
 } // namespace coco

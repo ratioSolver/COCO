@@ -195,8 +195,11 @@ namespace coco
         std::string msg_type = x["msg_type"];
         if (msg_type == "login")
         {
+            LOG_TRACE("Login request received");
             if (!x.contains("token") || !x["token"].is_string())
             {
+                json::json resp{{"msg_type", "error"}, {"message", "Invalid login request"}};
+                ws.send(resp.dump());
                 ws.close();
                 return;
             }
@@ -223,7 +226,44 @@ namespace coco
                 ws.send(jc.dump());
             }
             else
+            {
+                LOG_DEBUG("Invalid token provided");
+                json::json resp{{"msg_type", "error"}, {"message", "Invalid token"}};
+                ws.send(resp.dump());
                 ws.close();
+            }
+            LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
+        }
+        else if (msg_type == "data")
+        {
+            LOG_TRACE("Data request received");
+            if (!x.contains("id") || !x["id"].is_string() || !x.contains("data") || !x["data"].is_object())
+            {
+                json::json resp{{"msg_type", "error"}, {"message", "Invalid data request"}};
+                ws.send(resp.dump());
+                ws.close();
+                return;
+            }
+            std::string item_id = x["id"];
+            json::json &data = x["data"];
+
+            try
+            {
+                auto &itm = get_coco().get_item(item_id);
+                get_coco().set_value(itm, std::move(data));
+            }
+            catch (const std::invalid_argument &e)
+            {
+                json::json resp{{"msg_type", "error"}, {"message", e.what()}};
+                ws.send(resp.dump());
+            }
+        }
+        else
+        {
+            LOG_TRACE("Unknown message type: " << msg_type);
+            json::json resp{{"msg_type", "error"}, {"message", "Unknown message type"}};
+            ws.send(resp.dump());
+            ws.close();
         }
     }
     void server_auth::on_ws_close(network::ws_server_session_base &ws)

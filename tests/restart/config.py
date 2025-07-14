@@ -92,6 +92,12 @@ def create_rules(session: requests.Session, url: str):
 
 
 def create_items(session: requests.Session, url: str) -> list[str]:
+    # Create user item
+    response = session.post(
+        url + '/items', json={'type': 'User', 'properties': {'name': 'Test User'}})
+    if response.status_code != 201:
+        logger.error('Failed to create User item')
+        return
     # Create robot item
     response = session.post(
         url + '/items', json={'type': 'Robot', 'properties': {'robot_name': 'Robot'}})

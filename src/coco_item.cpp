@@ -34,11 +34,11 @@ namespace coco
         LOG_TRACE(tp.get_coco().to_string(is_instance_of));
         FBDispose(is_instance_of_fact_builder);
 
+        CREATED_ITEM();
+
         set_properties(std::move(props));
         if (val.has_value())
             set_value(std::move(*val));
-
-        CREATED_ITEM();
     }
     item::~item() noexcept
     {

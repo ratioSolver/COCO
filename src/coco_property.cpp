@@ -190,8 +190,8 @@ namespace coco
         }
         else
         {
-            auto item = cc.get_item(static_cast<std::string>(value));
-            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), item.get_id().c_str());
+            auto &itm = cc.get_item(static_cast<std::string>(value));
+            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), itm.get_id().c_str());
             assert(put_slot_err == PSE_NO_ERROR);
         }
     }
@@ -237,7 +237,7 @@ namespace coco
     const json::json &property::get_schemas() const noexcept { return pt.get_coco().schemas; }
     std::mt19937 &property::get_gen() const noexcept { return pt.get_coco().gen; }
 
-    bool_property::bool_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<bool>> default_value) noexcept : property(pt, tp, dynamic, name), default_value(default_value)
+    bool_property::bool_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<bool>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value)
     {
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
         if (multiple)
@@ -296,7 +296,7 @@ namespace coco
         }
     }
 
-    int_property::int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<long>> default_value, std::optional<long> min, std::optional<long> max) noexcept : property(pt, tp, dynamic, name), default_value(default_value), min(min), max(max)
+    int_property::int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<long>> default_value, std::optional<long> min, std::optional<long> max) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value), min(min), max(max)
     {
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
         if (multiple)
@@ -375,7 +375,7 @@ namespace coco
         }
     }
 
-    float_property::float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<double>> default_value, std::optional<double> min, std::optional<double> max) noexcept : property(pt, tp, dynamic, name), default_value(default_value), min(min), max(max)
+    float_property::float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<double>> default_value, std::optional<double> min, std::optional<double> max) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value), min(min), max(max)
     {
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
         if (multiple)
@@ -454,7 +454,7 @@ namespace coco
         }
     }
 
-    string_property::string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), default_value(default_value)
+    string_property::string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value)
     {
         std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
         if (multiple)
@@ -501,7 +501,7 @@ namespace coco
             json::json j(json::json_type::array);
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
-                std::uniform_int_distribution<std::size_t> dist(0, 100);
+                std::uniform_int_distribution<std::size_t> dist(32, 126);
                 std::string str;
                 for (std::size_t i = 0; i < dist(get_gen()); ++i)
                     str += static_cast<char>(dist(get_gen()));
@@ -511,7 +511,7 @@ namespace coco
         }
         else
         { // Generate a single value.
-            std::uniform_int_distribution<std::size_t> dist(0, 100);
+            std::uniform_int_distribution<std::size_t> dist(32, 126);
             std::string str;
             for (std::size_t i = 0; i < dist(get_gen()); ++i)
                 str += static_cast<char>(dist(get_gen()));

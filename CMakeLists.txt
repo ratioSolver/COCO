@@ -172,7 +172,7 @@ if(BUILD_MQTT)
 
     target_include_directories(CoCo PUBLIC ${PAHO_MQTT_CPP_INCLUDE_DIR})
     target_link_libraries(CoCo PUBLIC ${PAHO_MQTT_CPP_LIBRARIES})
-    target_compile_definitions(CoCo PUBLIC BUILD_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
 endif()
 
 if(BUILD_LLM)
@@ -189,7 +189,7 @@ if(BUILD_LLM)
 
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
-    target_compile_definitions(CoCo PUBLIC BUILD_LLM LLM_HOST="${LLM_HOST}" LLM_PORT=${LLM_PORT} LLM_PROVIDER="${LLM_PROVIDER}" LLM_MODEL="${LLM_MODEL}" LLM_API_KEY="${LLM_API_KEY}")
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_LLM LLM_HOST="${LLM_HOST}" LLM_PORT=${LLM_PORT} LLM_PROVIDER="${LLM_PROVIDER}" LLM_MODEL="${LLM_MODEL}" LLM_API_KEY="${LLM_API_KEY}")
 endif()
 
 if(BUILD_COCO_SERVER)
@@ -201,7 +201,7 @@ if(BUILD_COCO_SERVER)
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/server> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/auth>)
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
-    target_compile_definitions(CoCo PUBLIC BUILD_SERVER)
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_SERVER)
 
     if(BUILD_AUTH)
         target_sources(CoCo PRIVATE src/auth/coco_auth.cpp src/auth/auth_db.cpp)

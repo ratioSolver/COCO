@@ -37,7 +37,7 @@ WORKDIR /app
 RUN git clone --recursive -b uncertainty https://github.com/ratioSolver/COCO \
     && cd COCO \
     && mkdir build && cd build \
-    && cmake -DLOGGING_LEVEL=DEBUG -DBUILD_MONGODB=ON -DBUILD_COCO_SERVER=ON -DBUILD_WEB_APP=ON -DBUILD_COCO_EXECUTABLE=ON -DCMAKE_BUILD_TYPE=Release .. \
+    && cmake -DLOGGING_LEVEL=DEBUG -DBUILD_MONGODB=ON -DBUILD_COCO_SERVER=ON -DBUILD_AUTH=ON -DBUILD_WEB_APP=ON -DBUILD_COCO_EXECUTABLE=ON -DCMAKE_BUILD_TYPE=Release .. \
     && make
 
 # Start the COCO application

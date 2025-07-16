@@ -26,7 +26,8 @@ RUN curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.1.
     && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 \
     && cmake --build . \
     && cmake --build . --target install \
-    && cd /tmp && rm -rf mongo-cxx-driver-r4.1.1*
+    && cd /tmp && rm -rf mongo-cxx-driver-r4.1.1* \
+    && ldconfig
 
 # Install Node.js through NVM
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \

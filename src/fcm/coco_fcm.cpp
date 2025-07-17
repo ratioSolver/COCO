@@ -24,7 +24,7 @@ namespace coco
         auto &db = get_coco().get_db().get_module<fcm_db>();
         for (const auto &token : db.get_tokens(id))
         {
-            json::json j_message{{"message", {{"token", token.c_str()}, {"notification", {{"title", title.data()}, {"body", body.data()}}}}}};
+            json::json j_message{{"message", {{"token", token}, {"notification", {{"title", title.data()}, {"body", body.data()}}}}}};
             auto res = client.post("/v1/projects/" COCO_NAME "/messages:send", std::move(j_message), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " + access_token}});
             if (res->get_status_code() == network::status_code::forbidden)
             {

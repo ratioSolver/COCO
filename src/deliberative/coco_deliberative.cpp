@@ -83,7 +83,7 @@ namespace coco
 
     deliberative_rule::deliberative_rule(coco_deliberative &cd, std::string_view name, std::string_view content) noexcept : cd(cd), name(name), content(content) {}
 
-    json::json deliberative_rule::to_json() const noexcept { return {{"content", content.c_str()}}; }
+    json::json deliberative_rule::to_json() const noexcept { return {{"content", content}}; }
 
     coco_executor &coco_deliberative::create_executor(std::string_view name)
     {

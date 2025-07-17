@@ -302,7 +302,7 @@ namespace coco
         j_itm["id"] = itm.get_id();
         broadcast(std::move(j_itm));
     }
-    void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id().c_str()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
+    void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
 
     std::unique_ptr<network::response> coco_server::index(const network::request &) { return std::make_unique<network::file_response>(CLIENT_DIR "/dist/index.html"); }
     std::unique_ptr<network::response> coco_server::assets(const network::request &req)

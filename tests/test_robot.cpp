@@ -86,7 +86,7 @@ int main()
     auto &robot_itm = cc.create_item(robot_tp);
 
     // Set the user the robot is interacting with
-    cc.set_value(robot_itm, {{"user", user_itm.get_id().c_str()}});
+    cc.set_value(robot_itm, {{"user", user_itm.get_id()}});
 
 #ifdef BUILD_LLM
     // If someone talks to the robot, the robot has to understand the message
@@ -113,7 +113,7 @@ int main()
             db.drop();
 #ifdef BUILD_LLM
         else
-            cc.set_value(robot_itm, json::json{{"understood", user_input.c_str()}});
+            cc.set_value(robot_itm, json::json{{"understood", user_input}});
 #endif
     } while (user_input != "d" && user_input != "q");
 #else

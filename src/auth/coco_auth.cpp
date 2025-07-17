@@ -132,7 +132,7 @@ namespace coco
             auto token = get_coco().get_module<coco_auth>().get_token(username, password);
             if (token.empty())
                 return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
-            return std::make_unique<network::json_response>(json::json({{"token", token.c_str()}}), network::status_code::ok);
+            return std::make_unique<network::json_response>(json::json({{"token", token}}), network::status_code::ok);
         }
         catch (const std::invalid_argument &)
         {

@@ -119,14 +119,14 @@ namespace coco
 
     [[nodiscard]] json::json type::to_json() const noexcept
     {
-        json::json j = json::json{{"name", name.c_str()}};
+        json::json j = json::json{{"name", name}};
         if (!data.as_object().empty())
             j["data"] = data;
         if (!parents.empty())
         {
             json::json j_pars(json::json_type::array);
             for (const auto &p : parents)
-                j_pars.push_back(p.second.get().name.c_str());
+                j_pars.push_back(p.second.get().name);
             j["parents"] = j_pars;
         }
         if (!static_properties.empty())

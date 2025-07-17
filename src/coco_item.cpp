@@ -128,7 +128,7 @@ namespace coco
 
     json::json item::to_json() const noexcept
     {
-        json::json j_itm{{"type", tp.get_name().c_str()}};
+        json::json j_itm{{"type", tp.get_name()}};
         if (!properties.as_object().empty())
             j_itm["properties"] = properties;
         if (value.has_value())

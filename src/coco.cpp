@@ -265,7 +265,7 @@ namespace coco
         assert(undef_rl);
     }
 
-    json::json reactive_rule::to_json() const noexcept { return {{"content", content.c_str()}}; }
+    json::json reactive_rule::to_json() const noexcept { return {{"content", content}}; }
 
     json::json coco::to_json() noexcept
     {

@@ -285,8 +285,8 @@ namespace coco
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
                 std::bernoulli_distribution dist;
-                auto val = dist(get_gen());
-                j.push_back(val);
+                json::json val = dist(get_gen());
+                j.push_back(std::move(val));
             }
             return j;
         }
@@ -365,8 +365,8 @@ namespace coco
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
                 std::uniform_int_distribution<long> dist(min.has_value() ? *min : std::numeric_limits<long>::min(), max.has_value() ? *max : std::numeric_limits<long>::max());
-                auto val = dist(get_gen());
-                j.push_back(val);
+                json::json val = dist(get_gen());
+                j.push_back(std::move(val));
             }
             return j;
         }
@@ -445,8 +445,8 @@ namespace coco
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
                 std::uniform_real_distribution<double> dist(min.has_value() ? *min : std::numeric_limits<double>::min(), max.has_value() ? *max : std::numeric_limits<double>::max());
-                auto val = dist(get_gen());
-                j.push_back(val);
+                json::json j_val = dist(get_gen());
+                j.push_back(std::move(j_val));
             }
             return j;
         }
@@ -508,7 +508,8 @@ namespace coco
                 std::string str;
                 for (std::size_t i = 0; i < dist(get_gen()); ++i)
                     str += static_cast<char>(dist(get_gen()));
-                j.push_back(str.c_str());
+                json::json val = str.c_str();
+                j.push_back(std::move(val));
             }
             return j;
         }
@@ -600,8 +601,8 @@ namespace coco
             json::json j(json::json_type::array);
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
-                auto val = values[dist(get_gen())];
-                j.push_back(val.c_str());
+                json::json val = values[dist(get_gen())].c_str();
+                j.push_back(std::move(val));
             }
             return j;
         }
@@ -687,8 +688,8 @@ namespace coco
             json::json j(json::json_type::array);
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
-                auto val = dom[dist(get_gen())].get().get_id();
-                j.push_back(val.c_str());
+                json::json val = dom[dist(get_gen())].get().get_id().c_str();
+                j.push_back(std::move(val));
             }
             return j;
         }

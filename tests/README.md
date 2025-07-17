@@ -1,17 +1,14 @@
-## Create a certificate for the server
+## Create a private key and self-signed certificate for the server
 
-To create a certificate for the server, you can use the following steps:
+To quickly generate a private key and a self-signed certificate with subject and SANs use:
 
-1. **Generate a private key**:
-   ```bash
-   openssl genrsa -out key.pem 2048
-   ```
-2. **Generate a certificate signing request (CSR)**:
-   Create a configuration file `cert.cnf` with the necessary details, then run:
-   ```bash
-   openssl req -new -key key.pem -out cert.csr -config cert.cnf
-   ```
-3. **Generate a self-signed certificate**:
-   ```bash
-   openssl x509 -req -in cert.csr -signkey key.pem -out cert.pem -days 365 -extfile cert.cnf -extensions req_ext
-   ```
+```bash
+openssl req -x509 -nodes -days 365 \
+    -subj "/C=IT/O=PSTLab/CN=10.0.2.2" \
+    -newkey rsa:2048 \
+    -keyout key.pem \
+    -out cert.pem \
+    -addext "subjectAltName=IP:10.0.2.2,DNS:localhost"
+```
+
+This command creates both the private key (`key.pem`) and the certificate (`cert.pem`) in one step, using the subject and SANs specified directly in the command line.

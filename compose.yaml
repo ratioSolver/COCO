@@ -1,0 +1,25 @@
+services:
+  coco-db: # Database service
+    container_name: coco-db
+    image: mongo
+    networks:
+      - coco-net
+    restart: unless-stopped
+
+  coco: # CoCo service
+    depends_on:
+      - coco-db
+    container_name: CoCo
+    image: coco
+    networks:
+      - coco-net
+    ports:
+      - "80:8080"
+    restart: unless-stopped
+    build:
+      context: .
+      args:
+        - MONGODB_HOST=coco-db
+
+networks:
+  coco-net:

@@ -365,7 +365,8 @@ namespace coco
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
                 std::uniform_int_distribution<long> dist(min.has_value() ? *min : std::numeric_limits<long>::min(), max.has_value() ? *max : std::numeric_limits<long>::max());
-                json::json val = dist(get_gen());
+                auto rnd = dist(get_gen());
+                json::json val = rnd;
                 j.push_back(std::move(val));
             }
             return j;

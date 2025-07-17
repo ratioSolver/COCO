@@ -204,7 +204,7 @@ namespace coco
 
         json::json j_prompt;
         j_prompt["model"] = LLM_MODEL;
-        j_prompt["messages"] = std::vector<json::json>{{{"role", "system"}, {"content", prompt}}, {{"role", "user"}, {"content", message}}};
+        j_prompt["messages"] = std::vector<json::json>{{{"role", "system"}, {"content", prompt}}, {{"role", "user"}, {"content", message.data()}}};
         j_prompt["stream"] = false;
 
         auto res = client.post("/" LLM_PROVIDER "/v3/openai/chat/completions", std::move(j_prompt), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " LLM_API_KEY}});

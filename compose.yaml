@@ -9,17 +9,19 @@ services:
   coco: # CoCo service
     depends_on:
       - coco-db
-    container_name: CoCo
+    container_name: coco
     image: coco
     networks:
       - coco-net
     ports:
-      - "80:8080"
+      - "443:443"
     restart: unless-stopped
     build:
       context: .
       args:
         - MONGODB_HOST=coco-db
+        - MONGODB_USERS_HOST=coco-db
+        - CLIENT_DIR=/app/gui
 
 networks:
   coco-net:

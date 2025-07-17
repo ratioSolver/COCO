@@ -7,6 +7,9 @@ EXPOSE 8080
 # Set environment variables for MongoDB connection
 ARG MONGODB_HOST=coco-db
 ARG MONGODB_PORT=27017
+ARG MONGODB_USERS_HOST=coco-db
+ARG MONGODB_USERS_PORT=27017
+ARG CLIENT_DIR=/app/gui
 
 # Install the necessary dependencies
 RUN apt update && apt install -y \
@@ -42,11 +45,24 @@ WORKDIR /app
 RUN git clone --recursive -b uncertainty https://github.com/ratioSolver/COCO \
     && cd COCO \
     && mkdir build && cd build \
-    && cmake -DLOGGING_LEVEL=DEBUG -DBUILD_MONGODB=ON -DMONGODB_HOST=${MONGODB_HOST} -DMONGODB_PORT=${MONGODB_PORT} -DBUILD_COCO_SERVER=ON -DBUILD_AUTH=ON -DBUILD_WEB_APP=ON -DBUILD_COCO_EXECUTABLE=ON -DCMAKE_BUILD_TYPE=Release .. \
-    && make \
-    && mv /app/COCO/build/libCoCo.a /app && mv /app/COCO/build/CoCoService /app && rm -rf /app/COCO
+    && cmake -DLOGGING_LEVEL=DEBUG \
+    -DBUILD_MONGODB=ON -DMONGODB_HOST=${MONGODB_HOST} -DMONGODB_PORT=${MONGODB_PORT} \
+    -DBUILD_DELIBERATIVE=ON \
+    -DBUILD_COCO_SERVER=ON -DSERVER_PORT=443 -DBUILD_AUTH=ON -DCLIENT_DIR=${CLIENT_DIR} -DMONGODB_USERS_HOST=${MONGODB_USERS_HOST} -DMONGODB_USERS_PORT=${MONGODB_USERS_PORT} \
+    -DBUILD_COCO_EXECUTABLE=ON -DCMAKE_BUILD_TYPE=Release .. \
+    && make -j$(nproc)
+
+# Build the GUI application
+WORKDIR /app/COCO/gui/app
+RUN npm install && npm run build
+
+# Move the built COCO files to the /app directory
+RUN mv /app/COCO/build/libCoCo.a /app && mv /app/COCO/build/CoCoService /app \
+    && mkdir -p /app/gui && mv /app/COCO/gui/app/dist /app/gui \
+    && rm -rf /app/COCO
 
 # Generate private key and self-signed certificate
+WORKDIR /app
 RUN openssl req -x509 -nodes -days 365 \
     -subj "/C=IT/O=PSTLab/CN=10.0.2.2" \
     -newkey rsa:2048 \

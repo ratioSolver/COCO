@@ -79,10 +79,8 @@ namespace coco
     void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;
 
   private:
-#ifdef BUILD_WEB_APP
     std::unique_ptr<network::response> index(const network::request &req);
     std::unique_ptr<network::response> assets(const network::request &req);
-#endif
 
     std::unique_ptr<network::response> get_types(const network::request &req);
     std::unique_ptr<network::response> get_type(const network::request &req);

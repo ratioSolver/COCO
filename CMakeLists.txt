@@ -59,6 +59,7 @@ if (BUILD_COCO_SERVER)
     option(BUILD_AUTH "Build CoCo authentication" OFF)
     option(BUILD_WEB_APP "Build the CoCo web application" OFF)
     option(BUILD_ANDROID "Build the CoCo Android application" OFF)
+    set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gui/app CACHE STRING "Client directory")
 
     if(BUILD_AUTH)
         set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
@@ -67,10 +68,6 @@ if (BUILD_COCO_SERVER)
 
         set(MONGODB_USERS_HOST "localhost" CACHE STRING "The MongoDB Users Host")
         set(MONGODB_USERS_PORT "27017" CACHE STRING "The MongoDB Users Port")
-    endif()
-
-    if(BUILD_WEB_APP)
-        set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gui/app CACHE STRING "Client directory")
     endif()
 endif()
 

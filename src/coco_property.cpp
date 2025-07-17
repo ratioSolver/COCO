@@ -285,7 +285,8 @@ namespace coco
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
                 std::bernoulli_distribution dist;
-                j.push_back(dist(get_gen()));
+                auto val = dist(get_gen());
+                j.push_back(val);
             }
             return j;
         }
@@ -364,7 +365,8 @@ namespace coco
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
                 std::uniform_int_distribution<long> dist(min.has_value() ? *min : std::numeric_limits<long>::min(), max.has_value() ? *max : std::numeric_limits<long>::max());
-                j.push_back(dist(get_gen()));
+                auto val = dist(get_gen());
+                j.push_back(val);
             }
             return j;
         }
@@ -443,7 +445,8 @@ namespace coco
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
             {
                 std::uniform_real_distribution<double> dist(min.has_value() ? *min : std::numeric_limits<double>::min(), max.has_value() ? *max : std::numeric_limits<double>::max());
-                j.push_back(dist(get_gen()));
+                auto val = dist(get_gen());
+                j.push_back(val);
             }
             return j;
         }
@@ -596,7 +599,10 @@ namespace coco
             std::uniform_int_distribution<std::size_t> dist_size(0, values.size());
             json::json j(json::json_type::array);
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
-                j.push_back(values[dist(get_gen())].c_str());
+            {
+                auto val = values[dist(get_gen())];
+                j.push_back(val.c_str());
+            }
             return j;
         }
         else // Generate a single value.
@@ -680,7 +686,10 @@ namespace coco
             std::uniform_int_distribution<std::size_t> dist_size(0, dom.size());
             json::json j(json::json_type::array);
             for (std::size_t i = 0; i < dist_size(get_gen()); ++i)
-                j.push_back(dom[dist(get_gen())].get().get_id().c_str());
+            {
+                auto val = dom[dist(get_gen())].get().get_id();
+                j.push_back(val.c_str());
+            }
             return j;
         }
         else // Generate a single value.

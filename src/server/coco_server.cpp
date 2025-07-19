@@ -357,7 +357,7 @@ namespace coco
                     return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
                 try
                 {
-                    auto &tp = get_coco().get_type(static_cast<std::string>(p));
+                    auto &tp = get_coco().get_type(p.get<std::string>());
                     parents.emplace_back(tp);
                 }
                 catch (const std::exception &)
@@ -552,7 +552,7 @@ namespace coco
             {
                 const auto pars = json::load(network::decode(params.at("parameters")));
                 for (const auto &par : pars.as_array())
-                    if (auto it = props.find(static_cast<std::string>(par)); it != props.end())
+                    if (auto it = props.find(par.get<std::string>()); it != props.end())
                         j[it->first] = it->second.get().fake();
                     else
                         return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);

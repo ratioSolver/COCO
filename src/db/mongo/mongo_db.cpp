@@ -10,7 +10,7 @@ namespace coco
     mongo_module::mongo_module(mongo_db &db) noexcept : db_module(db) {}
     mongocxx::database &mongo_module::get_db() const noexcept { return static_cast<mongo_db &>(db).db; }
 
-    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri.data())), db(conn[static_cast<std::string>(config["name"])]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"])
+    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri.data())), db(conn[config["name"].get<std::string>()]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"])
     {
         assert(conn);
         for ([[maybe_unused]] const auto &c : conn.uri().hosts())
@@ -168,16 +168,16 @@ namespace coco
                 update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::types::b_null{}));
                 break;
             case json::json_type::boolean:
-                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, static_cast<bool>(prop)));
+                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, prop.get<bool>()));
                 break;
             case json::json_type::number:
                 if (prop.is_float())
-                    update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, static_cast<double>(prop)));
+                    update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, prop.get<double>()));
                 else
-                    update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, static_cast<int64_t>(prop)));
+                    update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, prop.get<int64_t>()));
                 break;
             case json::json_type::string:
-                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, static_cast<std::string>(prop)));
+                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, prop.get<std::string>()));
                 break;
             default:
                 update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::from_json(prop.dump())));
@@ -216,16 +216,16 @@ namespace coco
                 update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::types::b_null{}));
                 break;
             case json::json_type::boolean:
-                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, static_cast<bool>(v)));
+                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<bool>()));
                 break;
             case json::json_type::number:
                 if (v.is_float())
-                    update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, static_cast<double>(v)));
+                    update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<double>()));
                 else
-                    update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, static_cast<int64_t>(v)));
+                    update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<int64_t>()));
                 break;
             case json::json_type::string:
-                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, static_cast<std::string>(v)));
+                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<std::string>()));
                 break;
             default:
                 update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::from_json(v.dump())));

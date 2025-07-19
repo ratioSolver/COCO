@@ -24,9 +24,9 @@ namespace coco
         FBDispose(type_fact_builder);
         set_parents(std::move(parents));
         for (auto &[name, prop] : static_props.as_object())
-            static_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, false, name, prop));
+            static_properties.emplace(name, cc.get_property_type(prop["type"].get<std::string>()).new_instance(*this, false, name, prop));
         for (auto &[name, prop] : dynamic_props.as_object())
-            dynamic_properties.emplace(name, cc.get_property_type(static_cast<std::string>(prop["type"])).new_instance(*this, true, name, prop));
+            dynamic_properties.emplace(name, cc.get_property_type(prop["type"].get<std::string>()).new_instance(*this, true, name, prop));
         CREATED_TYPE();
     }
     type::~type()

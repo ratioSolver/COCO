@@ -7,7 +7,7 @@
 
 namespace coco
 {
-    auth_db::auth_db(mongo_db &db, std::string_view mongodb_users_uri) noexcept : mongo_module(db), users_conn(mongocxx::uri(mongodb_users_uri.data())), users_db(users_conn[static_cast<std::string>(db.get_config()["name"]) + "_users"]), users_collection(users_db["users"])
+    auth_db::auth_db(mongo_db &db, std::string_view mongodb_users_uri) noexcept : mongo_module(db), users_conn(mongocxx::uri(mongodb_users_uri.data())), users_db(users_conn[db.get_config()["name"] + "_users"]), users_collection(users_db["users"])
     {
         assert(users_conn);
         for ([[maybe_unused]] const auto &c : users_conn.uri().hosts())

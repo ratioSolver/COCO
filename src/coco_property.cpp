@@ -15,124 +15,124 @@ namespace coco
     bool_property_type::bool_property_type(coco &cc) noexcept : property_type(cc, bool_kw) {}
     std::unique_ptr<property> bool_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
-        bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
+        bool multiple = j.contains("multiple") && (j["multiple"].get<bool>());
         std::optional<std::vector<bool>> default_value;
         if (j.contains("default"))
         {
             std::vector<bool> def_v;
             if (multiple)
                 for (const auto &v : j["default"].as_array())
-                    def_v.emplace_back(static_cast<bool>(v));
+                    def_v.emplace_back(v.get<bool>());
             else
-                def_v.emplace_back(static_cast<bool>(j["default"]));
+                def_v.emplace_back(j["default"].get<bool>());
             default_value = std::move(def_v);
         }
         return std::make_unique<bool_property>(*this, tp, dynamic, name, multiple, default_value);
     }
     void bool_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), static_cast<bool>(value) ? "TRUE" : "FALSE");
+        [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), value.get<bool>() ? "TRUE" : "FALSE");
         assert(put_slot_err == PSE_NO_ERROR);
     }
 
     int_property_type::int_property_type(coco &cc) noexcept : property_type(cc, int_kw) {}
     std::unique_ptr<property> int_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
-        bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
+        bool multiple = j.contains("multiple") && j["multiple"].get<bool>();
         std::optional<std::vector<long>> default_value;
         if (j.contains("default"))
         {
             std::vector<long> def_v;
             if (multiple)
                 for (const auto &v : j["default"].as_array())
-                    def_v.emplace_back(static_cast<long>(v));
+                    def_v.emplace_back(v.get<long>());
             else
-                def_v.emplace_back(static_cast<long>(j["default"]));
+                def_v.emplace_back(j["default"].get<long>());
             default_value = std::move(def_v);
         }
         std::optional<long> min;
         if (j.contains("min"))
-            min = static_cast<long>(j["min"]);
+            min = j["min"].get<long>();
         std::optional<long> max;
         if (j.contains("max"))
-            max = static_cast<long>(j["max"]);
+            max = j["max"].get<long>();
         return std::make_unique<int_property>(*this, tp, dynamic, name, multiple, default_value, min, max);
     }
     void int_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotInteger(property_fact_builder, name.data(), static_cast<long>(value));
+        [[maybe_unused]] auto put_slot_err = FBPutSlotInteger(property_fact_builder, name.data(), value.get<long>());
         assert(put_slot_err == PSE_NO_ERROR);
     }
 
     float_property_type::float_property_type(coco &cc) noexcept : property_type(cc, float_kw) {}
     std::unique_ptr<property> float_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
-        bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
+        bool multiple = j.contains("multiple") && j["multiple"].get<bool>();
         std::optional<std::vector<double>> default_value;
         if (j.contains("default"))
         {
             std::vector<double> def_v;
             if (multiple)
                 for (const auto &v : j["default"].as_array())
-                    def_v.emplace_back(static_cast<double>(v));
+                    def_v.emplace_back(v.get<double>());
             else
-                def_v.emplace_back(static_cast<double>(j["default"]));
+                def_v.emplace_back(j["default"].get<double>());
             default_value = std::move(def_v);
         }
         std::optional<double> min;
         if (j.contains("min"))
-            min = static_cast<double>(j["min"]);
+            min = j["min"].get<double>();
         std::optional<double> max;
         if (j.contains("max"))
-            max = static_cast<double>(j["max"]);
+            max = j["max"].get<double>();
         return std::make_unique<float_property>(*this, tp, dynamic, name, multiple, default_value, min, max);
     }
     void float_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotFloat(property_fact_builder, name.data(), static_cast<double>(value));
+        [[maybe_unused]] auto put_slot_err = FBPutSlotFloat(property_fact_builder, name.data(), value.get<double>());
         assert(put_slot_err == PSE_NO_ERROR);
     }
 
     string_property_type::string_property_type(coco &cc) noexcept : property_type(cc, string_kw) {}
     std::unique_ptr<property> string_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
-        bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
+        bool multiple = j.contains("multiple") && j["multiple"].get<bool>();
         std::optional<std::vector<std::string>> default_value;
         if (j.contains("default"))
         {
             std::vector<std::string> def_v;
             if (multiple)
                 for (const auto &v : j["default"].as_array())
-                    def_v.emplace_back(static_cast<std::string>(v));
+                    def_v.emplace_back(v.get<std::string>());
             else
-                def_v.emplace_back(static_cast<std::string>(j["default"]));
+                def_v.emplace_back(j["default"].get<std::string>());
             default_value = std::move(def_v);
         }
         return std::make_unique<string_property>(*this, tp, dynamic, name, multiple, default_value);
     }
     void string_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
+        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), value.get<std::string>().c_str());
         assert(put_slot_err == PSE_NO_ERROR);
     }
 
     symbol_property_type::symbol_property_type(coco &cc) noexcept : property_type(cc, symbol_kw) {}
     std::unique_ptr<property> symbol_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
-        bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
+        bool multiple = j.contains("multiple") && j["multiple"].get<bool>();
         std::vector<std::string> values;
         if (j.contains("values"))
             for (const auto &v : j["values"].as_array())
-                values.emplace_back(static_cast<std::string>(v));
+                values.emplace_back(v.get<std::string>());
         std::optional<std::vector<std::string>> default_value;
         if (j.contains("default"))
         {
             std::vector<std::string> def_v;
             if (multiple)
                 for (const auto &v : j["default"].as_array())
-                    def_v.emplace_back(static_cast<std::string>(v));
+                    def_v.emplace_back(v.get<std::string>());
             else
-                def_v.emplace_back(static_cast<std::string>(j["default"]));
+                def_v.emplace_back(j["default"].get<std::string>());
             default_value = std::move(def_v);
         }
         return std::make_unique<symbol_property>(*this, tp, dynamic, name, multiple, std::move(values), default_value);
@@ -143,7 +143,7 @@ namespace coco
         {
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
-                MBAppendSymbol(mfb, static_cast<std::string>(v).c_str());
+                MBAppendSymbol(mfb, v.get<std::string>().c_str());
             auto mf = MBCreate(mfb);
             [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
             assert(put_slot_err == PSE_NO_ERROR);
@@ -152,7 +152,7 @@ namespace coco
         }
         else
         {
-            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
+            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), value.get<std::string>().c_str());
             assert(put_slot_err == PSE_NO_ERROR);
         }
     }
@@ -160,17 +160,17 @@ namespace coco
     item_property_type::item_property_type(coco &cc) noexcept : property_type(cc, item_kw) {}
     std::unique_ptr<property> item_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
     {
-        type &domain = cc.get_type(static_cast<std::string>(j["domain"]));
-        bool multiple = j.contains("multiple") && static_cast<bool>(j["multiple"]);
+        type &domain = cc.get_type(j["domain"].get<std::string>());
+        bool multiple = j.contains("multiple") && j["multiple"].get<bool>();
         std::optional<std::vector<std::reference_wrapper<item>>> default_value;
         if (j.contains("default"))
         {
             std::vector<std::reference_wrapper<item>> def_v;
             if (multiple)
                 for (const auto &v : j["default"].as_array())
-                    def_v.emplace_back(cc.get_item(static_cast<std::string>(v)));
+                    def_v.emplace_back(cc.get_item(v.get<std::string>()));
             else
-                def_v.emplace_back(cc.get_item(static_cast<std::string>(j["default"])));
+                def_v.emplace_back(cc.get_item(j["default"].get<std::string>()));
             default_value = std::move(def_v);
         }
         return std::make_unique<item_property>(*this, tp, dynamic, name, domain, multiple, default_value);
@@ -181,7 +181,7 @@ namespace coco
         {
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
-                MBAppendSymbol(mfb, cc.get_item(static_cast<std::string>(v)).get_id().c_str());
+                MBAppendSymbol(mfb, cc.get_item(v.get<std::string>()).get_id().c_str());
             auto mf = MBCreate(mfb);
             [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
             assert(put_slot_err == PSE_NO_ERROR);
@@ -190,7 +190,7 @@ namespace coco
         }
         else
         {
-            auto &itm = cc.get_item(static_cast<std::string>(value));
+            auto &itm = cc.get_item(value.get<std::string>());
             [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), itm.get_id().c_str());
             assert(put_slot_err == PSE_NO_ERROR);
         }
@@ -209,7 +209,7 @@ namespace coco
     }
     void json_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
     {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), static_cast<std::string>(value).c_str());
+        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), value.get<std::string>().c_str());
         assert(put_slot_err == PSE_NO_ERROR);
     }
 

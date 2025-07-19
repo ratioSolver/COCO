@@ -134,19 +134,19 @@ namespace coco
                 switch (this->slots.at(slot_name)->get_type())
                 {
                 case string_type:
-                    FBPutSlotString(slot_fact_builder, "value", static_cast<const std::string>(val).c_str());
+                    FBPutSlotString(slot_fact_builder, "value", val.get<std::string>().c_str());
                     break;
                 case symbol_type:
-                    FBPutSlotSymbol(slot_fact_builder, "value", static_cast<const std::string>(val).c_str());
+                    FBPutSlotSymbol(slot_fact_builder, "value", val.get<std::string>().c_str());
                     break;
                 case integer_type:
-                    FBPutSlotInteger(slot_fact_builder, "value", static_cast<int64_t>(val));
+                    FBPutSlotInteger(slot_fact_builder, "value", val.get<int64_t>());
                     break;
                 case float_type:
-                    FBPutSlotFloat(slot_fact_builder, "value", static_cast<double>(val));
+                    FBPutSlotFloat(slot_fact_builder, "value", val.get<double>());
                     break;
                 case boolean_type:
-                    FBPutSlotSymbol(slot_fact_builder, "value", static_cast<bool>(val) ? "TRUE" : "FALSE");
+                    FBPutSlotSymbol(slot_fact_builder, "value", val.get<bool>() ? "TRUE" : "FALSE");
                     break;
                 default:
                     LOG_WARN("Unknown type for slot " + slot_name);
@@ -175,7 +175,7 @@ namespace coco
         {
             prompt += "The current state of the conversation is:\n";
             for (const auto &[slot_name, val] : it->second.as_object())
-                prompt += "- " + slot_name + "(" + slots.at(slot_name)->get_description() + "): " + static_cast<std::string>(val) + "\n";
+                prompt += "- " + slot_name + "(" + slots.at(slot_name)->get_description() + "): " + val.get<std::string>() + "\n";
         }
         else
             prompt += "The current state of the conversation is empty.\n";
@@ -217,10 +217,10 @@ namespace coco
         auto llm_res = static_cast<network::json_response &>(*res).get_body();
         LOG_TRACE("Response:\n"
                   << llm_res);
-        json::json j_res = json::load(static_cast<std::string>(llm_res["choices"][0]["message"]["content"]));
+        json::json j_res = json::load(llm_res["choices"][0]["message"]["content"].get<std::string>());
         for (const auto &intent : j_res["intents"].as_array())
         {
-            auto intent_name = static_cast<const std::string>(intent);
+            auto intent_name = intent.get<std::string>();
             if (intents.find(intent_name) == intents.end())
                 LOG_WARN("Intent " << intent_name << " not found");
 
@@ -244,19 +244,19 @@ namespace coco
             switch (entities.at(name)->get_type())
             {
             case string_type:
-                FBPutSlotString(entity_fact_builder, "value", static_cast<const std::string>(value).c_str());
+                FBPutSlotString(entity_fact_builder, "value", value.get<std::string>().c_str());
                 break;
             case symbol_type:
-                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<const std::string>(value).c_str());
+                FBPutSlotSymbol(entity_fact_builder, "value", value.get<std::string>().c_str());
                 break;
             case integer_type:
-                FBPutSlotInteger(entity_fact_builder, "value", static_cast<int64_t>(value));
+                FBPutSlotInteger(entity_fact_builder, "value", value.get<int64_t>());
                 break;
             case float_type:
-                FBPutSlotFloat(entity_fact_builder, "value", static_cast<double>(value));
+                FBPutSlotFloat(entity_fact_builder, "value", value.get<double>());
                 break;
             case boolean_type:
-                FBPutSlotSymbol(entity_fact_builder, "value", static_cast<bool>(value) ? "TRUE" : "FALSE");
+                FBPutSlotSymbol(entity_fact_builder, "value", value.get<bool>() ? "TRUE" : "FALSE");
                 break;
             }
 

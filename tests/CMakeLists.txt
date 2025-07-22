@@ -13,6 +13,12 @@ add_dependencies(raise_tests CoCo)
 target_link_libraries(raise_tests PRIVATE CoCo)
 setup_sanitizers(raise_tests)
 
+add_executable(restart_tests test_restart.cpp)
+add_dependencies(restart_tests CoCo)
+target_link_libraries(restart_tests PRIVATE CoCo)
+setup_sanitizers(restart_tests)
+
 add_test(NAME COCOTest00 COMMAND coco_tests)
 add_test(NAME RobotTest00 COMMAND robot_tests)
 add_test(NAME RAISETest00 COMMAND raise_tests)
+add_test(NAME RESTARTTest00 COMMAND restart_tests)

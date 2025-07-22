@@ -4,7 +4,7 @@ import './styles.css'
 
 Settings.get_instance().load_settings({ ws_path: '/coco' });
 
-const has_users = true;
+const has_users = false;
 const offcanvas_id = 'coco-offcanvas';
 
 class CoCoApp extends AppComponent {

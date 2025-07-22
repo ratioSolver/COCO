@@ -278,7 +278,7 @@ export namespace coco {
         return new StringProperty(this, s_pm.multiple ?? false, s_pm.default_value);
       }
 
-      to_string(val: string): string { return val; }
+      to_string(val: string | null): string { return val ? val : ''; }
     }
 
     export class SymbolPropertyType extends PropertyType<SymbolProperty> {
@@ -290,7 +290,11 @@ export namespace coco {
         return new SymbolProperty(this, sym_pm.multiple ?? false, sym_pm.values, sym_pm.default_value);
       }
 
-      to_string(val: string | string[]): string { return Array.isArray(val) ? val.join(', ') : val; }
+      to_string(val: string | string[] | null): string {
+        if (val === null) return '';
+        if (Array.isArray(val)) return '[' + val.join(', ') + ']';
+        return val;
+      }
     }
 
     export class ItemPropertyType extends PropertyType<ItemProperty> {
@@ -305,7 +309,11 @@ export namespace coco {
         return new ItemProperty(this, this.cc.get_type(itm_pm.domain), itm_pm.multiple ?? false, def);
       }
 
-      to_string(val: string | string[]): string { return Array.isArray(val) ? '[' + val.map(id => this.cc.get_item(id).to_string()).join(', ') + ']' : this.cc.get_item(val).to_string(); }
+      to_string(val: string | string[] | null): string {
+        if (val === null) return '';
+        if (Array.isArray(val)) return '[' + val.map(id => this.cc.get_item(id).to_string()).join(', ') + ']';
+        return this.cc.get_item(val).to_string();
+      }
     }
 
     export class JSONPropertyType extends PropertyType<JSONProperty> {
@@ -399,8 +407,8 @@ export namespace coco {
       }
 
       is_multiple(): boolean { return this.multiple; }
-      get_min(): number | undefined { return this.min; }
-      get_max(): number | undefined { return this.max; }
+      get_min(): number { return this.min; }
+      get_max(): number { return this.max; }
 
       override to_string(): string {
         const str: string = 'float';
@@ -412,7 +420,7 @@ export namespace coco {
       }
     }
 
-    export class StringProperty extends Property<string> {
+    export class StringProperty extends Property<string | null> {
 
       private readonly multiple: boolean;
 
@@ -431,7 +439,7 @@ export namespace coco {
       }
     }
 
-    export class SymbolProperty extends Property<string | string[]> {
+    export class SymbolProperty extends Property<string | string[] | null> {
 
       private readonly multiple: boolean;
       private readonly symbols?: string[];
@@ -457,7 +465,7 @@ export namespace coco {
       }
     }
 
-    export class ItemProperty extends Property<Item | Item[]> {
+    export class ItemProperty extends Property<Item | Item[] | null> {
 
       private readonly domain: Type;
       private readonly multiple: boolean;
@@ -481,7 +489,7 @@ export namespace coco {
       }
     }
 
-    export class JSONProperty extends Property<Record<string, any>> {
+    export class JSONProperty extends Property<Record<string, any> | null> {
 
       private readonly schema: Record<string, any>;
 

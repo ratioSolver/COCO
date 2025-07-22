@@ -269,7 +269,7 @@ export namespace publisher {
           for (let i = 0; i < this.select.options.length; i++)
             if ((this.select.options[i] as HTMLOptionElement).selected)
               selected.push(this.select.options[i].value);
-          this.val[this.name] = selected
+          this.val[this.name] = selected;
         }
         else
           this.val[this.name] = this.select.value;

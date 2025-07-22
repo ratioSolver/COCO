@@ -239,7 +239,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): BoolProperty {
         const b_pm = property_message as BoolPropertyMessage;
-        return new BoolProperty(this, b_pm.default_value);
+        return new BoolProperty(this, b_pm.multiple ?? false, b_pm.default_value);
       }
 
       to_string(val: boolean): string { return val ? 'true' : 'false'; }
@@ -251,7 +251,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): IntProperty {
         const i_pm = property_message as IntPropertyMessage;
-        return new IntProperty(this, i_pm.min, i_pm.max, i_pm.default_value);
+        return new IntProperty(this, i_pm.multiple ?? false, i_pm.min ?? Number.NEGATIVE_INFINITY, i_pm.max ?? Number.POSITIVE_INFINITY, i_pm.default_value);
       }
 
       to_string(val: number): string { return String(val); }
@@ -263,7 +263,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): FloatProperty {
         const f_pm = property_message as FloatPropertyMessage;
-        return new FloatProperty(this, f_pm.min, f_pm.max, f_pm.default_value);
+        return new FloatProperty(this, f_pm.multiple ?? false, f_pm.min ?? Number.NEGATIVE_INFINITY, f_pm.max ?? Number.POSITIVE_INFINITY, f_pm.default_value);
       }
 
       to_string(val: number): string { return String(val); }
@@ -275,7 +275,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): StringProperty {
         const s_pm = property_message as StringPropertyMessage;
-        return new StringProperty(this, s_pm.default_value);
+        return new StringProperty(this, s_pm.multiple ?? false, s_pm.default_value);
       }
 
       to_string(val: string): string { return val; }
@@ -287,7 +287,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): SymbolProperty {
         const sym_pm = property_message as SymbolPropertyMessage;
-        return new SymbolProperty(this, sym_pm.multiple, sym_pm.values, sym_pm.default_value);
+        return new SymbolProperty(this, sym_pm.multiple ?? false, sym_pm.values, sym_pm.default_value);
       }
 
       to_string(val: string | string[]): string { return Array.isArray(val) ? val.join(', ') : val; }
@@ -302,7 +302,7 @@ export namespace coco {
         let def = undefined;
         if (itm_pm.default_value)
           def = Array.isArray(itm_pm.default_value) ? itm_pm.default_value.map(itm => this.cc.get_item(itm)) : this.cc.get_item(itm_pm.default_value);
-        return new ItemProperty(this, this.cc.get_type(itm_pm.domain), itm_pm.multiple, def);
+        return new ItemProperty(this, this.cc.get_type(itm_pm.domain), itm_pm.multiple ?? false, def);
       }
 
       to_string(val: string | string[]): string { return Array.isArray(val) ? '[' + val.map(id => this.cc.get_item(id).to_string()).join(', ') + ']' : this.cc.get_item(val).to_string(); }
@@ -341,9 +341,14 @@ export namespace coco {
 
     export class BoolProperty extends Property<boolean> {
 
-      constructor(type: BoolPropertyType, default_value?: boolean) {
+      private readonly multiple: boolean;
+
+      constructor(type: BoolPropertyType, multiple: boolean, default_value?: boolean) {
         super(type, default_value);
+        this.multiple = multiple;
       }
+
+      is_multiple(): boolean { return this.multiple; }
 
       override to_string(): string {
         const str: string = 'bool';
@@ -355,17 +360,20 @@ export namespace coco {
 
     export class IntProperty extends Property<number> {
 
-      private readonly min?: number;
-      private readonly max?: number;
+      private readonly multiple: boolean;
+      private readonly min: number;
+      private readonly max: number;
 
-      constructor(type: IntPropertyType, min?: number, max?: number, default_value?: number) {
+      constructor(type: IntPropertyType, multiple: boolean, min: number, max: number, default_value?: number) {
         super(type, default_value);
+        this.multiple = multiple;
         this.min = min;
         this.max = max;
       }
 
-      get_min(): number | undefined { return this.min; }
-      get_max(): number | undefined { return this.max; }
+      is_multiple(): boolean { return this.multiple; }
+      get_min(): number { return this.min; }
+      get_max(): number { return this.max; }
 
       override to_string(): string {
         const str: string = 'int';
@@ -379,15 +387,18 @@ export namespace coco {
 
     export class FloatProperty extends Property<number> {
 
-      private readonly min?: number;
-      private readonly max?: number;
+      private readonly multiple: boolean;
+      private readonly min: number;
+      private readonly max: number;
 
-      constructor(type: FloatPropertyType, min?: number, max?: number, default_value?: number) {
+      constructor(type: FloatPropertyType, multiple: boolean, min: number, max: number, default_value?: number) {
         super(type, default_value);
+        this.multiple = multiple;
         this.min = min;
         this.max = max;
       }
 
+      is_multiple(): boolean { return this.multiple; }
       get_min(): number | undefined { return this.min; }
       get_max(): number | undefined { return this.max; }
 
@@ -402,9 +413,15 @@ export namespace coco {
     }
 
     export class StringProperty extends Property<string> {
-      constructor(type: StringPropertyType, default_value?: string) {
+
+      private readonly multiple: boolean;
+
+      constructor(type: StringPropertyType, multiple: boolean, default_value?: string) {
         super(type, default_value);
+        this.multiple = multiple;
       }
+
+      is_multiple(): boolean { return this.multiple; }
 
       override to_string(): string {
         const str: string = 'string';
@@ -736,29 +753,33 @@ interface PropMessage<V> {
 }
 
 interface BoolPropertyMessage extends PropMessage<boolean> {
+  multiple?: boolean;
 }
 
 interface IntPropertyMessage extends PropMessage<number> {
+  multiple?: boolean;
   min?: number;
   max?: number;
 }
 
 interface FloatPropertyMessage extends PropMessage<number> {
+  multiple?: boolean;
   min?: number;
   max?: number;
 }
 
 interface StringPropertyMessage extends PropMessage<string> {
+  multiple?: boolean;
 }
 
 interface SymbolPropertyMessage extends PropMessage<string | string[]> {
-  multiple: boolean;
+  multiple?: boolean;
   values?: string[];
 }
 
 interface ItemPropertyMessage extends PropMessage<string | string[]> {
   domain: string;
-  multiple: boolean;
+  multiple?: boolean;
 }
 
 interface JSONPropertyMessage extends PropMessage<Record<string, any>> {

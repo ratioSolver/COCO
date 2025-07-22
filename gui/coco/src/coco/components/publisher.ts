@@ -61,28 +61,28 @@ export namespace publisher {
     make_publisher(name: string, property: coco.taxonomy.FloatProperty, val: Record<string, unknown>): FloatPublisher { return new FloatPublisher(name, property, val); }
   }
 
-  class StringPublisherGenerator extends PublisherGenerator<string> {
+  class StringPublisherGenerator extends PublisherGenerator<string | null> {
 
     constructor() { super('string'); }
 
     make_publisher(name: string, property: coco.taxonomy.StringProperty, val: Record<string, unknown>): StringPublisher { return new StringPublisher(name, property, val); }
   }
 
-  class SymbolPublisherGenerator extends PublisherGenerator<string | string[]> {
+  class SymbolPublisherGenerator extends PublisherGenerator<string | string[] | null> {
 
     constructor() { super('symbol'); }
 
     make_publisher(name: string, property: coco.taxonomy.SymbolProperty, val: Record<string, unknown>): SymbolPublisher { return new SymbolPublisher(name, property, val); }
   }
 
-  class ItemPublisherGenerator extends PublisherGenerator<string | string[]> {
+  class ItemPublisherGenerator extends PublisherGenerator<string | string[] | null> {
 
     constructor() { super('item'); }
 
     make_publisher(name: string, property: coco.taxonomy.ItemProperty, val: Record<string, unknown>): ItemPublisher { return new ItemPublisher(name, property, val); }
   }
 
-  class JSONPublisherGenerator extends PublisherGenerator<Record<string, unknown>> {
+  class JSONPublisherGenerator extends PublisherGenerator<Record<string, unknown> | null> {
 
     constructor() { super('json'); }
 
@@ -201,7 +201,7 @@ export namespace publisher {
     get_element(): HTMLElement { return this.element; }
   }
 
-  class StringPublisher implements Publisher<string> {
+  class StringPublisher implements Publisher<string | null> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -218,22 +218,27 @@ export namespace publisher {
       this.input.type = 'text';
       this.input.id = name;
       if (val[name])
-        this.set_value(val[name] as string);
+        this.set_value(val[name] as string | null);
       else if (property.has_default_value())
         this.set_value(property.get_default_value()!);
       this.input.addEventListener('change', () => this.val[this.name] = this.input.value);
       this.element.append(this.input);
     }
 
-    get_value(): string { return this.val[this.name]! as string; }
-    set_value(v: string): void {
-      this.val[this.name] = v;
-      this.input.value = v;
+    get_value(): string | null { return this.val[this.name]! as string | null; }
+    set_value(v: string | null): void {
+      if (v) {
+        this.val[this.name] = v;
+        this.input.value = v;
+      } else {
+        delete this.val[this.name];
+        this.input.value = '';
+      }
     }
     get_element(): HTMLElement { return this.element; }
   }
 
-  class SymbolPublisher implements Publisher<string | string[]> {
+  class SymbolPublisher implements Publisher<string | string[] | null> {
 
     private readonly name: string;
     private readonly multiple: boolean;
@@ -268,7 +273,7 @@ export namespace publisher {
           this.select.append(option);
         });
       if (val[name])
-        this.set_value(val[name] as string | string[]);
+        this.set_value(val[name] as string | string[] | null);
       else if (property.has_default_value())
         this.set_value(property.get_default_value()!);
       this.select.addEventListener('change', () => {
@@ -288,19 +293,29 @@ export namespace publisher {
       this.element.append(this.select);
     }
 
-    get_value(): string | string[] { return this.val[this.name]! as string | string[]; }
-    set_value(v: string | string[]): void {
-      this.val[this.name] = v;
-      if (this.multiple)
-        for (let i = 0; i < this.select.options.length; i++)
-          (this.select.options[i] as HTMLOptionElement).selected = (v as string[]).includes(this.select.options[i].value);
-      else
-        this.select.value = v as string;
+    get_value(): string | string[] | null { return this.val[this.name]! as string | string[] | null; }
+    set_value(v: string | string[] | null): void {
+      if (v) {
+        this.val[this.name] = v;
+        if (this.multiple)
+          for (let i = 0; i < this.select.options.length; i++)
+            (this.select.options[i] as HTMLOptionElement).selected = (v as string[]).includes(this.select.options[i].value);
+        else
+          this.select.value = v as string;
+      } else {
+        delete this.val[this.name];
+        if (this.multiple) {
+          for (let i = 0; i < this.select.options.length; i++)
+            (this.select.options[i] as HTMLOptionElement).selected = false;
+        }
+        else
+          this.select.value = '';
+      }
     }
     get_element(): HTMLElement { return this.element; }
   }
 
-  class ItemPublisher implements Publisher<string | string[]> {
+  class ItemPublisher implements Publisher<string | string[] | null> {
 
     private readonly name: string;
     private readonly multiple: boolean;
@@ -335,7 +350,7 @@ export namespace publisher {
           this.select.append(option);
         }
       if (val[name])
-        this.set_value(val[name] as string | string[]);
+        this.set_value(val[name] as string | string[] | null);
       else if (property.has_default_value())
         this.set_value(property.is_multiple() ? (property.get_default_value()! as coco.taxonomy.Item[]).map(i => i.get_id()) : (property.get_default_value()! as coco.taxonomy.Item).get_id());
       this.select.addEventListener('change', () => {
@@ -355,19 +370,29 @@ export namespace publisher {
       this.element.append(this.select);
     }
 
-    get_value(): string | string[] { return this.val[this.name]! as string | string[]; }
-    set_value(v: string | string[]): void {
-      this.val[this.name] = v;
-      if (this.multiple)
-        for (let i = 0; i < this.select.options.length; i++)
-          (this.select.options[i] as HTMLOptionElement).selected = (v as string[]).includes(this.select.options[i].value);
-      else
-        this.select.value = v as string;
+    get_value(): string | string[] | null { return this.val[this.name]! as string | string[] | null; }
+    set_value(v: string | string[] | null): void {
+      if (v) {
+        this.val[this.name] = v;
+        if (this.multiple)
+          for (let i = 0; i < this.select.options.length; i++)
+            (this.select.options[i] as HTMLOptionElement).selected = (v as string[]).includes(this.select.options[i].value);
+        else
+          this.select.value = v as string;
+      } else {
+        delete this.val[this.name];
+        if (this.multiple) {
+          for (let i = 0; i < this.select.options.length; i++)
+            (this.select.options[i] as HTMLOptionElement).selected = false;
+        }
+        else
+          this.select.value = '';
+      }
     }
     get_element(): HTMLElement { return this.element; }
   }
 
-  class JSONPublisher implements Publisher<Record<string, unknown>> {
+  class JSONPublisher implements Publisher<Record<string, unknown> | null> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -383,17 +408,22 @@ export namespace publisher {
       this.textarea.classList.add('form-control');
       this.textarea.id = name;
       if (val[name])
-        this.set_value(val[name] as Record<string, unknown>);
+        this.set_value(val[name] as Record<string, unknown> | null);
       else if (property.has_default_value())
         this.set_value(property.get_default_value()!);
       this.textarea.addEventListener('change', () => this.val[this.name] = JSON.parse(this.textarea.value));
       this.element.append(this.textarea);
     }
 
-    get_value(): Record<string, unknown> { return this.val[this.name]! as Record<string, unknown>; }
-    set_value(v: Record<string, unknown>): void {
-      this.val[this.name] = v;
-      this.textarea.value = JSON.stringify(v);
+    get_value(): Record<string, unknown> | null { return this.val[this.name]! as Record<string, unknown> | null; }
+    set_value(v: Record<string, unknown> | null): void {
+      if (v) {
+        this.val[this.name] = v;
+        this.textarea.value = JSON.stringify(v);
+      } else {
+        delete this.val[this.name];
+        this.textarea.value = '';
+      }
     }
     get_element(): HTMLElement { return this.element; }
   }

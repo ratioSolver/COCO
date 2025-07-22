@@ -252,6 +252,14 @@ export namespace publisher {
       this.select.id = name;
       if (this.multiple)
         this.select.multiple = true;
+
+      if (!this.multiple) {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.text = 'None';
+        this.select.append(placeholder);
+      }
+
       if (property.get_symbols())
         property.get_symbols()!.forEach(s => {
           const option = document.createElement('option');
@@ -271,8 +279,10 @@ export namespace publisher {
               selected.push(this.select.options[i].value);
           this.val[this.name] = selected;
         }
-        else
+        else if (this.select.value !== '')
           this.val[this.name] = this.select.value;
+        else
+          this.val[this.name] = undefined;
       }
       );
       this.element.append(this.select);
@@ -309,6 +319,14 @@ export namespace publisher {
       this.select.id = name;
       if (this.multiple)
         this.select.multiple = true;
+
+      if (!this.multiple) {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.text = 'None';
+        this.select.append(placeholder);
+      }
+
       if (property.get_domain().get_instances())
         for (const i of property.get_domain().get_instances()) {
           const option = document.createElement('option');
@@ -328,8 +346,10 @@ export namespace publisher {
               selected.push(this.select.options[i].value);
           this.val[this.name] = selected
         }
-        else
+        else if (this.select.value !== '')
           this.val[this.name] = this.select.value;
+        else
+          this.val[this.name] = undefined;
       }
       );
       this.element.append(this.select);

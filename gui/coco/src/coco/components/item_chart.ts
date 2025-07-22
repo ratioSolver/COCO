@@ -83,8 +83,10 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
   new_value(_: coco.taxonomy.Item, val: coco.taxonomy.Datum): void {
     const data: Partial<PlotData>[] = [];
     for (const [name, ch] of this.charts) {
-      if (name in val.data)
+      if (name in val.data) // we update the chart with the new value
         this.charts.get(name)!.set_datum({ value: val.data[name], timestamp: val.timestamp });
+      else // we extend the last data point with the new timestamp
+        this.charts.get(name)!.extend(val.timestamp);
       const yaxis = this.yaxis.get(name);
       for (const d of ch.get_data()) {
         d.yaxis = yaxis;

@@ -116,6 +116,7 @@ export namespace chart {
 
     set_data(vals: Value<V>[]): void;
     set_datum(val: Value<V>): void;
+    extend(timestamp: Date): void;
     get_data(): Partial<PlotData>[];
 
     get_range(): number[] | undefined;
@@ -141,6 +142,10 @@ export namespace chart {
       if (this.data.length)
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: val.value ? 'true' : 'false', type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
+    }
+    extend(timestamp: Date): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
+        this.data[this.data.length - 1].x![1] = timestamp.valueOf();
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }
@@ -168,6 +173,12 @@ export namespace chart {
     set_datum(val: Value<number>): void {
       (this.data.x! as number[]).push(val.timestamp.valueOf());
       (this.data.y! as number[]).push(val.value);
+    }
+    extend(timestamp: Date): void {
+      if (this.data.x && this.data.y) { // Update the last data point's end time to the current timestamp
+        (this.data.x as number[]).push(timestamp.valueOf());
+        (this.data.y as number[]).push(this.data.y![this.data.y!.length - 1] as number);
+      }
     }
 
     get_data(): Partial<PlotData>[] { return [this.data]; }
@@ -200,6 +211,12 @@ export namespace chart {
       (this.data.x! as number[]).push(val.timestamp.valueOf());
       (this.data.y! as number[]).push(val.value);
     }
+    extend(timestamp: Date): void {
+      if (this.data.x && this.data.y) { // Update the last data point's end time to the current timestamp
+        (this.data.x as number[]).push(timestamp.valueOf());
+        (this.data.y as number[]).push(this.data.y![this.data.y!.length - 1] as number);
+      }
+    }
 
     get_data(): Partial<PlotData>[] { return [this.data]; }
 
@@ -210,26 +227,32 @@ export namespace chart {
     }
   }
 
-  class StringChart implements Chart<string> {
+  class StringChart implements Chart<string | null> {
 
     private readonly data: Partial<PlotData>[] = [];
     private readonly colors = scaleOrdinal(schemeCategory10);
 
-    constructor(_: coco.taxonomy.StringProperty, vals: Value<string>[]) {
+    constructor(_: coco.taxonomy.StringProperty, vals: Value<string | null>[]) {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<string>[]): void {
+    set_data(vals: Value<string | null>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: vals[i].value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value) } });
-      if (vals.length)
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: vals[vals.length - 1].value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value) } });
+        if (vals[i].value)
+          this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: vals[i].value!, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[i].value!) } });
+      if (vals.length && vals[vals.length - 1].value)
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: vals[vals.length - 1].value!, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value!) } });
     }
-    set_datum(val: Value<string>): void {
-      if (this.data.length)
+    set_datum(val: Value<string | null>): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: val.value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
+      if (val.value)
+        this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: val.value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
+    }
+    extend(timestamp: Date): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
+        this.data[this.data.length - 1].x![1] = timestamp.valueOf();
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }
@@ -237,55 +260,32 @@ export namespace chart {
     get_range(): undefined { return undefined; }
   }
 
-  class SymbolChart implements Chart<string | string[]> {
+  class SymbolChart implements Chart<string | string[] | null> {
 
     private readonly data: Partial<PlotData>[] = [];
     private readonly colors = scaleOrdinal(schemeCategory10);
 
-    constructor(_: coco.taxonomy.SymbolProperty, vals: Value<string | string[]>[]) {
+    constructor(_: coco.taxonomy.SymbolProperty, vals: Value<string | string[] | null>[]) {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<string | string[]>[]): void {
+    set_data(vals: Value<string | string[] | null>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++)
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: this.get_name(vals[i].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[i].value)) } });
-      if (vals.length)
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value)) } });
+        if (vals[i].value)
+          this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: this.get_name(vals[i].value!), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[i].value!)) } });
+      if (vals.length && vals[vals.length - 1].value)
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value!), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value!)) } });
     }
-    set_datum(val: Value<string | string[]>): void {
-      if (this.data.length)
+    set_datum(val: Value<string | string[] | null>): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
+      if (val.value)
+        this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
     }
-
-    get_data(): Partial<PlotData>[] { return this.data; }
-
-    get_range(): undefined { return undefined; }
-
-    private get_name(val: string | string[]): string { return Array.isArray(val) ? (val as string[]).join(', ') : val as string; }
-  }
-
-  class ItemChart implements Chart<string | string[]> {
-
-    private readonly data: Partial<PlotData>[] = [];
-    private readonly colors = scaleOrdinal(schemeCategory10);
-
-    constructor(_: coco.taxonomy.ItemProperty, vals: Value<string | string[]>[]) {
-      this.set_data(vals);
-    }
-
-    set_data(vals: Value<string | string[]>[]): void {
-      this.data.length = 0;
-      for (let i = 0; i < vals.length - 1; i++)
-        this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: this.get_name(vals[i].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[i].value)) } });
-      if (vals.length)
-        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value)) } });
-    }
-    set_datum(val: Value<string | string[]>): void {
-      if (this.data.length)
-        this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
+    extend(timestamp: Date): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
+        this.data[this.data.length - 1].x![1] = timestamp.valueOf();
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }
@@ -295,16 +295,51 @@ export namespace chart {
     private get_name(val: string | string[]): string { return Array.isArray(val) ? (val as string[]).join(', ') : val as string; }
   }
 
-  class JSONChart implements Chart<Record<string, any>> {
+  class ItemChart implements Chart<string | string[] | null> {
 
     private readonly data: Partial<PlotData>[] = [];
     private readonly colors = scaleOrdinal(schemeCategory10);
 
-    constructor(_: coco.taxonomy.JSONProperty, vals: Value<Record<string, any>>[]) {
+    constructor(_: coco.taxonomy.ItemProperty, vals: Value<string | string[] | null>[]) {
       this.set_data(vals);
     }
 
-    set_data(vals: Value<Record<string, any>>[]): void {
+    set_data(vals: Value<string | string[] | null>[]): void {
+      this.data.length = 0;
+      for (let i = 0; i < vals.length - 1; i++)
+        if (vals[i].value)
+          this.data.push({ x: [vals[i].timestamp.valueOf(), vals[i + 1].timestamp.valueOf()], y: [1, 1], name: this.get_name(vals[i].value!), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[i].value!)) } });
+      if (vals.length && vals[vals.length - 1].value)
+        this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value!), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value!)) } });
+    }
+    set_datum(val: Value<string | string[] | null>): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
+        this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
+      if (val.value)
+        this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
+    }
+    extend(timestamp: Date): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
+        this.data[this.data.length - 1].x![1] = timestamp.valueOf();
+    }
+
+    get_data(): Partial<PlotData>[] { return this.data; }
+
+    get_range(): undefined { return undefined; }
+
+    private get_name(val: string | string[]): string { return Array.isArray(val) ? (val as string[]).join(', ') : val as string; }
+  }
+
+  class JSONChart implements Chart<Record<string, any> | null> {
+
+    private readonly data: Partial<PlotData>[] = [];
+    private readonly colors = scaleOrdinal(schemeCategory10);
+
+    constructor(_: coco.taxonomy.JSONProperty, vals: Value<Record<string, any> | null>[]) {
+      this.set_data(vals);
+    }
+
+    set_data(vals: Value<Record<string, any> | null>[]): void {
       this.data.length = 0;
       for (let i = 0; i < vals.length - 1; i++) {
         const name = JSON.stringify(vals[i].value);
@@ -315,11 +350,15 @@ export namespace chart {
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) } });
       }
     }
-    set_datum(val: Value<Record<string, any>>): void {
-      if (this.data.length)
+    set_datum(val: Value<Record<string, any> | null>): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
         this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
       const name = JSON.stringify(val.value);
       this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) } });
+    }
+    extend(timestamp: Date): void {
+      if (this.data.length) // Update the last data point's end time to the current timestamp
+        this.data[this.data.length - 1].x![1] = timestamp.valueOf();
     }
 
     get_data(): Partial<PlotData>[] { return this.data; }

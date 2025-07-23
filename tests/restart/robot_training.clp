@@ -9,7 +9,10 @@
       then
         (printout t "No exercise in domain " ?domain-fact:name " for user " ?user crlf)
         (do-for-fact ((?ex-tp-name-fact ExerciseType_name) (?ex-tp-function-fact ExerciseType_function)) (and (eq ?ex-tp-name-fact:item_id ?ex-tp-function-fact:item_id) (eq ?ex-tp-function-fact:function ?domain-fact:item_id))
-          (printout t "Exercise: " ?ex-tp-name-fact:name " is available for user " ?user crlf)
+          (printout t "Exercise: " ?ex-tp-name-fact:name " is available in domain " ?domain-fact:name crlf)
+          (do-for-all-facts ((?ex-tp-level-fact ExerciseType_level)) (eq ?ex-tp-level-fact:item_id ?ex-tp-function-fact:item_id)
+            (printout t "Level: " ?ex-tp-level-fact:level crlf)
+          )
         )
       else
         (printout t "Exercises found in domain " ?domain-fact:name " for user " ?user crlf)      

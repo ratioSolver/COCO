@@ -11,26 +11,6 @@ logger.addHandler(handler)
 
 
 def create_types(session: requests.Session, url: str):
-    # Create the user type..
-    response = session.post(url + '/types', json={
-        'name': 'User',
-        'static_properties': {
-            'name': {'type': 'string'},
-            'MoCa': {'type': 'int', 'min': 0, 'max': 4},
-            'Matrici_Attentive': {'type': 'int', 'min': 0, 'max': 4},
-            'Trial_Making_Test_A': {'type': 'int', 'min': 0, 'max': 4},
-            'Trial_Making_Test_B': {'type': 'int', 'min': 0, 'max': 4},
-            'Trial_Making_Test_B_A': {'type': 'int', 'min': 0, 'max': 4},
-            'Fluenza_semantica': {'type': 'int', 'min': 0, 'max': 4},
-            'Fluenza_fonologica': {'type': 'int', 'min': 0, 'max': 4},
-            'Modified_Winsconsin_Card_Sorting_Test': {'type': 'int', 'min': 0, 'max': 4},
-            'Breve_racconto': {'type': 'int', 'min': 0, 'max': 4}
-        }
-    })
-    if response.status_code != 204:
-        logger.error('Failed to create type User')
-        return
-
     # Create the CognitiveDomain type..
     response = session.post(url + '/types', json={
         'name': 'CognitiveDomain',
@@ -40,6 +20,46 @@ def create_types(session: requests.Session, url: str):
     })
     if response.status_code != 204:
         logger.error('Failed to create type ExecutiveFunction')
+        return
+
+    # Create the CognitiveTest type..
+    response = session.post(url + '/types', json={
+        'name': 'CognitiveTest',
+        'static_properties': {
+            'name': {'type': 'string'},
+            # Funzione cognitiva associata
+            'function': {'type': 'item', 'domain': 'CognitiveDomain'}
+        }
+    })
+    if response.status_code != 204:
+        logger.error('Failed to create type CognitiveTest')
+        return
+
+    # Create the User type..
+    response = session.post(url + '/types', json={
+        'name': 'User',
+        'static_properties': {
+            'name': {'type': 'string'}
+        }
+    })
+    if response.status_code != 204:
+        logger.error('Failed to create type User')
+        return
+
+    # Create the TestDone type..
+    response = session.post(url + '/types', json={
+        'name': 'TestDone',
+        'static_properties': {
+            # Test svolto
+            'test_type': {'type': 'item', 'domain': 'CognitiveTest'},
+            # Utente che ha svolto il test
+            'user': {'type': 'item', 'domain': 'User'},
+            # Performance del test (0-4)
+            'performance': {'type': 'int', 'min': 0, 'max': 4}
+        }
+    })
+    if response.status_code != 204:
+        logger.error('Failed to create type TestDone')
         return
 
     # Create the ExerciseType type..
@@ -55,25 +75,6 @@ def create_types(session: requests.Session, url: str):
     })
     if response.status_code != 204:
         logger.error('Failed to create type ExerciseType')
-        return
-
-    # Create the Robot type..
-    response = session.post(url + '/types', json={
-        'name': 'Robot',
-        'static_properties': {
-            'name': {'type': 'string'}  # Nome del robot
-        },
-        'dynamic_properties': {
-            'current_command': {'type': 'symbol', 'values': ['welcome', 'rot', 'training', 'goodbye']},
-            'current_modality': {'type': 'symbol', 'values': ['formal', 'informal']},
-            'command_completed': {'type': 'symbol', 'values': ['welcome', 'rot', 'training', 'goodbye']},
-            'associated_user': {'type': 'item', 'domain': 'User'},
-            'current_exercise': {'type': 'item', 'domain': 'ExerciseType'},
-            'current_exercise_level': {'type': 'int', 'min': 0, 'max': 6}
-        }
-    })
-    if response.status_code != 204:
-        logger.error('Failed to create type Robot')
         return
 
     # Create the ExerciseDone type..
@@ -92,6 +93,26 @@ def create_types(session: requests.Session, url: str):
     })
     if response.status_code != 204:
         logger.error('Failed to create type ExerciseDone')
+        return
+
+    # Create the Robot type..
+    response = session.post(url + '/types', json={
+        'name': 'Robot',
+        'static_properties': {
+            'name': {'type': 'string'}  # Nome del robot
+        },
+        'dynamic_properties': {
+            'current_command': {'type': 'symbol', 'values': ['welcome', 'rot', 'training', 'goodbye']},
+            'current_modality': {'type': 'symbol', 'values': ['formal', 'informal']},
+            'command_completed': {'type': 'symbol', 'values': ['welcome', 'rot', 'training', 'goodbye']},
+            'associated_user': {'type': 'item', 'domain': 'User'},
+            'current_exercise': {'type': 'item', 'domain': 'ExerciseType'},
+            'current_exercise_level': {'type': 'int', 'min': 0, 'max': 6},
+            'current_exercise_performance': {'type': 'float', 'min': 0, 'max': 1}
+        }
+    })
+    if response.status_code != 204:
+        logger.error('Failed to create type Robot')
         return
 
 
@@ -162,15 +183,8 @@ def create_rules(session: requests.Session, url: str):
 
 
 def create_items(session: requests.Session, url: str) -> list[str]:
-    # Create robot item
-    response = session.post(
-        url + '/items', json={'type': 'Robot', 'properties': {'name': 'Robot'}})
-    if response.status_code != 201:
-        logger.error('Failed to create Robot item')
-        return
-
     # Create cognitive domain items
-    cognitive_domains = ['Memory', 'Attention', 'ExecutiveFunction']
+    cognitive_domains = ['Memory', 'Attention', 'ExecutiveFunction', 'General']
     cognitive_domain_ids = []
     for domain in cognitive_domains:
         response = session.post(
@@ -179,6 +193,36 @@ def create_items(session: requests.Session, url: str) -> list[str]:
             logger.error(f'Failed to create CognitiveDomain item for {domain}')
             return
         cognitive_domain_ids.append(response.text)
+
+    # Create cognitive test items
+    cognitive_tests = [
+        {'name': 'MoCa',
+            'function': cognitive_domain_ids[3]},
+        {'name': 'Matrici_Attentive',
+            'function': cognitive_domain_ids[1]},
+        {'name': 'Trial_Making_Test_A',
+            'function': cognitive_domain_ids[2]},
+        {'name': 'Trial_Making_Test_B',
+            'function': cognitive_domain_ids[2]},
+        {'name': 'Trial_Making_Test_B_A',
+            'function': cognitive_domain_ids[2]},
+        {'name': 'Fluenza_semantica',
+            'function': cognitive_domain_ids[2]},
+        {'name': 'Fluenza_fonologica',
+            'function': cognitive_domain_ids[2]},
+        {'name': 'Modified_Winsconsin_Card_Sorting_Test',
+            'function': cognitive_domain_ids[2]},
+        {'name': 'Breve_racconto', 'function': cognitive_domain_ids[0]}
+    ]
+    cognitive_test_ids = []
+    for test in cognitive_tests:
+        response = session.post(
+            url + '/items', json={'type': 'CognitiveTest', 'properties': test})
+        if response.status_code != 201:
+            logger.error(
+                f'Failed to create CognitiveTest item for {test["name"]}')
+            return
+        cognitive_test_ids.append(response.text)
 
     # Create exercise type items
     exercise_types = [
@@ -204,6 +248,40 @@ def create_items(session: requests.Session, url: str) -> list[str]:
         url + '/items', json={'type': 'User', 'properties': {'name': 'User1', 'MoCa': 1, 'Matrici_Attentive': 2, 'Trial_Making_Test_A': 3, 'Trial_Making_Test_B': 4, 'Trial_Making_Test_B_A': 1, 'Fluenza_semantica': 2, 'Fluenza_fonologica': 3, 'Modified_Winsconsin_Card_Sorting_Test': 4, 'Breve_racconto': 1}})
     if response.status_code != 201:
         logger.error('Failed to create User item')
+        return
+    user_id = response.text
+    # Create test done items
+    test_done_items = [
+        {'test_type': cognitive_test_ids[0],
+            'user': user_id, 'performance': 3},
+        {'test_type': cognitive_test_ids[1],
+            'user': user_id, 'performance': 2},
+        {'test_type': cognitive_test_ids[2],
+            'user': user_id, 'performance': 4},
+        {'test_type': cognitive_test_ids[3],
+            'user': user_id, 'performance': 1},
+        {'test_type': cognitive_test_ids[4],
+            'user': user_id, 'performance': 3},
+        {'test_type': cognitive_test_ids[5],
+            'user': user_id, 'performance': 2},
+        {'test_type': cognitive_test_ids[6],
+            'user': user_id, 'performance': 4},
+        {'test_type': cognitive_test_ids[7],
+            'user': user_id, 'performance': 1}
+    ]
+    for test in test_done_items:
+        response = session.post(
+            url + '/items', json={'type': 'TestDone', 'properties': test})
+        if response.status_code != 201:
+            logger.error(
+                f'Failed to create TestDone item for {test["test_type"]}')
+            return
+
+    # Create robot item
+    response = session.post(
+        url + '/items', json={'type': 'Robot', 'properties': {'name': 'Robot'}})
+    if response.status_code != 201:
+        logger.error('Failed to create Robot item')
         return
 
 

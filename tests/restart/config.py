@@ -31,26 +31,6 @@ def create_types(session: requests.Session, url: str):
         logger.error('Failed to create type User')
         return
 
-    # Create the Robot type..
-    response = session.post(url + '/types', json={
-        'name': 'Robot',
-        'static_properties': {
-            'name': {'type': 'string'}  # Nome del robot
-        },
-        'dynamic_properties': {
-            # Allora consideriamo (welcome, rot, training, goodbye)
-            'current_command': {'type': 'symbol', 'values': ['welcome', 'rot', 'training', 'goodbye']},
-            # Modalità (formale/informale)
-            'current_modality': {'type': 'symbol', 'values': ['formal', 'informal']},
-            # Comando completato (associati a idle (session_start) a rot(welcome_done") a goodbye(end_session))
-            'command_completed': {'type': 'symbol', 'values': ['welcome', 'rot', 'training', 'goodbye']},
-            'associated_user': {'type': 'item', 'domain': 'User'}
-        }
-    })
-    if response.status_code != 204:
-        logger.error('Failed to create type Robot')
-        return
-
     # Create the CognitiveDomain type..
     response = session.post(url + '/types', json={
         'name': 'CognitiveDomain',
@@ -77,6 +57,25 @@ def create_types(session: requests.Session, url: str):
         logger.error('Failed to create type ExerciseType')
         return
 
+    # Create the Robot type..
+    response = session.post(url + '/types', json={
+        'name': 'Robot',
+        'static_properties': {
+            'name': {'type': 'string'}  # Nome del robot
+        },
+        'dynamic_properties': {
+            'current_command': {'type': 'symbol', 'values': ['welcome', 'rot', 'training', 'goodbye']},
+            'current_modality': {'type': 'symbol', 'values': ['formal', 'informal']},
+            'command_completed': {'type': 'symbol', 'values': ['welcome', 'rot', 'training', 'goodbye']},
+            'associated_user': {'type': 'item', 'domain': 'User'},
+            'current_exercise': {'type': 'item', 'domain': 'ExerciseType'},
+            'current_exercise_level': {'type': 'int', 'min': 0, 'max': 6}
+        }
+    })
+    if response.status_code != 204:
+        logger.error('Failed to create type Robot')
+        return
+
     # Create the ExerciseDone type..
     response = session.post(url + '/types', json={
         'name': 'ExerciseDone',
@@ -85,6 +84,8 @@ def create_types(session: requests.Session, url: str):
             'exercise_type': {'type': 'item', 'domain': 'ExerciseType'},
             # Utente che ha svolto l'esercizio
             'user': {'type': 'item', 'domain': 'User'},
+            # Livello di difficoltà dell'esercizio (0-6)
+            'difficulty': {'type': 'int', 'min': 0, 'max': 6},
             # Performance dell'esercizio (0-1)
             'performance': {'type': 'float', 'min': 0, 'max': 1}
         }
@@ -95,6 +96,33 @@ def create_types(session: requests.Session, url: str):
 
 
 def create_rules(session: requests.Session, url: str):
+    # Create the next-id rule
+    response = session.post(url + '/reactive_rules', json={
+        'name': 'next_id',
+        'content': '(defglobal ?*next-id* = 1)'
+    })
+    if response.status_code != 204:
+        logger.error('Failed to create rule next_id')
+        return
+
+    # Create the exercise template
+    response = session.post(url + '/reactive_rules', json={
+        'name': 'exercise_template',
+        'content': '(deftemplate exercise (slot id) (slot exercise-type (type SYMBOL)) (slot exercise-level (type INTEGER) (range 0 6)))'
+    })
+    if response.status_code != 204:
+        logger.error('Failed to create rule exercise_template')
+        return
+
+    # Create the enqueue-exercise function
+    response = session.post(url + '/reactive_rules', json={
+        'name': 'enqueue_exercise',
+        'content': '(deffunction enqueue-exercise (?type ?level) (bind ?id ?*next-id*) (bind ?*next-id* (+ ?*next-id* 1)) (assert (exercise (id ?id) (exercise-type ?type) (exercise-level ?level))))'
+    })
+    if response.status_code != 204:
+        logger.error('Failed to create rule enqueue_exercise')
+        return
+
     # Associating a user to a robot starts a session by welcoming the user
     response = session.post(url + '/reactive_rules', json={
         'name': 'robot_session', 'content': '(defrule robot_session (Robot_has_associated_user (item_id ?robot) (associated_user ?user)) => (add_data ?robot (create$ current_command current_modality) (create$ welcome formal)))'})
@@ -110,8 +138,10 @@ def create_rules(session: requests.Session, url: str):
         return
 
     # Completing the rot command triggers the robot to switch to the training command
-    response = session.post(url + '/reactive_rules', json={
-        'name': 'robot_training', 'content': '(defrule robot_training (Robot_has_command_completed (item_id ?robot) (command_completed rot)) => (add_data ?robot (create$ current_command) (create$ training)))'})
+    with open('robot_training.clp', 'r') as file:
+        robot_training = file.read()
+    response = session.post(
+        url + '/reactive_rules', json={'name': 'robot_training', 'content': robot_training})
     if response.status_code != 204:
         logger.error('Failed to create rule robot_training')
         return

@@ -27,13 +27,47 @@
             )
           )
           (printout t "User's performance in " ?domain:name " is: " ?min-performance crlf)
-          (enqueue-exercise ?ex-type-name:item_id ?min-performance)
+          (if (eq ?min-performance 0)
+            then
+              (enqueue-exercise ?ex-type-name:item_id 1)
+              (enqueue-exercise ?ex-type-name:item_id 1)
+          )
+          (if (eq ?min-performance 1)
+            then
+              (enqueue-exercise ?ex-type-name:item_id 2)
+              (enqueue-exercise ?ex-type-name:item_id 2)
+          )
+          (if (> ?min-performance 1)
+            then
+              (enqueue-exercise ?ex-type-name:item_id 3)
+              (enqueue-exercise ?ex-type-name:item_id 3)
+              (enqueue-exercise ?ex-type-name:item_id 3)
+              (enqueue-exercise ?ex-type-name:item_id 3)
+          )        
         )
       else
         (printout t "Exercises found in domain " ?domain:name " for user " ?user crlf)      
     )
-    (do-for-all-facts ((?ex-type-name ExerciseType_name) (?ex-type-function ExerciseType_function)) (and (eq ?ex-type-name:item_id ?ex-type-function:item_id) (eq ?ex-type-function:function ?domain:item_id))
-      (printout t "Exercise: " ?ex-type-name:name crlf)
-    )
+  )
+  (do-for-fact ((?ex exercise)) (not (any-factp ((?ex2 exercise)) (< ?ex2:id ?ex:id)))
+    (printout t "Executing exercise: " ?ex:exercise-type " - " ?ex:exercise-level crlf)
+    (add_data ?robot (create$ current_exercise current_exercise_level) (create$ ?ex:exercise-type ?ex:exercise-level))
+    (retract ?ex)
+  )
+)
+
+(defrule exercise_done
+  (Robot_has_current_exercise (item_id ?robot) (current_exercise ?exercise))
+  (Robot_has_current_exercise_level (item_id ?robot) (current_exercise_level ?level))
+  (Robot_has_current_exercise_performance (item_id ?robot) (current_exercise_performance ?performance))
+  (Robot_has_associated_user (item_id ?robot) (associated_user ?user))
+=>
+  (printout t "Exercise " ?exercise " at level " ?level " completed with performance " ?performance " by user " ?user crlf)
+  (if (any-factp ((?ex-done ExerciseDone_user) (?ex-done-exercise ExerciseDone_exercise_type)) 
+      (and (eq ?ex-done:item_id ?ex-done-exercise:item_id) (eq ?ex-done:user ?user) (eq ?ex-done-exercise:item_id ?exercise)))
+    then
+      (set_properties ?ex-done:item_id (create$ level performance) (create$ ?level ?performance))
+    else
+      (assert (ExerciseDone (user ?user) (exercise_type ?exercise) (performance ?performance)))
   )
 )

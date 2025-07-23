@@ -86,7 +86,7 @@ def create_types(session: requests.Session, url: str):
             # Utente che ha svolto l'esercizio
             'user': {'type': 'item', 'domain': 'User'},
             # Livello di difficoltà dell'esercizio (0-6)
-            'difficulty': {'type': 'int', 'min': 0, 'max': 6},
+            'level': {'type': 'int', 'min': 0, 'max': 6},
             # Performance dell'esercizio (0-1)
             'performance': {'type': 'float', 'min': 0, 'max': 1}
         }

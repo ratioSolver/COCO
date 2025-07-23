@@ -267,7 +267,9 @@ def create_items(session: requests.Session, url: str) -> list[str]:
         {'test_type': cognitive_test_ids[6],
             'user': user_id, 'performance': 4},
         {'test_type': cognitive_test_ids[7],
-            'user': user_id, 'performance': 1}
+            'user': user_id, 'performance': 1},
+        {'test_type': cognitive_test_ids[8],
+            'user': user_id, 'performance': 3}
     ]
     for test in test_done_items:
         response = session.post(

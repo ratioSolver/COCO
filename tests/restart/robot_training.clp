@@ -10,8 +10,14 @@
         (printout t "No exercise in domain " ?domain-fact:name " for user " ?user crlf)
         (do-for-fact ((?ex-tp-name-fact ExerciseType_name) (?ex-tp-function-fact ExerciseType_function)) (and (eq ?ex-tp-name-fact:item_id ?ex-tp-function-fact:item_id) (eq ?ex-tp-function-fact:function ?domain-fact:item_id))
           (printout t "Exercise: " ?ex-tp-name-fact:name " is available in domain " ?domain-fact:name crlf)
-          (do-for-all-facts ((?ex-tp-level-fact ExerciseType_level)) (eq ?ex-tp-level-fact:item_id ?ex-tp-function-fact:item_id)
-            (printout t "Level: " ?ex-tp-level-fact:level crlf)
+          ; iterate over all the tests done by the user in the given domain and get the lowest performance
+          (bind ?min-performance 4)  ; Initialize with high value
+          (do-for-all-facts ((?test-done-fact TestDone_user) (?test-done-type-fact TestDone_test_type) (?test-done-performance-fact TestDone_performance)) 
+            (and (eq ?test-done-fact:user ?user) (eq ?test-done-type-fact:test_type ?ex-tp-function-fact:item_id))
+            (if (< ?test-done-performance-fact:performance ?min-performance)
+              then
+                (bind ?min-performance ?test-done-performance-fact:performance)
+            )
           )
         )
       else

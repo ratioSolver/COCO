@@ -245,7 +245,7 @@ def create_items(session: requests.Session, url: str) -> list[str]:
 
     # Create user items
     response = session.post(
-        url + '/items', json={'type': 'User', 'properties': {'name': 'User1', 'MoCa': 1, 'Matrici_Attentive': 2, 'Trial_Making_Test_A': 3, 'Trial_Making_Test_B': 4, 'Trial_Making_Test_B_A': 1, 'Fluenza_semantica': 2, 'Fluenza_fonologica': 3, 'Modified_Winsconsin_Card_Sorting_Test': 4, 'Breve_racconto': 1}})
+        url + '/items', json={'type': 'User', 'properties': {'name': 'User1'}})
     if response.status_code != 201:
         logger.error('Failed to create User item')
         return

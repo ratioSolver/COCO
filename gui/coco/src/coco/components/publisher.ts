@@ -40,21 +40,21 @@ export namespace publisher {
     abstract make_publisher(name: string, property: coco.taxonomy.Property<unknown>, val: Record<string, unknown>): Publisher<V>;
   }
 
-  class BoolPublisherGenerator extends PublisherGenerator<boolean> {
+  class BoolPublisherGenerator extends PublisherGenerator<boolean | null> {
 
     constructor() { super('bool'); }
 
     make_publisher(name: string, property: coco.taxonomy.BoolProperty, val: Record<string, unknown>): BoolPublisher { return new BoolPublisher(name, property, val); }
   }
 
-  class IntPublisherGenerator extends PublisherGenerator<number> {
+  class IntPublisherGenerator extends PublisherGenerator<number | null> {
 
     constructor() { super('int'); }
 
     make_publisher(name: string, property: coco.taxonomy.IntProperty, val: Record<string, unknown>): IntPublisher { return new IntPublisher(name, property, val); }
   }
 
-  class FloatPublisherGenerator extends PublisherGenerator<number> {
+  class FloatPublisherGenerator extends PublisherGenerator<number | null> {
 
     constructor() { super('float'); }
 
@@ -96,7 +96,7 @@ export namespace publisher {
     get_element(): HTMLElement;
   }
 
-  class BoolPublisher implements Publisher<boolean> {
+  class BoolPublisher implements Publisher<boolean | null> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -113,22 +113,26 @@ export namespace publisher {
       this.input.type = 'checkbox';
       this.input.id = name;
       if (val[name])
-        this.set_value(val[name] as boolean);
+        this.set_value(val[name] as boolean | null);
       else if (property.has_default_value())
         this.input.checked = property.get_default_value()!;
       this.input.addEventListener('change', () => this.val[this.name] = this.input.checked);
       this.element.append(this.input);
     }
 
-    get_value(): boolean { return this.val[this.name]! as boolean; }
-    set_value(v: boolean): void {
+    get_value(): boolean | null { return this.val[this.name]! as boolean | null; }
+    set_value(v: boolean | null): void {
       this.val[this.name] = v;
-      this.input.checked = v;
+      if (v) {
+        this.input.indeterminate = false;
+        this.input.checked = v;
+      } else
+        this.input.indeterminate = true;
     }
     get_element(): HTMLElement { return this.element; }
   }
 
-  class IntPublisher implements Publisher<number> {
+  class IntPublisher implements Publisher<number | null> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -146,7 +150,7 @@ export namespace publisher {
       this.input.id = name;
       this.input.step = '1';
       if (val[name])
-        this.set_value(val[name] as number);
+        this.set_value(val[name] as number | null);
       else if (property.has_default_value())
         this.set_value(property.get_default_value()!);
       if (property.get_min() !== undefined)
@@ -157,15 +161,18 @@ export namespace publisher {
       this.element.append(this.input);
     }
 
-    get_value(): number { return this.val[this.name]! as number; }
-    set_value(v: number): void {
+    get_value(): number | null { return this.val[this.name]! as number | null; }
+    set_value(v: number | null): void {
       this.val[this.name] = v;
-      this.input.value = v.toString();
+      if (v)
+        this.input.value = v.toString();
+      else
+        this.input.value = '';
     }
     get_element(): HTMLElement { return this.element; }
   }
 
-  class FloatPublisher implements Publisher<number> {
+  class FloatPublisher implements Publisher<number | null> {
 
     private readonly name: string;
     private readonly val: Record<string, unknown>;
@@ -182,7 +189,7 @@ export namespace publisher {
       this.input.type = 'number';
       this.input.id = name;
       if (val[name])
-        this.set_value(val[name] as number);
+        this.set_value(val[name] as number | null);
       else if (property.has_default_value())
         this.set_value(property.get_default_value()!);
       if (property.get_min() !== undefined)
@@ -193,10 +200,13 @@ export namespace publisher {
       this.element.append(this.input);
     }
 
-    get_value(): number { return this.val[this.name]! as number; }
-    set_value(v: number): void {
+    get_value(): number | null { return this.val[this.name]! as number | null; }
+    set_value(v: number | null): void {
       this.val[this.name] = v;
-      this.input.value = v.toString();
+      if (v)
+        this.input.value = v.toString();
+      else
+        this.input.value = '';
     }
     get_element(): HTMLElement { return this.element; }
   }

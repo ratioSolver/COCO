@@ -187,6 +187,7 @@ export namespace publisher {
       this.input = document.createElement('input');
       this.input.classList.add('form-control');
       this.input.type = 'number';
+      this.input.step = '0.01';
       this.input.id = name;
       if (val[name])
         this.set_value(val[name] as number | null);
@@ -271,7 +272,7 @@ export namespace publisher {
       if (!this.multiple) {
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.text = 'None';
+        placeholder.text = '';
         this.select.append(placeholder);
       }
 
@@ -348,7 +349,7 @@ export namespace publisher {
       if (!this.multiple) {
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.text = 'None';
+        placeholder.text = '';
         this.select.append(placeholder);
       }
 

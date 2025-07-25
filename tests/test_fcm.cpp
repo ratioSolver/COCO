@@ -44,7 +44,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);
 #ifdef ENABLE_SSL
-    srv.load_certificate("tests/cert.pem", "tests/key.pem");
+    srv.load_certificate("cert.pem", "key.pem");
 #endif
 #ifdef BUILD_AUTH
     srv.add_module<coco::server_auth>(srv);

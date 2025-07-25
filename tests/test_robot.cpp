@@ -46,7 +46,7 @@ int main()
     auto srv_ft = std::async(std::launch::async, [&srv]
                              { srv.start(); });
 #ifdef ENABLE_SSL
-    srv.load_certificate("tests/cert.pem", "tests/key.pem");
+    srv.load_certificate("cert.pem", "key.pem");
 #endif
 #ifdef BUILD_AUTH
     srv.add_module<coco::server_auth>(srv);

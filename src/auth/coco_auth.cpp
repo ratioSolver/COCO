@@ -10,6 +10,7 @@ namespace coco
 {
     coco_auth::coco_auth(coco &cc) noexcept : coco_module(cc)
     {
+        get_coco().get_db().add_module<auth_db>(static_cast<mongo_db &>(get_coco().get_db()));
         try
         {
             [[maybe_unused]] auto &tp = get_coco().get_type(user_kw);
@@ -17,8 +18,9 @@ namespace coco
         catch (const std::invalid_argument &)
         { // Type does not exist, create it
             [[maybe_unused]] auto &tp = get_coco().create_type(user_kw, {}, {}, {}, {});
+            LOG_WARN("Creating default user (username: admin, password: admin). Please change the password as soon as possible.");
+            [[maybe_unused]] auto &admin = create_user("admin", "admin", 0, json::json());
         }
-        get_coco().get_db().add_module<auth_db>(static_cast<mongo_db &>(get_coco().get_db()));
     }
 
     bool coco_auth::is_valid_token(std::string_view token) const noexcept
@@ -52,12 +54,12 @@ namespace coco
         return users;
     }
 
-    item &coco_auth::create_user(std::string_view username, std::string_view password, json::json &&personal_data)
+    item &coco_auth::create_user(std::string_view username, std::string_view password, int8_t user_role, json::json &&personal_data)
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         auto &tp = get_coco().get_type(user_kw);
         auto &itm = get_coco().create_item(tp);
-        get_coco().get_db().get_module<auth_db>().create_user(itm.get_id(), username, password, std::move(personal_data));
+        get_coco().get_db().get_module<auth_db>().create_user(itm.get_id(), username, password, user_role, std::move(personal_data));
         return itm;
     }
 
@@ -157,17 +159,18 @@ namespace coco
     {
         LOG_TRACE("Create user request received");
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (!body.is_object() || !body.contains("username") || !body["username"].is_string() || !body.contains("password") || !body["password"].is_string())
+        if (!body.is_object() || !body.contains("username") || !body["username"].is_string() || !body.contains("password") || !body["password"].is_string() || !body.contains("role") || !body["role"].is_unsigned())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         std::string username = body["username"];
         std::string password = body["password"];
+        int8_t user_role = static_cast<int8_t>(body["role"].get<int64_t>());
         json::json personal_data = json::json(json::json_type::object);
         if (body.contains("personal_data"))
             personal_data = body["personal_data"];
 
         try
         {
-            [[maybe_unused]] auto &itm = get_coco().get_module<coco_auth>().create_user(username, password, std::move(personal_data));
+            [[maybe_unused]] auto &itm = get_coco().get_module<coco_auth>().create_user(username, password, user_role, std::move(personal_data));
             return std::make_unique<network::json_response>(json::json({{"token", get_coco().get_module<coco_auth>().get_token(username, password)}}), network::status_code::created);
         }
         catch (const std::invalid_argument &e)

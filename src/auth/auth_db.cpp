@@ -28,10 +28,13 @@ namespace coco
         auto doc = users_collection.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", id.data())));
         if (!doc)
             throw std::invalid_argument("User not found: " + std::string(id));
+        std::string user_id = std::string(doc->view()["_id"].get_string().value);
+        std::string username = std::string(doc->view()["username"].get_string().value);
+        int8_t user_role = static_cast<int8_t>(doc->view()["role"].get_int32().value);
         if (doc->view().find("personal_data") == doc->view().end())
-            return db_user{std::string(doc->view()["_id"].get_string().value), std::string(doc->view()["username"].get_string().value), json::json{}};
+            return db_user{user_id, username, user_role, json::json{}};
         else
-            return db_user{std::string(doc->view()["_id"].get_string().value), std::string(doc->view()["username"].get_string().value), json::load(bsoncxx::to_json(doc->view()["personal_data"].get_document().view()))};
+            return db_user{user_id, username, user_role, json::load(bsoncxx::to_json(doc->view()["personal_data"].get_document().view()))};
     }
 
     db_user auth_db::get_user(std::string_view username, std::string_view password)
@@ -41,10 +44,12 @@ namespace coco
             throw std::invalid_argument("User not found: " + std::string(username));
         if (auto salt = std::string(doc->view()["salt"].get_string().value); utils::encode_password(password, salt) != std::string(doc->view()["password"].get_string().value))
             throw std::invalid_argument("Invalid password for user: " + std::string(username));
+        std::string user_id = std::string(doc->view()["_id"].get_string().value);
+        int8_t user_role = static_cast<int8_t>(doc->view()["role"].get_int32().value);
         if (doc->view().find("personal_data") == doc->view().end())
-            return db_user{std::string(doc->view()["_id"].get_string().value), std::string(doc->view()["username"].get_string().value), json::json{}};
+            return db_user{user_id, username.data(), user_role, json::json{}};
         else
-            return db_user{std::string(doc->view()["_id"].get_string().value), std::string(doc->view()["username"].get_string().value), json::load(bsoncxx::to_json(doc->view()["personal_data"].get_document().view()))};
+            return db_user{user_id, username.data(), user_role, json::load(bsoncxx::to_json(doc->view()["personal_data"].get_document().view()))};
     }
 
     std::vector<db_user> auth_db::get_users() noexcept
@@ -63,13 +68,14 @@ namespace coco
         return users;
     }
 
-    void auth_db::create_user(std::string_view id, std::string_view username, std::string_view password, json::json &&personal_data)
+    void auth_db::create_user(std::string_view id, std::string_view username, std::string_view password, int8_t user_role, json::json &&personal_data)
     {
         auto [salt, pass] = utils::encode_password(password);
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("_id", id.data()));
         doc.append(bsoncxx::builder::basic::kvp("username", username.data()));
         doc.append(bsoncxx::builder::basic::kvp("password", pass.data()));
+        doc.append(bsoncxx::builder::basic::kvp("role", user_role));
         doc.append(bsoncxx::builder::basic::kvp("salt", salt.data()));
         if (!personal_data.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("personal_data", bsoncxx::from_json(personal_data.dump())));

@@ -52,10 +52,11 @@ namespace coco
      *
      * @param username The username for the new user.
      * @param password The password for the new user.
+     * @param user_role The role of the user (default is `1`).
      * @param personal_data Optional personal data for the user in JSON format.
      * @return item& A reference to the created user item.
      */
-    [[nodiscard]] item &create_user(std::string_view username, std::string_view password, json::json &&personal_data = {});
+    [[nodiscard]] item &create_user(std::string_view username, std::string_view password, int8_t user_role = 1, json::json &&personal_data = {});
   };
 
   class server_auth : public server_module

@@ -7,6 +7,7 @@ namespace coco
   struct db_user
   {
     std::string id, username;
+    int8_t user_role;
     json::json personal_data;
   };
 
@@ -21,7 +22,7 @@ namespace coco
 
     [[nodiscard]] std::vector<db_user> get_users() noexcept;
 
-    void create_user(std::string_view id, std::string_view username, std::string_view password, json::json &&personal_data = {});
+    void create_user(std::string_view id, std::string_view username, std::string_view password, int8_t user_role = 1, json::json &&personal_data = {});
 
   private:
     void drop() noexcept override;

@@ -50,6 +50,7 @@ int main()
 #endif
 #ifdef BUILD_AUTH
     srv.add_module<coco::server_auth>(srv);
+    srv.add_middleware<coco::auth_middleware>(srv);
 #else
     srv.add_module<coco::server_noauth>(srv);
 #endif

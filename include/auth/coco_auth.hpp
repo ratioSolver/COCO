@@ -82,4 +82,16 @@ namespace coco
     std::unordered_map<network::ws_server_session_base *, std::string> clients;
     std::unordered_map<std::string, std::set<network::ws_server_session_base *>> devices;
   };
+
+  class auth_middleware : public network::middleware
+  {
+  public:
+    auth_middleware(coco_server &srv);
+
+  private:
+    std::unique_ptr<network::response> before_request(const network::request &req) override;
+
+  private:
+    coco_server &srv;
+  };
 } // namespace coco

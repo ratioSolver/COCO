@@ -9,31 +9,36 @@ namespace coco
         srv.add_route(network::Post, "^/deliberative_rules$", std::bind(&deliberative_server::create_deliberative_rule, this, network::placeholders::request));
 
         // Define schemas for deliberative rules
-        get_schemas()["deliberative_rule"] = {
-            {"type", "object"},
-            {"description", "A deliberative rule is a RiDDLe rule that can be applied to achieve some goals."},
-            {"properties",
-             {{"name", {{"type", "string"}}},
-              {"content", {{"type", "string"}, {"description", "The content of the deliberative rule in RiDDLe format."}}}}},
-            {"required", std::vector<json::json>{"name", "content"}}};
+        add_schema("deliberative_rule", {{"type", "object"},
+                                         {"description", "A deliberative rule is a RiDDLe rule that can be applied to achieve some goals."},
+                                         {"properties",
+                                          {{"name", {{"type", "string"}}},
+                                           {"content", {{"type", "string"}, {"description", "The content of the deliberative rule in RiDDLe format."}}}}},
+                                         {"required", std::vector<json::json>{"name", "content"}}});
 
         // Define OpenAPI paths for deliberative rules
-        get_paths()["/deliberative_rules"] = {{"get",
-                                               {{"summary", "Retrieve all the " COCO_NAME " deliberative rules."},
-                                                {"description", "Endpoint to fetch all the deliberative rules."},
-                                                {"responses",
-                                                 {{"200",
-                                                   {{"description", "Successful response with the stored deliberative rules."},
-                                                    {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}}}}}}}},
-                                              {"post",
-                                               {{"summary", "Create a new " COCO_NAME " deliberative rule."},
-                                                {"description", "Endpoint to create a new deliberative rule."},
-                                                {"requestBody",
-                                                 {{"required", true},
-                                                  {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}},
-                                                {"responses",
-                                                 {{"204",
-                                                   {{"description", "Deliberative rule created successfully."}}}}}}}};
+        add_path("/deliberative_rules", {{"get",
+                                          {{"summary", "Retrieve all the " COCO_NAME " deliberative rules."},
+                                           {"description", "Endpoint to fetch all the deliberative rules."},
+                                           {"responses",
+                                            {{"200",
+                                              {{"description", "Successful response with the stored deliberative rules."},
+                                               {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}}}}}}}},
+                                         {"post",
+                                          {{"summary", "Create a new " COCO_NAME " deliberative rule."},
+                                           {"description", "Endpoint to create a new deliberative rule."},
+                                           {"requestBody",
+                                            {{"required", true},
+                                             {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}},
+                                           {"responses",
+                                            {{"204",
+                                              {{"description", "Deliberative rule created successfully."}}}}}}}});
+#ifdef BUILD_AUTH
+        get_path("/deliberative_rules")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        get_path("/deliberative_rules")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        add_authorized_path("/deliberative_rules", network::verb::Get, {0, 1});
+        add_authorized_path("/deliberative_rules", network::verb::Post, {0});
+#endif
     }
 
     std::unique_ptr<network::response> deliberative_server::get_deliberative_rules(const network::request &)

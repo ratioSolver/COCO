@@ -21,8 +21,13 @@ namespace coco
   protected:
     [[nodiscard]] coco &get_coco() noexcept;
 
-    [[nodiscard]] json::json &get_schemas();
-    [[nodiscard]] json::json &get_paths();
+    void add_schema(std::string_view name, json::json &&schema) noexcept;
+    json::json &get_schema(std::string_view name);
+    void add_path(std::string_view path, json::json &&path_info) noexcept;
+    json::json &get_path(std::string_view path);
+#ifdef BUILD_AUTH
+    void add_authorized_path(std::string_view path, network::verb v, std::set<uint8_t> roles, bool self = false) noexcept;
+#endif
 
   private:
     virtual void on_ws_open(network::ws_server_session_base &) {}
@@ -42,6 +47,9 @@ namespace coco
 #endif
   {
     friend class server_module;
+#ifdef BUILD_AUTH
+    friend class auth_middleware;
+#endif
 
   public:
     coco_server(coco &cc, std::string_view host = SERVER_HOST, unsigned short port = SERVER_PORT);
@@ -118,5 +126,9 @@ namespace coco
   protected:
     json::json schemas; // JSON schemas for OpenAPI and AsyncAPI specifications
     json::json paths;   // Paths for OpenAPI specification
+#ifdef BUILD_AUTH
+    json::json security_schemes; // Security schemes for OpenAPI specification
+    std::unordered_map<std::string, std::map<network::verb, std::pair<std::set<uint8_t>, bool>>> authorized_paths;
+#endif
   };
 } // namespace coco

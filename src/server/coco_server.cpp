@@ -10,8 +10,23 @@ namespace coco
     server_module::server_module(coco_server &srv) noexcept : srv(srv) {}
     coco &server_module::get_coco() noexcept { return srv.get_coco(); }
 
-    json::json &server_module::get_schemas() { return srv.schemas; }
-    json::json &server_module::get_paths() { return srv.paths; }
+    void server_module::add_schema(std::string_view name, json::json &&schema) noexcept { srv.schemas[name] = std::move(schema); }
+    json::json &server_module::get_schema(std::string_view name)
+    {
+        if (srv.schemas.as_object().count(name.data()))
+            return srv.schemas[name];
+        throw std::invalid_argument("Schema not found: " + std::string(name));
+    }
+    void server_module::add_path(std::string_view path, json::json &&path_info) noexcept { srv.paths[path.data()] = std::move(path_info); }
+    json::json &server_module::get_path(std::string_view path)
+    {
+        if (srv.paths.as_object().count(path.data()))
+            return srv.paths[path];
+        throw std::invalid_argument("Path not found: " + std::string(path));
+    }
+#ifdef BUILD_AUTH
+    void server_module::add_authorized_path(std::string_view path, network::verb v, std::set<uint8_t> roles, bool self) noexcept { srv.authorized_paths[path.data()][v] = {std::move(roles), self}; }
+#endif
 
 #ifdef ENABLE_SSL
     coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), ssl_server(host, port)
@@ -253,6 +268,33 @@ namespace coco
                                       {"responses",
                                        {{"204",
                                          {{"description", "Reactive rule created successfully."}}}}}}}};
+
+#ifdef BUILD_AUTH
+        paths["/types"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/types"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/types/{name}"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/types/{name}"]["delete"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/items"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/items"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/items/{id}"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/items/{id}"]["delete"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/data/{id}"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/data/{id}"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/reactive_rules"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        paths["/reactive_rules"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        authorized_paths["/types"][network::Get] = {{0, 1}, false};
+        authorized_paths["/types"][network::Post] = {{0}, false};
+        authorized_paths["/types/{name}"][network::Get] = {{0, 1}, false};
+        authorized_paths["/types/{name}"][network::Delete] = {{0}, false};
+        authorized_paths["/items"][network::Get] = {{0, 1}, false};
+        authorized_paths["/items"][network::Post] = {{0}, false};
+        authorized_paths["/items/{id}"][network::Get] = {{0, 1}, true};
+        authorized_paths["/items/{id}"][network::Delete] = {{0}, false};
+        authorized_paths["/data/{id}"][network::Get] = {{0, 1}, true};
+        authorized_paths["/data/{id}"][network::Post] = {{0, 1}, true};
+        authorized_paths["/reactive_rules"][network::Get] = {{0, 1}, false};
+        authorized_paths["/reactive_rules"][network::Post] = {{0}, false};
+#endif
     }
 
     void coco_server::on_ws_open(network::ws_server_session_base &ws)
@@ -605,7 +647,11 @@ namespace coco
                              {"version", "1.0.0"},
                              {"description", "RESTful API for the " COCO_NAME " server. This API provides comprehensive management of types, items, dynamic data, and reactive rules. Types define the structure and behavior of items, items are instances of types with static properties, and dynamic data provides time-series storage capabilities. Reactive rules enable event-driven processing using CLIPS rule engine."}}},
                            {"components",
-                            {{"schemas", schemas}}},
+                            {
+#ifdef BUILD_AUTH
+                                {"securitySchemes", {"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}},
+#endif
+                                {"schemas", schemas}}},
                            {"paths", paths}};
         return std::make_unique<network::json_response>(std::move(spec));
     }
@@ -618,7 +664,11 @@ namespace coco
                              {"description", "API for the " COCO_NAME " server."}}},
                            {"channels", {}},
                            {"components",
-                            {{"schemas", schemas}}}};
+                            {
+#ifdef BUILD_AUTH
+                                {"securitySchemes", {"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}},
+#endif
+                                {"schemas", schemas}}}};
         return std::make_unique<network::json_response>(std::move(spec));
     }
 } // namespace coco

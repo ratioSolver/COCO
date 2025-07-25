@@ -70,54 +70,55 @@ namespace coco
         srv.add_route(network::verb::Post, "^/users$", std::bind(&server_auth::create_user, this, std::placeholders::_1));
 
         // Define schemas for user
-        get_schemas()["user"] = {
-            {"type", "object"},
-            {"description", "A user item with authentication capabilities."},
-            {"properties",
-             {{"id", {{"type", "string"}, {"description", "Unique identifier for the user."}}},
-              {"username", {{"type", "string"}, {"description", "Username of the user."}}},
-              {"password", {{"type", "string"}, {"description", "Password of the user."}}},
-              {"personal_data", {{"type", "object"}, {"description", "Personal data of the user."}}}}},
-            {"required", std::vector<json::json>{"id", "username", "password"}}};
+        add_schema("user", {{"type", "object"},
+                            {"description", "A user item with authentication capabilities."},
+                            {"properties",
+                             {{"id", {{"type", "string"}, {"description", "Unique identifier for the user."}}},
+                              {"username", {{"type", "string"}, {"description", "Username of the user."}}},
+                              {"password", {{"type", "string"}, {"description", "Password of the user."}}},
+                              {"personal_data", {{"type", "object"}, {"description", "Personal data of the user."}}}}},
+                            {"required", std::vector<json::json>{"id", "username", "password"}}});
 
         // Define OpenAPI paths for authentication endpoints
-        get_paths()["/login"] = {"post",
-                                 {{"summary", "User login."},
-                                  {"description", "Endpoint to authenticate a user and obtain a token."},
-                                  {"requestBody",
-                                   {{"required", true},
-                                    {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"username", {{"type", "string"}, {"description", "Username of the user"}}}, {"password", {{"type", "string"}, {"description", "Password of the user"}}}}}}}}}}}}},
-                                  {"responses",
-                                   {{"200",
-                                     {{"description", "Token generated successfully."},
-                                      {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}, {"description", "Authentication token"}}}}}}}}}}}}},
-                                    {"400",
-                                     {{"description", "Invalid request."}}},
-                                    {"401",
-                                     {{"description", "Unauthorized."}}}}}}};
-        get_paths()["/users"] = {{"get",
-                                  {{"summary", "Get all users."},
-                                   {"description", "Endpoint to retrieve a list of all users."},
-                                   {"responses",
-                                    {{"200",
-                                      {{"description", "List of users retrieved successfully."},
-                                       {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}},
-                                     {"401",
-                                      {{"description", "Unauthorized."}}}}}}},
-                                 {"post",
-                                  {{"summary", "Create a new user."},
-                                   {"description", "Endpoint to create a new user."},
-                                   {"requestBody",
-                                    {{"required", true},
-                                     {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/user"}}}}}}}}},
-                                   {"responses",
-                                    {{"201",
-                                      {{"description", "User created successfully."},
-                                       {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}, {"description", "Authentication token"}}}}}}}}}}}}},
-                                     {"400",
-                                      {{"description", "Invalid request."}}},
-                                     {"401",
-                                      {{"description", "Unauthorized."}}}}}}}};
+        add_path("/login", {"post",
+                            {{"summary", "User login."},
+                             {"description", "Endpoint to authenticate a user and obtain a token."},
+                             {"requestBody",
+                              {{"required", true},
+                               {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"username", {{"type", "string"}, {"description", "Username of the user"}}}, {"password", {{"type", "string"}, {"description", "Password of the user"}}}}}}}}}}}}},
+                             {"responses",
+                              {{"200",
+                                {{"description", "Token generated successfully."},
+                                 {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}, {"description", "Authentication token"}}}}}}}}}}}}},
+                               {"400",
+                                {{"description", "Invalid request."}}},
+                               {"401",
+                                {{"description", "Unauthorized."}}}}}}});
+        add_path("/users", {{"get",
+                             {{"summary", "Get all users."},
+                              {"description", "Endpoint to retrieve a list of all users."},
+                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+                              {"responses",
+                               {{"200",
+                                 {{"description", "List of users retrieved successfully."},
+                                  {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}},
+                                {"401",
+                                 {{"description", "Unauthorized."}}}}}}},
+                            {"post",
+                             {{"summary", "Create a new user."},
+                              {"description", "Endpoint to create a new user."},
+                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+                              {"requestBody",
+                               {{"required", true},
+                                {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/user"}}}}}}}}},
+                              {"responses",
+                               {{"201",
+                                 {{"description", "User created successfully."},
+                                  {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}, {"description", "Authentication token"}}}}}}}}}}}}},
+                                {"400",
+                                 {{"description", "Invalid request."}}},
+                                {"401",
+                                 {{"description", "Unauthorized."}}}}}}}});
     }
 
     std::unique_ptr<network::response> server_auth::login(const network::request &req)
@@ -290,5 +291,37 @@ namespace coco
         auto msg_str = msg.dump();
         for (auto &[ws, _] : clients)
             ws->send(msg_str);
+    }
+
+    auth_middleware::auth_middleware(coco_server &srv) : network::middleware(srv), srv(srv) {}
+
+    std::unique_ptr<network::response> auth_middleware::before_request(const network::request &req)
+    {
+        if (auto auth = req.get_headers().find("authorization"); auth != req.get_headers().end())
+            if (auth->second.size() > 7 && auth->second.substr(0, 7) == "Bearer ")
+            {
+                std::string token = auth->second.substr(7);
+                try
+                {
+                    auto &itm = srv.get_coco().get_item(token);
+                    if (srv.authorized_paths.at(req.get_target()).at(req.get_verb()).second)
+                        return nullptr;
+                    if (itm.get_type().get_name() == user_kw)
+                    {
+                        if (!srv.get_coco().get_module<coco_auth>().is_valid_token(token))
+                            return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
+                        auto user = srv.get_coco().get_db().get_module<auth_db>().get_user(token);
+                        if (std::all_of(srv.authorized_paths.at(req.get_target()).at(req.get_verb()).first.begin(), srv.authorized_paths.at(req.get_target()).at(req.get_verb()).first.end(), [&user](uint8_t role)
+                                        { return role < user.user_role; }))
+                            return std::make_unique<network::json_response>(json::json({{"message", "Forbidden"}}), network::status_code::forbidden);
+                    }
+                }
+                catch (const std::invalid_argument &)
+                {
+                    return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
+                }
+                return nullptr; // token is valid and user has required roles
+            }
+        return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
     }
 } // namespace coco

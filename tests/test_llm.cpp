@@ -36,10 +36,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #ifdef BUILD_AUTH
     cc.add_module<coco::coco_auth>(cc);
 #endif
-
 #ifdef BUILD_LLM
     [[maybe_unused]] coco::coco_llm &llm = cc.add_module<coco::coco_llm>(cc);
 #endif
+    cc.init();
 
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);

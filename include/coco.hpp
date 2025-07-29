@@ -52,6 +52,8 @@ namespace coco
     coco(coco_db &db) noexcept;
     ~coco();
 
+    void init() noexcept;
+
     [[nodiscard]] coco_db &get_db() noexcept { return db; }
     [[nodiscard]] const coco_db &get_db() const noexcept { return db; }
 

@@ -297,6 +297,9 @@ namespace coco
 
     std::unique_ptr<network::response> auth_middleware::before_request(const network::request &req)
     {
+        if (std::regex_match(req.get_target(), std::regex("^/$")) || std::regex_match(req.get_target(), std::regex("^/assets/.+")) || std::regex_match(req.get_target(), std::regex("/.+\\.ico")) || std::regex_match(req.get_target(), std::regex("/.+\\.png")))
+            return nullptr;
+
         if (auto auth = req.get_headers().find("authorization"); auth != req.get_headers().end())
             if (auth->second.size() > 7 && auth->second.substr(0, 7) == "Bearer ")
             {

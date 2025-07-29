@@ -8,17 +8,17 @@ namespace coco
         srv.add_route(network::Post, "^/fcm_tokens$", std::bind(&fcm_server::new_token, this, network::placeholders::request));
 
         // Define OpenAPI paths for FCM endpoints
-        add_schema("/fcm_token", {"post",
-                                  {{"summary", "Add a new FCM token."},
-                                   {"description", "Endpoint to add a new FCM token for a user."},
-                                   {"requestBody",
-                                    {{"required", true},
-                                     {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"id", {{"type", "string"}, {"description", "User ID"}}}, {"token", {{"type", "string"}, {"description", "FCM token"}}}}}}}}}}}}},
-                                   {"responses",
-                                    {{"204",
-                                      {{"description", "Token added successfully."}}},
-                                     {"400",
-                                      {{"description", "Invalid request."}}}}}}});
+        add_path("/fcm_tokens", {"post",
+                                 {{"summary", "Add a new FCM token."},
+                                  {"description", "Endpoint to add a new FCM token for a user."},
+                                  {"requestBody",
+                                   {{"required", true},
+                                    {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"id", {{"type", "string"}, {"description", "User ID"}}}, {"token", {{"type", "string"}, {"description", "FCM token"}}}}}}}}}}}}},
+                                  {"responses",
+                                   {{"204",
+                                     {{"description", "Token added successfully."}}},
+                                    {"400",
+                                     {{"description", "Invalid request."}}}}}}});
 #ifdef BUILD_AUTH
         get_path("/fcm_tokens")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         add_authorized_path("/fcm_tokens", network::verb::Post, {0});

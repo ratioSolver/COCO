@@ -123,11 +123,12 @@ export namespace publisher {
     get_value(): boolean | null { return this.val[this.name]! as boolean | null; }
     set_value(v: boolean | null): void {
       this.val[this.name] = v;
-      if (v) {
+      if (v === null)
+        this.input.indeterminate = true;
+      else {
         this.input.indeterminate = false;
         this.input.checked = v;
-      } else
-        this.input.indeterminate = true;
+      }
     }
     get_element(): HTMLElement { return this.element; }
   }

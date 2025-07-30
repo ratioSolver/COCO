@@ -125,7 +125,7 @@ def create_rules(session: requests.Session, url: str):
         data = file.read()
     logger.info('Creating the Anxiety rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'anxiety', 'content': data})
+        url + '/reactive_rules', json={'name': 'anxiety', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -135,7 +135,7 @@ def create_rules(session: requests.Session, url: str):
         data = file.read()
     logger.info('Creating the Dyskinesia rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'dyskinesia', 'content': data})
+        url + '/reactive_rules', json={'name': 'dyskinesia', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -145,7 +145,7 @@ def create_rules(session: requests.Session, url: str):
         data = file.read()
     logger.info('Creating the Excessive heat rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'excessive_heat', 'content': data})
+        url + '/reactive_rules', json={'name': 'excessive_heat', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -155,7 +155,7 @@ def create_rules(session: requests.Session, url: str):
         data = file.read()
     logger.info('Creating the Fluctuation rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'fluctuation', 'content': data})
+        url + '/reactive_rules', json={'name': 'fluctuation', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -165,7 +165,7 @@ def create_rules(session: requests.Session, url: str):
         data = file.read()
     logger.info('Creating the Freezing rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'freezing', 'content': data})
+        url + '/reactive_rules', json={'name': 'freezing', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -175,7 +175,7 @@ def create_rules(session: requests.Session, url: str):
         data = file.read()
     logger.info('Creating the Mental fatigue rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'mental_fatigue', 'content': data})
+        url + '/reactive_rules', json={'name': 'mental_fatigue', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -185,7 +185,7 @@ def create_rules(session: requests.Session, url: str):
         data = file.read()
     logger.info('Creating the Physical fatigue rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'physical_fatigue', 'content': data})
+        url + '/reactive_rules', json={'name': 'physical_fatigue', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -195,7 +195,7 @@ def create_rules(session: requests.Session, url: str):
         data = file.read()
     logger.info('Creating the Sensory disregulation rule')
     response = session.post(
-        url + '/reactive_rule', json={'name': 'sensory_dysregulation', 'content': data})
+        url + '/reactive_rules', json={'name': 'sensory_dysregulation', 'content': data})
     if response.status_code != 204:
         logger.error(response.json())
         return
@@ -278,7 +278,7 @@ def fake_data(session: requests.Session, url: str, user_id: str):
             'lon']
 
     response = session.get(url + '/fake/User?parameters=' + json.dumps(pars))
-    if response.status_code != 201:
+    if response.status_code != 200:
         logger.error('Failed to create fake data')
         return
     else:

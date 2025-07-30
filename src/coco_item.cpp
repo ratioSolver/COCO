@@ -63,6 +63,7 @@ namespace coco
                     { // we retract the old property
                         LOG_TRACE("Retracting property " + p_name + " for item " + id);
                         Retract(f->second);
+                        properties.erase(p_name);
                         value_facts.erase(p_name);
                     }
                     else if (prop->second.get().validate(val))
@@ -70,7 +71,12 @@ namespace coco
                         LOG_TRACE("Updating property " + p_name + " for item " + id);
                         FactModifier *property_fact_modifier = CreateFactModifier(tp.get_coco().env, f->second);
                         prop->second.get().get_property_type().set_value(property_fact_modifier, p_name, val);
+                        auto property_fact = FMModify(property_fact_modifier);
+                        [[maybe_unused]] auto fm_err = FMError(tp.get_coco().env);
+                        assert(fm_err == FME_NO_ERROR);
+                        assert(property_fact);
                         properties[p_name] = val;
+                        value_facts[p_name] = property_fact;
                     }
                     else
                         LOG_WARN("Property " + p_name + " for item " + id + " is not valid");
@@ -82,6 +88,8 @@ namespace coco
                     FBPutSlotSymbol(property_fact_builder, "item_id", id.c_str());
                     prop->second.get().get_property_type().set_value(property_fact_builder, p_name, val);
                     auto property_fact = FBAssert(property_fact_builder);
+                    [[maybe_unused]] auto fb_err = FBError(tp.get_coco().env);
+                    assert(fb_err == FBE_NO_ERROR);
                     assert(property_fact);
                     LOG_TRACE(tp.get_coco().to_string(property_fact));
                     FBDispose(property_fact_builder);
@@ -114,6 +122,7 @@ namespace coco
                     { // we retract the old property
                         LOG_TRACE("Retracting data " + p_name + " for item " + id);
                         Retract(f->second);
+                        value->first.erase(p_name);
                         value_facts.erase(p_name);
                     }
                     else if (prop->second.get().validate(j_val))
@@ -122,7 +131,12 @@ namespace coco
                         FactModifier *property_fact_modifier = CreateFactModifier(tp.get_coco().env, f->second);
                         prop->second.get().get_property_type().set_value(property_fact_modifier, p_name, j_val);
                         FMPutSlotInteger(property_fact_modifier, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
+                        auto value_fact = FMModify(property_fact_modifier);
+                        [[maybe_unused]] auto fm_err = FMError(tp.get_coco().env);
+                        assert(fm_err == FME_NO_ERROR);
+                        assert(value_fact);
                         value->first[p_name] = j_val;
+                        value_facts[p_name] = value_fact;
                     }
                     else
                         LOG_WARN("Data " + p_name + " for item " + id + " is not valid");
@@ -136,6 +150,8 @@ namespace coco
                     FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
                     auto value_fact = FBAssert(value_fact_builder);
                     assert(value_fact);
+                    [[maybe_unused]] auto fb_err = FBError(tp.get_coco().env);
+                    assert(fb_err == FBE_NO_ERROR);
                     LOG_TRACE(tp.get_coco().to_string(value_fact));
                     FBDispose(value_fact_builder);
                     value->first[p_name] = j_val;

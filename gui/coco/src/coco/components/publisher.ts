@@ -154,10 +154,8 @@ export namespace publisher {
         this.set_value(val[name] as number | null);
       else if (property.has_default_value())
         this.set_value(property.get_default_value()!);
-      if (property.get_min() !== undefined)
-        this.input.min = property.get_min()!.toString();
-      if (property.get_max() !== undefined)
-        this.input.max = property.get_max()!.toString();
+      this.input.min = property.get_min().toString();
+      this.input.max = property.get_max().toString();
       this.input.addEventListener('change', () => this.val[this.name] = parseInt(this.input.value));
       this.element.append(this.input);
     }
@@ -194,10 +192,8 @@ export namespace publisher {
         this.set_value(val[name] as number | null);
       else if (property.has_default_value())
         this.set_value(property.get_default_value()!);
-      if (property.get_min() !== undefined)
-        this.input.min = property.get_min()!.toString();
-      if (property.get_max() !== undefined)
-        this.input.max = property.get_max()!.toString();
+      this.input.min = property.get_min().toString();
+      this.input.max = property.get_max().toString();
       this.input.addEventListener('change', () => this.val[this.name] = parseFloat(this.input.value));
       this.element.append(this.input);
     }

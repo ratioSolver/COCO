@@ -203,7 +203,7 @@ def create_rules(session: requests.Session, url: str):
 
 def create_items(session: requests.Session, url: str) -> list[str]:
     ids: list[str] = []
-    for _ in range(10):
+    for _ in range(1):
         first_name = fake.first_name()
 
         response = session.post(url + '/items', json={

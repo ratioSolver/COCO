@@ -474,7 +474,7 @@ namespace coco
     }
     bool float_property::validate(const json::json &j) const noexcept
     {
-        if (!j.is_float())
+        if (!j.is_number())
             return false;
         double value = j;
         if ((min.has_value() && *min > value) || (max.has_value() && *max < value))

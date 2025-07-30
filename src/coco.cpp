@@ -65,7 +65,7 @@ namespace coco
         auto itms = db.get_items();
         LOG_DEBUG("Retrieved " << itms.size() << " items");
         for (auto &itm : itms)
-            get_type(itm.type).make_item(itm.id, itm.props.has_value() ? std::move(itm.props.value()) : json::json{});
+            get_type(itm.type).make_item(itm.id, itm.props.has_value() ? std::move(itm.props.value()) : json::json{}, itm.value.has_value() ? std::make_optional(std::move(itm.value.value())) : std::nullopt);
     }
     coco::~coco()
     {

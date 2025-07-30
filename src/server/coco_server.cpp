@@ -102,12 +102,12 @@ namespace coco
             {"required", std::vector<json::json>{"type"}}};
         schemas["item_property"] = {
             {"type", "object"},
-            {"description", "A property that holds references to other items by their UUID, restricted to a specific domain type."},
+            {"description", "A property that holds references to other items by their ID, restricted to a specific domain type."},
             {"properties",
              {{"type", {{"type", "string"}, {"enum", {"item"}}, {"description", "The property type identifier."}}},
               {"domain", {{"type", "string"}, {"description", "The type of objects that are allowed as values for this property."}}},
               {"multiple", {{"type", "boolean"}, {"description", "Whether this property can hold multiple values (array)."}}},
-              {"default", {{"oneOf", std::vector<json::json>{{{"type", "string"}, {"format", "uuid"}}, {{"type", "array"}, {"items", {{"type", "string"}, {"format", "uuid"}}}}}}, {"description", "Default UUID value(s) for this property."}}}}},
+              {"default", {{"oneOf", std::vector<json::json>{{{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}, {{"type", "array"}, {"items", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}}}}}, {"description", "Default ID value(s) for this property."}}}}},
             {"required", std::vector<json::json>{"type", "domain"}}};
         schemas["json_property"] = {
             {"type", "object"},
@@ -131,7 +131,7 @@ namespace coco
             {"type", "object"},
             {"description", "A " COCO_NAME " item is an instance of a type, which can have static properties and dynamic data."},
             {"properties",
-             {{"id", {{"type", "string"}, {"format", "uuid"}, {"description", "The unique identifier (UUID) for this item."}}},
+             {{"id", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}, {"description", "The ID for this item."}}},
               {"type", {{"type", "string"}, {"description", "The name of the type that this item instantiates."}}},
               {"properties", {{"type", "object"}, {"description", "Static data of the item defined by its type."}}}}},
             {"required", std::vector<json::json>{"id", "type"}}};
@@ -203,12 +203,12 @@ namespace coco
                              {"responses",
                               {{"201",
                                 {{"description", "Item created successfully."},
-                                 {"content", {{"text/plain", {{"schema", {{"type", "string"}, {"format", "uuid"}, {"description", "The UUID of the newly created item."}}}}}}}}}}}}}};
+                                 {"content", {{"text/plain", {{"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}, {"description", "The ID of the newly created item."}}}}}}}}}}}}}};
         paths["/items/{id}"] = {{"get",
                                  {{"summary", "Retrieve a specific " COCO_NAME " item."},
                                   {"description", "Endpoint to fetch a specific item by ID."},
                                   {"parameters",
-                                   {{{"name", "id"}, {"description", "The ID of the specific " COCO_NAME " item to get."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+                                   {{{"name", "id"}, {"description", "The ID of the specific " COCO_NAME " item to get."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}}}}},
                                   {"responses",
                                    {{"200",
                                      {{"description", "Successful response with the item details."},
@@ -219,7 +219,7 @@ namespace coco
                                  {{"summary", "Delete a specific " COCO_NAME " item."},
                                   {"description", "Endpoint to delete a specific item by ID."},
                                   {"parameters",
-                                   {{{"name", "id"}, {"description", "The ID of the specific " COCO_NAME " item to delete."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"format", "uuid"}}}}}},
+                                   {{{"name", "id"}, {"description", "The ID of the specific " COCO_NAME " item to delete."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}}}}},
                                   {"responses",
                                    {{"204",
                                      {{"description", "Item deleted successfully"}}},
@@ -229,7 +229,7 @@ namespace coco
                                 {{"summary", "Retrieve data for a specific " COCO_NAME " item."},
                                  {"description", "Endpoint to fetch data for a specific item by ID. You can filter data by providing 'from' and 'to' query parameters."},
                                  {"parameters",
-                                  {{{"name", "id"}, {"description", "The ID of the " COCO_NAME " item."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"format", "uuid"}}}},
+                                  {{{"name", "id"}, {"description", "The ID of the " COCO_NAME " item."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}}},
                                    {{"name", "from"}, {"description", "Start date for filtering data."}, {"in", "query"}, {"schema", {{"type", "string"}, {"format", "date-time"}}}},
                                    {{"name", "to"}, {"description", "End date for filtering data."}, {"in", "query"}, {"schema", {{"type", "string"}, {"format", "date-time"}}}}}},
                                  {"responses",
@@ -242,7 +242,7 @@ namespace coco
                                 {{"summary", "Add data to a specific " COCO_NAME " item."},
                                  {"description", "Endpoint to add data to a specific item by ID. You can provide a timestamp for the data."},
                                  {"parameters",
-                                  {{{"name", "id"}, {"description", "The ID of the " COCO_NAME " item."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"format", "uuid"}}}},
+                                  {{{"name", "id"}, {"description", "The ID of the " COCO_NAME " item."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}}},
                                    {{"name", "timestamp"}, {"description", "Timestamp for the data."}, {"in", "query"}, {"schema", {{"type", "string"}, {"format", "date-time"}}}}}},
                                  {"requestBody",
                                   {{"required", true},

@@ -153,13 +153,7 @@ namespace coco
     }
     void mongo_db::set_properties(std::string_view itm_id, const json::json &props)
     {
-        bsoncxx::builder::basic::document filter_doc; // Prepare the filter document
-        filter_doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}));
-
-        bsoncxx::builder::basic::document update_doc; // Prepare the update document
-
         bsoncxx::builder::basic::document update_fields; // Fields to set
-
         // Iterate through properties and build set/unset operations
         for (const auto &[nm, prop] : props.as_object())
             switch (prop.get_type())
@@ -183,8 +177,10 @@ namespace coco
                 update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::from_json(prop.dump())));
             }
 
+        bsoncxx::builder::basic::document filter_doc; // Prepare the filter document
+        filter_doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}));
+        bsoncxx::builder::basic::document update_doc; // Prepare the update document
         update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
-
         if (!items_collection.update_one(filter_doc.view(), update_doc.view()))
             throw std::invalid_argument("Failed to set properties for item: " + std::string(itm_id));
     }
@@ -200,43 +196,57 @@ namespace coco
     }
     void mongo_db::set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
     {
-        bsoncxx::builder::basic::document filter_doc; // Prepare the filter document
-        filter_doc.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}));
-        filter_doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
-
-        bsoncxx::builder::basic::document update_doc; // Prepare the update document
-
-        bsoncxx::builder::basic::document update_fields; // Fields to set
-
+        bsoncxx::builder::basic::document update_fields;
+        bsoncxx::builder::basic::document update_val_fields; // Fields to set
         // Iterate through properties and build set/unset operations
         for (const auto &[nm, v] : val.as_object())
             switch (v.get_type())
             {
             case json::json_type::null:
-                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::types::b_null{}));
+                update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, bsoncxx::types::b_null{}));
+                update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::types::b_null{}));
                 break;
             case json::json_type::boolean:
-                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<bool>()));
+                update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, v.get<bool>()));
+                update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<bool>()));
                 break;
             case json::json_type::number:
                 if (v.is_float())
-                    update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<double>()));
+                {
+                    update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, v.get<double>()));
+                    update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<double>()));
+                }
                 else
-                    update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<int64_t>()));
+                {
+                    update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, v.get<int64_t>()));
+                    update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<int64_t>()));
+                }
                 break;
             case json::json_type::string:
-                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<std::string>()));
+                update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, v.get<std::string>()));
+                update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<std::string>()));
                 break;
             default:
-                update_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::from_json(v.dump())));
+                update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, bsoncxx::from_json(v.dump())));
+                update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::from_json(v.dump())));
             }
+        update_fields.append(bsoncxx::builder::basic::kvp("value.timestamp", bsoncxx::types::b_date{timestamp}));
 
+        bsoncxx::builder::basic::document filter_doc; // Prepare the filter document
+        filter_doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}));
+        bsoncxx::builder::basic::document update_doc;
         update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
+        if (!items_collection.update_one(filter_doc.view(), update_doc.view()))
+            throw std::invalid_argument("Failed to set value for item: " + std::string(itm_id));
 
+        bsoncxx::builder::basic::document filter_data_doc; // Prepare the filter document
+        filter_data_doc.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}));
+        filter_data_doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{timestamp}));
+        bsoncxx::builder::basic::document update_data_doc; // Prepare the update document
+        update_data_doc.append(bsoncxx::builder::basic::kvp("$set", update_val_fields.view()));
         mongocxx::options::update update_opts;
         update_opts.upsert(true); // Create a new document if no document matches the filter
-
-        if (!item_data_collection.update_one(filter_doc.view(), update_doc.view(), update_opts))
+        if (!item_data_collection.update_one(filter_data_doc.view(), update_data_doc.view(), update_opts))
             throw std::invalid_argument("Failed to set value for item: " + std::string(itm_id));
     }
     void mongo_db::delete_item(std::string_view itm_id)

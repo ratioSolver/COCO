@@ -62,7 +62,8 @@ namespace coco
                     if (val.is_null())
                     { // we retract the old property
                         LOG_TRACE("Retracting property " + p_name + " for item " + id);
-                        Retract(f->second);
+                        [[maybe_unused]] auto re_err = Retract(f->second);
+                        assert(re_err == RE_NO_ERROR);
                         properties.erase(p_name);
                         value_facts.erase(p_name);
                     }
@@ -121,7 +122,8 @@ namespace coco
                     if (j_val.is_null())
                     { // we retract the old property
                         LOG_TRACE("Retracting data " + p_name + " for item " + id);
-                        Retract(f->second);
+                        [[maybe_unused]] auto re_err = Retract(f->second);
+                        assert(re_err == RE_NO_ERROR);
                         value->first.erase(p_name);
                         value_facts.erase(p_name);
                     }

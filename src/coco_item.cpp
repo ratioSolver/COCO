@@ -85,6 +85,7 @@ namespace coco
                     else if (prop->second.get().validate(val))
                     { // we update the property
                         LOG_TRACE("Updating property " + p_name + " for item " + id);
+                        ReleaseFact(f->second);
                         FactModifier *property_fact_modifier = CreateFactModifier(tp.get_coco().env, f->second);
                         prop->second.get().get_property_type().set_value(property_fact_modifier, p_name, val);
                         auto property_fact = FMModify(property_fact_modifier);
@@ -148,6 +149,7 @@ namespace coco
                     else if (prop->second.get().validate(j_val))
                     { // we update the property
                         LOG_TRACE("Updating data " + p_name + " for item " + id);
+                        ReleaseFact(f->second);
                         FactModifier *property_fact_modifier = CreateFactModifier(tp.get_coco().env, f->second);
                         prop->second.get().get_property_type().set_value(property_fact_modifier, p_name, j_val);
                         FMPutSlotInteger(property_fact_modifier, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());

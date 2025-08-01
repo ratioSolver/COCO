@@ -241,10 +241,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendSymbol(mfb, v.get<bool>() ? "TRUE" : "FALSE");
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -264,10 +262,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendSymbol(mfb, v.get<bool>() ? "TRUE" : "FALSE");
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -366,10 +362,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendInteger(mfb, v.get<long>());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -389,10 +383,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendInteger(mfb, v.get<long>());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -491,10 +483,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendFloat(mfb, v.get<double>());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -514,10 +504,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendFloat(mfb, v.get<double>());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -602,10 +590,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendString(mfb, v.get<std::string>().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -625,10 +611,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendString(mfb, v.get<std::string>().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -732,10 +716,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendSymbol(mfb, v.get<std::string>().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -755,10 +737,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendSymbol(mfb, v.get<std::string>().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -866,10 +846,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendSymbol(mfb, tp.get_coco().get_item(v.get<std::string>()).get_id().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else
@@ -898,10 +876,8 @@ namespace coco
             auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
             for (const auto &v : value.as_array())
                 MBAppendSymbol(mfb, tp.get_coco().get_item(v.get<std::string>()).get_id().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), MBCreate(mfb));
             assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
             MBDispose(mfb);
         }
         else

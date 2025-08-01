@@ -29,16 +29,6 @@ namespace coco
         }
         return std::make_unique<bool_property>(*this, tp, dynamic, name, multiple, default_value);
     }
-    void bool_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), value.get<bool>() ? "TRUE" : "FALSE");
-        assert(put_slot_err == PSE_NO_ERROR);
-    }
-    void bool_property_type::set_value(FactModifier *property_fact_modifier, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FMPutSlotSymbol(property_fact_modifier, name.data(), value.get<bool>() ? "TRUE" : "FALSE");
-        assert(put_slot_err == PSE_NO_ERROR);
-    }
 
     int_property_type::int_property_type(coco &cc) noexcept : property_type(cc, int_kw) {}
     std::unique_ptr<property> int_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -62,16 +52,6 @@ namespace coco
         if (j.contains("max"))
             max = j["max"].get<long>();
         return std::make_unique<int_property>(*this, tp, dynamic, name, multiple, default_value, min, max);
-    }
-    void int_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotInteger(property_fact_builder, name.data(), value.get<long>());
-        assert(put_slot_err == PSE_NO_ERROR);
-    }
-    void int_property_type::set_value(FactModifier *property_fact_modifier, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FMPutSlotInteger(property_fact_modifier, name.data(), value.get<long>());
-        assert(put_slot_err == PSE_NO_ERROR);
     }
 
     float_property_type::float_property_type(coco &cc) noexcept : property_type(cc, float_kw) {}
@@ -97,16 +77,6 @@ namespace coco
             max = j["max"].get<double>();
         return std::make_unique<float_property>(*this, tp, dynamic, name, multiple, default_value, min, max);
     }
-    void float_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotFloat(property_fact_builder, name.data(), value.get<double>());
-        assert(put_slot_err == PSE_NO_ERROR);
-    }
-    void float_property_type::set_value(FactModifier *property_fact_modifier, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FMPutSlotFloat(property_fact_modifier, name.data(), value.get<double>());
-        assert(put_slot_err == PSE_NO_ERROR);
-    }
 
     string_property_type::string_property_type(coco &cc) noexcept : property_type(cc, string_kw) {}
     std::unique_ptr<property> string_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -124,16 +94,6 @@ namespace coco
             default_value = std::move(def_v);
         }
         return std::make_unique<string_property>(*this, tp, dynamic, name, multiple, default_value);
-    }
-    void string_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), value.get<std::string>().c_str());
-        assert(put_slot_err == PSE_NO_ERROR);
-    }
-    void string_property_type::set_value(FactModifier *property_fact_modifier, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FMPutSlotString(property_fact_modifier, name.data(), value.get<std::string>().c_str());
-        assert(put_slot_err == PSE_NO_ERROR);
     }
 
     symbol_property_type::symbol_property_type(coco &cc) noexcept : property_type(cc, symbol_kw) {}
@@ -157,44 +117,6 @@ namespace coco
         }
         return std::make_unique<symbol_property>(*this, tp, dynamic, name, multiple, std::move(values), default_value);
     }
-    void symbol_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
-    {
-        if (value.is_array())
-        {
-            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
-            for (const auto &v : value.as_array())
-                MBAppendSymbol(mfb, v.get<std::string>().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
-            assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
-            MBDispose(mfb);
-        }
-        else
-        {
-            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), value.get<std::string>().c_str());
-            assert(put_slot_err == PSE_NO_ERROR);
-        }
-    }
-    void symbol_property_type::set_value(FactModifier *property_fact_modifier, std::string_view name, const json::json &value) const noexcept
-    {
-        if (value.is_array())
-        {
-            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
-            for (const auto &v : value.as_array())
-                MBAppendSymbol(mfb, v.get<std::string>().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
-            assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
-            MBDispose(mfb);
-        }
-        else
-        {
-            [[maybe_unused]] auto put_slot_err = FMPutSlotSymbol(property_fact_modifier, name.data(), value.get<std::string>().c_str());
-            assert(put_slot_err == PSE_NO_ERROR);
-        }
-    }
 
     item_property_type::item_property_type(coco &cc) noexcept : property_type(cc, item_kw) {}
     std::unique_ptr<property> item_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -214,46 +136,6 @@ namespace coco
         }
         return std::make_unique<item_property>(*this, tp, dynamic, name, domain, multiple, default_value);
     }
-    void item_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
-    {
-        if (value.is_array())
-        {
-            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
-            for (const auto &v : value.as_array())
-                MBAppendSymbol(mfb, cc.get_item(v.get<std::string>()).get_id().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
-            assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
-            MBDispose(mfb);
-        }
-        else
-        {
-            auto &itm = cc.get_item(value.get<std::string>());
-            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), itm.get_id().c_str());
-            assert(put_slot_err == PSE_NO_ERROR);
-        }
-    }
-    void item_property_type::set_value(FactModifier *property_fact_modifier, std::string_view name, const json::json &value) const noexcept
-    {
-        if (value.is_array())
-        {
-            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
-            for (const auto &v : value.as_array())
-                MBAppendSymbol(mfb, cc.get_item(v.get<std::string>()).get_id().c_str());
-            auto mf = MBCreate(mfb);
-            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
-            assert(put_slot_err == PSE_NO_ERROR);
-            ReleaseMultifield(get_env(), mf);
-            MBDispose(mfb);
-        }
-        else
-        {
-            auto &itm = cc.get_item(value.get<std::string>());
-            [[maybe_unused]] auto put_slot_err = FMPutSlotSymbol(property_fact_modifier, name.data(), itm.get_id().c_str());
-            assert(put_slot_err == PSE_NO_ERROR);
-        }
-    }
 
     json_property_type::json_property_type(coco &cc) noexcept : property_type(cc, json_kw) {}
     std::unique_ptr<property> json_property_type::new_instance(type &tp, bool dynamic, std::string_view name, const json::json &j) noexcept
@@ -265,16 +147,6 @@ namespace coco
         if (j.contains("default"))
             default_value = j["default"];
         return std::make_unique<json_property>(*this, tp, dynamic, name, schema, default_value);
-    }
-    void json_property_type::set_value(FactBuilder *property_fact_builder, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), value.get<std::string>().c_str());
-        assert(put_slot_err == PSE_NO_ERROR);
-    }
-    void json_property_type::set_value(FactModifier *property_fact_modifier, std::string_view name, const json::json &value) const noexcept
-    {
-        [[maybe_unused]] auto put_slot_err = FMPutSlotString(property_fact_modifier, name.data(), value.get<std::string>().c_str());
-        assert(put_slot_err == PSE_NO_ERROR);
     }
 
     property::property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept : pt(pt), tp(tp), dynamic(dynamic), name(name) {}
@@ -359,6 +231,52 @@ namespace coco
             return dist(get_gen());
         }
     }
+    void bool_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_boolean());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_boolean(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendSymbol(mfb, v.get<bool>() ? "TRUE" : "FALSE");
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_boolean());
+            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), value.get<bool>() ? "TRUE" : "FALSE");
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
+    void bool_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_boolean());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_boolean(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendSymbol(mfb, v.get<bool>() ? "TRUE" : "FALSE");
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_boolean());
+            [[maybe_unused]] auto put_slot_err = FMPutSlotSymbol(property_fact_modifier, name.data(), value.get<bool>() ? "TRUE" : "FALSE");
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
 
     int_property::int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<long>> default_value, std::optional<long> min, std::optional<long> max) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value), min(min), max(max)
     {
@@ -436,6 +354,52 @@ namespace coco
         { // Generate a single value.
             std::uniform_int_distribution<long> dist(min.has_value() ? *min : std::numeric_limits<long>::min(), max.has_value() ? *max : std::numeric_limits<long>::max());
             return dist(get_gen());
+        }
+    }
+    void int_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_integer());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_integer(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendInteger(mfb, v.get<long>());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_integer());
+            [[maybe_unused]] auto put_slot_err = FBPutSlotInteger(property_fact_builder, name.data(), value.get<long>());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
+    void int_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_integer());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_integer(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendInteger(mfb, v.get<long>());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_integer());
+            [[maybe_unused]] auto put_slot_err = FMPutSlotInteger(property_fact_modifier, name.data(), value.get<long>());
+            assert(put_slot_err == PSE_NO_ERROR);
         }
     }
 
@@ -517,6 +481,52 @@ namespace coco
             return dist(get_gen());
         }
     }
+    void float_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_number());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_number(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendFloat(mfb, v.get<double>());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_number());
+            [[maybe_unused]] auto put_slot_err = FBPutSlotFloat(property_fact_builder, name.data(), value.get<double>());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
+    void float_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_number());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_number(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendFloat(mfb, v.get<double>());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_number());
+            [[maybe_unused]] auto put_slot_err = FMPutSlotFloat(property_fact_modifier, name.data(), value.get<double>());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
 
     string_property::string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value)
     {
@@ -581,6 +591,34 @@ namespace coco
                 str += static_cast<char>(dist(get_gen()));
             return str;
         }
+    }
+    void string_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_string());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_string(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendString(mfb, v.get<std::string>().c_str());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_string());
+            [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), value.get<std::string>().c_str());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
+    void string_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FMPutSlotString(property_fact_modifier, name.data(), value.get<std::string>().c_str());
+        assert(put_slot_err == PSE_NO_ERROR);
     }
 
     symbol_property::symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::vector<std::string> &&values, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), values(values), default_value(default_value)
@@ -666,6 +704,52 @@ namespace coco
         else // Generate a single value.
             return values[dist(get_gen())].c_str();
     }
+    void symbol_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_string());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_string(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendSymbol(mfb, v.get<std::string>().c_str());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_string());
+            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), value.get<std::string>().c_str());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
+    void symbol_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
+    {
+        assert(multiple == value.is_array() || value.is_string());
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_string(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendSymbol(mfb, v.get<std::string>().c_str());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_string());
+            [[maybe_unused]] auto put_slot_err = FMPutSlotSymbol(property_fact_modifier, name.data(), value.get<std::string>().c_str());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
 
     item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple, std::optional<std::vector<std::reference_wrapper<item>>> default_value) noexcept : property(pt, tp, dynamic, name), domain(domain), multiple(multiple), default_value(default_value)
     {
@@ -750,6 +834,68 @@ namespace coco
         else // Generate a single value.
             return dom[dist(get_gen())].get().get_id().c_str();
     }
+    void item_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
+    {
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_string(); }));
+            assert(!domain.get_instances().empty());
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [this](const json::json &v)
+                               { return std::find_if(domain.get_instances().begin(), domain.get_instances().end(), [&v](const auto &itm)
+                                                     { return itm.get().get_id() == v.get<std::string>(); }) != domain.get_instances().end(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendSymbol(mfb, tp.get_coco().get_item(v.get<std::string>()).get_id().c_str());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FBPutSlotMultifield(property_fact_builder, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_string());
+            assert(!domain.get_instances().empty());
+            assert(std::find_if(domain.get_instances().begin(), domain.get_instances().end(), [&value](const auto &itm)
+                                { return itm.get().get_id() == value.get<std::string>(); }) != domain.get_instances().end());
+            assert(!tp.get_coco().get_item(value.get<std::string>()).get_id().empty());
+            auto &itm = tp.get_coco().get_item(value.get<std::string>());
+            [[maybe_unused]] auto put_slot_err = FBPutSlotSymbol(property_fact_builder, name.data(), itm.get_id().c_str());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
+    void item_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
+    {
+        if (value.is_array())
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_string(); }));
+            assert(!domain.get_instances().empty());
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [this](const json::json &v)
+                               { return std::find_if(domain.get_instances().begin(), domain.get_instances().end(), [&v](const auto &itm)
+                                                     { return itm.get().get_id() == v.get<std::string>(); }) != domain.get_instances().end(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendSymbol(mfb, tp.get_coco().get_item(v.get<std::string>()).get_id().c_str());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_string());
+            assert(!domain.get_instances().empty());
+            assert(std::find_if(domain.get_instances().begin(), domain.get_instances().end(), [&value](const auto &itm)
+                                { return itm.get().get_id() == value.get<std::string>(); }) != domain.get_instances().end());
+            assert(!tp.get_coco().get_item(value.get<std::string>()).get_id().empty());
+            auto &itm = tp.get_coco().get_item(value.get<std::string>());
+            [[maybe_unused]] auto put_slot_err = FMPutSlotSymbol(property_fact_modifier, name.data(), itm.get_id().c_str());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
+    }
 
     json_property::json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema, std::optional<json::json> default_value) noexcept : property(pt, tp, dynamic, name), schema(schema), default_value(default_value)
     {
@@ -788,4 +934,14 @@ namespace coco
         return j;
     }
     json::json json_property::fake() const noexcept { return json::json(); }
+    void json_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FBPutSlotString(property_fact_builder, name.data(), value.get<std::string>().c_str());
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
+    void json_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
+    {
+        [[maybe_unused]] auto put_slot_err = FMPutSlotString(property_fact_modifier, name.data(), value.get<std::string>().c_str());
+        assert(put_slot_err == PSE_NO_ERROR);
+    }
 } // namespace coco

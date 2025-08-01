@@ -122,7 +122,9 @@ namespace coco
                 assert(slot_facts.at(item.get_id()).count(slot_name));
                 assert(current_slots.count(item.get_id()));
                 assert(current_slots.at(item.get_id()).contains(slot_name));
-                Retract(slot_facts.at(item.get_id()).at(slot_name));
+                ReleaseFact(slot_facts.at(item.get_id()).at(slot_name));
+                [[maybe_unused]] auto re_err = Retract(slot_facts.at(item.get_id()).at(slot_name));
+                assert(re_err == RE_NO_ERROR);
                 slot_facts.at(item.get_id()).erase(slot_name);
                 current_slots.at(item.get_id()).erase(slot_name);
             }
@@ -154,6 +156,7 @@ namespace coco
                 }
                 auto slot_fact = FBAssert(slot_fact_builder);
                 assert(slot_fact);
+                RetainFact(slot_fact);
                 LOG_TRACE(to_string(slot_fact));
                 FBDispose(slot_fact_builder);
                 slot_facts[item.get_id()][slot_name] = slot_fact;

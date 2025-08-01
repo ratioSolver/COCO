@@ -23,6 +23,7 @@ namespace coco
         FBPutSlotSymbol(item_fact_builder, "id", id.data());
         item_fact = FBAssert(item_fact_builder);
         assert(item_fact);
+        RetainFact(item_fact);
         LOG_TRACE(tp.get_coco().to_string(item_fact));
         FBDispose(item_fact_builder);
 
@@ -31,6 +32,7 @@ namespace coco
         FBPutSlotSymbol(is_instance_of_fact_builder, "type", tp.get_name().c_str());
         is_instance_of = FBAssert(is_instance_of_fact_builder);
         assert(is_instance_of);
+        RetainFact(is_instance_of);
         LOG_TRACE(tp.get_coco().to_string(is_instance_of));
         FBDispose(is_instance_of_fact_builder);
 
@@ -43,11 +45,23 @@ namespace coco
     item::~item() noexcept
     {
         for (auto &v : value_facts)
-            Retract(v.second);
+        {
+            ReleaseFact(v.second);
+            [[maybe_unused]] auto re_err = Retract(v.second);
+            assert(re_err == RE_NO_ERROR);
+        }
         for (auto &p : properties_facts)
-            Retract(p.second);
-        Retract(is_instance_of);
-        Retract(item_fact);
+        {
+            ReleaseFact(p.second);
+            [[maybe_unused]] auto re_err = Retract(p.second);
+            assert(re_err == RE_NO_ERROR);
+        }
+        ReleaseFact(is_instance_of);
+        [[maybe_unused]] auto re_in_err = Retract(is_instance_of);
+        assert(re_in_err == RE_NO_ERROR);
+        ReleaseFact(item_fact);
+        [[maybe_unused]] auto re_it_err = Retract(item_fact);
+        assert(re_it_err == RE_NO_ERROR);
     }
 
     void item::set_properties(json::json &&props)
@@ -62,6 +76,7 @@ namespace coco
                     if (val.is_null())
                     { // we retract the old property
                         LOG_TRACE("Retracting property " + p_name + " for item " + id);
+                        ReleaseFact(f->second);
                         [[maybe_unused]] auto re_err = Retract(f->second);
                         assert(re_err == RE_NO_ERROR);
                         properties.erase(p_name);
@@ -76,6 +91,7 @@ namespace coco
                         [[maybe_unused]] auto fm_err = FMError(tp.get_coco().env);
                         assert(fm_err == FME_NO_ERROR);
                         assert(property_fact);
+                        RetainFact(property_fact);
                         properties[p_name] = val;
                         value_facts[p_name] = property_fact;
                     }
@@ -92,6 +108,7 @@ namespace coco
                     [[maybe_unused]] auto fb_err = FBError(tp.get_coco().env);
                     assert(fb_err == FBE_NO_ERROR);
                     assert(property_fact);
+                    RetainFact(property_fact);
                     LOG_TRACE(tp.get_coco().to_string(property_fact));
                     FBDispose(property_fact_builder);
                     properties[p_name] = val;
@@ -122,6 +139,7 @@ namespace coco
                     if (j_val.is_null())
                     { // we retract the old property
                         LOG_TRACE("Retracting data " + p_name + " for item " + id);
+                        ReleaseFact(f->second);
                         [[maybe_unused]] auto re_err = Retract(f->second);
                         assert(re_err == RE_NO_ERROR);
                         value->first.erase(p_name);
@@ -137,6 +155,7 @@ namespace coco
                         [[maybe_unused]] auto fm_err = FMError(tp.get_coco().env);
                         assert(fm_err == FME_NO_ERROR);
                         assert(value_fact);
+                        RetainFact(value_fact);
                         value->first[p_name] = j_val;
                         value_facts[p_name] = value_fact;
                     }
@@ -151,9 +170,10 @@ namespace coco
                     prop->second.get().get_property_type().set_value(value_fact_builder, p_name, j_val);
                     FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
                     auto value_fact = FBAssert(value_fact_builder);
-                    assert(value_fact);
                     [[maybe_unused]] auto fb_err = FBError(tp.get_coco().env);
                     assert(fb_err == FBE_NO_ERROR);
+                    assert(value_fact);
+                    RetainFact(value_fact);
                     LOG_TRACE(tp.get_coco().to_string(value_fact));
                     FBDispose(value_fact_builder);
                     value->first[p_name] = j_val;

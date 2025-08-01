@@ -20,6 +20,7 @@ namespace coco
         FBPutSlotSymbol(type_fact_builder, "name", name.data());
         type_fact = FBAssert(type_fact_builder);
         assert(type_fact);
+        RetainFact(type_fact);
         LOG_TRACE(cc.to_string(type_fact));
         FBDispose(type_fact_builder);
         set_parents(std::move(parents));
@@ -34,8 +35,14 @@ namespace coco
         for (const auto &id : instances)
             cc.items.erase(id);
         for (auto &p : parent_facts)
-            Retract(p.second);
-        Retract(type_fact);
+        {
+            ReleaseFact(p.second);
+            [[maybe_unused]] auto re_err = Retract(p.second);
+            assert(re_err == RE_NO_ERROR);
+        }
+        ReleaseFact(type_fact);
+        [[maybe_unused]] auto re_err = Retract(type_fact);
+        assert(re_err == RE_NO_ERROR);
     }
 
     const std::map<std::string, std::reference_wrapper<const property>> type::get_all_static_properties() const noexcept
@@ -82,7 +89,11 @@ namespace coco
     {
         // we retract the current parent facts (if any)..
         for (auto &p : parent_facts)
-            Retract(p.second);
+        {
+            ReleaseFact(p.second);
+            [[maybe_unused]] auto re_err = Retract(p.second);
+            assert(re_err == RE_NO_ERROR);
+        }
         parent_facts.clear();
 
         for (auto &p : parents)
@@ -92,6 +103,7 @@ namespace coco
             FBPutSlotSymbol(is_a_fact_builder, "parent", p.get().name.c_str());
             auto parent_fact = FBAssert(is_a_fact_builder);
             assert(parent_fact);
+            RetainFact(parent_fact);
             LOG_TRACE(cc.to_string(parent_fact));
             FBDispose(is_a_fact_builder);
             this->parents.emplace(p.get().name, p);

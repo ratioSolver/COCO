@@ -233,8 +233,8 @@ namespace coco
     }
     void bool_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_boolean());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_boolean(); }));
@@ -256,8 +256,8 @@ namespace coco
     }
     void bool_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_boolean());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_boolean(); }));
@@ -358,8 +358,8 @@ namespace coco
     }
     void int_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_integer());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_integer(); }));
@@ -381,8 +381,8 @@ namespace coco
     }
     void int_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_integer());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_integer(); }));
@@ -483,8 +483,8 @@ namespace coco
     }
     void float_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_number());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_number(); }));
@@ -506,8 +506,8 @@ namespace coco
     }
     void float_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_number());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_number(); }));
@@ -594,8 +594,8 @@ namespace coco
     }
     void string_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_string());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_string(); }));
@@ -617,8 +617,26 @@ namespace coco
     }
     void string_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
     {
-        [[maybe_unused]] auto put_slot_err = FMPutSlotString(property_fact_modifier, name.data(), value.get<std::string>().c_str());
-        assert(put_slot_err == PSE_NO_ERROR);
+        assert(multiple == value.is_array());
+        if (multiple)
+        {
+            assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
+                               { return v.is_string(); }));
+            auto mfb = CreateMultifieldBuilder(get_env(), value.as_array().size());
+            for (const auto &v : value.as_array())
+                MBAppendString(mfb, v.get<std::string>().c_str());
+            auto mf = MBCreate(mfb);
+            [[maybe_unused]] auto put_slot_err = FMPutSlotMultifield(property_fact_modifier, name.data(), mf);
+            assert(put_slot_err == PSE_NO_ERROR);
+            ReleaseMultifield(get_env(), mf);
+            MBDispose(mfb);
+        }
+        else
+        {
+            assert(value.is_string());
+            [[maybe_unused]] auto put_slot_err = FMPutSlotString(property_fact_modifier, name.data(), value.get<std::string>().c_str());
+            assert(put_slot_err == PSE_NO_ERROR);
+        }
     }
 
     symbol_property::symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::vector<std::string> &&values, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), values(values), default_value(default_value)
@@ -706,8 +724,8 @@ namespace coco
     }
     void symbol_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_string());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_string(); }));
@@ -729,8 +747,8 @@ namespace coco
     }
     void symbol_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
     {
-        assert(multiple == value.is_array() || value.is_string());
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_string(); }));
@@ -836,7 +854,8 @@ namespace coco
     }
     void item_property::set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept
     {
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_string(); }));
@@ -867,7 +886,8 @@ namespace coco
     }
     void item_property::set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept
     {
-        if (value.is_array())
+        assert(multiple == value.is_array());
+        if (multiple)
         {
             assert(std::all_of(value.as_array().begin(), value.as_array().end(), [](const json::json &v)
                                { return v.is_string(); }));

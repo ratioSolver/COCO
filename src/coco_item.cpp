@@ -84,8 +84,7 @@ namespace coco
                     }
                     else if (prop->second.get().validate(val))
                     { // we update the property
-                        LOG_TRACE("Updating property " + p_name + " for item " + id);
-                        ReleaseFact(f->second);
+                        LOG_TRACE("Updating property " + p_name + " for item " + id + " with value " + val.dump());
                         FactModifier *property_fact_modifier = CreateFactModifier(tp.get_coco().env, f->second);
                         prop->second.get().get_property_type().set_value(property_fact_modifier, p_name, val);
                         auto property_fact = FMModify(property_fact_modifier);
@@ -93,6 +92,8 @@ namespace coco
                         assert(fm_err == FME_NO_ERROR);
                         assert(property_fact);
                         RetainFact(property_fact);
+                        ReleaseFact(f->second);
+                        FMDispose(property_fact_modifier);
                         properties[p_name] = val;
                         value_facts[p_name] = property_fact;
                     }
@@ -101,7 +102,7 @@ namespace coco
                 }
                 else if (!val.is_null() && prop->second.get().validate(val))
                 { // we create a new property
-                    LOG_TRACE("Creating property " + p_name + " for item " + id);
+                    LOG_TRACE("Creating property " + p_name + " for item " + id + " with value " + val.dump());
                     FactBuilder *property_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second.get().get_deftemplate_name().c_str());
                     FBPutSlotSymbol(property_fact_builder, "item_id", id.c_str());
                     prop->second.get().get_property_type().set_value(property_fact_builder, p_name, val);
@@ -148,8 +149,9 @@ namespace coco
                     }
                     else if (prop->second.get().validate(j_val))
                     { // we update the property
-                        LOG_TRACE("Updating data " + p_name + " for item " + id);
-                        ReleaseFact(f->second);
+                        LOG_TRACE("Updating data " + p_name + " for item " + id + " with value " + j_val.dump());
+                        LOG_DEBUG(DeftemplatePPForm(FactDeftemplate(f->second)));
+                        LOG_DEBUG("Fact: " + tp.get_coco().to_string(f->second));
                         FactModifier *property_fact_modifier = CreateFactModifier(tp.get_coco().env, f->second);
                         prop->second.get().get_property_type().set_value(property_fact_modifier, p_name, j_val);
                         FMPutSlotInteger(property_fact_modifier, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
@@ -158,6 +160,8 @@ namespace coco
                         assert(fm_err == FME_NO_ERROR);
                         assert(value_fact);
                         RetainFact(value_fact);
+                        ReleaseFact(f->second);
+                        FMDispose(property_fact_modifier);
                         value->first[p_name] = j_val;
                         value_facts[p_name] = value_fact;
                     }
@@ -166,7 +170,7 @@ namespace coco
                 }
                 else if (!j_val.is_null() && prop->second.get().validate(j_val))
                 { // we create a new property
-                    LOG_TRACE("Creating data " + p_name + " for item " + id);
+                    LOG_TRACE("Creating data " + p_name + " for item " + id + " with value " + j_val.dump());
                     FactBuilder *value_fact_builder = CreateFactBuilder(tp.get_coco().env, prop->second.get().get_deftemplate_name().c_str());
                     FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
                     prop->second.get().get_property_type().set_value(value_fact_builder, p_name, j_val);

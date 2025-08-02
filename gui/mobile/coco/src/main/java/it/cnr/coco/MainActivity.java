@@ -11,6 +11,7 @@ import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -24,7 +25,8 @@ import com.bumptech.glide.Glide;
 
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements ConnectionListener, RecognitionListener {
+public class MainActivity extends AppCompatActivity
+        implements View.OnClickListener, ConnectionListener, RecognitionListener {
 
     private static final String TAG = "MainActivity";
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
@@ -43,11 +45,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
         robotFaceView = findViewById(R.id.robot_face);
         if (robotFaceView != null) {
             Glide.with(this).asGif().load(R.drawable.idle).into(robotFaceView);
-            robotFaceView.setOnClickListener(v -> {
-                // Handle robot face click
-                Log.d(TAG, "Robot face clicked");
-                Toast.makeText(MainActivity.this, "Robot face clicked", Toast.LENGTH_SHORT).show();
-            });
+            robotFaceView.setOnClickListener(this);
         }
 
         Connection.getInstance().addListener(this); // Register this activity as a listener for connection events
@@ -94,14 +92,14 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
         super.onConfigurationChanged(newConfig);
 
         setContentView(R.layout.activity_main);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
         robotFaceView = findViewById(R.id.robot_face);
         if (robotFaceView != null) {
             Glide.with(this).asGif().load(R.drawable.idle).into(robotFaceView);
-            robotFaceView.setOnClickListener(v -> {
-                // Handle robot face click
-                Log.d(TAG, "Robot face clicked");
-                Toast.makeText(MainActivity.this, "Robot face clicked", Toast.LENGTH_SHORT).show();
-            });
+            robotFaceView.setOnClickListener(this);
         }
     }
 
@@ -140,6 +138,13 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
 
     @Override
     public void onEndOfSpeech() {
+    }
+
+    @Override
+    public void onClick(View view) {
+        if (robotFaceView != null) {
+            Glide.with(this).asGif().load(R.drawable.listening).into(robotFaceView);
+        }
     }
 
     @Override

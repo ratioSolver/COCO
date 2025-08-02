@@ -95,6 +95,14 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
 
         setContentView(R.layout.activity_main);
         robotFaceView = findViewById(R.id.robot_face);
+        if (robotFaceView != null) {
+            Glide.with(this).asGif().load(R.drawable.idle).into(robotFaceView);
+            robotFaceView.setOnClickListener(v -> {
+                // Handle robot face click
+                Log.d(TAG, "Robot face clicked");
+                Toast.makeText(MainActivity.this, "Robot face clicked", Toast.LENGTH_SHORT).show();
+            });
+        }
     }
 
     @Override

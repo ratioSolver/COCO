@@ -11,4 +11,5 @@
     <string name="create_user_button_text">Create User</string>
     <string name="save_button_text">Save Settings</string>
     <string name="signup_link_text">Don\'t have an account? Sign up</string>
+    <string name="robot_face_desc">Robot face image</string>
 </resources>

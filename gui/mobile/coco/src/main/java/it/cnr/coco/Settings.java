@@ -18,6 +18,7 @@ public class Settings {
     private static Settings instance;
 
     private Context ctx;
+    private boolean has_users = false;
     private boolean secure = true;
     private String hostname = "coco.cnr.it";
     private int port = 443;
@@ -40,6 +41,16 @@ public class Settings {
         Log.d(TAG, "Setting secure: " + secure);
         this.secure = secure;
         ctx.getSharedPreferences(COCO_SETTINGS, MODE_PRIVATE).edit().putBoolean("secure", secure).apply();
+    }
+
+    public boolean hasUsers() {
+        return has_users;
+    }
+
+    public void setHasUsers(boolean has_users) {
+        Log.d(TAG, "Setting has_users: " + has_users);
+        this.has_users = has_users;
+        ctx.getSharedPreferences(COCO_SETTINGS, MODE_PRIVATE).edit().putBoolean("has_users", has_users).apply();
     }
 
     public String getHostname() {
@@ -83,6 +94,8 @@ public class Settings {
     public void load(@NonNull Context ctx) {
         this.ctx = ctx;
         SharedPreferences prefs = ctx.getSharedPreferences(COCO_SETTINGS, MODE_PRIVATE);
+        if (prefs.contains("has_users"))
+            this.has_users = prefs.getBoolean("has_users", false);
         if (prefs.contains("secure"))
             this.secure = prefs.getBoolean("secure", true);
         if (prefs.contains("hostname"))

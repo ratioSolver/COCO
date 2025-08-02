@@ -2,6 +2,7 @@ package it.cnr.coco;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
@@ -10,6 +11,7 @@ import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -17,6 +19,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import com.bumptech.glide.Glide;
 
 import java.util.ArrayList;
 
@@ -26,6 +30,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
     private SpeechRecognizer speechRecognizer;
     private TextToSpeech textToSpeech;
+    private ImageView robotFaceView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +39,16 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        robotFaceView = findViewById(R.id.robot_face);
+        if (robotFaceView != null) {
+            Glide.with(this).asGif().load(R.drawable.idle).into(robotFaceView);
+            robotFaceView.setOnClickListener(v -> {
+                // Handle robot face click
+                Log.d(TAG, "Robot face clicked");
+                Toast.makeText(MainActivity.this, "Robot face clicked", Toast.LENGTH_SHORT).show();
+            });
+        }
 
         Connection.getInstance().addListener(this); // Register this activity as a listener for connection events
 
@@ -60,7 +75,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
                 Log.e(TAG, "TextToSpeech initialization failed");
         });
 
-        if (!Connection.getInstance().isConnected()) {
+        if (!Connection.getInstance().isConnected() && Settings.getInstance().hasUsers()) {
             String token = getSharedPreferences(Connection.COCO_CONNECTION, MODE_PRIVATE).getString("token", null);
             if (token != null) // Users with a valid token can connect
                 Connection.getInstance().connect(token);
@@ -72,6 +87,14 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
                 finish(); // Close this activity
             }
         }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        setContentView(R.layout.activity_main);
+        robotFaceView = findViewById(R.id.robot_face);
     }
 
     @Override

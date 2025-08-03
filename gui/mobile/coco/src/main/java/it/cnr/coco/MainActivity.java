@@ -125,11 +125,11 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onReadyForSpeech(Bundle params) {
+        Glide.with(this).asGif().load(R.drawable.listening).into(robotFaceView);
     }
 
     @Override
     public void onBeginningOfSpeech() {
-        Glide.with(this).asGif().load(R.drawable.listening).into(robotFaceView);
     }
 
     @Override

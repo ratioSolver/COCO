@@ -10,6 +10,8 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.Map;
+
 public class LogInActivity extends Activity implements ConnectionListener {
 
     @Override
@@ -43,6 +45,10 @@ public class LogInActivity extends Activity implements ConnectionListener {
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish(); // Close the LogInActivity
+    }
+
+    @Override
+    public void onReceivedMessage(@NonNull Map<String, Object> message) {
     }
 
     @Override

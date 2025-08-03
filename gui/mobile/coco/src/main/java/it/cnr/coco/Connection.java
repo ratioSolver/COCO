@@ -35,7 +35,7 @@ public class Connection extends WebSocketListener {
     private static Connection instance;
     public static final String COCO_CONNECTION = "coco_connection";
     private static final String TAG = "Connection";
-    private static final String MSG_TYPE = "msg_type";
+    public static final String MSG_TYPE = "msg_type";
     private static final int RECONNECT_DELAY_MS = 5000; // 5 seconds
     private static final Gson gson = new Gson();
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -245,11 +245,16 @@ public class Connection extends WebSocketListener {
         }.getType());
         String msgType = (String) message.get(MSG_TYPE);
 
-        if ("login".equals(msgType)) {
-            Log.d(TAG, "Login successful");
-            connected = true;
-            for (ConnectionListener listener : listeners)
-                listener.onConnectionEstablished();
+        switch (msgType) {
+            case "login":
+                Log.d(TAG, "Login successful");
+                connected = true;
+                for (ConnectionListener listener : listeners)
+                    listener.onConnectionEstablished();
+                break;
+            default:
+                for (ConnectionListener listener : listeners)
+                    listener.onReceivedMessage(message);
         }
     }
 

@@ -6,6 +6,7 @@ import android.content.res.Configuration;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
@@ -24,6 +25,8 @@ import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 
 import java.util.ArrayList;
+import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity
         implements View.OnClickListener, ConnectionListener, RecognitionListener {
@@ -126,6 +129,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onBeginningOfSpeech() {
+        Glide.with(this).asGif().load(R.drawable.listening).into(robotFaceView);
     }
 
     @Override
@@ -138,12 +142,17 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onEndOfSpeech() {
+        Glide.with(this).asGif().load(R.drawable.idle).into(robotFaceView);
     }
 
     @Override
     public void onClick(View view) {
         if (robotFaceView != null) {
-            Glide.with(this).asGif().load(R.drawable.listening).into(robotFaceView);
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+            speechRecognizer.startListening(intent);
         }
     }
 
@@ -155,14 +164,21 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onResults(Bundle results) {
         ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-        if (matches != null && !matches.isEmpty())
+        if (matches != null && !matches.isEmpty()) {
             Log.d(TAG, "Speech results: " + matches.get(0));
-        else
+            String recognizedText = matches.get(0);
+        } else
             Log.d(TAG, "No speech results found.");
     }
 
     @Override
     public void onPartialResults(Bundle partialResults) {
+        ArrayList<String> partialMatches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+        if (partialMatches != null && !partialMatches.isEmpty()) {
+            Log.d(TAG, "Partial speech results: " + partialMatches.get(0));
+        } else {
+            Log.d(TAG, "No partial speech results found.");
+        }
     }
 
     @Override
@@ -171,6 +187,10 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onConnectionEstablished() {
+    }
+
+    @Override
+    public void onReceivedMessage(@NonNull Map<String, Object> message) {
     }
 
     @Override

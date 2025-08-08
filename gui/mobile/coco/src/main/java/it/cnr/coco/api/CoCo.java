@@ -8,8 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import it.cnr.coco.Connection;
-import it.cnr.coco.ConnectionListener;
+import it.cnr.coco.utils.Connection;
+import it.cnr.coco.utils.ConnectionListener;
 
 public class CoCo implements ConnectionListener {
 

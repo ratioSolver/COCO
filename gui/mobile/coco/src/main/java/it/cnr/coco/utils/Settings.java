@@ -1,4 +1,4 @@
-package it.cnr.coco;
+package it.cnr.coco.utils;
 
 import static android.content.Context.MODE_PRIVATE;
 

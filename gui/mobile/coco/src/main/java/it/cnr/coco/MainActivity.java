@@ -27,6 +27,10 @@ import com.bumptech.glide.Glide;
 
 import com.google.gson.JsonObject;
 
+import it.cnr.coco.utils.Connection;
+import it.cnr.coco.utils.ConnectionListener;
+import it.cnr.coco.utils.Settings;
+
 import java.util.ArrayList;
 import java.util.Locale;
 

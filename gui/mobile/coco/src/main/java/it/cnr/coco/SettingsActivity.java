@@ -8,6 +8,8 @@ import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import it.cnr.coco.utils.Settings;
+
 public class SettingsActivity extends Activity {
 
     private EditText hostnameEditText;

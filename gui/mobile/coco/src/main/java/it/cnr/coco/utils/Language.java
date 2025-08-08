@@ -1,0 +1,153 @@
+package it.cnr.coco.utils;
+
+import java.util.ArrayList;
+import java.util.Locale;
+
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.TextToSpeech.OnInitListener;
+import android.speech.tts.UtteranceProgressListener;
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+
+import com.google.gson.JsonObject;
+
+import java.util.Locale;
+
+public class Language extends UtteranceProgressListener
+        implements OnInitListener, RecognitionListener, ConnectionListener {
+
+    private static final String TAG = "Language";
+    private final TextToSpeech textToSpeech;
+    private final SpeechRecognizer speechRecognizer;
+
+    public Language(@NonNull Context context) {
+        textToSpeech = new TextToSpeech(context, this);
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
+        speechRecognizer.setRecognitionListener(this);
+        Connection.getInstance().addListener(this);
+    }
+
+    public void startListening() {
+        Log.d(TAG, "Starting to listen for speech");
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        speechRecognizer.startListening(intent);
+    }
+
+    public void speak(@NonNull String text) {
+        Log.d(TAG, "Speaking: " + text);
+        if (textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null,
+                "utterance-" + System.currentTimeMillis()) == TextToSpeech.ERROR)
+            Log.e(TAG, "Error speaking text: " + text);
+    }
+
+    @Override
+    public void onReadyForSpeech(Bundle params) {
+        Log.d(TAG, "Ready for speech");
+    }
+
+    @Override
+    public void onBeginningOfSpeech() {
+        Log.d(TAG, "Speech started");
+    }
+
+    @Override
+    public void onRmsChanged(float rmsdB) {
+        Log.d(TAG, "RMS changed: " + rmsdB);
+    }
+
+    @Override
+    public void onBufferReceived(byte[] buffer) {
+        Log.d(TAG, "Buffer received: " + buffer.length + " bytes");
+    }
+
+    @Override
+    public void onEndOfSpeech() {
+        Log.d(TAG, "Speech ended");
+    }
+
+    @Override
+    public void onError(int error) {
+        Log.e(TAG, "Error occurred: " + error);
+    }
+
+    @Override
+    public void onResults(Bundle results) {
+        ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+        if (matches != null && !matches.isEmpty())
+            Log.d(TAG, "Speech results: " + matches.get(0));
+    }
+
+    @Override
+    public void onPartialResults(Bundle partialResults) {
+        ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+        if (matches != null && !matches.isEmpty())
+            Log.d(TAG, "Partial results: " + matches.get(0));
+    }
+
+    @Override
+    public void onEvent(int eventType, Bundle params) {
+        Log.d(TAG, "Event occurred: " + eventType);
+    }
+
+    @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS) {
+            int result = textToSpeech.setLanguage(Locale.getDefault());
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED)
+                Log.e(TAG, "Language not supported or missing data");
+            else {
+                Log.d(TAG, "TextToSpeech initialized successfully");
+                textToSpeech.setOnUtteranceProgressListener(this);
+            }
+        } else
+            Log.e(TAG, "TextToSpeech initialization failed");
+    }
+
+    @Override
+    public void onStart(String utteranceId) {
+        Log.d(TAG, "TextToSpeech started: " + utteranceId);
+    }
+
+    @Override
+    public void onDone(String utteranceId) {
+        Log.d(TAG, "TextToSpeech done: " + utteranceId);
+    }
+
+    @Override
+    public void onError(String utteranceId) {
+        Log.e(TAG, "TextToSpeech error: " + utteranceId);
+    }
+
+    @Override
+    public void onConnectionEstablished() {
+    }
+
+    @Override
+    public void onReceivedMessage(@NonNull JsonObject message) {
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull String errorMessage) {
+    }
+
+    @Override
+    public void onConnectionClosed() {
+    }
+
+    public void destroy() {
+        Log.d(TAG, "Destroying Language resources");
+        speechRecognizer.destroy();
+        textToSpeech.shutdown();
+        Connection.getInstance().removeListener(this);
+    }
+}

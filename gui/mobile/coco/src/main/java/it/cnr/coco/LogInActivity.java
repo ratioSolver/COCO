@@ -12,6 +12,9 @@ import androidx.annotation.Nullable;
 
 import com.google.gson.JsonObject;
 
+import it.cnr.coco.utils.Connection;
+import it.cnr.coco.utils.ConnectionListener;
+
 public class LogInActivity extends Activity implements ConnectionListener {
 
     @Override

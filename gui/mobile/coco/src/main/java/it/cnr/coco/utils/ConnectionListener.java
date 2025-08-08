@@ -1,4 +1,4 @@
-package it.cnr.coco;
+package it.cnr.coco.utils;
 
 import androidx.annotation.NonNull;
 

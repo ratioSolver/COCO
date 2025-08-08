@@ -7,6 +7,8 @@ import androidx.annotation.NonNull;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import it.cnr.coco.utils.Connection;
+
 public class MessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MessagingService";

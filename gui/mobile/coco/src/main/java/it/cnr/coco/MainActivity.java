@@ -9,6 +9,7 @@ import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -75,6 +76,23 @@ public class MainActivity extends AppCompatActivity
                     Log.d(TAG, "TextToSpeech initialized successfully");
             } else
                 Log.e(TAG, "TextToSpeech initialization failed");
+        });
+        textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override
+            public void onStart(String utteranceId) {
+                Log.d(TAG, "TextToSpeech started: " + utteranceId);
+            }
+
+            @Override
+            public void onDone(String utteranceId) {
+                Log.d(TAG, "TextToSpeech done: " + utteranceId);
+                Glide.with(MainActivity.this).asGif().load(R.drawable.idle).into(robotFaceView);
+            }
+
+            @Override
+            public void onError(String utteranceId) {
+                Log.e(TAG, "TextToSpeech error: " + utteranceId);
+            }
         });
 
         if (!Connection.getInstance().isConnected() && Settings.getInstance().hasUsers()) {
@@ -168,6 +186,10 @@ public class MainActivity extends AppCompatActivity
         if (matches != null && !matches.isEmpty()) {
             Log.d(TAG, "Speech results: " + matches.get(0));
             String recognizedText = matches.get(0);
+            Glide.with(this).load(R.drawable.happy_talking).into(robotFaceView);
+            if (textToSpeech.speak(recognizedText, TextToSpeech.QUEUE_FLUSH, null,
+                    "utterance-" + System.currentTimeMillis()) == TextToSpeech.ERROR)
+                Log.e(TAG, "TextToSpeech speak returned ERROR");
         } else
             Log.d(TAG, "No speech results found.");
     }

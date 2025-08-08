@@ -16,7 +16,10 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+
+import it.cnr.coco.api.Item;
 
 import java.util.Locale;
 
@@ -24,30 +27,20 @@ public class Language extends UtteranceProgressListener
         implements OnInitListener, RecognitionListener, ConnectionListener {
 
     private static final String TAG = "Language";
+    private static final String SAYING = "saying"; // Key for the saying message
+    private static final String UNDERSTOOD = "understood"; // Key for the understood message
+    private static final String LISTENING = "listening"; // Key for the listening message
+
+    private final Item item;
     private final TextToSpeech textToSpeech;
     private final SpeechRecognizer speechRecognizer;
 
-    public Language(@NonNull Context context) {
+    public Language(@NonNull Context context, @NonNull Item item) {
+        this.item = item;
         textToSpeech = new TextToSpeech(context, this);
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
         speechRecognizer.setRecognitionListener(this);
         Connection.getInstance().addListener(this);
-    }
-
-    public void startListening() {
-        Log.d(TAG, "Starting to listen for speech");
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-        intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-        speechRecognizer.startListening(intent);
-    }
-
-    public void speak(@NonNull String text) {
-        Log.d(TAG, "Speaking: " + text);
-        if (textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null,
-                "utterance-" + System.currentTimeMillis()) == TextToSpeech.ERROR)
-            Log.e(TAG, "Error speaking text: " + text);
     }
 
     @Override
@@ -83,8 +76,12 @@ public class Language extends UtteranceProgressListener
     @Override
     public void onResults(Bundle results) {
         ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-        if (matches != null && !matches.isEmpty())
+        if (matches != null && !matches.isEmpty()) {
             Log.d(TAG, "Speech results: " + matches.get(0));
+            JsonObject message = new JsonObject();
+            message.addProperty(UNDERSTOOD, matches.get(0));
+            Connection.getInstance().publish(item, message);
+        }
     }
 
     @Override
@@ -121,6 +118,9 @@ public class Language extends UtteranceProgressListener
     @Override
     public void onDone(String utteranceId) {
         Log.d(TAG, "TextToSpeech done: " + utteranceId);
+        JsonObject message = new JsonObject();
+        message.add(SAYING, JsonNull.INSTANCE);
+        Connection.getInstance().publish(item, message);
     }
 
     @Override
@@ -134,6 +134,24 @@ public class Language extends UtteranceProgressListener
 
     @Override
     public void onReceivedMessage(@NonNull JsonObject message) {
+        String msgType = message.getAsJsonPrimitive(Connection.MSG_TYPE).getAsString();
+        if ("new_data".equals(msgType) && message.getAsJsonPrimitive("id").getAsString().equals(item.getId())) {
+            if (message.has(SAYING) && !message.get(SAYING).isJsonNull()) {
+                String saying = message.getAsJsonPrimitive(SAYING).getAsString();
+                Log.d(TAG, "Received saying: " + saying);
+                if (textToSpeech.speak(saying, TextToSpeech.QUEUE_FLUSH, null,
+                        "utterance-" + System.currentTimeMillis()) == TextToSpeech.ERROR)
+                    Log.e(TAG, "TextToSpeech speak returned ERROR");
+            }
+            if (message.has(LISTENING) && message.get(LISTENING).getAsBoolean()) {
+                Log.d(TAG, "Listening for speech");
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+                intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+                speechRecognizer.startListening(intent);
+            }
+        }
     }
 
     @Override

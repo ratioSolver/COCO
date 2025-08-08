@@ -14,6 +14,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import it.cnr.coco.api.Item;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -204,6 +206,26 @@ public class Connection extends WebSocketListener {
         Log.d(TAG, "Connecting to WebSocket server " + Settings.getInstance().getWsHost() + " with token: " + token);
         final Request request = new Request.Builder().url(Settings.getInstance().getWsHost()).build();
         socket = client.newWebSocket(request, this);
+    }
+
+    public void publish(@NonNull Item item, @NonNull JsonObject message) {
+        final Request.Builder builder = new Request.Builder()
+                .url(Settings.getInstance().getHost() + "/login")
+                .post(RequestBody.create(gson.toJson(message), MediaType.parse("application/json")));
+        if (token != null)
+            builder.addHeader("Authorization", "Bearer " + token);
+        client.newCall(builder.build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e(TAG, "Failed to publish message", e);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (!response.isSuccessful())
+                    Log.e(TAG, "Failed to publish message: " + response.message());
+            }
+        });
     }
 
     public void disconnect() {

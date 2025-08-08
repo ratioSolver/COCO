@@ -24,9 +24,10 @@ import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 
+import com.google.gson.JsonObject;
+
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Map;
 
 public class MainActivity extends AppCompatActivity
         implements View.OnClickListener, ConnectionListener, RecognitionListener {
@@ -190,11 +191,11 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onReceivedMessage(@NonNull Map<String, Object> message) {
+    public void onReceivedMessage(@NonNull JsonObject message) {
     }
 
     @Override
-    public void onConnectionFailed(String errorMessage) {
+    public void onConnectionFailed(@NonNull String errorMessage) {
         runOnUiThread(() -> {
             Log.e(TAG, "Connection failed: " + errorMessage);
             Toast.makeText(this, "Connection failed: " + errorMessage, Toast.LENGTH_LONG).show();
@@ -215,7 +216,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {

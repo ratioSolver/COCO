@@ -12,7 +12,7 @@ import androidx.annotation.NonNull;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonObject;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -43,7 +43,7 @@ public class Connection extends WebSocketListener {
     private WebSocket socket;
     private String token;
     private boolean connected = false;
-    private Set<ConnectionListener> listeners = new HashSet<>();
+    private final Set<ConnectionListener> listeners = new HashSet<>();
 
     private Connection() {
         client = new OkHttpClient();
@@ -105,10 +105,8 @@ public class Connection extends WebSocketListener {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
-                    String responseBody = response.body().string();
-                    Map<String, String> responseMap = gson.fromJson(responseBody, new TypeToken<Map<String, String>>() {
-                    }.getType());
-                    token = responseMap.get("token");
+                    JsonObject responseBody = gson.fromJson(response.body().charStream(), JsonObject.class);
+                    token = responseBody.getAsJsonPrimitive("token").getAsString();
                     ctx.getSharedPreferences(COCO_CONNECTION, MODE_PRIVATE).edit().putString("token", token).apply();
                     connect(token);
                 } else {
@@ -157,10 +155,8 @@ public class Connection extends WebSocketListener {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
-                    String responseBody = response.body().string();
-                    Map<String, String> responseMap = gson.fromJson(responseBody, new TypeToken<Map<String, String>>() {
-                    }.getType());
-                    token = responseMap.get("token");
+                    JsonObject responseBody = gson.fromJson(response.body().charStream(), JsonObject.class);
+                    token = responseBody.getAsJsonPrimitive("token").getAsString();
                     ctx.getSharedPreferences(COCO_CONNECTION, MODE_PRIVATE).edit().putString("token", token).apply();
                     connect(token);
                 } else {
@@ -241,9 +237,8 @@ public class Connection extends WebSocketListener {
     @Override
     public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
         Log.d(TAG, "WebSocket message received: " + text);
-        Map<String, Object> message = gson.fromJson(text, new TypeToken<Map<String, Object>>() {
-        }.getType());
-        String msgType = (String) message.get(MSG_TYPE);
+        JsonObject message = gson.fromJson(text, JsonObject.class);
+        String msgType = message.getAsJsonPrimitive(MSG_TYPE).getAsString();
 
         switch (msgType) {
             case "login":

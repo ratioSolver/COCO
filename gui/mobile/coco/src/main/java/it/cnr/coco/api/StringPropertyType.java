@@ -4,20 +4,20 @@ import androidx.annotation.NonNull;
 
 import java.util.Map;
 
-public class BoolPropertyType implements PropertyType {
+public class StringPropertyType implements PropertyType {
 
-    public BoolPropertyType() {
+    public StringPropertyType() {
     }
 
     @Override
     public String getName() {
-        return "bool";
+        return "string";
     }
 
     @Override
     public Property createProperty(@NonNull CoCo coco, @NonNull Map<String, Object> property) {
         boolean multiple = (boolean) property.getOrDefault("multiple", false);
-        Boolean defaultValue = (Boolean) property.get("default");
-        return new BoolProperty(multiple, defaultValue);
+        String defaultValue = (String) property.get("default");
+        return new StringProperty(multiple, defaultValue);
     }
 }

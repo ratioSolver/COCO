@@ -1,11 +1,11 @@
 package it.cnr.coco.api;
 
-public class BoolProperty implements Property {
+public class StringProperty implements Property {
 
     private final boolean multiple;
-    private final Boolean defaultValue;
+    private final String defaultValue;
 
-    public BoolProperty(boolean multiple, Boolean defaultValue) {
+    public StringProperty(boolean multiple, String defaultValue) {
         this.multiple = multiple;
         this.defaultValue = defaultValue;
     }
@@ -14,7 +14,7 @@ public class BoolProperty implements Property {
         return multiple;
     }
 
-    public Boolean getDefaultValue() {
+    public String getDefaultValue() {
         return defaultValue;
     }
 }

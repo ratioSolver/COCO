@@ -248,7 +248,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): BoolProperty {
         const b_pm = property_message as BoolPropertyMessage;
-        return new BoolProperty(this, b_pm.multiple ?? false, b_pm.default_value);
+        return new BoolProperty(this, b_pm.multiple ?? false, b_pm.default);
       }
 
       to_string(val: boolean): string { return val ? 'true' : 'false'; }
@@ -260,7 +260,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): IntProperty {
         const i_pm = property_message as IntPropertyMessage;
-        return new IntProperty(this, i_pm.multiple ?? false, i_pm.min ?? Number.NEGATIVE_INFINITY, i_pm.max ?? Number.POSITIVE_INFINITY, i_pm.default_value);
+        return new IntProperty(this, i_pm.multiple ?? false, i_pm.min ?? Number.NEGATIVE_INFINITY, i_pm.max ?? Number.POSITIVE_INFINITY, i_pm.default);
       }
 
       to_string(val: number): string { return String(val); }
@@ -272,7 +272,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): FloatProperty {
         const f_pm = property_message as FloatPropertyMessage;
-        return new FloatProperty(this, f_pm.multiple ?? false, f_pm.min ?? Number.NEGATIVE_INFINITY, f_pm.max ?? Number.POSITIVE_INFINITY, f_pm.default_value);
+        return new FloatProperty(this, f_pm.multiple ?? false, f_pm.min ?? Number.NEGATIVE_INFINITY, f_pm.max ?? Number.POSITIVE_INFINITY, f_pm.default);
       }
 
       to_string(val: number): string { return String(val); }
@@ -284,7 +284,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): StringProperty {
         const s_pm = property_message as StringPropertyMessage;
-        return new StringProperty(this, s_pm.multiple ?? false, s_pm.default_value);
+        return new StringProperty(this, s_pm.multiple ?? false, s_pm.default);
       }
 
       to_string(val: string | null): string { return val ? val : ''; }
@@ -296,7 +296,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): SymbolProperty {
         const sym_pm = property_message as SymbolPropertyMessage;
-        return new SymbolProperty(this, sym_pm.multiple ?? false, sym_pm.values, sym_pm.default_value);
+        return new SymbolProperty(this, sym_pm.multiple ?? false, sym_pm.values, sym_pm.default);
       }
 
       to_string(val: string | string[] | null): string {
@@ -313,8 +313,8 @@ export namespace coco {
       override make_property(property_message: PropertyMessage | any): ItemProperty {
         const itm_pm = property_message as ItemPropertyMessage;
         let def = undefined;
-        if (itm_pm.default_value)
-          def = Array.isArray(itm_pm.default_value) ? itm_pm.default_value.map(itm => this.cc.get_item(itm)) : this.cc.get_item(itm_pm.default_value);
+        if (itm_pm.default)
+          def = Array.isArray(itm_pm.default) ? itm_pm.default.map(itm => this.cc.get_item(itm)) : this.cc.get_item(itm_pm.default);
         return new ItemProperty(this, this.cc.get_type(itm_pm.domain), itm_pm.multiple ?? false, def);
       }
 
@@ -331,7 +331,7 @@ export namespace coco {
 
       override make_property(property_message: PropertyMessage | any): JSONProperty {
         const j_pm = property_message as JSONPropertyMessage;
-        return new JSONProperty(this, j_pm.schema, j_pm.default_value);
+        return new JSONProperty(this, j_pm.schema, j_pm.default);
       }
 
       to_string(val: JSON): string { return JSON.stringify(val); }
@@ -766,7 +766,7 @@ interface NewDataMessage extends ValueMessage {
 
 interface PropMessage<V> {
   type: string;
-  default_value?: V;
+  default?: V;
 }
 
 interface BoolPropertyMessage extends PropMessage<boolean> {

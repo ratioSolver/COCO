@@ -2,8 +2,11 @@ package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
 
+import com.google.gson.JsonObject;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import it.cnr.coco.Connection;
 import it.cnr.coco.ConnectionListener;
@@ -19,6 +22,10 @@ public class CoCo implements ConnectionListener {
         registerPropertyType(new BoolPropertyType());
         registerPropertyType(new IntPropertyType());
         registerPropertyType(new FloatPropertyType());
+        registerPropertyType(new StringPropertyType());
+        registerPropertyType(new SymbolPropertyType());
+        registerPropertyType(new ItemPropertyType());
+        registerPropertyType(new JSONPropertyType());
     }
 
     public static CoCo getInstance() {
@@ -44,11 +51,15 @@ public class CoCo implements ConnectionListener {
     }
 
     @Override
-    public void onReceivedMessage(@NonNull Map<String, Object> message) {
-        String msgType = (String) message.get(Connection.MSG_TYPE);
+    public void onReceivedMessage(@NonNull JsonObject message) {
+        String msgType = (String) message.getAsJsonPrimitive(Connection.MSG_TYPE).getAsString();
 
-        switch (msgType) {
+        switch (Objects.requireNonNull(msgType)) {
             case "coco":
+                break;
+            case "new_type":
+                break;
+            case "new_item":
                 break;
         }
     }

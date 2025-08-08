@@ -2,7 +2,7 @@ package it.cnr.coco;
 
 import androidx.annotation.NonNull;
 
-import java.util.Map;
+import com.google.gson.JsonObject;
 
 public interface ConnectionListener {
     /**
@@ -11,11 +11,11 @@ public interface ConnectionListener {
     void onConnectionEstablished();
 
     /**
-     * Called when a message is received from the connection.
+     * Called when a message is received from the server.
      *
-     * @param message The message received, represented as a Map.
+     * @param message The received message as a JSON object.
      */
-    void onReceivedMessage(@NonNull Map<String, Object> message);
+    void onReceivedMessage(@NonNull JsonObject message);
 
     /**
      * Called when the connection fails.

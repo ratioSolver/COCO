@@ -1,5 +1,7 @@
 package it.cnr.coco.api;
 
+import androidx.annotation.NonNull;
+
 import java.util.Map;
 
 public class FloatPropertyType implements PropertyType {
@@ -13,10 +15,11 @@ public class FloatPropertyType implements PropertyType {
     }
 
     @Override
-    public Property createProperty(Map<String, Object> property) {
+    public Property createProperty(@NonNull CoCo coco, @NonNull Map<String, Object> property) {
+        boolean multiple = (boolean) property.getOrDefault("multiple", false);
+        double min = (double) property.getOrDefault("min", Double.NEGATIVE_INFINITY);
+        double max = (double) property.getOrDefault("max", Double.POSITIVE_INFINITY);
         Double defaultValue = (Double) property.get("default");
-        Double min = (Double) property.get("min");
-        Double max = (Double) property.get("max");
-        return new FloatProperty(defaultValue, min, max);
+        return new FloatProperty(multiple, min, max, defaultValue);
     }
 }

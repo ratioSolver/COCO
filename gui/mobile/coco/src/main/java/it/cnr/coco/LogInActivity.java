@@ -10,7 +10,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.util.Map;
+import com.google.gson.JsonObject;
 
 public class LogInActivity extends Activity implements ConnectionListener {
 
@@ -48,7 +48,7 @@ public class LogInActivity extends Activity implements ConnectionListener {
     }
 
     @Override
-    public void onReceivedMessage(@NonNull Map<String, Object> message) {
+    public void onReceivedMessage(@NonNull JsonObject message) {
     }
 
     @Override

@@ -7,6 +7,9 @@
 #else
 #include "coco_db.hpp"
 #endif
+#ifdef BUILD_MQTT
+#include "coco_mqtt.hpp"
+#endif
 #ifdef BUILD_LLM
 #include "coco_llm.hpp"
 #endif
@@ -39,6 +42,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
     coco::coco cc(db);
 
+#ifdef BUILD_MQTT
+    [[maybe_unused]] coco::coco_mqtt &mqtt = cc.add_module<coco::coco_mqtt>(cc);
+#endif
 #ifdef BUILD_LLM
     [[maybe_unused]] coco::coco_llm &llm = cc.add_module<coco::coco_llm>(cc);
 #endif

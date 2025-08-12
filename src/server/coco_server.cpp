@@ -42,7 +42,7 @@ namespace coco
         add_route(network::Post, "^/types$", std::bind(&coco_server::create_type, this, network::placeholders::request));
         add_route(network::Delete, "^/types/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
 
-        add_route(network::Get, "^/items$", std::bind(&coco_server::get_items, this, network::placeholders::request));
+        add_route(network::Get, "^/items.*$", std::bind(&coco_server::get_items, this, network::placeholders::request));
         add_route(network::Get, "^/items/.*$", std::bind(&coco_server::get_item, this, network::placeholders::request));
         add_route(network::Post, "^/items$", std::bind(&coco_server::create_item, this, network::placeholders::request));
         add_route(network::Delete, "^/items/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
@@ -190,6 +190,8 @@ namespace coco
         paths["/items"] = {{"get",
                             {{"summary", "Retrieve all the " COCO_NAME " items."},
                              {"description", "Endpoint to fetch all the managed items."},
+                             {"parameters",
+                              {{{"name", "filter"}, {"description", "Filter items by specific properties."}, {"in", "query"}, {"style", "form"}, {"explode", true}, {"schema", {{"type", "object"}, {"additionalProperties", {{"type", "string"}}}}}}}},
                              {"responses",
                               {{"200",
                                 {{"description", "Successful response containing an array of all managed items with their properties and metadata."},
@@ -447,11 +449,17 @@ namespace coco
         }
     }
 
-    std::unique_ptr<network::response> coco_server::get_items(const network::request &)
+    std::unique_ptr<network::response> coco_server::get_items(const network::request &req)
     {
+        std::map<std::string, std::string> filter;
+        if (req.get_target().find('?') != std::string::npos)
+            filter = network::parse_query(req.get_target().substr(req.get_target().find('?') + 1));
         json::json is(json::json_type::array);
         for (auto &itm : get_coco().get_items())
         {
+            for (const auto &[par, val] : filter)
+                if (!itm.get().get_properties().contains(par) || itm.get().get_properties()[par] != val)
+                    continue; // skip items that do not match the filter
             auto j_itm = itm.get().to_json();
             j_itm["id"] = itm.get().get_id();
             is.push_back(std::move(j_itm));

@@ -4,6 +4,8 @@ import androidx.annotation.NonNull;
 
 import com.google.gson.JsonElement;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
 
 public class Type {
@@ -13,6 +15,7 @@ public class Type {
     private JsonElement data;
     private Map<String, Property> static_properties;
     private Map<String, Property> dynamic_properties;
+    private final Collection<Item> instances = new HashSet<>();
 
     public Type(@NonNull String name, Map<String, Type> parents, JsonElement data,
             Map<String, Property> static_properties,
@@ -58,5 +61,9 @@ public class Type {
 
     public void setDynamicProperties(Map<String, Property> dynamic_properties) {
         this.dynamic_properties = dynamic_properties;
+    }
+
+    public Collection<Item> getInstances() {
+        return instances;
     }
 }

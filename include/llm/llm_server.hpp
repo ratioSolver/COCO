@@ -20,6 +20,8 @@ namespace coco
     std::unique_ptr<network::response> create_intent(const network::request &req);
     std::unique_ptr<network::response> get_entities(const network::request &);
     std::unique_ptr<network::response> create_entity(const network::request &req);
+    std::unique_ptr<network::response> get_slots(const network::request &);
+    std::unique_ptr<network::response> create_slot(const network::request &req);
 
   private:
     coco_llm &llm; // The LLM module

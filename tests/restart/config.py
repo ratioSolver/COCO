@@ -182,7 +182,7 @@ def create_rules(session: requests.Session, url: str):
         return
 
 
-def create_items(session: requests.Session, url: str) -> list[str]:
+def create_items(session: requests.Session, url: str):
     # Create cognitive domain items
     cognitive_domains = ['Memory', 'Attention', 'ExecutiveFunction', 'General']
     cognitive_domain_ids = []

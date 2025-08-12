@@ -9,7 +9,7 @@ namespace coco
         srv.add_route(network::Get, "^/entities$", std::bind(&llm_server::get_entities, this, network::placeholders::request));
         srv.add_route(network::Post, "^/entities$", std::bind(&llm_server::create_entity, this, network::placeholders::request));
 
-        // Define schemas for intents and entities
+        // Define schemas for intents, entities and slots
         add_schema("intent", {{"type", "object"},
                               {"description", "An intent with a name and description."},
                               {"properties",
@@ -19,12 +19,19 @@ namespace coco
         add_schema("entity", {{"type", "object"},
                               {"description", "An entity with a type, name, and description."},
                               {"properties",
-                               {{"type", {{"type", "string"}, {"description", "The type of the entity (e.g., string, symbol, int, float, bool)."}}},
+                               {{"type", {{"type", "string"}, {"description", "The type of the entity."}, {"enum", {"string", "symbol", "int", "float", "bool"}}}},
                                 {"name", {{"type", "string"}, {"description", "The name of the entity."}}},
                                 {"description", {{"type", "string"}, {"description", "The description of the entity."}}}}},
                               {"required", std::vector<json::json>{"type", "name", "description"}}});
+        add_schema("slot", {{"type", "object"},
+                            {"description", "A slot with a type, name, and description."},
+                            {"properties",
+                             {{"type", {{"type", "string"}, {"description", "The type of the slot."}, {"enum", {"string", "symbol", "int", "float", "bool"}}}},
+                              {"name", {{"type", "string"}, {"description", "The name of the slot."}}},
+                              {"description", {{"type", "string"}, {"description", "The description of the slot."}}}}},
+                            {"required", std::vector<json::json>{"type", "name", "description"}}});
 
-        // Define OpenAPI paths for intents and entities
+        // Define OpenAPI paths for intents, entities and slots
         add_path("/intents", {{"get",
                                {{"summary", "Get all intents."},
                                 {"description", "Endpoint to retrieve all intents."},
@@ -59,15 +66,37 @@ namespace coco
                                    {"400", {{"description", "Invalid request."}}},
                                    {"401", {{"description", "Unauthorized."}}},
                                    {"409", {{"description", "Entity already exists."}}}}}}}});
+        add_path("/slots", {{"get",
+                             {{"summary", "Get all slots."},
+                              {"description", "Endpoint to retrieve all slots."},
+                              {"responses",
+                               {{"200", {{"description", "List of slots."}, {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/slot"}}}}}}}}}}},
+                                {"401", {{"description", "Unauthorized."}}}}}}},
+                            {"post",
+                             {{"summary", "Create a new slot."},
+                              {"description", "Endpoint to create a new slot."},
+                              {"requestBody",
+                               {{"required", true},
+                                {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/slot"}}}}}}}}},
+                              {"responses",
+                               {{"201", {{"description", "Slot created successfully."}}},
+                                {"400", {{"description", "Invalid request."}}},
+                                {"401", {{"description", "Unauthorized."}}},
+                                {"409", {{"description", "Slot already exists."}}}}}}}});
+
 #ifdef BUILD_AUTH
         get_path("/intents")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         get_path("/intents")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         get_path("/entities")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         get_path("/entities")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        get_path("/slots")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+        get_path("/slots")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         add_authorized_path("/intents", network::verb::Get, {0, 1});
         add_authorized_path("/intents", network::verb::Post, {0});
         add_authorized_path("/entities", network::verb::Get, {0, 1});
         add_authorized_path("/entities", network::verb::Post, {0});
+        add_authorized_path("/slots", network::verb::Get, {0, 1});
+        add_authorized_path("/slots", network::verb::Post, {0});
 #endif
     }
 
@@ -137,25 +166,46 @@ namespace coco
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (!body.is_object() || !body.contains("type") || !body["type"].is_string() || !body.contains("name") || !body["name"].is_string() || !body.contains("description") || !body["description"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-        std::string type = body["type"];
-        data_type type_name;
-        if (type == "string")
-            type_name = data_type::string_type;
-        else if (type == "symbol")
-            type_name = data_type::symbol_type;
-        else if (type == "int")
-            type_name = data_type::integer_type;
-        else if (type == "float")
-            type_name = data_type::float_type;
-        else if (type == "bool")
-            type_name = data_type::boolean_type;
-        else
-            return std::make_unique<network::json_response>(json::json({{"message", "Invalid type"}}), network::status_code::bad_request);
+        data_type type_name = string_to_type(body["type"].get<std::string>());
         std::string name = body["name"];
         std::string description = body["description"];
         try
         {
             llm.create_entity(type_name, name, description);
+            return std::make_unique<network::response>(network::status_code::no_content);
+        }
+        catch (const std::exception &e)
+        {
+            return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
+        }
+    }
+
+    std::unique_ptr<network::response> llm_server::get_slots(const network::request &)
+    {
+        json::json is(json::json_type::array);
+        for (auto &it : llm.get_slots())
+        {
+            auto j_it = it.get().to_json();
+            j_it["name"] = it.get().get_name();
+            is.push_back(std::move(j_it));
+        }
+        return std::make_unique<network::json_response>(std::move(is));
+    }
+
+    std::unique_ptr<network::response> llm_server::create_slot(const network::request &req)
+    {
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (!body.is_object() || !body.contains("type") || !body["type"].is_string() || !body.contains("name") || !body["name"].is_string() || !body.contains("description") || !body["description"].is_string())
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        if (body.contains("influence_context") && !body["influence_context"].is_boolean())
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        data_type type_name = string_to_type(body["type"].get<std::string>());
+        std::string name = body["name"];
+        std::string description = body["description"];
+        bool influence_context = body.contains("influence_context") ? body["influence_context"].get<bool>() : true;
+        try
+        {
+            llm.create_slot(type_name, name, description, influence_context);
             return std::make_unique<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)

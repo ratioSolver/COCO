@@ -3,6 +3,5 @@
     android:id="@+id/robot_face"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:src="@drawable/idle"
     android:contentDescription="@string/robot_face_desc"
     android:scaleType="centerCrop" />

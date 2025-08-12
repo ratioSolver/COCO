@@ -5,11 +5,6 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
-import android.speech.tts.TextToSpeech;
-import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -23,25 +18,28 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.bumptech.glide.Glide;
-
 import com.google.gson.JsonObject;
+
+import it.cnr.coco.api.CoCo;
+import it.cnr.coco.api.Item;
+import it.cnr.coco.api.Type;
 
 import it.cnr.coco.utils.Connection;
 import it.cnr.coco.utils.ConnectionListener;
+import it.cnr.coco.utils.Face;
+import it.cnr.coco.utils.Language;
 import it.cnr.coco.utils.Settings;
 
 import java.util.ArrayList;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity
-        implements View.OnClickListener, ConnectionListener, RecognitionListener {
+public class MainActivity extends AppCompatActivity implements ConnectionListener {
 
     private static final String TAG = "MainActivity";
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
-    private SpeechRecognizer speechRecognizer;
-    private TextToSpeech textToSpeech;
-    private ImageView robotFaceView;
+    private Language language; // Instance of the Language class to handle speech and text-to-speech
+    private ImageView robotFace; // ImageView for the robot's face
+    private Face face; // Instance of the Face class to handle robot's face
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,11 +49,7 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        robotFaceView = findViewById(R.id.robot_face);
-        if (robotFaceView != null) {
-            Glide.with(this).asGif().load(R.drawable.idle).into(robotFaceView);
-            robotFaceView.setOnClickListener(this);
-        }
+        robotFace = findViewById(R.id.robot_face);
 
         Connection.getInstance().addListener(this); // Register this activity as a listener for connection events
 
@@ -65,39 +59,6 @@ public class MainActivity extends AppCompatActivity
             ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.RECORD_AUDIO },
                     REQUEST_RECORD_AUDIO_PERMISSION);
         }
-
-        // Initialize the SpeechRecognizer
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
-        speechRecognizer.setRecognitionListener(this);
-
-        // Initialize TextToSpeech
-        textToSpeech = new TextToSpeech(this, status -> {
-            if (status == TextToSpeech.SUCCESS) {
-                int result = textToSpeech.setLanguage(java.util.Locale.getDefault());
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED)
-                    Log.e(TAG, "Language not supported or missing data");
-                else
-                    Log.d(TAG, "TextToSpeech initialized successfully");
-            } else
-                Log.e(TAG, "TextToSpeech initialization failed");
-        });
-        textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-            @Override
-            public void onStart(String utteranceId) {
-                Log.d(TAG, "TextToSpeech started: " + utteranceId);
-            }
-
-            @Override
-            public void onDone(String utteranceId) {
-                Log.d(TAG, "TextToSpeech done: " + utteranceId);
-                Glide.with(MainActivity.this).asGif().load(R.drawable.idle).into(robotFaceView);
-            }
-
-            @Override
-            public void onError(String utteranceId) {
-                Log.e(TAG, "TextToSpeech error: " + utteranceId);
-            }
-        });
 
         if (!Connection.getInstance().isConnected() && Settings.getInstance().hasUsers()) {
             String token = getSharedPreferences(Connection.COCO_CONNECTION, MODE_PRIVATE).getString("token", null);
@@ -122,11 +83,8 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        robotFaceView = findViewById(R.id.robot_face);
-        if (robotFaceView != null) {
-            Glide.with(this).asGif().load(R.drawable.idle).into(robotFaceView);
-            robotFaceView.setOnClickListener(this);
-        }
+        if (face != null) // Set the face view for the robot
+            face.setFaceView(findViewById(R.id.robot_face));
     }
 
     @Override
@@ -147,73 +105,10 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onReadyForSpeech(Bundle params) {
-        Glide.with(this).asGif().load(R.drawable.listening).into(robotFaceView);
-    }
-
-    @Override
-    public void onBeginningOfSpeech() {
-    }
-
-    @Override
-    public void onRmsChanged(float rmsdB) {
-    }
-
-    @Override
-    public void onBufferReceived(byte[] buffer) {
-    }
-
-    @Override
-    public void onEndOfSpeech() {
-        Glide.with(this).asGif().load(R.drawable.idle).into(robotFaceView);
-    }
-
-    @Override
-    public void onClick(View view) {
-        if (robotFaceView != null) {
-            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-            speechRecognizer.startListening(intent);
-        }
-    }
-
-    @Override
-    public void onError(int error) {
-        Toast.makeText(MainActivity.this, "Error: " + error, Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public void onResults(Bundle results) {
-        ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-        if (matches != null && !matches.isEmpty()) {
-            Log.d(TAG, "Speech results: " + matches.get(0));
-            String recognizedText = matches.get(0);
-            Glide.with(this).load(R.drawable.happy_talking).into(robotFaceView);
-            if (textToSpeech.speak(recognizedText, TextToSpeech.QUEUE_FLUSH, null,
-                    "utterance-" + System.currentTimeMillis()) == TextToSpeech.ERROR)
-                Log.e(TAG, "TextToSpeech speak returned ERROR");
-        } else
-            Log.d(TAG, "No speech results found.");
-    }
-
-    @Override
-    public void onPartialResults(Bundle partialResults) {
-        ArrayList<String> partialMatches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-        if (partialMatches != null && !partialMatches.isEmpty()) {
-            Log.d(TAG, "Partial speech results: " + partialMatches.get(0));
-        } else {
-            Log.d(TAG, "No partial speech results found.");
-        }
-    }
-
-    @Override
-    public void onEvent(int eventType, Bundle params) {
-    }
-
-    @Override
     public void onConnectionEstablished() {
+        Item item = CoCo.getInstance().getType("Robot").getInstances().iterator().next();
+        language = new Language(this, item); // Initialize the Language class to handle speech and text-to-speech
+        face = new Face(this, item, robotFace); // Initialize the Face class to handle robot's face
     }
 
     @Override
@@ -256,8 +151,10 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (speechRecognizer != null)
-            speechRecognizer.destroy(); // Clean up the SpeechRecognizer
+        if (language != null)
+            language.destroy(); // Clean up the Language instance
+        if (face != null)
+            face.destroy(); // Clean up the Face instance
         // Unregister this activity as a listener for connection events
         Connection.getInstance().removeListener(this);
     }

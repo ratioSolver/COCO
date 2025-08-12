@@ -22,6 +22,20 @@ namespace coco
     float_type,
     boolean_type
   };
+  inline data_type string_to_type(std::string_view type)
+  {
+    if (type == "string")
+      return string_type;
+    else if (type == "symbol")
+      return symbol_type;
+    else if (type == "int")
+      return integer_type;
+    else if (type == "float")
+      return float_type;
+    else if (type == "bool")
+      return boolean_type;
+    throw std::invalid_argument("Invalid data type");
+  }
 
 #ifdef BUILD_LISTENERS
   class llm_listener;

@@ -14,15 +14,13 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import it.cnr.coco.api.Item;
-import it.cnr.coco.api.Type;
-
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
+
+import it.cnr.coco.api.Item;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -107,7 +105,7 @@ public class Connection extends WebSocketListener {
             }
 
             @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
                 if (response.isSuccessful()) {
                     JsonObject responseBody = gson.fromJson(response.body().charStream(), JsonObject.class);
                     token = responseBody.getAsJsonPrimitive("token").getAsString();
@@ -157,7 +155,7 @@ public class Connection extends WebSocketListener {
             }
 
             @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
                 if (response.isSuccessful()) {
                     JsonObject responseBody = gson.fromJson(response.body().charStream(), JsonObject.class);
                     token = responseBody.getAsJsonPrimitive("token").getAsString();
@@ -191,7 +189,7 @@ public class Connection extends WebSocketListener {
             }
 
             @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
                 if (!response.isSuccessful()) {
                     Log.e(TAG, "Failed to add new token: " + response.message());
                     for (ConnectionListener listener : listeners)
@@ -220,7 +218,7 @@ public class Connection extends WebSocketListener {
      */
     public void publish(@NonNull Item item, @NonNull JsonObject message) {
         final Request.Builder builder = new Request.Builder()
-                .url(Settings.getInstance().getHost() + "/login")
+                .url(Settings.getInstance().getHost() + "/data/" + item.getId())
                 .post(RequestBody.create(gson.toJson(message), MediaType.parse("application/json")));
         if (token != null)
             builder.addHeader("Authorization", "Bearer " + token);
@@ -231,7 +229,7 @@ public class Connection extends WebSocketListener {
             }
 
             @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
                 if (!response.isSuccessful())
                     Log.e(TAG, "Failed to publish message: " + response.message());
             }

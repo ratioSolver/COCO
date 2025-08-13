@@ -132,7 +132,8 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
     @Override
     public void onConnectionClosed() {
         Log.d(TAG, "Connection closed, redirecting to login");
-        Intent intent = new Intent(this, LogInActivity.class);
+        Intent intent = Settings.getInstance().hasUsers() ? new Intent(this, LogInActivity.class)
+                : new Intent(this, SettingsActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish(); // Close this activity
@@ -142,12 +143,12 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
             @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
+        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION)
             if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Microphone permission is required!", Toast.LENGTH_SHORT).show();
                 finish();
-            }
-        }
+            } else
+                Log.d(TAG, "Microphone permission granted");
     }
 
     @Override

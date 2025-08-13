@@ -2,7 +2,8 @@ package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
 
-import java.util.Map;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 public class JSONPropertyType implements PropertyType {
 
@@ -15,9 +16,8 @@ public class JSONPropertyType implements PropertyType {
     }
 
     @Override
-    public Property createProperty(@NonNull CoCo coco, @NonNull Map<String, Object> property) {
-        Map<String, Object> schema = (Map<String, Object>) property.get("schema");
-        Map<String, Object> defaultValue = (Map<String, Object>) property.get("default");
-        return new JSONProperty(schema, defaultValue);
+    public Property createProperty(@NonNull CoCo coco, @NonNull JsonElement property) {
+        JsonObject obj = property.getAsJsonObject();
+        return new JSONProperty(obj.get("schema"), obj.get("default"));
     }
 }

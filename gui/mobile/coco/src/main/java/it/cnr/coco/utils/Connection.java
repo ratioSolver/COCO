@@ -15,8 +15,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import it.cnr.coco.api.Item;
+import it.cnr.coco.api.Type;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -208,6 +210,14 @@ public class Connection extends WebSocketListener {
         socket = client.newWebSocket(request, this);
     }
 
+    /**
+     * Publishes a message to the server using the WebSocket connection.
+     * Sends a POST request to the /login endpoint with the provided item and
+     * message as JSON.
+     *
+     * @param item    the item associated with the message (must not be null)
+     * @param message the message to publish as a JsonObject (must not be null)
+     */
     public void publish(@NonNull Item item, @NonNull JsonObject message) {
         final Request.Builder builder = new Request.Builder()
                 .url(Settings.getInstance().getHost() + "/login")

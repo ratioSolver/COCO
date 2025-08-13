@@ -2,7 +2,8 @@ package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
 
-import java.util.Map;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 public class ItemPropertyType implements PropertyType {
 
@@ -15,10 +16,11 @@ public class ItemPropertyType implements PropertyType {
     }
 
     @Override
-    public Property createProperty(@NonNull CoCo coco, @NonNull Map<String, Object> property) {
-        boolean multiple = (boolean) property.getOrDefault("multiple", false);
-        Type domain = coco.getType((String) property.get("domain"));
-        Item defaultValue = property.containsKey("default") ? coco.getItem((String) property.get("default")) : null;
+    public Property createProperty(@NonNull CoCo coco, @NonNull JsonElement property) {
+        JsonObject obj = property.getAsJsonObject();
+        boolean multiple = obj.has("multiple") ? obj.get("multiple").getAsBoolean() : false;
+        Type domain = coco.getType(obj.get("domain").getAsString());
+        Item defaultValue = obj.has("default") ? coco.getItem(obj.get("default").getAsString()) : null;
         return new ItemProperty(multiple, domain, defaultValue);
     }
 }

@@ -2,7 +2,8 @@ package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
 
-import java.util.Map;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 public class IntPropertyType implements PropertyType {
 
@@ -15,11 +16,12 @@ public class IntPropertyType implements PropertyType {
     }
 
     @Override
-    public Property createProperty(@NonNull CoCo coco, @NonNull Map<String, Object> property) {
-        boolean multiple = (boolean) property.getOrDefault("multiple", false);
-        long min = (long) property.getOrDefault("min", Long.MIN_VALUE);
-        long max = (long) property.getOrDefault("max", Long.MAX_VALUE);
-        Long defaultValue = (Long) property.get("default");
+    public Property createProperty(@NonNull CoCo coco, @NonNull JsonElement property) {
+        JsonObject obj = property.getAsJsonObject();
+        boolean multiple = obj.has("multiple") && obj.get("multiple").getAsBoolean();
+        long min = obj.has("min") ? obj.get("min").getAsLong() : Long.MIN_VALUE;
+        long max = obj.has("max") ? obj.get("max").getAsLong() : Long.MAX_VALUE;
+        Long defaultValue = obj.has("default") ? obj.get("default").getAsLong() : null;
         return new IntProperty(multiple, min, max, defaultValue);
     }
 }

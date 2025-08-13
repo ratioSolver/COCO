@@ -2,7 +2,8 @@ package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
 
-import java.util.Map;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 public class BoolPropertyType implements PropertyType {
 
@@ -15,9 +16,10 @@ public class BoolPropertyType implements PropertyType {
     }
 
     @Override
-    public Property createProperty(@NonNull CoCo coco, @NonNull Map<String, Object> property) {
-        boolean multiple = (boolean) property.getOrDefault("multiple", false);
-        Boolean defaultValue = (Boolean) property.get("default");
+    public Property createProperty(@NonNull CoCo coco, @NonNull JsonElement property) {
+        JsonObject obj = property.getAsJsonObject();
+        boolean multiple = obj.has("multiple") ? obj.get("multiple").getAsBoolean() : false;
+        Boolean defaultValue = obj.has("default") ? obj.get("default").getAsBoolean() : null;
         return new BoolProperty(multiple, defaultValue);
     }
 }

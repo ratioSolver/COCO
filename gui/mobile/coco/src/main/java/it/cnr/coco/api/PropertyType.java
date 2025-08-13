@@ -2,11 +2,11 @@ package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
 
-import java.util.Map;
+import com.google.gson.JsonElement;
 
 public interface PropertyType {
 
     String getName();
 
-    Property createProperty(@NonNull CoCo coco, @NonNull Map<String, Object> property);
+    Property createProperty(@NonNull CoCo coco, @NonNull JsonElement property);
 }

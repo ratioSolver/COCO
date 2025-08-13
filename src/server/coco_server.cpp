@@ -189,13 +189,16 @@ namespace coco
                                        {{"description", "Type not found"}}}}}}}};
         paths["/items"] = {{"get",
                             {{"summary", "Retrieve all the " COCO_NAME " items."},
-                             {"description", "Endpoint to fetch all the managed items."},
+                             {"description", "Endpoint to fetch all the managed items. You can filter items by type and other properties using query parameters."},
                              {"parameters",
-                              {{{"name", "filter"}, {"description", "Filter items by specific properties."}, {"in", "query"}, {"style", "form"}, {"explode", true}, {"schema", {{"type", "object"}, {"additionalProperties", {{"type", "string"}}}}}}}},
+                              {{{"name", "type"}, {"description", "Filter items by type name."}, {"in", "query"}, {"required", false}, {"schema", {{"type", "string"}}}},
+                               {{"name", "\"\""}, {"description", "Filter items by specific properties."}, {"in", "query"}, {"required", false}, {"style", "form"}, {"explode", true}, {"schema", {{"type", "object"}, {"additionalProperties", {{"type", "string"}}}}}}}},
                              {"responses",
                               {{"200",
                                 {{"description", "Successful response containing an array of all managed items with their properties and metadata."},
-                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}}}}}},
+                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}},
+                               {"404",
+                                {{"description", "Type not found"}}}}}}},
                            {"post",
                             {{"summary", "Create a new " COCO_NAME " item."},
                              {"description", "Endpoint to create a new item."},
@@ -455,15 +458,35 @@ namespace coco
         if (req.get_target().find('?') != std::string::npos)
             filter = network::parse_query(req.get_target().substr(req.get_target().find('?') + 1));
         json::json is(json::json_type::array);
-        for (auto &itm : get_coco().get_items())
-        {
-            for (const auto &[par, val] : filter)
-                if (!itm.get().get_properties().contains(par) || itm.get().get_properties()[par] != val)
-                    continue; // skip items that do not match the filter
-            auto j_itm = itm.get().to_json();
-            j_itm["id"] = itm.get().get_id();
-            is.push_back(std::move(j_itm));
-        }
+        if (filter.count("type")) // filter by type
+            try
+            {
+                auto &tp = get_coco().get_type(filter["type"]);
+                for (auto &itm : get_coco().get_items(tp))
+                {
+                    for (const auto &[par, val] : filter)
+                        if (par != "type" && (!itm.get().get_properties().contains(par) || itm.get().get_properties()[par] != val))
+                            continue; // skip items that do not match the filter
+                    auto j_itm = itm.get().to_json();
+                    j_itm["id"] = itm.get().get_id();
+                    is.push_back(std::move(j_itm));
+                }
+                return std::make_unique<network::json_response>(std::move(is));
+            }
+            catch (const std::exception &)
+            {
+                return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+            }
+        else
+            for (auto &itm : get_coco().get_items())
+            {
+                for (const auto &[par, val] : filter)
+                    if (!itm.get().get_properties().contains(par) || itm.get().get_properties()[par] != val)
+                        continue; // skip items that do not match the filter
+                auto j_itm = itm.get().to_json();
+                j_itm["id"] = itm.get().get_id();
+                is.push_back(std::move(j_itm));
+            }
         return std::make_unique<network::json_response>(std::move(is));
     }
     std::unique_ptr<network::response> coco_server::get_item(const network::request &req)

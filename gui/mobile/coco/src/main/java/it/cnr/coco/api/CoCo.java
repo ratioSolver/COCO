@@ -2,9 +2,12 @@ package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 
@@ -38,6 +41,10 @@ public class CoCo implements ConnectionListener {
         propertyTypes.put(propertyType.getName(), propertyType);
     }
 
+    public Collection<Type> getTypes() {
+        return types.values();
+    }
+
     public Type getType(@NonNull String typeName) {
         return types.get(typeName);
     }
@@ -56,11 +63,53 @@ public class CoCo implements ConnectionListener {
 
         switch (Objects.requireNonNull(msgType)) {
             case "coco":
+                if (message.has("types")) {
+                    types.clear();
+                    for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("types").entrySet())
+                        types.put(entry.getKey(),
+                                new Type(entry.getKey(), null, entry.getValue().getAsJsonObject().get("data"), null,
+                                        null));
+                    for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("types").entrySet())
+                        refineType(types.get(entry.getKey()), entry.getValue().getAsJsonObject());
+                }
+                if (message.has("items")) {
+                    items.clear();
+                    for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("items").entrySet())
+                        items.put(entry.getKey(),
+                                new Item(entry.getKey(),
+                                        types.get(entry.getValue().getAsJsonObject().get("type").getAsString()),
+                                        entry.getValue().getAsJsonObject().get("data")));
+                }
                 break;
             case "new_type":
                 break;
             case "new_item":
                 break;
+        }
+    }
+
+    private void refineType(@NonNull Type type, @NonNull JsonObject type_message) {
+        if (type_message.has("parents")) {
+            Collection<Type> parents = new HashSet<>();
+            for (JsonElement parent : type_message.getAsJsonArray("parents"))
+                parents.add(types.get(parent.getAsString()));
+            type.setParents(parents);
+        }
+        if (type_message.has("static_properties")) {
+            Map<String, Property> staticProperties = new HashMap<>();
+            for (Map.Entry<String, JsonElement> entry : type_message.getAsJsonObject("static_properties").entrySet())
+                staticProperties.put(entry.getKey(),
+                        propertyTypes.get(entry.getValue().getAsJsonObject().get("type").getAsString())
+                                .createProperty(this, entry.getValue()));
+            type.setStaticProperties(staticProperties);
+        }
+        if (type_message.has("dynamic_properties")) {
+            Map<String, Property> dynamicProperties = new HashMap<>();
+            for (Map.Entry<String, JsonElement> entry : type_message.getAsJsonObject("dynamic_properties").entrySet())
+                dynamicProperties.put(entry.getKey(),
+                        propertyTypes.get(entry.getValue().getAsJsonObject().get("type").getAsString())
+                                .createProperty(this, entry.getValue()));
+            type.setDynamicProperties(dynamicProperties);
         }
     }
 

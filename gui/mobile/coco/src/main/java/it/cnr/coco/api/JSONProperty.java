@@ -1,22 +1,22 @@
 package it.cnr.coco.api;
 
-import java.util.Map;
+import com.google.gson.JsonElement;
 
 public class JSONProperty implements Property {
 
-    private final Map<String, Object> schema;
-    private final Map<String, Object> defaultValue;
+    private final JsonElement schema;
+    private final JsonElement defaultValue;
 
-    public JSONProperty(Map<String, Object> schema, Map<String, Object> defaultValue) {
+    public JSONProperty(JsonElement schema, JsonElement defaultValue) {
         this.schema = schema;
         this.defaultValue = defaultValue;
     }
 
-    public Map<String, Object> getSchema() {
+    public JsonElement getSchema() {
         return schema;
     }
 
-    public Map<String, Object> getDefaultValue() {
+    public JsonElement getDefaultValue() {
         return defaultValue;
     }
 }

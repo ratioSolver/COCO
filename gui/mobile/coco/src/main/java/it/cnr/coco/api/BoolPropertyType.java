@@ -18,7 +18,7 @@ public class BoolPropertyType implements PropertyType {
     @Override
     public Property createProperty(@NonNull CoCo coco, @NonNull JsonElement property) {
         JsonObject obj = property.getAsJsonObject();
-        boolean multiple = obj.has("multiple") ? obj.get("multiple").getAsBoolean() : false;
+        boolean multiple = obj.has("multiple") && obj.get("multiple").getAsBoolean();
         Boolean defaultValue = obj.has("default") ? obj.get("default").getAsBoolean() : null;
         return new BoolProperty(multiple, defaultValue);
     }

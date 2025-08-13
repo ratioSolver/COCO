@@ -1,20 +1,4 @@
 package it.cnr.coco.api;
 
-public class BoolProperty implements Property {
-
-    private final boolean multiple;
-    private final Boolean defaultValue;
-
-    public BoolProperty(boolean multiple, Boolean defaultValue) {
-        this.multiple = multiple;
-        this.defaultValue = defaultValue;
-    }
-
-    public boolean isMultiple() {
-        return multiple;
-    }
-
-    public Boolean getDefaultValue() {
-        return defaultValue;
-    }
+public record BoolProperty(boolean multiple, Boolean defaultValue) implements Property {
 }

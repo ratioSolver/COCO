@@ -18,7 +18,7 @@ public class StringPropertyType implements PropertyType {
     @Override
     public Property createProperty(@NonNull CoCo coco, @NonNull JsonElement property) {
         JsonObject obj = property.getAsJsonObject();
-        boolean multiple = obj.has("multiple") ? obj.get("multiple").getAsBoolean() : false;
+        boolean multiple = obj.has("multiple") && obj.get("multiple").getAsBoolean();
         String defaultValue = obj.has("default") ? obj.get("default").getAsString() : null;
         return new StringProperty(multiple, defaultValue);
     }

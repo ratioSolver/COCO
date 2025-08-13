@@ -28,7 +28,7 @@ class SymbolPropertyType implements PropertyType {
                     defaultValue[i] = defaultArray.get(i).getAsString();
             } else
                 defaultValue = new String[] { obj.get("default").getAsString() };
-        boolean multiple = obj.has("multiple") ? obj.get("multiple").getAsBoolean() : false;
+        boolean multiple = obj.has("multiple") && obj.get("multiple").getAsBoolean();
         String[] values = null;
         if (obj.has("values"))
             if (obj.get("values").isJsonArray()) {

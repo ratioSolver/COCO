@@ -70,14 +70,16 @@ public class CoCo implements ConnectionListener {
                                 new Type(entry.getKey(), null, entry.getValue().getAsJsonObject().get("data"), null,
                                         null));
                     for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("types").entrySet())
-                        refineType(types.get(entry.getKey()), entry.getValue().getAsJsonObject());
+                        refineType(Objects.requireNonNull(types.get(entry.getKey())),
+                                entry.getValue().getAsJsonObject());
                 }
                 if (message.has("items")) {
                     items.clear();
                     for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("items").entrySet())
                         items.put(entry.getKey(),
                                 new Item(entry.getKey(),
-                                        types.get(entry.getValue().getAsJsonObject().get("type").getAsString()),
+                                        Objects.requireNonNull(types
+                                                .get(entry.getValue().getAsJsonObject().get("type").getAsString())),
                                         entry.getValue().getAsJsonObject().get("data")));
                 }
                 break;
@@ -92,14 +94,15 @@ public class CoCo implements ConnectionListener {
         if (type_message.has("parents")) {
             Collection<Type> parents = new HashSet<>();
             for (JsonElement parent : type_message.getAsJsonArray("parents"))
-                parents.add(types.get(parent.getAsString()));
+                parents.add(Objects.requireNonNull(types.get(parent.getAsString())));
             type.setParents(parents);
         }
         if (type_message.has("static_properties")) {
             Map<String, Property> staticProperties = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : type_message.getAsJsonObject("static_properties").entrySet())
                 staticProperties.put(entry.getKey(),
-                        propertyTypes.get(entry.getValue().getAsJsonObject().get("type").getAsString())
+                        Objects.requireNonNull(
+                                propertyTypes.get(entry.getValue().getAsJsonObject().get("type").getAsString()))
                                 .createProperty(this, entry.getValue()));
             type.setStaticProperties(staticProperties);
         }
@@ -107,14 +110,15 @@ public class CoCo implements ConnectionListener {
             Map<String, Property> dynamicProperties = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : type_message.getAsJsonObject("dynamic_properties").entrySet())
                 dynamicProperties.put(entry.getKey(),
-                        propertyTypes.get(entry.getValue().getAsJsonObject().get("type").getAsString())
+                        Objects.requireNonNull(
+                                propertyTypes.get(entry.getValue().getAsJsonObject().get("type").getAsString()))
                                 .createProperty(this, entry.getValue()));
             type.setDynamicProperties(dynamicProperties);
         }
     }
 
     @Override
-    public void onConnectionFailed(String errorMessage) {
+    public void onConnectionFailed(@NonNull String errorMessage) {
     }
 
     @Override

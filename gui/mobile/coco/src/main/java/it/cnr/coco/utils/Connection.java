@@ -11,16 +11,20 @@ import androidx.annotation.NonNull;
 
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import it.cnr.coco.api.CoCo;
 import it.cnr.coco.api.Item;
+import it.cnr.coco.api.Type;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -93,81 +97,107 @@ public class Connection extends WebSocketListener {
         final Map<String, String> body = new HashMap<>();
         body.put("username", username);
         body.put("password", password);
-        final Request.Builder builder = new Request.Builder()
-                .url(Settings.getInstance().getHost() + "/login")
+        final Request.Builder builder = new Request.Builder().url(Settings.getInstance().getHost() + "/login")
                 .post(RequestBody.create(gson.toJson(body), MediaType.parse("application/json")));
-        client.newCall(builder.build()).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e(TAG, "Login failed", e);
+        try (Response response = client.newCall(builder.build()).execute()) {
+            if (response.isSuccessful()) {
+                JsonObject responseBody = gson.fromJson(response.body().charStream(), JsonObject.class);
+                token = responseBody.getAsJsonPrimitive("token").getAsString();
+                ctx.getSharedPreferences(COCO_CONNECTION, MODE_PRIVATE).edit().putString("token", token).apply();
+                connect(token);
+            } else {
+                Log.e(TAG, "Login failed: " + response.message());
                 for (ConnectionListener listener : listeners)
-                    listener.onConnectionFailed("Login failed: " + e.getMessage());
+                    listener.onConnectionFailed("Login failed: " + response.message());
             }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-                if (response.isSuccessful()) {
-                    JsonObject responseBody = gson.fromJson(response.body().charStream(), JsonObject.class);
-                    token = responseBody.getAsJsonPrimitive("token").getAsString();
-                    ctx.getSharedPreferences(COCO_CONNECTION, MODE_PRIVATE).edit().putString("token", token).apply();
-                    connect(token);
-                } else {
-                    Log.e(TAG, "Login failed: " + response.message());
-                    for (ConnectionListener listener : listeners)
-                        listener.onConnectionFailed("Login failed: " + response.message());
-                }
-            }
-        });
+        } catch (IOException e) {
+            Log.e(TAG, "Error during login", e);
+            for (ConnectionListener listener : listeners)
+                listener.onConnectionFailed("Login failed: " + e.getMessage());
+        }
     }
 
     /**
-     * Creates a new user by sending a POST request to the server with the provided
-     * username, password, and optional personal data. If the request is
-     * successful, stores the received authentication token in shared preferences
-     * and attempts to connect using the new token. Notifies registered listeners of
-     * success or failure.
+     * Creates a new user with the specified username and password.
+     * Sends a POST request to the server's /users endpoint with the user data as
+     * JSON.
+     * If the user is created successfully and {@code connect} is true, it connects
+     * using the new token.
      *
-     * @param ctx           the Android context used for accessing shared
+     * @param ctx           the Android context, used for accessing shared
      *                      preferences
      * @param username      the username for the new user (must not be null)
      * @param password      the password for the new user (must not be null)
-     * @param personal_data optional personal data as a JsonElement; may be null
+     * @param personal_data additional personal data as a JsonElement (can be null)
+     * @param connect       whether to connect immediately after creating the user
      */
     public void createUser(@NonNull Context ctx, @NonNull String username, @NonNull String password,
-            JsonElement personal_data) {
+            JsonElement personal_data, boolean connect) {
         Log.d(TAG, "Creating user with username: " + username);
         final Map<String, Object> body = new HashMap<>();
         body.put("username", username);
         body.put("password", password);
         if (personal_data != null)
             body.put("personal_data", personal_data);
-        final Request.Builder builder = new Request.Builder()
-                .url(Settings.getInstance().getHost() + "/users")
+        final Request.Builder builder = new Request.Builder().url(Settings.getInstance().getHost() + "/users")
                 .post(RequestBody.create(gson.toJson(body), MediaType.parse("application/json")));
         if (token != null)
             builder.addHeader("Authorization", "Bearer " + token);
-        client.newCall(builder.build()).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e(TAG, "User creation failed", e);
-                for (ConnectionListener listener : listeners)
-                    listener.onConnectionFailed("User creation failed: " + e.getMessage());
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-                if (response.isSuccessful()) {
+        try (Response response = client.newCall(builder.build()).execute()) {
+            if (response.isSuccessful()) {
+                Log.d(TAG, "User created successfully");
+                if (connect) {
                     JsonObject responseBody = gson.fromJson(response.body().charStream(), JsonObject.class);
                     token = responseBody.getAsJsonPrimitive("token").getAsString();
                     ctx.getSharedPreferences(COCO_CONNECTION, MODE_PRIVATE).edit().putString("token", token).apply();
                     connect(token);
-                } else {
-                    Log.e(TAG, "User creation failed: " + response.message());
-                    for (ConnectionListener listener : listeners)
-                        listener.onConnectionFailed("User creation failed: " + response.message());
                 }
-            }
-        });
+            } else
+                Log.e(TAG, "User creation failed: " + response.message());
+        } catch (IOException e) {
+            Log.e(TAG, "Error during user creation", e);
+        }
+    }
+
+    public Collection<Type> getTypes(String token) {
+        Log.d(TAG, "Fetching types from server");
+        final Request.Builder builder = new Request.Builder().url(Settings.getInstance().getHost() + "/types").get();
+        if (token != null)
+            builder.addHeader("Authorization", "Bearer " + token);
+        try (Response response = client.newCall(builder.build()).execute()) {
+            if (response.isSuccessful()) {
+                CoCo.getInstance().setTypes(gson.fromJson(response.body().charStream(), JsonArray.class));
+                return CoCo.getInstance().getTypes();
+            } else
+                Log.e(TAG, "Failed to fetch types: " + response.message());
+        } catch (IOException e) {
+            Log.e(TAG, "Error fetching types", e);
+        }
+        return new HashSet<>();
+    }
+
+    public Collection<Item> getItems(Map<String, String> filters, String token) {
+        Log.d(TAG, "Fetching items from server" + (filters.isEmpty() ? "" : " with filters: " + filters));
+        StringBuilder urlBuilder = new StringBuilder(Settings.getInstance().getHost() + "/items");
+        if (!filters.isEmpty()) {
+            urlBuilder.append("?");
+            for (Map.Entry<String, String> entry : filters.entrySet())
+                urlBuilder.append(entry.getKey()).append("=").append(entry.getValue()).append("&");
+            urlBuilder.setLength(urlBuilder.length() - 1); // Remove trailing '&'
+        }
+        final Request.Builder builder = new Request.Builder().url(urlBuilder.toString()).get();
+        if (token != null)
+            builder.addHeader("Authorization", "Bearer " + token);
+        try (Response response = client.newCall(builder.build()).execute()) {
+            if (response.isSuccessful()) {
+                CoCo.getInstance().setItems(gson.fromJson(response.body().charStream(), JsonArray.class));
+                return CoCo.getInstance().getItems();
+            } else
+                Log.e(TAG, "Failed to fetch items: " + response.message());
+        } catch (IOException e) {
+            Log.e(TAG, "Error fetching items", e);
+        }
+        return new HashSet<>();
     }
 
     public void newToken(@NonNull String id, @NonNull String token) {
@@ -175,35 +205,26 @@ public class Connection extends WebSocketListener {
         final Map<String, String> body = new HashMap<>();
         body.put("id", id);
         body.put("token", token);
-        final Request.Builder builder = new Request.Builder()
-                .url(Settings.getInstance().getHost() + "/fcm_tokens")
+        final Request.Builder builder = new Request.Builder().url(Settings.getInstance().getHost() + "/fcm_tokens")
                 .post(RequestBody.create(gson.toJson(body), MediaType.parse("application/json")));
         if (this.token != null)
             builder.addHeader("Authorization", "Bearer " + this.token);
-        client.newCall(builder.build()).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e(TAG, "Failed to add new token", e);
-                for (ConnectionListener listener : listeners)
-                    listener.onConnectionFailed("Failed to add new token: " + e.getMessage());
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-                if (!response.isSuccessful()) {
-                    Log.e(TAG, "Failed to add new token: " + response.message());
-                    for (ConnectionListener listener : listeners)
-                        listener.onConnectionFailed("Failed to add new token: " + response.message());
-                }
-            }
-        });
+        try (Response response = client.newCall(builder.build()).execute()) {
+            if (response.isSuccessful())
+                Log.d(TAG, "New token added successfully");
+            else
+                Log.e(TAG, "Failed to add new token: " + response.message());
+        } catch (IOException e) {
+            Log.e(TAG, "Error adding new token", e);
+        }
     }
 
     public void connect(String token) {
         this.token = token;
         if (socket != null)
             socket.close(1000, "Reconnecting");
-        Log.d(TAG, "Connecting to WebSocket server " + Settings.getInstance().getWsHost() + " with token: " + token);
+        Log.d(TAG, "Connecting to WebSocket server " + Settings.getInstance().getWsHost()
+                + (token != null ? " with token " + token : ""));
         final Request request = new Request.Builder().url(Settings.getInstance().getWsHost()).build();
         socket = client.newWebSocket(request, this);
     }
@@ -222,18 +243,16 @@ public class Connection extends WebSocketListener {
                 .post(RequestBody.create(gson.toJson(message), MediaType.parse("application/json")));
         if (token != null)
             builder.addHeader("Authorization", "Bearer " + token);
-        client.newCall(builder.build()).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e(TAG, "Failed to publish message", e);
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-                if (!response.isSuccessful())
-                    Log.e(TAG, "Failed to publish message: " + response.message());
-            }
-        });
+        try (Response response = client.newCall(builder.build()).execute()) {
+            if (!response.isSuccessful())
+                Log.d(TAG, "Message published successfully");
+            else
+                Log.e(TAG, "Failed to publish message: " + response.message());
+        } catch (IOException e) {
+            Log.e(TAG, "Error publishing message", e);
+            for (ConnectionListener listener : listeners)
+                listener.onConnectionFailed("Failed to publish message: " + e.getMessage());
+        }
     }
 
     public void disconnect() {
@@ -256,11 +275,8 @@ public class Connection extends WebSocketListener {
                 String fcm_token = task.getResult();
                 Log.d(TAG, "FCM Token: " + fcm_token);
                 newToken(token, fcm_token);
-            } else {
+            } else
                 Log.e("Connection", "Failed to get FCM token", task.getException());
-                for (ConnectionListener listener : listeners)
-                    listener.onConnectionFailed("Failed to get FCM token");
-            }
         });
     }
 

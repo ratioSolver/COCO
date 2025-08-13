@@ -2,6 +2,7 @@ package it.cnr.coco.api;
 
 import androidx.annotation.NonNull;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -49,8 +50,37 @@ public class CoCo implements ConnectionListener {
         return types.get(typeName);
     }
 
+    public void setTypes(@NonNull JsonArray typeArray) {
+        types.clear();
+        for (JsonElement typeElement : typeArray) {
+            JsonObject typeObject = typeElement.getAsJsonObject();
+            types.put(typeObject.get("name").getAsString(),
+                    new Type(typeObject.get("name").getAsString(), null, typeObject.get("data"), null, null));
+        }
+        for (JsonElement typeElement : typeArray) {
+            JsonObject typeObject = typeElement.getAsJsonObject();
+            refineType(Objects.requireNonNull(types.get(typeObject.get("name").getAsString())),
+                    typeObject);
+        }
+    }
+
+    public Collection<Item> getItems() {
+        return items.values();
+    }
+
     public Item getItem(@NonNull String itemId) {
         return items.get(itemId);
+    }
+
+    public void setItems(@NonNull JsonArray itemArray) {
+        items.clear();
+        for (JsonElement itemElement : itemArray) {
+            JsonObject itemObject = itemElement.getAsJsonObject();
+            items.put(itemObject.get("id").getAsString(),
+                    new Item(itemObject.get("id").getAsString(),
+                            Objects.requireNonNull(types.get(itemObject.get("type").getAsString())),
+                            itemObject.get("data")));
+        }
     }
 
     @Override

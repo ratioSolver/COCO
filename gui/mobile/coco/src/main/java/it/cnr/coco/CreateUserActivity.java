@@ -30,7 +30,7 @@ public class CreateUserActivity extends Activity implements ConnectionListener {
         EditText passwordEditText = findViewById(R.id.password);
 
         Connection.getInstance().createUser(this, usernameEditText.getText().toString(),
-                passwordEditText.getText().toString(), null); // Replace null with actual personal data if needed
+                passwordEditText.getText().toString(), null, true);
     }
 
     @Override

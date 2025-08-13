@@ -60,18 +60,20 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
                     REQUEST_RECORD_AUDIO_PERMISSION);
         }
 
-        if (!Connection.getInstance().isConnected() && Settings.getInstance().hasUsers()) {
-            String token = getSharedPreferences(Connection.COCO_CONNECTION, MODE_PRIVATE).getString("token", null);
-            if (token != null) // Users with a valid token can connect
-                Connection.getInstance().connect(token);
-            else {
-                Log.d(TAG, "No token found, redirecting to login");
-                Intent intent = new Intent(this, LogInActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                finish(); // Close this activity
-            }
-        }
+        if (!Connection.getInstance().isConnected())
+            if (Settings.getInstance().hasUsers()) {
+                String token = getSharedPreferences(Connection.COCO_CONNECTION, MODE_PRIVATE).getString("token", null);
+                if (token != null) // Users with a valid token can connect
+                    Connection.getInstance().connect(token);
+                else {
+                    Log.d(TAG, "No token found, redirecting to login");
+                    Intent intent = new Intent(this, LogInActivity.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                    finish(); // Close this activity
+                }
+            } else
+                Connection.getInstance().connect(null);
     }
 
     @Override

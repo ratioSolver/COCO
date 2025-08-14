@@ -9,18 +9,19 @@ namespace coco
     {
         conn_opts.set_keep_alive_interval(20);
         conn_opts.set_clean_session(true);
+        conn_opts.set_mqtt_version(MQTTVERSION_5);
 
         client.set_connected_handler(std::bind(&coco_mqtt::on_connect, this, std::placeholders::_1));
         client.set_connection_lost_handler(std::bind(&coco_mqtt::on_connection_lost, this, std::placeholders::_1));
         client.set_message_callback(std::bind(&coco_mqtt::on_message, this, std::placeholders::_1));
 
-        LOG_INFO("Connecting to " << mqtt_uri);
+        LOG_DEBUG("Connecting to " << mqtt_uri);
         client.connect(conn_opts);
     }
 
     void coco_mqtt::on_connect(const std::string &cause)
     {
-        LOG_INFO("Connected to MQTT broker: " << cause);
+        LOG_DEBUG("Connected to MQTT broker: " << cause);
 
         for (auto &tp : get_coco().get_types())
             client.publish(COCO_NAME "/types/" + tp.get().get_name(), tp.get().to_json().dump(), QOS, true); // Publish each type
@@ -37,11 +38,11 @@ namespace coco
     {
         LOG_ERR("Connection lost: " << cause);
         std::this_thread::sleep_for(std::chrono::milliseconds(2500));
-        LOG_INFO("Reconnecting to MQTT broker...");
+        LOG_DEBUG("Reconnecting to MQTT broker...");
         try
         {
             client.connect(conn_opts);
-            LOG_INFO("Reconnected to MQTT broker");
+            LOG_DEBUG("Reconnected to MQTT broker");
         }
         catch (const mqtt::exception &e)
         {

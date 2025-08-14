@@ -119,24 +119,31 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
 
     @Override
     public void onConnectionFailed(@NonNull String errorMessage) {
-        runOnUiThread(() -> {
-            Log.e(TAG, "Connection failed: " + errorMessage);
-            Toast.makeText(this, "Connection failed: " + errorMessage, Toast.LENGTH_LONG).show();
+        runOnUiThread(() -> Toast.makeText(this, "Connection failed: " + errorMessage, Toast.LENGTH_LONG).show());
+        if (Settings.getInstance().hasUsers()) {
             Intent intent = new Intent(this, LogInActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
-            finish();
-        });
+            finish(); // Close this activity
+        } else {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        }
     }
 
     @Override
     public void onConnectionClosed() {
-        Log.d(TAG, "Connection closed, redirecting to login");
-        Intent intent = Settings.getInstance().hasUsers() ? new Intent(this, LogInActivity.class)
-                : new Intent(this, SettingsActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
-        finish(); // Close this activity
+        if (Settings.getInstance().hasUsers()) {
+            Intent intent = new Intent(this, LogInActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            finish(); // Close this activity
+        } else {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        }
     }
 
     @Override

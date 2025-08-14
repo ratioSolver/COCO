@@ -14,11 +14,14 @@ import com.google.gson.JsonObject;
 
 import it.cnr.coco.utils.Connection;
 import it.cnr.coco.utils.ConnectionListener;
+import it.cnr.coco.utils.Settings;
+import static it.cnr.coco.utils.Assertion.assertCondition;
 
 public class LogInActivity extends Activity implements ConnectionListener {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        assertCondition(Settings.getInstance().hasUsers());
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login); // Set the layout for this activity
 

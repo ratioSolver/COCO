@@ -270,15 +270,16 @@ public class Connection extends WebSocketListener {
         body.put(MSG_TYPE, "login");
         body.put("token", token);
         webSocket.send(gson.toJson(body));
-        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                Log.d(TAG, "FCM token retrieved successfully");
-                String fcm_token = task.getResult();
-                Log.d(TAG, "FCM Token: " + fcm_token);
-                Executors.newSingleThreadExecutor().execute(() -> newToken(token, fcm_token));
-            } else
-                Log.e("Connection", "Failed to get FCM token", task.getException());
-        });
+        if (Settings.getInstance().hasUsers())
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    Log.d(TAG, "FCM token retrieved successfully");
+                    String fcm_token = task.getResult();
+                    Log.d(TAG, "FCM Token: " + fcm_token);
+                    Executors.newSingleThreadExecutor().execute(() -> newToken(token, fcm_token));
+                } else
+                    Log.e("Connection", "Failed to get FCM token", task.getException());
+            });
     }
 
     @Override

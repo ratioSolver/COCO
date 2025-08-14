@@ -8,6 +8,8 @@ namespace coco
         srv.add_route(network::Post, "^/intents$", std::bind(&llm_server::create_intent, this, network::placeholders::request));
         srv.add_route(network::Get, "^/entities$", std::bind(&llm_server::get_entities, this, network::placeholders::request));
         srv.add_route(network::Post, "^/entities$", std::bind(&llm_server::create_entity, this, network::placeholders::request));
+        srv.add_route(network::Get, "^/slots$", std::bind(&llm_server::get_slots, this, network::placeholders::request));
+        srv.add_route(network::Post, "^/slots$", std::bind(&llm_server::create_slot, this, network::placeholders::request));
 
         // Define schemas for intents, entities and slots
         add_schema("intent", {{"type", "object"},

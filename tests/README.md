@@ -8,7 +8,8 @@ openssl req -x509 -nodes -days 365 \
     -newkey rsa:2048 \
     -keyout key.pem \
     -out cert.pem \
-    -addext "subjectAltName=IP:10.0.2.2,DNS:localhost"
+    -addext "subjectAltName=IP:10.0.2.2" \
+    -addext "basicConstraints=CA:true"
 ```
 
 This command creates both the private key (`key.pem`) and the certificate (`cert.pem`) in one step, using the subject and SANs specified directly in the command line.

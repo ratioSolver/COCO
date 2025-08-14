@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
 import it.cnr.coco.api.CoCo;
 import it.cnr.coco.api.Item;
@@ -274,7 +275,7 @@ public class Connection extends WebSocketListener {
                 Log.d(TAG, "FCM token retrieved successfully");
                 String fcm_token = task.getResult();
                 Log.d(TAG, "FCM Token: " + fcm_token);
-                newToken(token, fcm_token);
+                Executors.newSingleThreadExecutor().execute(() -> newToken(token, fcm_token));
             } else
                 Log.e("Connection", "Failed to get FCM token", task.getException());
         });

@@ -13,13 +13,15 @@ logger.addHandler(handler)
 def create_types(session, url):
     types = [
         {'name': 'User', 'static_properties': { 'name': {'type': 'string'}, 'age': {'type': 'int'}}},
-        {'name': 'Robot', 'static_properties': {
-            'saying': {'type': 'string'},
-            'understood': {'type': 'string'},
-            'robot_face': {'type': 'symbol', 'values': ['happy', 'sad', 'angry', 'surprised', 'neutral']},
-            'user': {'type': 'item', 'domain': 'User'},
-            'listening': {'type': 'bool'}
-        }}
+        {'name': 'Robot', 'static_properties': { 'name': {'type': 'string'}},
+            'dynamic_properties': {
+                'saying': {'type': 'string'},
+                'understood': {'type': 'string'},
+                'robot_face': {'type': 'symbol', 'values': ['happy_talking', 'happy', 'idle', 'laugh', 'listening', 'sad_talking', 'sad', 'talking']},
+                'user': {'type': 'item', 'domain': 'User'},
+                'listening': {'type': 'bool'}
+            }
+        }
     ]
     for type in types:
         response = session.post(url + '/types', json=type)
@@ -51,7 +53,7 @@ def create_entities(session, url):
         {'name': 'user_name', 'type': 'string', 'description': "The name of the user. Don't set this entity if the user is not saying his/her name"},
         {'name': 'user_age', 'type': 'int', 'description': "The age of the user. Don't set this entity if the user is not saying his/her age"},
         {'name': 'robot_response', 'type': 'string', 'description': "Always set this entity with a message in italian answering, commenting or requesting for clarification to the user's input, in the same tone used by the user. Try to be creative and funny."},
-        {'name': 'robot_face', 'type': 'symbol', 'values': ['happy_talking', 'happy', 'idle', 'laugh', 'listening', 'sad_talking', 'sad', 'talking'], 'description': "Always set this entity with the face of the robot according to the robot's message. Set this entity to a string among: 'happy', 'sad', 'angry', 'surprised', 'neutral'. This entity is used to set the face of the robot."},
+        {'name': 'robot_face', 'type': 'symbol', 'description': "Always set this entity with the face of the robot according to the robot's message. Set this entity to a string among: 'happy_talking', 'happy', 'idle', 'laugh', 'listening', 'sad_talking', 'sad', 'talking'. This entity is used to set the face of the robot."},
         {'name': 'robot_ask', 'type': 'bool', 'description': "Always set this entity to true if the robot is asking a question. Set this entity to false if the robot is not asking a question."}
     ]
     for entity in entities:
@@ -74,6 +76,29 @@ def create_slots(session, url):
             return
         logger.info(f'Slot {slot["name"]} created successfully')
 
+def create_items(session, url):
+    response = session.post(url + '/items', json={'type': 'User'})
+    if response.status_code != 201:
+        logger.error('Failed to create User item')
+        return
+    user_id = response.text
+    logger.info('User item created successfully with ID: ' + user_id)
+
+    response = session.post(url + '/items', json={'type': 'Robot', 'properties': {'name': 'Robot'}})
+    if response.status_code != 201:
+        logger.error('Failed to create Robot item')
+        return
+    robot_id = response.text
+    logger.info('Robot item created successfully with ID: ' + robot_id)
+    
+    response = session.post(url + '/data/' + robot_id, json={
+        'robot_face': 'idle',
+        'user': user_id
+    })
+    if response.status_code != 204:
+        logger.error('Failed to set initial data for Robot item')
+        return
+
 
 if __name__ == '__main__':
     url = sys.argv[1] if len(sys.argv) > 1 else 'https://192.168.100.17:8080'
@@ -84,3 +109,4 @@ if __name__ == '__main__':
     create_intents(session, url)
     create_entities(session, url)
     create_slots(session, url)
+    create_items(session, url)

@@ -117,8 +117,12 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
     public void new_item(Item item) {
         if (item.getType().getName().equals("Robot")) {
             Log.d(TAG, "New robot item received: " + item.getId());
-            language = new Language(this, item); // Initialize the Language class to handle speech and text-to-speech
-            face = new Face(this, item, robotFace); // Initialize the Face class to handle robot's face
+            runOnUiThread(() -> {
+                // Initialize the Language class to handle speech and text-to-speech
+                language = new Language(this, item);
+                // Initialize the Face class to handle robot's face
+                face = new Face(this, item, robotFace);
+            });
         }
     }
 

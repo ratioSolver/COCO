@@ -76,10 +76,10 @@ public class CoCo implements ConnectionListener {
         items.clear();
         for (JsonElement itemElement : itemArray) {
             JsonObject itemObject = itemElement.getAsJsonObject();
-            items.put(itemObject.get("id").getAsString(),
-                    new Item(itemObject.get("id").getAsString(),
-                            Objects.requireNonNull(types.get(itemObject.get("type").getAsString())),
-                            itemObject.get("data")));
+            Type type = Objects.requireNonNull(types.get(itemObject.get("type").getAsString()));
+            Item item = new Item(itemObject.get("id").getAsString(), type, itemObject.get("data"));
+            items.put(itemObject.get("id").getAsString(), item);
+            type.instances.add(item);
         }
     }
 
@@ -105,12 +105,13 @@ public class CoCo implements ConnectionListener {
                 }
                 if (message.has("items")) {
                     items.clear();
-                    for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("items").entrySet())
-                        items.put(entry.getKey(),
-                                new Item(entry.getKey(),
-                                        Objects.requireNonNull(types
-                                                .get(entry.getValue().getAsJsonObject().get("type").getAsString())),
-                                        entry.getValue().getAsJsonObject().get("data")));
+                    for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("items").entrySet()) {
+                        Type type = Objects.requireNonNull(
+                                types.get(entry.getValue().getAsJsonObject().get("type").getAsString()));
+                        Item item = new Item(entry.getKey(), type, entry.getValue().getAsJsonObject().get("data"));
+                        items.put(entry.getKey(), item);
+                        type.instances.add(item);
+                    }
                 }
                 break;
             case "new_type":
@@ -125,25 +126,25 @@ public class CoCo implements ConnectionListener {
             Collection<Type> parents = new HashSet<>();
             for (JsonElement parent : type_message.getAsJsonArray("parents"))
                 parents.add(Objects.requireNonNull(types.get(parent.getAsString())));
-            type.setParents(parents);
+            type.parents = parents;
         }
         if (type_message.has("static_properties")) {
-            Map<String, Property> staticProperties = new HashMap<>();
+            Map<String, Property> static_properties = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : type_message.getAsJsonObject("static_properties").entrySet())
-                staticProperties.put(entry.getKey(),
+                static_properties.put(entry.getKey(),
                         Objects.requireNonNull(
                                 propertyTypes.get(entry.getValue().getAsJsonObject().get("type").getAsString()))
                                 .createProperty(this, entry.getValue()));
-            type.setStaticProperties(staticProperties);
+            type.static_properties = static_properties;
         }
         if (type_message.has("dynamic_properties")) {
-            Map<String, Property> dynamicProperties = new HashMap<>();
+            Map<String, Property> dynamic_properties = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : type_message.getAsJsonObject("dynamic_properties").entrySet())
-                dynamicProperties.put(entry.getKey(),
+                dynamic_properties.put(entry.getKey(),
                         Objects.requireNonNull(
                                 propertyTypes.get(entry.getValue().getAsJsonObject().get("type").getAsString()))
                                 .createProperty(this, entry.getValue()));
-            type.setDynamicProperties(dynamicProperties);
+            type.dynamic_properties = dynamic_properties;
         }
     }
 

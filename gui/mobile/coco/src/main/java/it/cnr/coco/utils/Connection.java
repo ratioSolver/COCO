@@ -160,6 +160,18 @@ public class Connection extends WebSocketListener {
         }
     }
 
+    /**
+     * Fetches types from the server.
+     * Constructs a GET request to the /types endpoint and retrieves the types as a
+     * JsonArray.
+     * If the request is successful, updates the CoCo instance with the fetched
+     * types.
+     *
+     * @param token the authentication token (can be null)
+     * @return a collection of fetched types, or an empty collection if the request
+     *         fails
+     */
+    @NonNull
     public Collection<Type> getTypes(String token) {
         Log.d(TAG, "Fetching types from server");
         final Request.Builder builder = new Request.Builder().url(Settings.getInstance().getHost() + "/types").get();
@@ -177,6 +189,19 @@ public class Connection extends WebSocketListener {
         return new HashSet<>();
     }
 
+    /**
+     * Fetches items from the server with optional filters.
+     * Constructs a URL with the specified filters and sends a GET request to the
+     * /items endpoint.
+     * If the request is successful, updates the CoCo instance with the fetched
+     * items.
+     *
+     * @param filters a map of filters to apply (can be empty)
+     * @param token   the authentication token (can be null)
+     * @return a collection of fetched items, or an empty collection if the request
+     *         fails
+     */
+    @NonNull
     public Collection<Item> getItems(Map<String, String> filters, String token) {
         Log.d(TAG, "Fetching items from server" + (filters.isEmpty() ? "" : " with filters: " + filters));
         StringBuilder urlBuilder = new StringBuilder(Settings.getInstance().getHost() + "/items");
@@ -201,6 +226,15 @@ public class Connection extends WebSocketListener {
         return new HashSet<>();
     }
 
+    /**
+     * Adds a new FCM token for the user with the specified ID.
+     * Sends a POST request to the server's /fcm_tokens endpoint with the user ID
+     * and
+     * token as JSON.
+     *
+     * @param id    the user ID (must not be null)
+     * @param token the FCM token to add (must not be null)
+     */
     public void newToken(@NonNull String id, @NonNull String token) {
         Log.d(TAG, "Adding new token for user ID: " + id);
         final Map<String, String> body = new HashMap<>();
@@ -220,6 +254,14 @@ public class Connection extends WebSocketListener {
         }
     }
 
+    /**
+     * Connects to the WebSocket server using the provided token.
+     * If the token is null, it connects without authentication.
+     * Notifies registered {@link ConnectionListener}s of connection success or
+     * failure.
+     *
+     * @param token the authentication token (can be null)
+     */
     public void connect(String token) {
         this.token = token;
         if (socket != null)
@@ -266,11 +308,11 @@ public class Connection extends WebSocketListener {
     @Override
     public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
         Log.d(TAG, "WebSocket connection opened");
-        Map<String, String> body = new HashMap<>();
-        body.put(MSG_TYPE, "login");
-        body.put("token", token);
-        webSocket.send(gson.toJson(body));
-        if (Settings.getInstance().hasUsers())
+        if (Settings.getInstance().hasUsers()) { // If there are users, send the login message
+            Map<String, String> body = new HashMap<>();
+            body.put(MSG_TYPE, "login");
+            body.put("token", token);
+            webSocket.send(gson.toJson(body));
             FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
                 if (task.isSuccessful()) {
                     Log.d(TAG, "FCM token retrieved successfully");
@@ -280,6 +322,11 @@ public class Connection extends WebSocketListener {
                 } else
                     Log.e("Connection", "Failed to get FCM token", task.getException());
             });
+        } else { // No users, just notify listeners
+            connected = true;
+            for (ConnectionListener listener : listeners)
+                listener.onConnectionEstablished();
+        }
     }
 
     @Override

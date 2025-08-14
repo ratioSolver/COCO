@@ -42,7 +42,7 @@ public class Connection extends WebSocketListener {
     public static final String COCO_CONNECTION = "coco_connection";
     private static final String TAG = "Connection";
     public static final String MSG_TYPE = "msg_type";
-    private static final int RECONNECT_DELAY_MS = 5000; // 5 seconds
+    private static final int RECONNECT_DELAY_MS = 60000; // 1 minute
     private static final Gson gson = new Gson();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final OkHttpClient client;

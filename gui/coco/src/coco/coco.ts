@@ -6,10 +6,11 @@ export namespace coco {
 
     private static instance: CoCo;
     private readonly property_types = new Map<string, taxonomy.PropertyType<any>>();
-    private readonly types: Map<string, taxonomy.Type>;
-    private readonly items: Map<string, taxonomy.Item>;
-    private readonly intents: Map<string, llm.Intent>;
-    private readonly entities: Map<string, llm.Entity>;
+    private readonly types: Map<string, taxonomy.Type> = new Map();
+    private readonly items: Map<string, taxonomy.Item> = new Map();
+    private readonly intents: Map<string, llm.Intent> = new Map();
+    private readonly entities: Map<string, llm.Entity> = new Map();
+    private readonly slots: Map<string, llm.Slot> = new Map();
     private readonly coco_listeners: Set<CoCoListener> = new Set();
 
     private constructor() {
@@ -20,10 +21,6 @@ export namespace coco {
       this.add_property_type(new taxonomy.SymbolPropertyType(this));
       this.add_property_type(new taxonomy.ItemPropertyType(this));
       this.add_property_type(new taxonomy.JSONPropertyType(this));
-      this.types = new Map();
-      this.items = new Map();
-      this.intents = new Map();
-      this.entities = new Map();
     }
 
     static get_instance() {
@@ -63,6 +60,11 @@ export namespace coco {
     new_entity(entity: llm.Entity): void {
       this.entities.set(entity.get_name(), entity);
       for (const listener of this.coco_listeners) listener.new_entity(entity);
+    }
+
+    new_slot(slot: llm.Slot): void {
+      this.slots.set(slot.get_name(), slot);
+      for (const listener of this.coco_listeners) listener.new_slot(slot);
     }
 
     /**
@@ -221,6 +223,7 @@ export namespace coco {
 
     new_intent(intent: llm.Intent): void;
     new_entity(entity: llm.Entity): void;
+    new_slot(slot: llm.Slot): void;
   }
 
   export namespace taxonomy {
@@ -734,6 +737,26 @@ export namespace coco {
       get_name(): string { return this.name; }
       get_type(): EntityType { return this.type; }
       get_description(): string { return this.description; }
+    }
+
+    export class Slot {
+
+      private readonly name: string;
+      private readonly type: EntityType;
+      private readonly description: string;
+      private readonly influence_context: boolean;
+
+      constructor(name: string, type: EntityType, description: string, influence_context: boolean) {
+        this.name = name;
+        this.type = type;
+        this.description = description;
+        this.influence_context = influence_context;
+      }
+
+      get_name(): string { return this.name; }
+      get_type(): EntityType { return this.type; }
+      get_description(): string { return this.description; }
+      is_influencing_context(): boolean { return this.influence_context; }
     }
   }
 }

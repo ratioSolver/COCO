@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat;
 import com.google.gson.JsonObject;
 
 import it.cnr.coco.api.CoCo;
+import it.cnr.coco.api.CoCoListener;
 import it.cnr.coco.api.Item;
 import it.cnr.coco.api.Type;
 
@@ -33,7 +34,7 @@ import it.cnr.coco.utils.Settings;
 import java.util.ArrayList;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements ConnectionListener {
+public class MainActivity extends AppCompatActivity implements CoCoListener, ConnectionListener {
 
     private static final String TAG = "MainActivity";
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
@@ -74,6 +75,8 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
                 }
             } else
                 Connection.getInstance().connect(null);
+
+        CoCo.getInstance().addListener(this); // Register this activity as a listener for CoCo events
     }
 
     @Override
@@ -107,10 +110,20 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
     }
 
     @Override
+    public void new_type(Type type) {
+    }
+
+    @Override
+    public void new_item(Item item) {
+        if (item.getType().getName().equals("Robot")) {
+            Log.d(TAG, "New robot item received: " + item.getId());
+            language = new Language(this, item); // Initialize the Language class to handle speech and text-to-speech
+            face = new Face(this, item, robotFace); // Initialize the Face class to handle robot's face
+        }
+    }
+
+    @Override
     public void onConnectionEstablished() {
-        Item item = CoCo.getInstance().getType("Robot").getInstances().iterator().next();
-        language = new Language(this, item); // Initialize the Language class to handle speech and text-to-speech
-        face = new Face(this, item, robotFace); // Initialize the Face class to handle robot's face
     }
 
     @Override
@@ -167,5 +180,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionListene
             face.destroy(); // Clean up the Face instance
         // Unregister this activity as a listener for connection events
         Connection.getInstance().removeListener(this);
+        // Unregister this activity as a listener for CoCo events
+        CoCo.getInstance().removeListener(this);
     }
 }

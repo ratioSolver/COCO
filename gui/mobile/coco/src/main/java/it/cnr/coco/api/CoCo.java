@@ -21,6 +21,7 @@ public class CoCo implements ConnectionListener {
     private final Map<String, PropertyType> propertyTypes = new HashMap<>();
     private final Map<String, Type> types = new HashMap<>();
     private final Map<String, Item> items = new HashMap<>();
+    private final Collection<CoCoListener> listeners = new HashSet<>();
 
     private CoCo() {
         registerPropertyType(new BoolPropertyType());
@@ -59,9 +60,12 @@ public class CoCo implements ConnectionListener {
         }
         for (JsonElement typeElement : typeArray) {
             JsonObject typeObject = typeElement.getAsJsonObject();
-            refineType(Objects.requireNonNull(types.get(typeObject.get("name").getAsString())),
-                    typeObject);
+            Type type = Objects.requireNonNull(types.get(typeObject.get("name").getAsString()));
+            refineType(type, typeObject);
         }
+        for (Type type : types.values())
+            for (CoCoListener listener : listeners)
+                listener.new_type(type);
     }
 
     public Collection<Item> getItems() {
@@ -80,6 +84,8 @@ public class CoCo implements ConnectionListener {
             Item item = new Item(itemObject.get("id").getAsString(), type, itemObject.get("data"));
             items.put(itemObject.get("id").getAsString(), item);
             type.instances.add(item);
+            for (CoCoListener listener : listeners)
+                listener.new_item(item);
         }
     }
 
@@ -102,6 +108,9 @@ public class CoCo implements ConnectionListener {
                     for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("types").entrySet())
                         refineType(Objects.requireNonNull(types.get(entry.getKey())),
                                 entry.getValue().getAsJsonObject());
+                    for (Type type : types.values())
+                        for (CoCoListener listener : listeners)
+                            listener.new_type(type);
                 }
                 if (message.has("items")) {
                     items.clear();
@@ -111,12 +120,25 @@ public class CoCo implements ConnectionListener {
                         Item item = new Item(entry.getKey(), type, entry.getValue().getAsJsonObject().get("data"));
                         items.put(entry.getKey(), item);
                         type.instances.add(item);
+                        for (CoCoListener listener : listeners)
+                            listener.new_item(item);
                     }
                 }
                 break;
             case "new_type":
+                Type type = new Type(message.get("name").getAsString(), null, message.get("data"), null, null);
+                types.put(message.get("name").getAsString(), type);
+                refineType(type, message);
+                for (CoCoListener listener : listeners)
+                    listener.new_type(type);
                 break;
             case "new_item":
+                Type itemType = Objects.requireNonNull(types.get(message.get("type").getAsString()));
+                Item item = new Item(message.get("id").getAsString(), itemType, message.get("data"));
+                items.put(message.get("id").getAsString(), item);
+                itemType.instances.add(item);
+                for (CoCoListener listener : listeners)
+                    listener.new_item(item);
                 break;
         }
     }
@@ -154,5 +176,13 @@ public class CoCo implements ConnectionListener {
 
     @Override
     public void onConnectionClosed() {
+    }
+
+    public void addListener(@NonNull CoCoListener listener) {
+        listeners.add(listener);
+    }
+
+    public void removeListener(@NonNull CoCoListener listener) {
+        listeners.remove(listener);
     }
 }

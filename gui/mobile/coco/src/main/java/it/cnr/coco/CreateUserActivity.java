@@ -49,6 +49,9 @@ public class CreateUserActivity extends Activity implements ConnectionListener {
     @Override
     public void onConnectionFailed(String errorMessage) {
         runOnUiThread(() -> Toast.makeText(this, "User creation failed: " + errorMessage, Toast.LENGTH_LONG).show());
+        Intent intent = new Intent(this, SettingsActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
     }
 
     @Override

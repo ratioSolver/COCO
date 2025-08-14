@@ -20,7 +20,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Executors;
 
 import it.cnr.coco.api.CoCo;
@@ -50,7 +49,7 @@ public class Connection extends WebSocketListener {
     private WebSocket socket;
     private String token;
     private boolean connected = false;
-    private final Set<ConnectionListener> listeners = new HashSet<>();
+    private final Collection<ConnectionListener> listeners = new HashSet<>();
 
     private Connection() {
         client = new OkHttpClient();

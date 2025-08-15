@@ -121,7 +121,7 @@ public class Language extends UtteranceProgressListener
     public void onDone(String utteranceId) {
         Log.d(TAG, "TextToSpeech done: " + utteranceId);
         JsonObject message = new JsonObject();
-        message.add(SAYING, "");
+        message.addProperty(SAYING, "");
         Executors.newSingleThreadExecutor().execute(() -> Connection.getInstance().publish(item, message));
     }
 

@@ -35,7 +35,7 @@ namespace coco
 #endif
     {
         add_route(network::Get, "^/$", std::bind(&coco_server::index, this, network::placeholders::request));
-        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png", std::bind(&coco_server::assets, this, network::placeholders::request));
+        add_route(network::Get, "^(/assets/.+)|/.+\\.ico|/.+\\.png|/.+\\.gif", std::bind(&coco_server::assets, this, network::placeholders::request));
 
         add_route(network::Get, "^/types$", std::bind(&coco_server::get_types, this, network::placeholders::request));
         add_route(network::Get, "^/types/.*$", std::bind(&coco_server::get_type, this, network::placeholders::request));

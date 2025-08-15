@@ -88,7 +88,7 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        if (face != null) // Set the face view for the robot
+        if (face != null && findViewById(R.id.robot_face) != null) // Set the face view for the robot
             face.setFaceView(findViewById(R.id.robot_face));
     }
 

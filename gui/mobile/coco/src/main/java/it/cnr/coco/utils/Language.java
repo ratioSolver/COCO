@@ -21,8 +21,6 @@ import com.google.gson.JsonObject;
 
 import it.cnr.coco.api.Item;
 
-import java.util.Locale;
-
 public class Language extends UtteranceProgressListener
         implements OnInitListener, RecognitionListener, ConnectionListener {
 

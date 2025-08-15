@@ -31,13 +31,11 @@ public class Face implements View.OnClickListener, ConnectionListener {
 
     public void setFaceView(@NonNull ImageView face) {
         this.face = face;
-        if (face != null) {
-            if (item.getValue() != null && item.getValue().data() != null) {
-                String faceImage = item.getValue().data().getAsJsonObject().get("face").getAsString();
-                Glide.with(context).load(faceImage).into(face);
-            }
-            face.setOnClickListener(this);
+        if (item.getValue() != null && item.getValue().data() != null) {
+            String faceImage = item.getValue().data().getAsJsonObject().get("robot_face").getAsString();
+            Glide.with(context).load(faceImage).into(face);
         }
+        face.setOnClickListener(this);
     }
 
     public void updateFace(String faceImage) {
@@ -60,8 +58,8 @@ public class Face implements View.OnClickListener, ConnectionListener {
     public void onReceivedMessage(@NonNull JsonObject message) {
         String msgType = message.getAsJsonPrimitive(Connection.MSG_TYPE).getAsString();
         if ("new_data".equals(msgType) && message.getAsJsonPrimitive("id").getAsString().equals(item.getId())) {
-            if (message.has("face"))
-                updateFace(message.getAsJsonPrimitive("face").getAsString());
+            if (message.has("robot_face"))
+                updateFace(message.getAsJsonPrimitive("robot_face").getAsString());
         }
     }
 

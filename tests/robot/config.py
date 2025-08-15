@@ -105,7 +105,7 @@ def create_rules(session, url):
         },
         { # This rule is used to set the listening state of the robot.
             'name': 'set_listening',
-            'content': '(defrule set_listening ?f <- (entity (item_id ?robot) (name robot_ask) (value ?value)) => (add_data ?robot (create$ listening) (create$ ?value)) (retract ?f))'
+            'content': '(defrule set_listening (Robot_has_saying (saying "")) ?f <- (entity (item_id ?robot) (name robot_ask) (value ?value)) => (add_data ?robot (create$ listening face) (create$ ?value idle.gif)) (retract ?f))'
         }
     ]
     for rule in rules:

@@ -31,14 +31,14 @@ public class Face implements View.OnClickListener, ConnectionListener {
         this.face = face;
         if (item.getValue() != null && item.getValue().data() != null) {
             String faceImage = item.getValue().data().getAsJsonObject().get("face").getAsString();
-            Glide.with(context).load(Settings.getInstance().getHost() + "/assets/" + faceImage).into(face);
+            Glide.with(context).load(Settings.getInstance().getHost() + "/" + faceImage).into(face);
         }
         face.setOnClickListener(this);
     }
 
     public void updateFace(String faceImage) {
         if (face != null)
-            Glide.with(context).load(Settings.getInstance().getHost() + "/assets/" + faceImage).into(face);
+            Glide.with(context).load(Settings.getInstance().getHost() + "/" + faceImage).into(face);
     }
 
     @Override

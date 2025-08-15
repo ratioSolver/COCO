@@ -12,6 +12,8 @@ import com.google.gson.JsonObject;
 
 import it.cnr.coco.api.Item;
 
+import java.util.concurrent.Executors;
+
 public class Face implements View.OnClickListener, ConnectionListener {
 
     private static final String TAG = "Face";
@@ -45,7 +47,7 @@ public class Face implements View.OnClickListener, ConnectionListener {
     public void onClick(View view) {
         JsonObject message = new JsonObject();
         message.addProperty("listening", true);
-        Connection.getInstance().publish(item, message);
+        Executors.newSingleThreadExecutor().execute(() -> Connection.getInstance().publish(item, message));
     }
 
     @Override

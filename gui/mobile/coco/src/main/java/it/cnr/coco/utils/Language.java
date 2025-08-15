@@ -21,6 +21,8 @@ import com.google.gson.JsonObject;
 
 import it.cnr.coco.api.Item;
 
+import java.util.concurrent.Executors;
+
 public class Language extends UtteranceProgressListener
         implements OnInitListener, RecognitionListener, ConnectionListener {
 
@@ -78,7 +80,7 @@ public class Language extends UtteranceProgressListener
             Log.d(TAG, "Speech results: " + matches.get(0));
             JsonObject message = new JsonObject();
             message.addProperty(UNDERSTOOD, matches.get(0));
-            Connection.getInstance().publish(item, message);
+            Executors.newSingleThreadExecutor().execute(() -> Connection.getInstance().publish(item, message));
         }
     }
 
@@ -118,7 +120,7 @@ public class Language extends UtteranceProgressListener
         Log.d(TAG, "TextToSpeech done: " + utteranceId);
         JsonObject message = new JsonObject();
         message.add(SAYING, JsonNull.INSTANCE);
-        Connection.getInstance().publish(item, message);
+        Executors.newSingleThreadExecutor().execute(() -> Connection.getInstance().publish(item, message));
     }
 
     @Override

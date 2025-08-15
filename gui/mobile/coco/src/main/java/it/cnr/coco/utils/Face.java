@@ -1,6 +1,8 @@
 package it.cnr.coco.utils;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.ImageView;
 
@@ -60,7 +62,8 @@ public class Face implements View.OnClickListener, ConnectionListener {
         if ("new_data".equals(msgType) && message.getAsJsonPrimitive("id").getAsString().equals(item.getId())) {
             JsonObject value = message.getAsJsonObject("value").get("data").getAsJsonObject();
             if (value.has("face"))
-                updateFace(value.getAsJsonPrimitive("face").getAsString());
+                new Handler(Looper.getMainLooper())
+                        .post(() -> updateFace(value.getAsJsonPrimitive("face").getAsString()));
         }
     }
 

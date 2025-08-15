@@ -31,8 +31,13 @@ public class Face implements View.OnClickListener, ConnectionListener {
 
     public void setFaceView(@NonNull ImageView face) {
         this.face = face;
-        if (face != null)
+        if (face != null) {
+            if (item.getValue() != null && item.getValue().data() != null) {
+                String faceImage = item.getValue().data().getAsJsonObject().get("face").getAsString();
+                Glide.with(context).load(faceImage).into(face);
+            }
             face.setOnClickListener(this);
+        }
     }
 
     public void updateFace(String faceImage) {

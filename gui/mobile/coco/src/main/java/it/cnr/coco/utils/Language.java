@@ -136,14 +136,15 @@ public class Language extends UtteranceProgressListener
     public void onReceivedMessage(@NonNull JsonObject message) {
         String msgType = message.getAsJsonPrimitive(Connection.MSG_TYPE).getAsString();
         if ("new_data".equals(msgType) && message.getAsJsonPrimitive("id").getAsString().equals(item.getId())) {
-            if (message.has(SAYING) && !message.get(SAYING).isJsonNull()) {
+            JsonObject value = message.getAsJsonObject("value");
+            if (value.has(SAYING)) {
                 String saying = message.getAsJsonPrimitive(SAYING).getAsString();
                 Log.d(TAG, "Received saying: " + saying);
                 if (textToSpeech.speak(saying, TextToSpeech.QUEUE_FLUSH, null,
                         "utterance-" + System.currentTimeMillis()) == TextToSpeech.ERROR)
                     Log.e(TAG, "TextToSpeech speak returned ERROR");
             }
-            if (message.has(LISTENING) && message.get(LISTENING).getAsBoolean()) {
+            if (value.has(LISTENING) && value.get(LISTENING).getAsBoolean()) {
                 Log.d(TAG, "Listening for speech");
                 Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);

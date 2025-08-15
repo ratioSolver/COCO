@@ -83,6 +83,10 @@ def create_rules(session, url):
             'name': 'understand',
             'content': '(defrule understand (Robot_has_understood (item_id ?robot) (understood ?understood)) => (understand ?robot ?understood) (add_data ?robot (create$ understood) (create$ nil)))'
         },
+        {
+            'name': 'listen',
+            'content': '(defrule listen (Robot_has_listening (item_id ?robot) (listening TRUE)) => (add_data ?robot (create$ face) (create$ listening.gif)))'
+        },
         { # This rule is used to set the age of the user.
             'name': 'set_age',
             'content': '(defrule set_age ?f <- (entity (item_id ?robot) (name user_age) (value ?value)) (Robot_has_user (item_id ?robot) (user ?user)) => (set_slots ?robot (create$ user_age) (create$ ?value)) (set_properties ?user (create$ age) (create$ ?value)) (retract ?f))'
@@ -100,8 +104,8 @@ def create_rules(session, url):
             'content': '(defrule set_face ?f <- (entity (item_id ?robot) (name robot_face) (value ?value)) => (add_data ?robot (create$ face) (create$ ?value)) (retract ?f))'
         },
         { # This rule is used to set the listening state of the robot.
-            'name': 'set_robot_listening',
-            'content': '(defrule set_robot_listening ?f <- (entity (item_id ?robot) (name robot_ask) (value ?value)) => (add_data ?robot (create$ listening) (create$ ?value)) (retract ?f))'
+            'name': 'set_listening',
+            'content': '(defrule set_listening ?f <- (entity (item_id ?robot) (name robot_ask) (value ?value)) => (add_data ?robot (create$ listening) (create$ ?value)) (retract ?f))'
         }
     ]
     for rule in rules:

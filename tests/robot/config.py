@@ -17,7 +17,7 @@ def create_types(session, url):
             'dynamic_properties': {
                 'saying': {'type': 'string'},
                 'understood': {'type': 'string'},
-                'robot_face': {'type': 'symbol', 'values': ['happy_talking.gif', 'happy.gif', 'idle.gif', 'laugh.gif', 'listening.gif', 'sad_talking.gif', 'sad.gif', 'talking.gif']},
+                'face': {'type': 'symbol', 'values': ['happy_talking.gif', 'happy.gif', 'idle.gif', 'laugh.gif', 'listening.gif', 'sad_talking.gif', 'sad.gif', 'talking.gif']},
                 'user': {'type': 'item', 'domain': 'User'},
                 'listening': {'type': 'bool'}
             }
@@ -92,12 +92,12 @@ def create_rules(session, url):
             'content': '(defrule set_name ?f <- (entity (item_id ?robot) (name user_name) (value ?value)) (Robot_has_user (item_id ?robot) (user ?user)) => (set_slots ?robot (create$ user_name) (create$ ?value)) (set_properties ?user (create$ name) (create$ ?value)) (retract ?f))'
         },
         { # This rule is used to set the response of the robot.
-            'name': 'set_robot_response',
-            'content': '(defrule set_robot_response ?f <- (entity (item_id ?robot) (name robot_response) (value ?value)) => (add_data ?robot (create$ saying) (create$ ?value)) (retract ?f))'
+            'name': 'set_response',
+            'content': '(defrule set_response ?f <- (entity (item_id ?robot) (name robot_response) (value ?value)) => (add_data ?robot (create$ saying) (create$ ?value)) (retract ?f))'
         },
         { # This rule is used to set the face of the robot.
-            'name': 'set_robot_face',
-            'content': '(defrule set_robot_face ?f <- (entity (item_id ?robot) (name robot_face) (value ?value)) => (add_data ?robot (create$ robot_face) (create$ ?value)) (retract ?f))'
+            'name': 'set_face',
+            'content': '(defrule set_face ?f <- (entity (item_id ?robot) (name robot_face) (value ?value)) => (add_data ?robot (create$ face) (create$ ?value)) (retract ?f))'
         },
         { # This rule is used to set the listening state of the robot.
             'name': 'set_robot_listening',
@@ -128,7 +128,7 @@ def create_items(session, url):
     logger.info('Robot item created successfully with ID: ' + robot_id)
 
     response = session.post(url + '/data/' + robot_id, json={
-        'robot_face': 'idle.gif',
+        'face': 'idle.gif',
         'user': user_id
     })
     if response.status_code != 204:

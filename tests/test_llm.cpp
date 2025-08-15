@@ -84,7 +84,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     auto &s_tp = cc.create_type("SourceType", {}, json::json(), json::json{{"parent", {{"type", "item"}, {"domain", "ParentType"}}}});
     auto &s_itm = cc.create_item(s_tp);
-    cc.set_value(s_itm, json::json{{"parent", ch_itm.get_id()}});
+    cc.set_value(s_itm, json::json{{"parent", itm_1.get_id()}});
 
 #ifdef INTERACTIVE_TEST
     std::string user_input;

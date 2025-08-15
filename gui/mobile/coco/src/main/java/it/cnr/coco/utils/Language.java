@@ -140,7 +140,7 @@ public class Language extends UtteranceProgressListener
         if ("new_data".equals(msgType) && message.getAsJsonPrimitive("id").getAsString().equals(item.getId())) {
             JsonObject value = message.getAsJsonObject("value").get("data").getAsJsonObject();
             if (value.has(SAYING)) {
-                String saying = message.getAsJsonPrimitive(SAYING).getAsString();
+                String saying = value.getAsJsonPrimitive(SAYING).getAsString();
                 Log.d(TAG, "Received saying: " + saying);
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (textToSpeech.speak(saying, TextToSpeech.QUEUE_FLUSH, null,

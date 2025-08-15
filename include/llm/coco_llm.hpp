@@ -76,7 +76,7 @@ namespace coco
     std::map<std::string, std::unique_ptr<slot>, std::less<>> slots;      // The slots
     std::map<std::string, std::map<std::string, Fact *>> slot_facts;      // The facts representing the slots for each item
     std::unordered_map<std::string, json::json> current_slots;            // The slots for each item
-    network::client client;                                               // The client used to communicate with the LLM server
+    network::ssl_client client;                                           // The client used to communicate with the LLM server
 
 #ifdef BUILD_LISTENERS
     std::vector<llm_listener *> listeners; // The LLM listeners..

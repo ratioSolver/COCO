@@ -82,8 +82,9 @@ public class CoCo implements ConnectionListener {
         for (JsonElement itemElement : itemArray) {
             JsonObject itemObject = itemElement.getAsJsonObject();
             Type type = Objects.requireNonNull(types.get(itemObject.get("type").getAsString()));
-            Value value = itemObject.has("value") ? new Value(itemObject.get("value"),
-                    Instant.ofEpochMilli(itemObject.get("timestamp").getAsLong())) : null;
+            Value value = itemObject.has("value") ? new Value(itemObject.get("value").getAsJsonObject().get("data"),
+                    Instant.ofEpochMilli(itemObject.get("value").getAsJsonObject().get("timestamp").getAsLong()))
+                    : null;
             Item item = new Item(itemObject.get("id").getAsString(), type, itemObject.get("data"), value);
             items.put(itemObject.get("id").getAsString(), item);
             type.instances.add(item);
@@ -121,8 +122,9 @@ public class CoCo implements ConnectionListener {
                         JsonObject itemObject = entry.getValue().getAsJsonObject();
                         Type type = Objects.requireNonNull(types.get(itemObject.get("type").getAsString()));
                         Value value = itemObject.has("value")
-                                ? new Value(itemObject.get("value"),
-                                        Instant.ofEpochMilli(itemObject.get("timestamp").getAsLong()))
+                                ? new Value(itemObject.get("value").getAsJsonObject().get("data"),
+                                        Instant.ofEpochMilli(
+                                                itemObject.get("value").getAsJsonObject().get("timestamp").getAsLong()))
                                 : null;
                         Item item = new Item(entry.getKey(), type, itemObject.get("data"), value);
                         items.put(entry.getKey(), item);
@@ -142,7 +144,9 @@ public class CoCo implements ConnectionListener {
             case "new_item":
                 Type itemType = Objects.requireNonNull(types.get(message.get("type").getAsString()));
                 Value itemValue = message.has("value")
-                        ? new Value(message.get("value"), Instant.ofEpochMilli(message.get("timestamp").getAsLong()))
+                        ? new Value(message.get("value").getAsJsonObject().get("data"),
+                                Instant.ofEpochMilli(
+                                        message.get("value").getAsJsonObject().get("timestamp").getAsLong()))
                         : null;
                 Item item = new Item(message.get("id").getAsString(), itemType, message.get("data"), itemValue);
                 items.put(message.get("id").getAsString(), item);

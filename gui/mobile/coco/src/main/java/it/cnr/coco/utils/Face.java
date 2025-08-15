@@ -58,7 +58,7 @@ public class Face implements View.OnClickListener, ConnectionListener {
     public void onReceivedMessage(@NonNull JsonObject message) {
         String msgType = message.getAsJsonPrimitive(Connection.MSG_TYPE).getAsString();
         if ("new_data".equals(msgType) && message.getAsJsonPrimitive("id").getAsString().equals(item.getId())) {
-            JsonObject value = message.getAsJsonObject("value");
+            JsonObject value = message.getAsJsonObject("value").get("data").getAsJsonObject();
             if (value.has("face"))
                 updateFace(value.getAsJsonPrimitive("face").getAsString());
         }

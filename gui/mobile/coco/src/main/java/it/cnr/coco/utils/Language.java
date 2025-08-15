@@ -6,6 +6,8 @@ import java.util.Locale;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -140,9 +142,11 @@ public class Language extends UtteranceProgressListener
             if (value.has(SAYING)) {
                 String saying = message.getAsJsonPrimitive(SAYING).getAsString();
                 Log.d(TAG, "Received saying: " + saying);
-                if (textToSpeech.speak(saying, TextToSpeech.QUEUE_FLUSH, null,
-                        "utterance-" + System.currentTimeMillis()) == TextToSpeech.ERROR)
-                    Log.e(TAG, "TextToSpeech speak returned ERROR");
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (textToSpeech.speak(saying, TextToSpeech.QUEUE_FLUSH, null,
+                            "utterance-" + System.currentTimeMillis()) == TextToSpeech.ERROR)
+                        Log.e(TAG, "TextToSpeech speak returned ERROR");
+                });
             }
             if (value.has(LISTENING) && value.get(LISTENING).getAsBoolean()) {
                 Log.d(TAG, "Listening for speech");
@@ -150,7 +154,7 @@ public class Language extends UtteranceProgressListener
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
                 intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-                speechRecognizer.startListening(intent);
+                new Handler(Looper.getMainLooper()).post(() -> speechRecognizer.startListening(intent));
             }
         }
     }

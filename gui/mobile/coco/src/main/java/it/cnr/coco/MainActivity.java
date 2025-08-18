@@ -25,6 +25,7 @@ import it.cnr.coco.api.CoCoListener;
 import it.cnr.coco.api.Item;
 import it.cnr.coco.api.Type;
 
+import it.cnr.coco.utils.Camera;
 import it.cnr.coco.utils.Connection;
 import it.cnr.coco.utils.ConnectionListener;
 import it.cnr.coco.utils.Face;
@@ -38,9 +39,11 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
 
     private static final String TAG = "MainActivity";
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
+    private static final int REQUEST_CAMERA_PERMISSION = 2;
     private Language language; // Instance of the Language class to handle speech and text-to-speech
     private ImageView robotFace; // ImageView for the robot's face
     private Face face; // Instance of the Face class to handle robot's face
+    private Camera camera; // Instance of the Camera class to handle camera operations
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,16 +53,23 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        camera = new Camera(); // Initialize the Camera class
+
         robotFace = findViewById(R.id.robot_face);
 
         Connection.getInstance().addListener(this); // Register this activity as a listener for connection events
 
         // Request microphone permission
         if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
             ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.RECORD_AUDIO },
                     REQUEST_RECORD_AUDIO_PERMISSION);
-        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
+            ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.CAMERA },
+                    REQUEST_CAMERA_PERMISSION);
+        else
+            camera.startCamera(this); // Start the camera if permission is granted
 
         if (!Connection.getInstance().isConnected())
             if (Settings.getInstance().hasUsers()) {
@@ -173,6 +183,14 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
                 finish();
             } else
                 Log.d(TAG, "Microphone permission granted");
+        else if (requestCode == REQUEST_CAMERA_PERMISSION)
+            if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Camera permission is required!", Toast.LENGTH_SHORT).show();
+                finish();
+            } else {
+                Log.d(TAG, "Camera permission granted");
+                camera.startCamera(this); // Start the camera if permission is granted
+            }
     }
 
     @Override
@@ -182,6 +200,7 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
             language.destroy(); // Clean up the Language instance
         if (face != null)
             face.destroy(); // Clean up the Face instance
+        camera.destroy(); // Clean up the Camera instance
         // Unregister this activity as a listener for connection events
         Connection.getInstance().removeListener(this);
         // Unregister this activity as a listener for CoCo events

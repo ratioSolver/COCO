@@ -13,20 +13,29 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gson.JsonObject;
 import com.google.mlkit.vision.face.Face;
 import com.google.mlkit.vision.face.FaceDetection;
 import com.google.mlkit.vision.face.FaceDetector;
 import com.google.mlkit.vision.face.FaceDetectorOptions;
 
+import it.cnr.coco.api.Item;
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 public class Camera {
 
+    private static final String TAG = "Camera";
+    private final Context context;
+    private final Item item;
     private final FaceDetector faceDetector;
 
-    public Camera() {
+    public Camera(@NonNull Context context, @NonNull Item item) {
+        this.context = context;
+        this.item = item;
         FaceDetectorOptions options = new FaceDetectorOptions.Builder()
                 .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
                 .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
@@ -35,7 +44,7 @@ public class Camera {
         faceDetector = FaceDetection.getClient(options);
     }
 
-    public void startCamera(@NonNull Context context) {
+    public void startCamera() {
         ListenableFuture<ProcessCameraProvider> providerFuture = ProcessCameraProvider.getInstance(context);
         providerFuture.addListener(() -> {
             try {
@@ -56,12 +65,22 @@ public class Camera {
                             Face best = Collections.max(faces, Comparator
                                     .comparingInt(f -> f.getBoundingBox().width() * f.getBoundingBox().height()));
 
+                            // Get face properties
+                            float smileProb = best.getSmilingProbability();
+
                             // Normalize to [-1, +1]
                             Rect box = best.getBoundingBox();
                             float normX = ((box.centerX()
                                     / (float) analysis.getResolutionInfo().getResolution().getWidth()) - 0.5f) * 2f;
                             float normY = ((box.centerY()
                                     / (float) analysis.getResolutionInfo().getResolution().getHeight()) - 0.5f) * 2f;
+
+                            JsonObject message = new JsonObject();
+                            message.addProperty("smiling", smileProb);
+                            message.addProperty("face_x", normX);
+                            message.addProperty("face_y", normY);
+                            Executors.newSingleThreadExecutor()
+                                    .execute(() -> Connection.getInstance().publish(item, message));
                         });
                 analysis.setAnalyzer(ContextCompat.getMainExecutor(context), analyzer);
 

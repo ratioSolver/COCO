@@ -53,8 +53,6 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        camera = new Camera(); // Initialize the Camera class
-
         robotFace = findViewById(R.id.robot_face);
 
         Connection.getInstance().addListener(this); // Register this activity as a listener for connection events
@@ -68,8 +66,6 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
             ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.CAMERA },
                     REQUEST_CAMERA_PERMISSION);
-        else
-            camera.startCamera(this); // Start the camera if permission is granted
 
         if (!Connection.getInstance().isConnected())
             if (Settings.getInstance().hasUsers()) {
@@ -132,6 +128,9 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
                 language = new Language(this, item);
                 // Initialize the Face class to handle robot's face
                 face = new Face(this, item, robotFace);
+                // Initialize the Camera class to handle camera operations
+                camera = new Camera(this, item);
+                camera.startCamera(); // Start the camera to analyze faces
             });
         }
     }
@@ -187,10 +186,8 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
             if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Camera permission is required!", Toast.LENGTH_SHORT).show();
                 finish();
-            } else {
+            } else
                 Log.d(TAG, "Camera permission granted");
-                camera.startCamera(this); // Start the camera if permission is granted
-            }
     }
 
     @Override
@@ -200,7 +197,8 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
             language.destroy(); // Clean up the Language instance
         if (face != null)
             face.destroy(); // Clean up the Face instance
-        camera.destroy(); // Clean up the Camera instance
+        if (camera != null)
+            camera.destroy(); // Clean up the Camera instance
         // Unregister this activity as a listener for connection events
         Connection.getInstance().removeListener(this);
         // Unregister this activity as a listener for CoCo events

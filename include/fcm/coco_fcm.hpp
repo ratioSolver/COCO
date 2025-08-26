@@ -21,8 +21,8 @@ namespace coco
     void refresh_access_token();
 
   private:
-    network::ssl_client access_token_client;                                    // Client for obtaining access tokens
     const std::string client_email, private_key;                                // FCM service account credentials
+    network::ssl_client access_token_client;                                    // Client for obtaining access tokens
     std::string access_token;                                                   // Access token for FCM
     std::chrono::time_point<std::chrono::system_clock> access_token_expiration; // Expiration time of the access token
     network::ssl_client client;                                                 // FCM client for push notifications

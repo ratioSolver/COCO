@@ -35,9 +35,6 @@ if(BUILD_FCM)
     set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
     set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
     set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
-
-    set(FCM_CLIENT_EMAIL "YOUR_CLIENT_EMAIL" CACHE STRING "The Firebase Cloud Messaging Client Email")
-    set(FCM_PRIVATE_KEY "YOUR_PRIVATE_KEY" CACHE STRING "The Firebase Cloud Messaging Private Key")
 endif()
 
 if(BUILD_MQTT)
@@ -52,7 +49,6 @@ if(BUILD_LLM)
     set(LLM_PORT "443" CACHE STRING "The LLM Port")
     set(LLM_PROVIDER "novita" CACHE STRING "The LLM Provider")
     set(LLM_MODEL "meta-llama/llama-3.3-70b-instruct" CACHE STRING "The LLM Model")
-    set(LLM_API_KEY "YOUR_API_KEY" CACHE STRING "The LLM API Key")
 endif()
 
 if (BUILD_COCO_SERVER)
@@ -161,7 +157,7 @@ if(BUILD_FCM)
 
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
-    target_compile_definitions(CoCo PUBLIC BUILD_FCM FCM_CLIENT_EMAIL="${FCM_CLIENT_EMAIL}" FCM_PRIVATE_KEY="${FCM_PRIVATE_KEY}")
+    target_compile_definitions(CoCo PUBLIC BUILD_FCM)
 endif()
 
 if(BUILD_MQTT)
@@ -187,7 +183,7 @@ if(BUILD_LLM)
 
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)
-    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_LLM LLM_HOST="${LLM_HOST}" LLM_PORT=${LLM_PORT} LLM_PROVIDER="${LLM_PROVIDER}" LLM_MODEL="${LLM_MODEL}" LLM_API_KEY="${LLM_API_KEY}")
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_LLM LLM_HOST="${LLM_HOST}" LLM_PORT=${LLM_PORT} LLM_PROVIDER="${LLM_PROVIDER}" LLM_MODEL="${LLM_MODEL}")
 endif()
 
 if(BUILD_COCO_SERVER)

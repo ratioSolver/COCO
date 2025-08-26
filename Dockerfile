@@ -7,8 +7,6 @@ EXPOSE 8080
 # Set environment variables for MongoDB connection
 ARG MONGODB_HOST=coco-db
 ARG MONGODB_PORT=27017
-ARG MONGODB_USERS_HOST=coco-db
-ARG MONGODB_USERS_PORT=27017
 ARG CLIENT_DIR=/app/gui
 
 # Install the necessary dependencies
@@ -47,8 +45,8 @@ RUN git clone --recursive -b uncertainty https://github.com/ratioSolver/COCO \
     && mkdir build && cd build \
     && cmake -DLOGGING_LEVEL=DEBUG \
     -DBUILD_MONGODB=ON -DMONGODB_HOST=${MONGODB_HOST} -DMONGODB_PORT=${MONGODB_PORT} \
-    -DBUILD_DELIBERATIVE=ON \
-    -DBUILD_COCO_SERVER=ON -DSERVER_PORT=443 -DBUILD_AUTH=ON -DCLIENT_DIR=${CLIENT_DIR} -DMONGODB_USERS_HOST=${MONGODB_USERS_HOST} -DMONGODB_USERS_PORT=${MONGODB_USERS_PORT} \
+    -DBUILD_COCO_SERVER=ON -DBUILD_WEB_APP=ON -DCLIENT_DIR=${CLIENT_DIR} \
+    -DBUILD_FCM=ON \
     -DBUILD_COCO_EXECUTABLE=ON -DCMAKE_BUILD_TYPE=Release .. \
     && make -j$(nproc)
 

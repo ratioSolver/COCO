@@ -16,7 +16,7 @@
 
 namespace coco
 {
-    coco_llm::coco_llm(coco &cc, std::string_view host, unsigned short port) noexcept : coco_module(cc), client(host, port)
+    coco_llm::coco_llm(coco &cc, std::string_view host, unsigned short port, std::string_view api_key) noexcept : coco_module(cc), client(host, port), api_key(api_key)
     {
         LOG_TRACE(intent_deftemplate);
         [[maybe_unused]] auto build_intent_dt_err = Build(get_env(), intent_deftemplate);
@@ -210,7 +210,7 @@ namespace coco
         j_prompt["messages"] = std::vector<json::json>{{{"role", "system"}, {"content", prompt}}, {{"role", "user"}, {"content", message.data()}}};
         j_prompt["stream"] = false;
 
-        auto res = client.post("/" LLM_PROVIDER "/v3/openai/chat/completions", std::move(j_prompt), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " LLM_API_KEY}});
+        auto res = client.post("/" LLM_PROVIDER "/v3/openai/chat/completions", std::move(j_prompt), {{"Content-Type", "application/json"}, {"Authorization", std::string("Bearer ") + api_key}});
         if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to understand..");

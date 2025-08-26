@@ -14,13 +14,15 @@ services:
     networks:
       - coco-net
     ports:
-      - "443:443"
+      - "8080:8080"
     restart: unless-stopped
     build:
       context: .
       args:
         - MONGODB_HOST=coco-db
         - MONGODB_USERS_HOST=coco-db
+        - FCM_CLIENT_EMAIL=""
+        - FCM_PRIVATE_KEY=""
         - CLIENT_DIR=/app/gui
 
 networks:

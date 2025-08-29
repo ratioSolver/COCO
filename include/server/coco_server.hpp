@@ -40,7 +40,7 @@ namespace coco
     coco_server &srv;
   };
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_SECURE
   class coco_server : public coco_module, public listener, public network::ssl_server
 #else
   class coco_server : public coco_module, public listener, public network::server

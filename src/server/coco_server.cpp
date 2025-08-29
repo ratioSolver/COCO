@@ -28,7 +28,7 @@ namespace coco
     void server_module::add_authorized_path(std::string_view path, network::verb v, std::set<uint8_t> roles, bool self) noexcept { srv.authorized_paths[path.data()][v] = {std::move(roles), self}; }
 #endif
 
-#ifdef ENABLE_SSL
+#ifdef BUILD_SECURE
     coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), ssl_server(host, port)
 #else
     coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), server(host, port)

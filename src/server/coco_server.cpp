@@ -574,26 +574,25 @@ namespace coco
             params = network::parse_query(id.substr(id.find('?') + 1));
             id = id.substr(0, id.find('?'));
         }
-        item *itm;
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (!body.is_object())
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
         try
         {
-            itm = &get_coco().get_item(id);
+            auto &itm = get_coco().get_item(id);
+            if (params.count("timestamp"))
+            {
+                std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("timestamp"))});
+                get_coco().set_value(itm, json::json(body), timestamp);
+            }
+            else
+                get_coco().set_value(itm, json::json(body));
+            return std::make_unique<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &)
         {
             return std::make_unique<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
         }
-        auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (!body.is_object())
-            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-        if (params.count("timestamp"))
-        {
-            std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::time_point(std::chrono::milliseconds{std::stol(params.at("timestamp"))});
-            get_coco().set_value(*itm, json::json(body), timestamp);
-        }
-        else
-            get_coco().set_value(*itm, json::json(body));
-        return std::make_unique<network::response>(network::status_code::no_content);
     }
 
     std::unique_ptr<network::response> coco_server::fake(const network::request &req)

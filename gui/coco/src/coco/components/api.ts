@@ -1,5 +1,5 @@
 import { App, Component, Selector, SelectorGroup, Settings } from "@ratiosolver/flick";
-import SwaggerUI from 'swagger-ui'
+import SwaggerUIBundle from 'swagger-ui'
 import 'swagger-ui/dist/swagger-ui.css';
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faFileCode, faRightLeft } from '@fortawesome/free-solid-svg-icons'
@@ -78,17 +78,10 @@ export class AsyncElement extends Component<void, HTMLLIElement> implements Sele
 
 export class APIComponent extends Component<void, HTMLDivElement> {
 
-  ui?: SwaggerUI;
-  private url: string;
+  readonly ui: SwaggerUIBundle;
 
   constructor(url: string = Settings.get_instance().get_host() + '/openapi') {
     super(undefined, document.createElement('div'));
-    this.url = url;
-  }
-
-  // Initialize SwaggerUI when this component is mounted into the DOM
-  override mounted(): void {
-    // domNode should now be attached to the document and ready for rendering
-    this.ui = SwaggerUI({ domNode: this.element, url: this.url });
+    this.ui = SwaggerUIBundle({ domNode: this.element, url: url });
   }
 }

@@ -1,5 +1,5 @@
 import { App, Component, Selector, SelectorGroup, Settings } from "@ratiosolver/flick";
-import SwaggerUIBundle from 'swagger-ui'
+import SwaggerUI from 'swagger-ui'
 import 'swagger-ui/dist/swagger-ui.css';
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faFileCode, faRightLeft } from '@fortawesome/free-solid-svg-icons'
@@ -78,10 +78,10 @@ export class AsyncElement extends Component<void, HTMLLIElement> implements Sele
 
 export class APIComponent extends Component<void, HTMLDivElement> {
 
-  readonly ui: SwaggerUIBundle;
+  readonly ui: SwaggerUI;
 
   constructor(url: string = Settings.get_instance().get_host() + '/openapi') {
     super(undefined, document.createElement('div'));
-    this.ui = SwaggerUIBundle({ domNode: this.element, url: url });
+    this.ui = SwaggerUI({ domNode: this.element, url: url });
   }
 }

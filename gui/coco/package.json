@@ -1,6 +1,6 @@
 {
   "name": "@ratiosolver/coco",
-  "version": "0.0.48",
+  "version": "0.0.49",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,9 +28,7 @@
     "@ratiosolver/flick": "^0.0.41",
     "@ratiosolver/solver": "^0.0.38",
     "bootstrap": "^5.3.6",
-    "leaflet": "^1.9.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "leaflet": "^1.9.4"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.6.13",

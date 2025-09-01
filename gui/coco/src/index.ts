@@ -1,13 +1,5 @@
 import { ComputePositionConfig } from '@floating-ui/dom';
 
-import { Buffer } from 'buffer';
-declare global {
-  interface Window {
-    Buffer: typeof Buffer;
-  }
-}
-window.Buffer = Buffer;
-
 declare module 'cytoscape-popper' {
 
   interface PopperOptions extends ComputePositionConfig {

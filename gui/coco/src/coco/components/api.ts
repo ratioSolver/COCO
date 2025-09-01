@@ -78,10 +78,17 @@ export class AsyncElement extends Component<void, HTMLLIElement> implements Sele
 
 export class APIComponent extends Component<void, HTMLDivElement> {
 
-  readonly ui: SwaggerUI;
+  ui?: SwaggerUI;
+  private url: string;
 
   constructor(url: string = Settings.get_instance().get_host() + '/openapi') {
     super(undefined, document.createElement('div'));
-    this.ui = SwaggerUI({ domNode: this.element, url: url });
+    this.url = url;
+  }
+
+  // Initialize SwaggerUI when this component is mounted into the DOM
+  override mounted(): void {
+    // domNode should now be attached to the document and ready for rendering
+    this.ui = SwaggerUI({ domNode: this.element, url: this.url });
   }
 }

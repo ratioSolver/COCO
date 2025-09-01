@@ -1,5 +1,4 @@
 import { ComputePositionConfig } from '@floating-ui/dom';
-import { Buffer } from 'buffer';
 
 declare module 'cytoscape-popper' {
 
@@ -29,16 +28,6 @@ export * from './coco/components/map';
 export * from './coco/components/offcanvas';
 export * from './coco/components/type'
 export * from './coco/components/item'
-
-declare global {
-  interface Window {
-    Buffer?: typeof Buffer;
-  }
-}
-
-if (typeof window.Buffer === 'undefined') {
-  window.Buffer = Buffer;
-}
 
 function popperFactory(ref: RefElement, content: HTMLElement, options?: PopperOptions): PopperInstance {
   const popperOptions = { middleware: [flip(), shift({ limiter: limitShift() })], ...options, };

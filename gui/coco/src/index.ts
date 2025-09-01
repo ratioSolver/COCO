@@ -22,7 +22,6 @@ import {
 } from '@floating-ui/dom';
 
 export { coco } from './coco/coco';
-export * from './coco/components/api';
 export * from './coco/components/taxonomy';
 export * from './coco/components/map';
 export * from './coco/components/offcanvas';

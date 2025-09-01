@@ -2,7 +2,6 @@ import { App, Component, SelectorGroup } from "@ratiosolver/flick";
 import { TypeList } from "./type";
 import { ItemList } from "./item";
 import { TaxonomyElement } from "./taxonomy";
-import { APIElement, AsyncElement } from "./api";
 
 class ULComponent extends Component<void, HTMLUListElement> {
 
@@ -11,8 +10,6 @@ class ULComponent extends Component<void, HTMLUListElement> {
     this.element.classList.add('nav', 'nav-pills', 'list-group', 'flex-column');
 
     this.add_child(new TaxonomyElement(group));
-    this.add_child(new APIElement(group));
-    this.add_child(new AsyncElement(group));
   }
 }
 

@@ -16,7 +16,15 @@ namespace coco
         client.set_message_callback(std::bind(&coco_mqtt::on_message, this, std::placeholders::_1));
 
         LOG_DEBUG("Connecting to " << mqtt_uri);
-        client.connect(conn_opts);
+        try
+        {
+            client.connect(conn_opts);
+            LOG_DEBUG("Connected to MQTT broker");
+        }
+        catch (const mqtt::exception &e)
+        {
+            LOG_ERR("Unable to connect to MQTT broker: " << e.what());
+        }
     }
 
     void coco_mqtt::on_message(mqtt::const_message_ptr msg)

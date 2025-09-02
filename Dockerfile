@@ -24,6 +24,14 @@ RUN curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.1.
     && cd /tmp && rm -rf mongo-cxx-driver-r4.1.1* \
     && ldconfig
 
+# Compile and install the Paho MQTT C++ library
+RUN git clone https://github.com/eclipse/paho.mqtt.cpp.git /tmp/paho.mqtt.cpp \
+    && cd /tmp/paho.mqtt.cpp \
+    && git submodule update --init \
+    && cmake -Bbuild -H. -DPAHO_WITH_MQTT_C=ON \
+    && cmake --build build/ --target install \
+    && rm -rf /tmp/paho.mqtt.cpp
+
 # Install Node.js (version 22.x)
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs

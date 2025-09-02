@@ -19,6 +19,15 @@ namespace coco
         client.connect(conn_opts);
     }
 
+    void coco_mqtt::on_message(mqtt::const_message_ptr msg)
+    {
+        LOG_DEBUG("Received message on topic: " << msg->get_topic() << " with payload: " << msg->to_string());
+
+        // Handle incoming messages based on the topic
+        if (msg->get_topic().find(COCO_NAME "/data/") == 0)
+            get_coco().set_value(get_coco().get_item(msg->get_topic().substr(strlen(COCO_NAME "/data/"))), json::load(msg->to_string())); // Set value for the item based on the topic
+    }
+
     void coco_mqtt::on_connect(const std::string &cause)
     {
         LOG_DEBUG("Connected to MQTT broker: " << cause);
@@ -48,14 +57,6 @@ namespace coco
         {
             LOG_ERR("Failed to reconnect: " << e.what());
         }
-    }
-    void coco_mqtt::on_message(mqtt::const_message_ptr msg)
-    {
-        LOG_DEBUG("Received message on topic: " << msg->get_topic() << " with payload: " << msg->to_string());
-
-        // Handle incoming messages based on the topic
-        if (msg->get_topic().find(COCO_NAME "/data/") == 0)
-            get_coco().set_value(get_coco().get_item(msg->get_topic().substr(strlen(COCO_NAME "/data/"))), json::load(msg->to_string())); // Set value for the item based on the topic
     }
 
     void coco_mqtt::created_type(const type &tp)

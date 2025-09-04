@@ -15,13 +15,13 @@ RUN wget -O /tmp/clips.zip https://sourceforge.net/projects/clipsrules/files/CLI
     && rm -rf /tmp/clips.zip /tmp/clips_core_source_642
 
 # Compile and install the mongo-cxx driver
-RUN curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.1.1/mongo-cxx-driver-r4.1.1.tar.gz \
-    && tar -xzf mongo-cxx-driver-r4.1.1.tar.gz \
-    && cd mongo-cxx-driver-r4.1.1/build \
+RUN curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.1.2/mongo-cxx-driver-r4.1.2.tar.gz \
+    && tar -xzf mongo-cxx-driver-r4.1.2.tar.gz \
+    && cd mongo-cxx-driver-r4.1.2/build \
     && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 \
     && cmake --build . \
     && cmake --build . --target install \
-    && cd /tmp && rm -rf mongo-cxx-driver-r4.1.1* \
+    && cd /tmp && rm -rf mongo-cxx-driver-r4.1.2* \
     && ldconfig
 
 # Compile and install the Paho MQTT C++ library

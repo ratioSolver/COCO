@@ -1,23 +1,26 @@
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
-import { Component, Selector, SelectorGroup, UListElement } from '@ratiosolver/flick';
+import { Component, Selector, SelectorGroup, ListItemComponent, App } from '@ratiosolver/flick';
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faMap } from '@fortawesome/free-solid-svg-icons'
 import { coco } from '../coco';
 
 library.add(faMap);
 
-export class MapElement extends UListElement<void> implements Selector {
+export class MapElement extends ListItemComponent<void> implements Selector {
 
   /**
    * Constructs a new instance of the class.
    *
    * @param group - The `SelectorGroup` instance to which this component belongs.
    * @param text - The label text for the map component. Defaults to `'Map'`.
-   * @param map_factory - A factory function that returns a new `MapComponent` instance. Defaults to a function that creates a new `MapComponent`.
    */
-  constructor(group: SelectorGroup, text: string = 'Map', map_factory: () => MapComponent = () => new MapComponent()) {
-    super(group, undefined, icon(faMap).node[0], text, map_factory);
+  constructor(group: SelectorGroup, text: string = 'Map') {
+    super(group, undefined, icon(faMap).node[0], text);
+  }
+
+  override select(): void {
+    App.get_instance().selected_component(new MapComponent());
   }
 }
 
@@ -42,18 +45,18 @@ export class MapLayer<P = any> implements Layer {
   }
 }
 
-export class MapComponent extends Component<void, HTMLDivElement> {
+export class MapComponent extends Component<HTMLDivElement> {
 
   protected map: L.Map | undefined;
 
   constructor() {
-    super(undefined, document.createElement('div'));
-    this.element.style.width = '100%';
-    this.element.style.height = '100%';
+    super(document.createElement('div'));
+    this.node.style.width = '100%';
+    this.node.style.height = '100%';
   }
 
   override mounted(): void {
-    this.map = L.map(this.element);
+    this.map = L.map(this.node);
 
     // Set initial view to Rome, Italy
     this.set_view([41.9028, 12.4964], 13);

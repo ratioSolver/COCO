@@ -1,12 +1,12 @@
-import { blink, Component } from "@ratiosolver/flick";
+import { blink, PayloadComponent } from "@ratiosolver/flick";
 import { coco } from "../coco";
 
-export class ItemProperties extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
+export class ItemProperties extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> implements coco.taxonomy.ItemListener {
 
   private readonly p_values = new Map<string, HTMLTableCellElement>();
 
   constructor(item: coco.taxonomy.Item) {
-    super(item, document.createElement('div'));
+    super(document.createElement('div'), item);
 
     const p_table = document.createElement('table');
     p_table.createCaption().textContent = 'Properties';
@@ -40,7 +40,7 @@ export class ItemProperties extends Component<coco.taxonomy.Item, HTMLDivElement
       row.appendChild(p_value);
     }
 
-    this.element.append(p_table);
+    this.node.append(p_table);
     this.set_properties();
 
     item.add_item_listener(this);
@@ -54,7 +54,7 @@ export class ItemProperties extends Component<coco.taxonomy.Item, HTMLDivElement
   private set_properties() {
     const props = this.payload.get_type().get_all_static_properties();
     if (props.size > 0) {
-      this.element.hidden = false;
+      this.node.hidden = false;
       const ps = this.payload.get_properties();
       if (ps)
         for (const [name, val] of Object.entries(ps)) {
@@ -63,6 +63,6 @@ export class ItemProperties extends Component<coco.taxonomy.Item, HTMLDivElement
           p_val.textContent = props.get(name)!.get_type().to_string(val);
         }
     } else
-      this.element.hidden = true;
+      this.node.hidden = true;
   }
 }

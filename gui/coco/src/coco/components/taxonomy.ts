@@ -6,15 +6,15 @@ import { faSitemap } from '@fortawesome/free-solid-svg-icons'
 
 library.add(faSitemap);
 
-export class TaxonomyElement extends Component<App, HTMLLIElement> implements Selector {
+export class TaxonomyElement extends Component<HTMLLIElement> implements Selector {
 
   private group: SelectorGroup;
   private a: HTMLAnchorElement;
 
   constructor(group: SelectorGroup) {
-    super(App.get_instance(), document.createElement('li'));
+    super(document.createElement('li'));
     this.group = group;
-    this.element.classList.add('nav-item', 'list-group-item');
+    this.node.classList.add('nav-item', 'list-group-item');
 
     this.a = document.createElement('a');
     this.a.classList.add('nav-link', 'd-flex', 'align-items-center');
@@ -28,7 +28,7 @@ export class TaxonomyElement extends Component<App, HTMLLIElement> implements Se
       group.set_selected(this);
     });
 
-    this.element.append(this.a);
+    this.node.append(this.a);
     group.add_selector(this);
   }
 
@@ -41,7 +41,7 @@ export class TaxonomyElement extends Component<App, HTMLLIElement> implements Se
   unselect(): void { this.a.classList.remove('active'); }
 }
 
-export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implements coco.CoCoListener, coco.taxonomy.TypeListener {
+export class TaxonomyGraph extends Component<HTMLDivElement> implements coco.CoCoListener, coco.taxonomy.TypeListener {
 
   private cy: cytoscape.Core | null = null;
   private layout = {
@@ -53,14 +53,14 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
   private tooltip_style = "position: absolute; top: 0; left: 0; background-color: #444; color: white; border-radius: 4px; opacity: 0.8;";
 
   constructor(id: string = 'taxonomy-graph') {
-    super(coco.CoCo.get_instance(), document.createElement('div'));
-    this.element.id = id;
-    this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+    super(document.createElement('div'));
+    this.node.id = id;
+    this.node.classList.add('d-flex', 'flex-column', 'flex-grow-1');
   }
 
   override mounted(): void {
     this.cy = cytoscape({
-      container: this.element,
+      container: this.node,
       layout: this.layout,
       style: [
         {
@@ -110,9 +110,9 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
       ]
     });
 
-    for (const tp of this.payload.get_types())
+    for (const tp of coco.CoCo.get_instance().get_types())
       this.create_type_node(tp);
-    for (const tp of this.payload.get_types()) {
+    for (const tp of coco.CoCo.get_instance().get_types()) {
       const pars = tp.get_parents();
       if (pars)
         for (const par of pars)
@@ -131,13 +131,13 @@ export class TaxonomyGraph extends Component<coco.CoCo, HTMLDivElement> implemen
 
     this.cy.layout(this.layout).run();
 
-    this.payload.add_coco_listener(this);
+    coco.CoCo.get_instance().add_coco_listener(this);
   }
 
   override unmounting(): void {
-    for (const tp of this.payload.get_types())
+    for (const tp of coco.CoCo.get_instance().get_types())
       tp.remove_type_listener(this);
-    this.payload.remove_coco_listener(this);
+    coco.CoCo.get_instance().remove_coco_listener(this);
   }
 
   new_type(type: coco.taxonomy.Type): void {

@@ -1,14 +1,14 @@
-import { Component, UListComponent, SelectorGroup, UListElement } from "@ratiosolver/flick";
+import { UListComponent, SelectorGroup, ListItemComponent, PayloadComponent } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faCube } from '@fortawesome/free-solid-svg-icons'
 
 library.add(faCopy, faCube);
 
-export class TypeElement extends UListElement<coco.taxonomy.Type> implements coco.taxonomy.TypeListener {
+export class TypeElement extends ListItemComponent<coco.taxonomy.Type> implements coco.taxonomy.TypeListener {
 
   constructor(group: SelectorGroup, type: coco.taxonomy.Type) {
-    super(group, type, icon(faCube).node[0], type.get_name(), () => new Type(type));
+    super(group, type, icon(faCube).node[0], type.get_name());
     this.payload.add_type_listener(this);
   }
 
@@ -30,7 +30,7 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
   constructor(group: SelectorGroup = new SelectorGroup(), tps: coco.taxonomy.Type[] = []) {
     super(tps.map(tp => new TypeElement(group, tp)), (t0: coco.taxonomy.Type, t1: coco.taxonomy.Type) => t0.get_name() === t1.get_name() ? 0 : (t0.get_name() < t1.get_name() ? -1 : 1));
     this.group = group;
-    this.element.classList.add('nav', 'nav-pills', 'list-group', 'flex-column');
+    this.node.classList.add('nav', 'nav-pills', 'list-group', 'flex-column');
     coco.CoCo.get_instance().add_coco_listener(this);
   }
 
@@ -43,7 +43,7 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
   new_slot(_: coco.llm.Slot): void { }
 }
 
-export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implements coco.taxonomy.TypeListener {
+export class Type extends PayloadComponent<HTMLDivElement, coco.taxonomy.Type> implements coco.taxonomy.TypeListener {
 
   private sp_table: HTMLTableElement;
   private sp_body: HTMLTableSectionElement;
@@ -51,9 +51,9 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
   private dp_body: HTMLTableSectionElement;
 
   constructor(type: coco.taxonomy.Type) {
-    super(type, document.createElement('div'));
-    this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
-    this.element.style.margin = '1em';
+    super(document.createElement('div'), type);
+    this.node.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+    this.node.style.margin = '1em';
 
     const name_div = document.createElement('div');
     name_div.classList.add('input-group');
@@ -77,7 +77,7 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     });
     name_button_div.append(name_button);
     name_div.append(name_button_div);
-    this.element.append(name_div);
+    this.node.append(name_div);
 
     this.sp_table = document.createElement('table');
     this.sp_table.createCaption().textContent = 'Static properties';
@@ -97,7 +97,7 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     sp_hrow.appendChild(sp_type);
 
     this.sp_body = this.sp_table.createTBody();
-    this.element.append(this.sp_table);
+    this.node.append(this.sp_table);
 
     this.dp_table = document.createElement('table');
     this.dp_table.createCaption().textContent = 'Dynamic properties';
@@ -117,7 +117,7 @@ export class Type extends Component<coco.taxonomy.Type, HTMLDivElement> implemen
     dp_hrow.appendChild(dp_type);
 
     this.dp_body = this.dp_table.createTBody();
-    this.element.append(this.dp_table);
+    this.node.append(this.dp_table);
 
     this.set_static_properties();
     this.set_dynamic_properties();

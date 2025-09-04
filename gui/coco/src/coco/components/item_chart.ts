@@ -1,9 +1,9 @@
-import { Component } from "@ratiosolver/flick";
+import { PayloadComponent } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import Plotly, { Layout, PlotData } from "plotly.js-dist-min";
 import { chart } from "./chart";
 
-export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
+export class ItemChart extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> implements coco.taxonomy.ItemListener {
 
   private readonly layout: Partial<Layout> & { [key: `yaxis${number}`]: Partial<Plotly.LayoutAxis>; } = { autosize: true, xaxis: { title: { text: 'Time' }, type: 'date' }, showlegend: false };
   private readonly config = { responsive: true, displaylogo: false };
@@ -11,9 +11,9 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
   private readonly yaxis: Map<string, string> = new Map();
 
   constructor(item: coco.taxonomy.Item) {
-    super(item, document.createElement('div'));
-    this.element.style.width = '100%';
-    this.element.style.height = item.get_type().get_all_dynamic_properties().size * 200 + 'px';
+    super(document.createElement('div'), item);
+    this.node.style.width = '100%';
+    this.node.style.height = item.get_type().get_all_dynamic_properties().size * 200 + 'px';
 
     item.add_item_listener(this);
   }
@@ -54,7 +54,7 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
       i--;
       start_domain -= domain_size;
     }
-    Plotly.newPlot(this.element, data.flat(), this.layout, this.config);
+    Plotly.newPlot(this.node, data.flat(), this.layout, this.config);
   }
 
   override unmounting(): void { this.payload.remove_item_listener(this); }
@@ -78,7 +78,7 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
         data.push(d);
       }
     }
-    Plotly.react(this.element, data.flat(), this.layout, this.config);
+    Plotly.react(this.node, data.flat(), this.layout, this.config);
   }
   new_value(_: coco.taxonomy.Item, val: coco.taxonomy.Datum): void {
     const data: Partial<PlotData>[] = [];
@@ -93,7 +93,7 @@ export class ItemChart extends Component<coco.taxonomy.Item, HTMLDivElement> imp
         data.push(d);
       }
     }
-    Plotly.react(this.element, data.flat(), this.layout, this.config);
+    Plotly.react(this.node, data.flat(), this.layout, this.config);
   }
   slots_updated(_: coco.taxonomy.Item): void { }
 }

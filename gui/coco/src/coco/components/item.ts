@@ -1,4 +1,4 @@
-import { Component, UListComponent, SelectorGroup, UListElement } from "@ratiosolver/flick";
+import { UListComponent, SelectorGroup, ListItemComponent, App, PayloadComponent } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
@@ -8,10 +8,15 @@ import { ItemPublisher } from "./item_publisher";
 
 library.add(faCopy, faTag);
 
-export class ItemElement extends UListElement<coco.taxonomy.Item> {
+export class ItemElement extends ListItemComponent<coco.taxonomy.Item> {
 
   constructor(group: SelectorGroup, item: coco.taxonomy.Item) {
-    super(group, item, icon(faTag).node[0], item.to_string(), () => new Item(item));
+    super(group, item, icon(faTag).node[0], item.to_string());
+  }
+
+  override select(): void {
+    super.select();
+    App.get_instance().selected_component(new Item(this.payload));
   }
 }
 
@@ -22,7 +27,7 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
   constructor(group: SelectorGroup = new SelectorGroup(), itms: coco.taxonomy.Item[] = []) {
     super(itms.map(itm => new ItemElement(group, itm)));
     this.group = group;
-    this.element.classList.add('nav', 'nav-pills', 'list-group', 'flex-column');
+    this.node.classList.add('nav', 'nav-pills', 'list-group', 'flex-column');
     coco.CoCo.get_instance().add_coco_listener(this);
   }
 
@@ -35,12 +40,12 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
   new_slot(_: coco.llm.Slot): void { }
 }
 
-export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> {
+export class Item extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> {
 
   constructor(item: coco.taxonomy.Item) {
-    super(item, document.createElement('div'));
-    this.element.classList.add('d-flex', 'flex-column', 'flex-grow-1');
-    this.element.style.margin = '1em';
+    super(document.createElement('div'), item);
+    this.node.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+    this.node.style.margin = '1em';
 
     const id_div = document.createElement('div');
     id_div.classList.add('input-group');
@@ -63,7 +68,7 @@ export class Item extends Component<coco.taxonomy.Item, HTMLDivElement> {
     });
     id_button_div.append(id_button);
     id_div.append(id_button_div);
-    this.element.append(id_div);
+    this.node.append(id_div);
 
     this.add_child(new ItemProperties(item));
 

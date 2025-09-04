@@ -1,8 +1,8 @@
-import { blink, Component } from "@ratiosolver/flick";
+import { blink, PayloadComponent } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import { publisher } from "./publisher";
 
-export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement> implements coco.taxonomy.ItemListener {
+export class ItemPublisher extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> implements coco.taxonomy.ItemListener {
 
   private readonly val: Record<string, unknown> = {};
   private readonly v_sel_all_check: HTMLInputElement;
@@ -10,7 +10,7 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
   private readonly v_values = new Map<string, publisher.Publisher<unknown>>();
 
   constructor(item: coco.taxonomy.Item) {
-    super(item, document.createElement('div'));
+    super(document.createElement('div'), item);
 
     const v_table = document.createElement('table');
     v_table.createCaption().textContent = 'Values';
@@ -90,7 +90,7 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
       row.appendChild(v_value);
     }
 
-    this.element.append(v_table);
+    this.node.append(v_table);
     this.set_value();
 
     const b_div = document.createElement('div');
@@ -136,7 +136,7 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
       coco.CoCo.get_instance().publish(item, val);
     });
     b_div.append(publish_button);
-    this.element.append(b_div);
+    this.node.append(b_div);
 
     item.add_item_listener(this);
   }
@@ -151,7 +151,7 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
   private set_value() {
     const props = this.payload.get_type().get_all_dynamic_properties();
     if (props.size > 0) {
-      this.element.hidden = false;
+      this.node.hidden = false;
       const val = this.payload.get_datum();
       if (val) {
         const els: HTMLElement[] = [];
@@ -164,6 +164,6 @@ export class ItemPublisher extends Component<coco.taxonomy.Item, HTMLDivElement>
         blink(els);
       }
     } else
-      this.element.hidden = true;
+      this.node.hidden = true;
   }
 }

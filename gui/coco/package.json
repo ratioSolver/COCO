@@ -24,8 +24,8 @@
     "typescript": "~5.8.3"
   },
   "peerDependencies": {
-    "@ratiosolver/flick": "^0.1.0",
-    "@ratiosolver/solver": "^0.0.40",
+    "@ratiosolver/flick": "^0.1.11",
+    "@ratiosolver/solver": "^0.0.41",
     "bootstrap": "^5.3.6",
     "leaflet": "^1.9.4"
   },

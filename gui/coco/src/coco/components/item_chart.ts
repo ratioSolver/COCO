@@ -54,7 +54,7 @@ export class ItemChart extends PayloadComponent<HTMLDivElement, coco.taxonomy.It
       i--;
       start_domain -= domain_size;
     }
-    Plotly.newPlot(this.node, data.flat(), this.layout, this.config);
+    Plotly.newPlot(this.node, data, this.layout, this.config);
   }
 
   override unmounting(): void { this.payload.remove_item_listener(this); }
@@ -78,22 +78,22 @@ export class ItemChart extends PayloadComponent<HTMLDivElement, coco.taxonomy.It
         data.push(d);
       }
     }
-    Plotly.react(this.node, data.flat(), this.layout, this.config);
+    Plotly.react(this.node, data, this.layout, this.config);
   }
   new_value(_: coco.taxonomy.Item, val: coco.taxonomy.Datum): void {
     const data: Partial<PlotData>[] = [];
     for (const [name, ch] of this.charts) {
       if (name in val.data) // we update the chart with the new value
-        this.charts.get(name)!.set_datum({ value: val.data[name], timestamp: val.timestamp });
+        ch.set_datum({ value: val.data[name], timestamp: val.timestamp });
       else // we extend the last data point with the new timestamp
-        this.charts.get(name)!.extend(val.timestamp);
+        ch.extend(val.timestamp);
       const yaxis = this.yaxis.get(name);
       for (const d of ch.get_data()) {
         d.yaxis = yaxis;
         data.push(d);
       }
     }
-    Plotly.react(this.node, data.flat(), this.layout, this.config);
+    Plotly.react(this.node, data, this.layout, this.config);
   }
   slots_updated(_: coco.taxonomy.Item): void { }
 }

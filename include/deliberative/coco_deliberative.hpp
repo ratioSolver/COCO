@@ -1,4 +1,5 @@
 #include "coco_module.hpp"
+#include "coco_executor.hpp"
 #include "plexa.hpp"
 #ifdef BUILD_LISTENERS
 #include "graph.hpp"

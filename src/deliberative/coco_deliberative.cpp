@@ -1,7 +1,6 @@
 #include "coco_deliberative.hpp"
 #include "coco.hpp"
 #include "deliberative_db.hpp"
-#include "coco_executor.hpp"
 #include "logging.hpp"
 #include <cassert>
 

@@ -7,6 +7,9 @@
 #else
 #include "coco_db.hpp"
 #endif
+#ifdef BUILD_DELIBERATIVE
+#include "coco_deliberative.hpp"
+#endif
 #ifdef BUILD_MQTT
 #include "coco_mqtt.hpp"
 #endif
@@ -42,6 +45,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
     coco::coco cc(db);
 
+#ifdef BUILD_DELIBERATIVE
+    cc.add_module<coco::coco_deliberative>(cc);
+#endif
 #ifdef BUILD_MQTT
     cc.add_module<coco::coco_mqtt>(cc);
 #endif

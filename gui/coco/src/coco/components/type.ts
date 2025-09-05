@@ -1,4 +1,4 @@
-import { UListComponent, SelectorGroup, ListItemComponent, PayloadComponent } from "@ratiosolver/flick";
+import { UListComponent, SelectorGroup, ListItemComponent, PayloadComponent, App } from "@ratiosolver/flick";
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faCube } from '@fortawesome/free-solid-svg-icons'
@@ -16,6 +16,11 @@ export class TypeElement extends ListItemComponent<coco.taxonomy.Type> implement
   data_updated(_: coco.taxonomy.Type): void { }
   static_properties_updated(_: coco.taxonomy.Type): void { }
   dynamic_properties_updated(_: coco.taxonomy.Type): void { }
+
+  override select(): void {
+    super.select();
+    App.get_instance().selected_component(new Type(this.payload));
+  }
 
   override unmounting(): void {
     super.unmounting();

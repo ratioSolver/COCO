@@ -126,6 +126,7 @@ if(BUILD_DELIBERATIVE)
 
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/deliberative>)
     target_sources(CoCo PRIVATE src/deliberative/coco_deliberative.cpp src/deliberative/coco_executor.cpp src/deliberative/deliberative_db.cpp)
+    target_compile_definitions(CoCo PUBLIC BUILD_DELIBERATIVE)
 
     if (BUILD_COCO_SERVER)
         target_sources(CoCo PRIVATE src/deliberative/deliberative_server.cpp)

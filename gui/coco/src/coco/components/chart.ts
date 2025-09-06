@@ -171,13 +171,13 @@ export namespace chart {
       }
     }
     set_datum(val: Value<number>): void {
-      this.data.x = [...this.data.x! as number[], val.timestamp.valueOf()];
-      this.data.y = [...this.data.y! as number[], val.value];
+      (this.data.x! as number[]).push(val.timestamp.valueOf());
+      (this.data.y! as number[]).push(val.value);
     }
     extend(timestamp: Date): void {
       if (this.data.x && this.data.y) { // Update the last data point's end time to the current timestamp
-        this.data.x = [...this.data.x as number[], timestamp.valueOf()];
-        this.data.y = [...this.data.y as number[], this.data.y[this.data.y.length - 1] as number];
+        (this.data.x as number[]).push(timestamp.valueOf());
+        (this.data.y as number[]).push(this.data.y![this.data.y!.length - 1] as number);
       }
     }
 

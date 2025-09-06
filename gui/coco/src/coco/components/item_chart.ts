@@ -78,7 +78,7 @@ export class ItemChart extends PayloadComponent<HTMLDivElement, coco.taxonomy.It
         data.push(d);
       }
     }
-    Plotly.react(this.node, data, this.layout, this.config);
+    Plotly.restyle(this.node, { x: data.map(t => t.x as number[]), y: data.map(t => t.y as number[]) }, data.map((_, i) => i));
   }
   new_value(_: coco.taxonomy.Item, val: coco.taxonomy.Datum): void {
     const data: Partial<PlotData>[] = [];
@@ -93,7 +93,7 @@ export class ItemChart extends PayloadComponent<HTMLDivElement, coco.taxonomy.It
         data.push(d);
       }
     }
-    Plotly.react(this.node, data, this.layout, this.config);
+    Plotly.restyle(this.node, { x: data.map(t => t.x as number[]), y: data.map(t => t.y as number[]) }, data.map((_, i) => i));
   }
   slots_updated(_: coco.taxonomy.Item): void { }
 }

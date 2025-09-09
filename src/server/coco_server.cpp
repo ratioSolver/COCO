@@ -45,6 +45,7 @@ namespace coco
         add_route(network::Get, "^/items.*$", std::bind(&coco_server::get_items, this, network::placeholders::request));
         add_route(network::Get, "^/items/.*$", std::bind(&coco_server::get_item, this, network::placeholders::request));
         add_route(network::Post, "^/items$", std::bind(&coco_server::create_item, this, network::placeholders::request));
+        add_route(network::Patch, "^/items/.*$", std::bind(&coco_server::update_item, this, network::placeholders::request));
         add_route(network::Delete, "^/items/.*$", std::bind(&coco_server::delete_item, this, network::placeholders::request));
 
         add_route(network::Get, "^/data/.*$", std::bind(&coco_server::get_data, this, network::placeholders::request));
@@ -218,6 +219,19 @@ namespace coco
                                    {{"200",
                                      {{"description", "Successful response with the item details."},
                                       {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/item"}}}}}}}}},
+                                    {"404",
+                                     {{"description", "Item not found"}}}}}}},
+                                {"patch",
+                                 {{"summary", "Update a specific " COCO_NAME " item."},
+                                  {"description", "Endpoint to update a specific item by ID. You can provide partial updates for the item's properties."},
+                                  {"parameters",
+                                   {{{"name", "id"}, {"description", "The ID of the specific " COCO_NAME " item to update."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}}}}},
+                                  {"requestBody",
+                                   {{"required", true},
+                                    {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/item"}}}}}}}}},
+                                  {"responses",
+                                   {{"204",
+                                     {{"description", "Item updated successfully."}}},
                                     {"404",
                                      {{"description", "Item not found"}}}}}}},
                                 {"delete",
@@ -528,6 +542,29 @@ namespace coco
         catch (const std::exception &e)
         {
             return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::conflict);
+        }
+    }
+    std::unique_ptr<network::response> coco_server::update_item(const network::request &req)
+    {
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (!body.is_object())
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+
+        try
+        {
+            json::json props = body.contains("properties") ? body["properties"] : json::json();
+            auto &itm = get_coco().get_item(req.get_target().substr(7));
+            if (body.contains("properties"))
+            {
+                if (!body["properties"].is_object())
+                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+                get_coco().set_properties(itm, std::move(props));
+            }
+            return std::make_unique<network::response>(network::status_code::no_content);
+        }
+        catch (const std::exception &)
+        {
+            return std::make_unique<network::json_response>(json::json({{"message", "Item not found"}}), network::status_code::not_found);
         }
     }
     std::unique_ptr<network::response> coco_server::delete_item(const network::request &req)

@@ -98,6 +98,7 @@ namespace coco
     std::unique_ptr<network::response> get_items(const network::request &req);
     std::unique_ptr<network::response> get_item(const network::request &req);
     std::unique_ptr<network::response> create_item(const network::request &req);
+    std::unique_ptr<network::response> update_item(const network::request &req);
     std::unique_ptr<network::response> delete_item(const network::request &req);
 
     std::unique_ptr<network::response> get_data(const network::request &req);

@@ -177,16 +177,16 @@ export namespace chart {
       }
     }
     set_datum(val: Value<number>): void {
-      if (this.data.x && this.data.y) {
-        this.data.x = [...this.data.x! as number[], val.timestamp.valueOf()];
-        this.data.y = [...this.data.y! as number[], val.value];
+      if (this.data.x!.length && this.data.y!.length) {
+        this.data.x = [...this.data.x as number[], val.timestamp.valueOf()];
+        this.data.y = [...this.data.y as number[], val.value];
       } else {
         this.data.x = [val.timestamp.valueOf()];
         this.data.y = [val.value];
       }
     }
     extend(timestamp: Date): void {
-      if (this.data.x && this.data.y) { // Update the last data point's end time to the current timestamp
+      if (this.data.x!.length && this.data.y!.length) { // Update the last data point's end time to the current timestamp
         this.data.x = [...this.data.x as number[], timestamp.valueOf()];
         this.data.y = [...this.data.y as number[], this.data.y![this.data.y!.length - 1] as number];
       }
@@ -204,7 +204,7 @@ export namespace chart {
   class FloatChart implements Chart<number> {
 
     private readonly prop: coco.taxonomy.FloatProperty;
-    private readonly data: Partial<PlotData>;
+    private data: Partial<PlotData>;
 
     constructor(prop: coco.taxonomy.FloatProperty, vals: Value<number>[]) {
       this.prop = prop;
@@ -219,13 +219,18 @@ export namespace chart {
       }
     }
     set_datum(val: Value<number>): void {
-      (this.data.x! as number[]).push(val.timestamp.valueOf());
-      (this.data.y! as number[]).push(val.value);
+      if (this.data.x!.length && this.data.y!.length) {
+        this.data.x = [...this.data.x as number[], val.timestamp.valueOf()];
+        this.data.y = [...this.data.y as number[], val.value];
+      } else {
+        this.data.x = [val.timestamp.valueOf()];
+        this.data.y = [val.value];
+      }
     }
     extend(timestamp: Date): void {
-      if (this.data.x && this.data.y) { // Update the last data point's end time to the current timestamp
-        (this.data.x as number[]).push(timestamp.valueOf());
-        (this.data.y as number[]).push(this.data.y![this.data.y!.length - 1] as number);
+      if (this.data.x!.length && this.data.y!.length) { // Update the last data point's end time to the current timestamp
+        this.data.x = [...this.data.x as number[], timestamp.valueOf()];
+        this.data.y = [...this.data.y as number[], this.data.y![this.data.y!.length - 1] as number];
       }
     }
 
@@ -240,7 +245,7 @@ export namespace chart {
 
   class StringChart implements Chart<string | null> {
 
-    private readonly data: Partial<PlotData>[] = [];
+    private data: Partial<PlotData>[] = [];
     private readonly colors = scaleOrdinal(schemeCategory10);
 
     constructor(_: coco.taxonomy.StringProperty, vals: Value<string | null>[]) {
@@ -256,10 +261,13 @@ export namespace chart {
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: vals[vals.length - 1].value!, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(vals[vals.length - 1].value!) } });
     }
     set_datum(val: Value<string | null>): void {
-      if (this.data.length) // Update the last data point's end time to the current timestamp
-        this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      if (val.value)
-        this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: val.value, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value) } });
+      const new_datum: Partial<PlotData> = { x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: val.value!, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(val.value!) } };
+      if (this.data.length) {
+        this.data = [...this.data, new_datum]; // Create a new array to trigger reactivity if needed
+        this.data[this.data.length - 2].x![1] = val.timestamp.valueOf();
+      }
+      else
+        this.data = [new_datum];
     }
     extend(timestamp: Date): void {
       if (this.data.length) // Update the last data point's end time to the current timestamp
@@ -273,7 +281,7 @@ export namespace chart {
 
   class SymbolChart implements Chart<string | string[] | null> {
 
-    private readonly data: Partial<PlotData>[] = [];
+    private data: Partial<PlotData>[] = [];
     private readonly colors = scaleOrdinal(schemeCategory10);
 
     constructor(_: coco.taxonomy.SymbolProperty, vals: Value<string | string[] | null>[]) {
@@ -289,10 +297,13 @@ export namespace chart {
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value!), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value!)) } });
     }
     set_datum(val: Value<string | string[] | null>): void {
-      if (this.data.length) // Update the last data point's end time to the current timestamp
-        this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      if (val.value)
-        this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
+      const new_datum: Partial<PlotData> = { x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value!), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value!)) } };
+      if (this.data.length) {
+        this.data = [...this.data, new_datum]; // Create a new array to trigger reactivity if needed
+        this.data[this.data.length - 2].x![1] = val.timestamp.valueOf();
+      }
+      else
+        this.data = [new_datum];
     }
     extend(timestamp: Date): void {
       if (this.data.length) // Update the last data point's end time to the current timestamp
@@ -308,7 +319,7 @@ export namespace chart {
 
   class ItemChart implements Chart<string | string[] | null> {
 
-    private readonly data: Partial<PlotData>[] = [];
+    private data: Partial<PlotData>[] = [];
     private readonly colors = scaleOrdinal(schemeCategory10);
 
     constructor(_: coco.taxonomy.ItemProperty, vals: Value<string | string[] | null>[]) {
@@ -324,10 +335,13 @@ export namespace chart {
         this.data.push({ x: [vals[vals.length - 1].timestamp.valueOf(), vals[vals.length - 1].timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(vals[vals.length - 1].value!), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(vals[vals.length - 1].value!)) } });
     }
     set_datum(val: Value<string | string[] | null>): void {
-      if (this.data.length) // Update the last data point's end time to the current timestamp
-        this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      if (val.value)
-        this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value)) } });
+      const new_datum: Partial<PlotData> = { x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: this.get_name(val.value!), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(this.get_name(val.value!)) } };
+      if (this.data.length) {
+        this.data = [...this.data, new_datum]; // Create a new array to trigger reactivity if needed
+        this.data[this.data.length - 2].x![1] = val.timestamp.valueOf();
+      }
+      else
+        this.data = [new_datum];
     }
     extend(timestamp: Date): void {
       if (this.data.length) // Update the last data point's end time to the current timestamp
@@ -343,7 +357,7 @@ export namespace chart {
 
   class JSONChart implements Chart<Record<string, any> | null> {
 
-    private readonly data: Partial<PlotData>[] = [];
+    private data: Partial<PlotData>[] = [];
     private readonly colors = scaleOrdinal(schemeCategory10);
 
     constructor(_: coco.taxonomy.JSONProperty, vals: Value<Record<string, any> | null>[]) {
@@ -362,10 +376,13 @@ export namespace chart {
       }
     }
     set_datum(val: Value<Record<string, any> | null>): void {
-      if (this.data.length) // Update the last data point's end time to the current timestamp
-        this.data[this.data.length - 1].x![1] = val.timestamp.valueOf();
-      const name = JSON.stringify(val.value);
-      this.data.push({ x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: name, type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(name) } });
+      const new_datum: Partial<PlotData> = { x: [val.timestamp.valueOf(), val.timestamp.valueOf() + 1], y: [1, 1], name: JSON.stringify(val.value), type: 'scatter', opacity: 0.7, mode: 'lines', line: { width: 30, color: this.colors(JSON.stringify(val.value)) } };
+      if (this.data.length) {
+        this.data = [...this.data, new_datum]; // Create a new array to trigger reactivity if needed
+        this.data[this.data.length - 2].x![1] = val.timestamp.valueOf();
+      }
+      else
+        this.data = [new_datum];
     }
     extend(timestamp: Date): void {
       if (this.data.length) // Update the last data point's end time to the current timestamp

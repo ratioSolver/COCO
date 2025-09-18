@@ -134,7 +134,8 @@ namespace coco
             {"properties",
              {{"id", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}, {"description", "The ID for this item."}}},
               {"type", {{"type", "string"}, {"description", "The name of the type that this item instantiates."}}},
-              {"properties", {{"type", "object"}, {"description", "Static data of the item defined by its type."}}}}},
+              {"properties", {{"type", "object"}, {"description", "Static data of the item defined by its type."}}},
+              {"value", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/data"}}}, {"description", "Dynamic data of the item defined by its type."}}}}},
             {"required", std::vector<json::json>{"id", "type"}}};
         schemas["data"] = {
             {"type", "object"},

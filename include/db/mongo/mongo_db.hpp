@@ -3,8 +3,13 @@
 #include "coco_db.hpp"
 #include <mongocxx/client.hpp>
 
+#ifdef MONGODB_AUTH
+#define MONGODB_URI(user, pass, host, port) "mongodb://" user ":" pass "@" host ":" port
+#define MONGODB_DEFAULT_URI MONGODB_URI(MONGODB_USER, MONGODB_PASSWORD, MONGODB_HOST, MONGODB_PORT)
+#else
 #define MONGODB_URI(host, port) "mongodb://" host ":" port
-#define MONGODB_AUTH_URI(user, pass, host, port) "mongodb://" user ":" pass "@" host ":" port
+#define MONGODB_DEFAULT_URI MONGODB_URI(MONGODB_HOST, MONGODB_PORT)
+#endif
 
 namespace coco
 {
@@ -24,7 +29,7 @@ namespace coco
     friend class mongo_module;
 
   public:
-    mongo_db(json::json &&cnfg = {{"name", COCO_NAME}}, std::string_view mongodb_uri = MONGODB_URI(MONGODB_HOST, MONGODB_PORT)) noexcept;
+    mongo_db(json::json &&cnfg = {{"name", COCO_NAME}}, std::string_view mongodb_uri = MONGODB_DEFAULT_URI) noexcept;
 
     void drop() noexcept override;
 

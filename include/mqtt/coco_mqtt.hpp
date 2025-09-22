@@ -4,7 +4,19 @@
 #include "coco.hpp"
 #include "mqtt/async_client.h"
 
-#define MQTT_URI(host, port) "mqtt://" host ":" port
+#ifdef MQTT_SECURE
+#define MQTT_PROTOCOL "mqtts"
+#else
+#define MQTT_PROTOCOL "mqtt"
+#endif
+
+#ifdef MQTT_AUTH
+#define MQTT_URI(user, pass, host, port) MQTT_PROTOCOL "://" user ":" pass "@" host ":" port
+#define MQTT_DEFAULT_URI MQTT_URI(MQTT_USER, MQTT_PASSWORD, MQTT_HOST, MQTT_PORT)
+#else
+#define MQTT_URI(host, port) MQTT_PROTOCOL "://" host ":" port
+#define MQTT_DEFAULT_URI MQTT_URI(MQTT_HOST, MQTT_PORT)
+#endif
 
 namespace coco
 {
@@ -13,7 +25,7 @@ namespace coco
   class coco_mqtt : public coco_module, private listener
   {
   public:
-    coco_mqtt(coco &cc, std::string_view mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT), std::string_view client_id = COCO_NAME) noexcept;
+    coco_mqtt(coco &cc, std::string_view mqtt_uri = MQTT_DEFAULT_URI, std::string_view client_id = COCO_NAME) noexcept;
 
     bool is_connected() const noexcept { return client.is_connected(); }
 

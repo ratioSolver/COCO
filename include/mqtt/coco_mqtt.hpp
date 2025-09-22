@@ -10,22 +10,31 @@
 #define MQTT_PROTOCOL "mqtt"
 #endif
 
-#ifdef MQTT_AUTH
-#define MQTT_URI(user, pass, host, port) MQTT_PROTOCOL "://" user ":" pass "@" host ":" port
-#define MQTT_DEFAULT_URI MQTT_URI(MQTT_USER, MQTT_PASSWORD, MQTT_HOST, MQTT_PORT)
-#else
-#define MQTT_URI(host, port) MQTT_PROTOCOL "://" host ":" port
-#define MQTT_DEFAULT_URI MQTT_URI(MQTT_HOST, MQTT_PORT)
-#endif
-
 namespace coco
 {
   constexpr const int QOS = 1; // Quality of Service level for MQTT messages
 
+  [[nodiscard]] inline std::string default_mqtt_uri() noexcept
+  {
+    std::string uri = MQTT_PROTOCOL "://";
+    const char *host = std::getenv("MQTT_HOST");
+    if (host)
+      uri += host;
+    else
+      uri += MQTT_HOST;
+    uri += ":";
+    const char *port = std::getenv("MQTT_PORT");
+    if (port)
+      uri += port;
+    else
+      uri += MQTT_PORT;
+    return uri;
+  }
+
   class coco_mqtt : public coco_module, private listener
   {
   public:
-    coco_mqtt(coco &cc, std::string_view mqtt_uri = MQTT_DEFAULT_URI, std::string_view client_id = COCO_NAME) noexcept;
+    coco_mqtt(coco &cc, std::string_view mqtt_uri = default_mqtt_uri(), std::string_view client_id = COCO_NAME) noexcept;
 
     bool is_connected() const noexcept { return client.is_connected(); }
 

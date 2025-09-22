@@ -47,7 +47,7 @@ namespace coco
     friend class llm_listener;
 #endif
   public:
-    coco_llm(coco &cc, std::string_view host = LLM_HOST, unsigned short port = LLM_PORT, std::string_view api_key = std::getenv("LLM_API_KEY")    ) noexcept;
+    coco_llm(coco &cc, std::string_view host = LLM_HOST, unsigned short port = LLM_PORT, std::string_view api_key = std::getenv("LLM_API_KEY")) noexcept;
 
     [[nodiscard]] std::vector<std::reference_wrapper<intent>> get_intents() noexcept;
     void create_intent(std::string_view name, std::string_view description, bool infere = true);
@@ -77,7 +77,7 @@ namespace coco
     std::map<std::string, std::map<std::string, Fact *>> slot_facts;      // The facts representing the slots for each item
     std::unordered_map<std::string, json::json> current_slots;            // The slots for each item
     network::ssl_client client;                                           // The client used to communicate with the LLM server
-    const std::string api_key;                                      // The API key used to authenticate with the LLM server
+    const std::string api_key;                                            // The API key used to authenticate with the LLM server
 
 #ifdef BUILD_LISTENERS
     std::vector<llm_listener *> listeners; // The LLM listeners..

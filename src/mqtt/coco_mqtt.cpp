@@ -10,6 +10,10 @@ namespace coco
         conn_opts.set_keep_alive_interval(20);
         conn_opts.set_clean_session(true);
         conn_opts.set_mqtt_version(MQTTVERSION_5);
+#ifdef MQTT_AUTH
+        conn_opts.set_user_name(std::getenv("MQTT_USER") ? std::getenv("MQTT_USER") : MQTT_USER);
+        conn_opts.set_password(std::getenv("MQTT_PASSWORD") ? std::getenv("MQTT_PASSWORD") : MQTT_PASSWORD);
+#endif
 
         client.set_connected_handler(std::bind(&coco_mqtt::on_connect, this, std::placeholders::_1));
         client.set_connection_lost_handler(std::bind(&coco_mqtt::on_connection_lost, this, std::placeholders::_1));
@@ -19,7 +23,6 @@ namespace coco
         try
         {
             client.connect(conn_opts);
-            LOG_DEBUG("Connected to MQTT broker");
         }
         catch (const mqtt::exception &e)
         {

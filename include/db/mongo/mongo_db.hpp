@@ -3,14 +3,6 @@
 #include "coco_db.hpp"
 #include <mongocxx/client.hpp>
 
-#ifdef MONGODB_AUTH
-#define MONGODB_URI(user, pass, host, port) "mongodb://" user ":" pass "@" host ":" port
-#define MONGODB_DEFAULT_URI MONGODB_URI(MONGODB_USER, MONGODB_PASSWORD, MONGODB_HOST, MONGODB_PORT)
-#else
-#define MONGODB_URI(host, port) "mongodb://" host ":" port
-#define MONGODB_DEFAULT_URI MONGODB_URI(MONGODB_HOST, MONGODB_PORT)
-#endif
-
 namespace coco
 {
   class mongo_db;
@@ -24,12 +16,43 @@ namespace coco
     [[nodiscard]] mongocxx::database &get_db() const noexcept;
   };
 
+  [[nodiscard]] inline std::string default_mongodb_uri() noexcept
+  {
+    std::string uri = "mongodb://";
+#ifdef MONGODB_AUTH
+    const char *user = std::getenv("MONGODB_USER");
+    if (user)
+      uri += user;
+    else
+      uri += MONGODB_USER;
+    uri += ":";
+    const char *pass = std::getenv("MONGODB_PASSWORD");
+    if (pass)
+      uri += pass;
+    else
+      uri += MONGODB_PASSWORD;
+    uri += "@";
+#endif
+    const char *host = std::getenv("MONGODB_HOST");
+    if (host)
+      uri += host;
+    else
+      uri += MONGODB_HOST;
+    uri += ":";
+    const char *port = std::getenv("MONGODB_PORT");
+    if (port)
+      uri += port;
+    else
+      uri += MONGODB_PORT;
+    return uri;
+  }
+
   class mongo_db : public coco_db
   {
     friend class mongo_module;
 
   public:
-    mongo_db(json::json &&cnfg = {{"name", COCO_NAME}}, std::string_view mongodb_uri = MONGODB_DEFAULT_URI) noexcept;
+    mongo_db(json::json &&cnfg = {{"name", COCO_NAME}}, std::string_view mongodb_uri = default_mongodb_uri()) noexcept;
 
     void drop() noexcept override;
 

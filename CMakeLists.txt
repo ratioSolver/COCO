@@ -164,6 +164,10 @@ if(BUILD_MONGODB)
     target_link_libraries(CoCo PUBLIC mongo::bsoncxx_shared mongo::mongocxx_shared)
     target_compile_definitions(CoCo PUBLIC BUILD_MONGODB MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
 
+    if(MONGODB_AUTH)
+        target_compile_definitions(CoCo PUBLIC MONGODB_AUTH MONGODB_USER="${MONGODB_USER}" MONGODB_PASSWORD="${MONGODB_PASSWORD}")
+    endif()
+
     if(BUILD_AUTH)
         target_compile_definitions(CoCo PUBLIC MONGODB_USERS_HOST="${MONGODB_USERS_HOST}" MONGODB_USERS_PORT="${MONGODB_USERS_PORT}")
     endif()
@@ -193,6 +197,10 @@ if(BUILD_MQTT)
     target_sources(CoCo PRIVATE src/mqtt/coco_mqtt.cpp)
     target_link_libraries(CoCo PUBLIC PahoMqttCpp::paho-mqttpp3)
     target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
+
+    if(MQTT_AUTH)
+        target_compile_definitions(CoCo PUBLIC MQTT_AUTH MQTT_USER="${MQTT_USER}" MQTT_PASSWORD="${MQTT_PASSWORD}")
+    endif()
 endif()
 
 if(BUILD_LLM)

@@ -4,6 +4,7 @@
 #include <mongocxx/client.hpp>
 
 #define MONGODB_URI(host, port) "mongodb://" host ":" port
+#define MONGODB_AUTH_URI(user, pass, host, port) "mongodb://" user ":" pass "@" host ":" port
 
 namespace coco
 {

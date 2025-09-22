@@ -11,8 +11,16 @@ namespace coco
         conn_opts.set_clean_session(true);
         conn_opts.set_mqtt_version(MQTTVERSION_5);
 #ifdef MQTT_AUTH
-        conn_opts.set_user_name(std::getenv("MQTT_USER") ? std::getenv("MQTT_USER") : MQTT_USER);
-        conn_opts.set_password(std::getenv("MQTT_PASSWORD") ? std::getenv("MQTT_PASSWORD") : MQTT_PASSWORD);
+        auto user = std::getenv("MQTT_USER");
+        if (user)
+            conn_opts.set_user_name(user);
+        else
+            conn_opts.set_user_name(MQTT_USER);
+        auto pass = std::getenv("MQTT_PASSWORD");
+        if (pass)
+            conn_opts.set_password(pass);
+        else
+            conn_opts.set_password(MQTT_PASSWORD);
 #endif
 
         client.set_connected_handler(std::bind(&coco_mqtt::on_connect, this, std::placeholders::_1));

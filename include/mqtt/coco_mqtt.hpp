@@ -15,6 +15,8 @@ namespace coco
   public:
     coco_mqtt(coco &cc, std::string_view mqtt_uri = MQTT_URI(MQTT_HOST, MQTT_PORT), std::string_view client_id = COCO_NAME) noexcept;
 
+    bool is_connected() const noexcept { return client.is_connected(); }
+
   protected:
     virtual void on_message(mqtt::const_message_ptr msg);
     virtual void on_connect(const std::string &cause);

@@ -109,9 +109,6 @@ namespace coco
     std::unique_ptr<network::response> get_reactive_rules(const network::request &req);
     std::unique_ptr<network::response> create_reactive_rule(const network::request &req);
 
-    std::unique_ptr<network::response> get_deliberative_rules(const network::request &req);
-    std::unique_ptr<network::response> create_deliberative_rule(const network::request &req);
-
     std::unique_ptr<network::response> get_openapi_spec(const network::request &req);
     std::unique_ptr<network::response> get_asyncapi_spec(const network::request &req);
 
@@ -119,7 +116,6 @@ namespace coco
     void on_ws_message(network::ws_server_session_base &ws, const network::message &msg);
     void on_ws_close(network::ws_server_session_base &ws);
     void on_ws_error(network::ws_server_session_base &ws, const std::error_code &ec);
-    void broadcast(json::json &msg);
 
   private:
     std::map<std::type_index, std::unique_ptr<server_module>> modules; // the server modules

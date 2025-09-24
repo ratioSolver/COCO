@@ -175,21 +175,7 @@ namespace coco
 
     bool_property::bool_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<bool>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
-        if (multiple)
-            deftemplate += "multislot ";
-        else
-            deftemplate += "slot ";
-        deftemplate += name.data();
-        deftemplate += " (type SYMBOL)";
-        if (default_value.has_value())
-        {
-            deftemplate += " (default";
-            for (const auto &val : *default_value)
-                deftemplate += " " + std::string(val ? "TRUE" : "FALSE");
-            deftemplate += ")";
-        }
-        deftemplate += ')';
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
@@ -273,32 +259,23 @@ namespace coco
             assert(put_slot_err == PSE_NO_ERROR);
         }
     }
+    std::string bool_property::get_slot_declaration() const noexcept
+    {
+        std::string slot_decl = (multiple ? "(multislot " : "(slot ") + std::string(name) + " (type SYMBOL)";
+        if (default_value.has_value())
+        {
+            slot_decl += " (default";
+            for (const auto &val : *default_value)
+                slot_decl += " " + std::string(val ? "TRUE" : "FALSE");
+            slot_decl += ")";
+        }
+        slot_decl += ')';
+        return slot_decl;
+    }
 
     int_property::int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<long>> default_value, std::optional<long> min, std::optional<long> max) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value), min(min), max(max)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
-        if (multiple)
-            deftemplate += "multislot ";
-        else
-            deftemplate += "slot ";
-        deftemplate += name.data();
-        deftemplate += " (type INTEGER)";
-        if (default_value.has_value())
-        {
-            deftemplate += " (default";
-            for (const auto &val : *default_value)
-                deftemplate += " " + std::to_string(val);
-            deftemplate += ")";
-        }
-        if (min.has_value() || max.has_value())
-        {
-            deftemplate += " (range ";
-            deftemplate += min.has_value() ? std::to_string(*min) : "?VARIABLE";
-            deftemplate += ' ';
-            deftemplate += max.has_value() ? std::to_string(*max) : "?VARIABLE";
-            deftemplate += ')';
-        }
-        deftemplate += ')';
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
@@ -394,32 +371,31 @@ namespace coco
             assert(put_slot_err == PSE_NO_ERROR);
         }
     }
-
-    float_property::float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<double>> default_value, std::optional<double> min, std::optional<double> max) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value), min(min), max(max)
+    std::string int_property::get_slot_declaration() const noexcept
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
-        if (multiple)
-            deftemplate += "multislot ";
-        else
-            deftemplate += "slot ";
-        deftemplate += name.data();
-        deftemplate += " (type FLOAT)";
+        std::string slot_decl = (multiple ? "(multislot " : "(slot ") + std::string(name) + " (type INTEGER)";
         if (default_value.has_value())
         {
-            deftemplate += " (default";
+            slot_decl += " (default";
             for (const auto &val : *default_value)
-                deftemplate += " " + std::to_string(val);
-            deftemplate += ")";
+                slot_decl += " " + std::to_string(val);
+            slot_decl += ")";
         }
         if (min.has_value() || max.has_value())
         {
-            deftemplate += " (range ";
-            deftemplate += min.has_value() ? std::to_string(*min) : "?VARIABLE";
-            deftemplate += ' ';
-            deftemplate += max.has_value() ? std::to_string(*max) : "?VARIABLE";
-            deftemplate += ')';
+            slot_decl += " (range ";
+            slot_decl += min.has_value() ? std::to_string(*min) : "?VARIABLE";
+            slot_decl += ' ';
+            slot_decl += max.has_value() ? std::to_string(*max) : "?VARIABLE";
+            slot_decl += ')';
         }
-        deftemplate += ')';
+        slot_decl += ')';
+        return slot_decl;
+    }
+
+    float_property::float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<double>> default_value, std::optional<double> min, std::optional<double> max) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value), min(min), max(max)
+    {
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
@@ -515,24 +491,31 @@ namespace coco
             assert(put_slot_err == PSE_NO_ERROR);
         }
     }
+    std::string float_property::get_slot_declaration() const noexcept
+    {
+        std::string slot_decl = (multiple ? "(multislot " : "(slot ") + std::string(name) + " (type FLOAT)";
+        if (default_value.has_value())
+        {
+            slot_decl += " (default";
+            for (const auto &val : *default_value)
+                slot_decl += " " + std::to_string(val);
+            slot_decl += ")";
+        }
+        if (min.has_value() || max.has_value())
+        {
+            slot_decl += " (range ";
+            slot_decl += min.has_value() ? std::to_string(*min) : "?VARIABLE";
+            slot_decl += ' ';
+            slot_decl += max.has_value() ? std::to_string(*max) : "?VARIABLE";
+            slot_decl += ')';
+        }
+        slot_decl += ')';
+        return slot_decl;
+    }
 
     string_property::string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
-        if (multiple)
-            deftemplate += "multislot ";
-        else
-            deftemplate += "slot ";
-        deftemplate += name.data();
-        deftemplate += " (type STRING)";
-        if (default_value.has_value())
-        {
-            deftemplate += " (default";
-            for (const auto &val : *default_value)
-                deftemplate += " " + val;
-            deftemplate += ")";
-        }
-        deftemplate += ')';
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
@@ -622,6 +605,19 @@ namespace coco
             assert(put_slot_err == PSE_NO_ERROR);
         }
     }
+    std::string string_property::get_slot_declaration() const noexcept
+    {
+        std::string slot_decl = (multiple ? "(multislot " : "(slot ") + std::string(name) + " (type STRING)";
+        if (default_value.has_value())
+        {
+            slot_decl += " (default";
+            for (const auto &val : *default_value)
+                slot_decl += " " + val;
+            slot_decl += ")";
+        }
+        slot_decl += ')';
+        return slot_decl;
+    }
 
     symbol_property::symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::vector<std::string> &&values, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), values(values), default_value(default_value)
     {
@@ -629,28 +625,7 @@ namespace coco
                                                                            { return std::find(this->values.begin(), this->values.end(), val) != this->values.end(); }));
         assert(!default_value.has_value() || !multiple || default_value->size() <= 1);
 
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
-        if (multiple)
-            deftemplate += "multislot ";
-        else
-            deftemplate += "slot ";
-        deftemplate += name.data();
-        deftemplate += " (type SYMBOL)";
-        if (!values.empty())
-        {
-            deftemplate += " (allowed-values";
-            for (const auto &val : values)
-                deftemplate += " " + val;
-            deftemplate += ")";
-        }
-        if (default_value.has_value())
-        {
-            deftemplate += " (default";
-            for (const auto &val : *default_value)
-                deftemplate += " " + val;
-            deftemplate += ")";
-        }
-        deftemplate += ')';
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
@@ -748,6 +723,26 @@ namespace coco
             assert(put_slot_err == PSE_NO_ERROR);
         }
     }
+    std::string symbol_property::get_slot_declaration() const noexcept
+    {
+        std::string slot_decl = (multiple ? "(multislot " : "(slot ") + std::string(name) + " (type SYMBOL)";
+        if (!values.empty())
+        {
+            slot_decl += " (allowed-values";
+            for (const auto &val : values)
+                slot_decl += " " + val;
+            slot_decl += ")";
+        }
+        if (default_value.has_value())
+        {
+            slot_decl += " (default";
+            for (const auto &val : *default_value)
+                slot_decl += " " + val;
+            slot_decl += ")";
+        }
+        slot_decl += ')';
+        return slot_decl;
+    }
 
     item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple, std::optional<std::vector<std::reference_wrapper<item>>> default_value) noexcept : property(pt, tp, dynamic, name), domain(domain), multiple(multiple), default_value(default_value)
     {
@@ -767,21 +762,7 @@ namespace coco
                                                                                         return false; }));
         assert(!default_value.has_value() || !multiple || default_value->size() <= 1);
 
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (";
-        if (multiple)
-            deftemplate += "multislot ";
-        else
-            deftemplate += "slot ";
-        deftemplate += name.data();
-        deftemplate += " (type SYMBOL)";
-        if (default_value.has_value())
-        {
-            deftemplate += " (default";
-            for (const auto &val : *default_value)
-                deftemplate += " " + val.get().get_id();
-            deftemplate += ")";
-        }
-        deftemplate += ')';
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
@@ -892,24 +873,23 @@ namespace coco
             assert(put_slot_err == PSE_NO_ERROR);
         }
     }
+    std::string item_property::get_slot_declaration() const noexcept
+    {
+        std::string slot_decl = (multiple ? "(multislot " : "(slot ") + std::string(name) + " (type SYMBOL)";
+        if (default_value.has_value())
+        {
+            slot_decl += " (default";
+            for (const auto &val : *default_value)
+                slot_decl += " " + val.get().get_id();
+            slot_decl += ")";
+        }
+        slot_decl += ')';
+        return slot_decl;
+    }
 
     json_property::json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema, std::optional<json::json> default_value) noexcept : property(pt, tp, dynamic, name), schema(schema), default_value(default_value)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) (slot " + name.data();
-        deftemplate += " (type STRING)";
-        if (default_value.has_value())
-        {
-            std::string def;
-            for (char ch : default_value->dump())
-                if (ch == '"')
-                    def += "\\\"";
-                else if (ch == '\\')
-                    def += "\\\\";
-                else
-                    def += ch;
-            deftemplate += " (default \"" + def + "\")";
-        }
-        deftemplate += ')';
+        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
             deftemplate += " (slot timestamp (type INTEGER))";
         deftemplate += ')';
@@ -939,5 +919,23 @@ namespace coco
     {
         [[maybe_unused]] auto put_slot_err = FMPutSlotString(property_fact_modifier, name.data(), value.get<std::string>().c_str());
         assert(put_slot_err == PSE_NO_ERROR);
+    }
+    std::string json_property::get_slot_declaration() const noexcept
+    {
+        std::string slot_decl = "(slot " + std::string(name) + " (type STRING)";
+        if (default_value.has_value())
+        {
+            std::string def;
+            for (char ch : default_value->dump())
+                if (ch == '"')
+                    def += "\\\"";
+                else if (ch == '\\')
+                    def += "\\\\";
+                else
+                    def += ch;
+            slot_decl += " (default \"" + def + "\")";
+        }
+        slot_decl += ')';
+        return slot_decl;
     }
 } // namespace coco

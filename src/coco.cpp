@@ -33,9 +33,6 @@ namespace coco
         LOG_TRACE(is_a_deftemplate);
         [[maybe_unused]] auto build_is_a_dt_err = Build(env, is_a_deftemplate);
         assert(build_is_a_dt_err == BE_NO_ERROR);
-        LOG_TRACE(item_deftemplate);
-        [[maybe_unused]] auto build_item_dt_err = Build(env, item_deftemplate);
-        assert(build_item_dt_err == BE_NO_ERROR);
         LOG_TRACE(instance_of_deftemplate);
         [[maybe_unused]] auto build_instance_dt_err = Build(env, instance_of_deftemplate);
         assert(build_instance_dt_err == BE_NO_ERROR);

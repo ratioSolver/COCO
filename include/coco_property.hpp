@@ -120,6 +120,7 @@ namespace coco
 
   class property
   {
+    friend class type;
     friend class item;
 
   public:
@@ -195,6 +196,18 @@ namespace coco
      */
     virtual void set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept = 0;
 
+    /**
+     * @brief Retrieves the CLIPS slot declaration string for the property.
+     *
+     * This pure virtual function should be implemented by derived classes to return
+     * a string representing the slot declaration in CLIPS deftemplate syntax.
+     * The returned string should describe the slot, including its type, allowed values,
+     * default value, and any constraints, as required by CLIPS.
+     *
+     * @return A string containing the CLIPS slot declaration.
+     */
+    [[nodiscard]] virtual std::string get_slot_declaration() const noexcept = 0;
+
   protected:
     const property_type &pt;
     const type &tp;
@@ -219,6 +232,8 @@ namespace coco
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
     void set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept override;
 
+    std::string get_slot_declaration() const noexcept override;
+
   private:
     bool multiple;                                  // Indicates whether the property can have multiple values.
     std::optional<std::vector<bool>> default_value; // The default value for the property.
@@ -240,6 +255,8 @@ namespace coco
   private:
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
     void set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept override;
+
+    std::string get_slot_declaration() const noexcept override;
 
   private:
     bool multiple;                                  // Indicates whether the property can have multiple values.
@@ -265,6 +282,8 @@ namespace coco
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
     void set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept override;
 
+    std::string get_slot_declaration() const noexcept override;
+
   private:
     bool multiple;                                    // Indicates whether the property can have multiple values.
     std::optional<std::vector<double>> default_value; // The default value for the property.
@@ -289,6 +308,8 @@ namespace coco
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
     void set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept override;
 
+    std::string get_slot_declaration() const noexcept override;
+
   private:
     bool multiple;                                         // Indicates whether the property can have multiple values.
     std::optional<std::vector<std::string>> default_value; // The default value for the property.
@@ -310,6 +331,8 @@ namespace coco
   private:
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
     void set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept override;
+
+    std::string get_slot_declaration() const noexcept override;
 
   private:
     bool multiple;                                         // Indicates whether the property can have multiple values.
@@ -334,6 +357,8 @@ namespace coco
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
     void set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept override;
 
+    std::string get_slot_declaration() const noexcept override;
+
   private:
     const type &domain;                                                     // The domain of the property.
     bool multiple;                                                          // Indicates whether the property can have multiple values.
@@ -356,6 +381,8 @@ namespace coco
   private:
     void set_value(FactBuilder *property_fact_builder, const json::json &value) const noexcept override;
     void set_value(FactModifier *property_fact_modifier, const json::json &value) const noexcept override;
+
+    std::string get_slot_declaration() const noexcept override;
 
   private:
     std::optional<json::json> schema;        // The validation schema..

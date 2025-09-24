@@ -19,8 +19,23 @@ namespace coco
 {
     item::item(type &tp, std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept : tp(tp), id(id), properties(props)
     {
-        FactBuilder *item_fact_builder = CreateFactBuilder(tp.get_coco().env, "item");
+        FactBuilder *item_fact_builder = CreateFactBuilder(tp.get_coco().env, tp.get_name().c_str());
         FBPutSlotSymbol(item_fact_builder, "id", id.data());
+        std::map<std::string, std::reference_wrapper<const property>> static_props = tp.get_all_static_properties();
+        for (const auto &[p_name, val] : props.as_object())
+            if (auto prop = static_props.find(p_name); prop != static_props.end() && !val.is_null() && prop->second.get().validate(val))
+                prop->second.get().set_value(item_fact_builder, val);
+            else
+                LOG_WARN("Property " + p_name + " for item " + id.data() + " is not valid");
+        std::map<std::string, std::reference_wrapper<const property>> dynamic_props = tp.get_all_dynamic_properties();
+        if (val.has_value())
+        {
+            for (const auto &[p_name, j_val] : val->first.as_object())
+                if (auto prop = dynamic_props.find(p_name); prop != dynamic_props.end() && !j_val.is_null() && prop->second.get().validate(j_val))
+                    prop->second.get().set_value(item_fact_builder, j_val);
+                else
+                    LOG_WARN("Dynamic property " + p_name + " for item " + id.data() + " is not valid");
+        }
         item_fact = FBAssert(item_fact_builder);
         assert(item_fact);
         RetainFact(item_fact);
@@ -66,12 +81,14 @@ namespace coco
 
     void item::set_properties(json::json &&props)
     {
+        FactModifier *fact_modifier = CreateFactModifier(tp.get_coco().env, item_fact);
         std::map<std::string, std::reference_wrapper<const property>> static_props = tp.get_all_static_properties();
 
         for (const auto &[p_name, val] : props.as_object())
             if (auto prop = static_props.find(p_name); prop != static_props.end())
             {
-                if (auto f = value_facts.find(p_name); f != value_facts.end())
+                prop->second.get().set_value(fact_modifier, val);
+                if (auto f = properties_facts.find(p_name); f != properties_facts.end())
                 {
                     if (val.is_null())
                     { // we retract the old property
@@ -80,7 +97,7 @@ namespace coco
                         [[maybe_unused]] auto re_err = Retract(f->second);
                         assert(re_err == RE_NO_ERROR);
                         properties.erase(p_name);
-                        value_facts.erase(p_name);
+                        properties_facts.erase(p_name);
                     }
                     else if (prop->second.get().validate(val))
                     { // we update the property
@@ -95,7 +112,7 @@ namespace coco
                         ReleaseFact(f->second);
                         FMDispose(property_fact_modifier);
                         properties[p_name] = val;
-                        value_facts[p_name] = property_fact;
+                        properties_facts[p_name] = property_fact;
                     }
                     else
                         LOG_WARN("Property " + p_name + " for item " + id + " is not valid");
@@ -122,10 +139,20 @@ namespace coco
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have static property " + p_name);
         UPDATED_ITEM();
+
+        auto updated_fact = FMModify(fact_modifier);
+        [[maybe_unused]] auto fm_err = FMError(tp.get_coco().env);
+        assert(fm_err == FME_NO_ERROR);
+        assert(updated_fact);
+        RetainFact(updated_fact);
+        ReleaseFact(item_fact);
+        item_fact = updated_fact;
+        FMDispose(fact_modifier);
     }
 
     void item::set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val)
     {
+        FactModifier *fact_modifier = CreateFactModifier(tp.get_coco().env, item_fact);
         std::map<std::string, std::reference_wrapper<const property>> dynamic_props = tp.get_all_dynamic_properties();
 
         if (!value.has_value())
@@ -136,6 +163,7 @@ namespace coco
         for (const auto &[p_name, j_val] : val.first.as_object())
             if (auto prop = dynamic_props.find(p_name); prop != dynamic_props.end())
             {
+                prop->second.get().set_value(fact_modifier, val.first);
                 if (auto f = value_facts.find(p_name); f != value_facts.end())
                 {
                     if (j_val.is_null())
@@ -189,6 +217,15 @@ namespace coco
             else
                 LOG_WARN("Type " + tp.get_name() + " does not have dynamic property " + p_name);
         NEW_DATA(val.first, val.second);
+
+        auto updated_fact = FMModify(fact_modifier);
+        [[maybe_unused]] auto fm_err = FMError(tp.get_coco().env);
+        assert(fm_err == FME_NO_ERROR);
+        assert(updated_fact);
+        RetainFact(updated_fact);
+        ReleaseFact(item_fact);
+        item_fact = updated_fact;
+        FMDispose(fact_modifier);
     }
 
     json::json item::to_json() const noexcept

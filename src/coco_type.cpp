@@ -28,12 +28,29 @@ namespace coco
             static_properties.emplace(name, cc.get_property_type(prop["type"].get<std::string>()).new_instance(*this, false, name, prop));
         for (auto &[name, prop] : dynamic_props.as_object())
             dynamic_properties.emplace(name, cc.get_property_type(prop["type"].get<std::string>()).new_instance(*this, true, name, prop));
+
+        std::string deftemplate = "(deftemplate " + get_name() + " (slot item_id (type SYMBOL))";
+        for (const auto &[name, prop] : static_properties)
+            deftemplate += " " + prop->get_slot_declaration();
+        for (const auto &[name, prop] : dynamic_properties)
+            deftemplate += " " + prop->get_slot_declaration();
+        deftemplate += ')';
+        LOG_TRACE(deftemplate);
+        [[maybe_unused]] auto prop_dt = Build(cc.env, deftemplate.c_str());
+        assert(prop_dt == BE_NO_ERROR);
+
         CREATED_TYPE();
     }
     type::~type()
     {
         for (const auto &id : instances)
             cc.items.erase(id);
+        auto dt = FindDeftemplate(cc.env, name.c_str());
+        assert(dt);
+        assert(DeftemplateIsDeletable(dt));
+        [[maybe_unused]] auto undef_dt = Undeftemplate(dt, cc.env);
+        assert(undef_dt);
+
         for (auto &p : parent_facts)
         {
             ReleaseFact(p.second);

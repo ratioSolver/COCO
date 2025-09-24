@@ -301,6 +301,7 @@ namespace coco
     std::string bool_property::get_slot_declaration() const noexcept
     {
         std::string slot_decl = (multiple ? "(multislot " : "(slot ") + std::string(name) + " (type SYMBOL)";
+        slot_decl += " (allowed-values TRUE FALSE)";
         if (default_value.has_value())
         {
             slot_decl += " (default";

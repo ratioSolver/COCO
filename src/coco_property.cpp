@@ -152,37 +152,30 @@ namespace coco
     property::property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept : pt(pt), tp(tp), dynamic(dynamic), name(name) {}
     property::~property()
     {
-        auto dt = FindDeftemplate(pt.get_coco().env, get_deftemplate_name().c_str());
-        assert(dt);
-        assert(DeftemplateIsDeletable(dt));
-        [[maybe_unused]] auto undef_dt = Undeftemplate(dt, pt.get_coco().env);
-        assert(undef_dt);
+        if (dynamic)
+        {
+            auto dt = FindDeftemplate(pt.get_coco().env, get_deftemplate_name().c_str());
+            assert(dt);
+            assert(DeftemplateIsDeletable(dt));
+            [[maybe_unused]] auto undef_dt = Undeftemplate(dt, pt.get_coco().env);
+            assert(undef_dt);
+        }
     }
 
-    std::string property::get_deftemplate_name() const noexcept
-    {
-        std::string deftemplate = tp.get_name();
-        if (dynamic)
-            deftemplate += "_has_";
-        else
-            deftemplate += '_';
-        deftemplate += name.data();
-        return deftemplate;
-    }
+    std::string property::get_deftemplate_name() const noexcept { return tp.get_name() + "_" + name.data(); }
     Environment *property::get_env() const noexcept { return pt.get_coco().env; }
     const json::json &property::get_schemas() const noexcept { return pt.get_coco().schemas; }
     std::mt19937 &property::get_gen() const noexcept { return pt.get_coco().gen; }
 
     bool_property::bool_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<bool>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
-            deftemplate += " (slot timestamp (type INTEGER))";
-        deftemplate += ')';
-
-        LOG_TRACE(deftemplate);
-        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
-        assert(prop_dt == BE_NO_ERROR);
+        {
+            std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration() + " (slot timestamp (type INTEGER)))";
+            LOG_TRACE(deftemplate);
+            [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+            assert(prop_dt == BE_NO_ERROR);
+        }
     }
     bool bool_property::validate(const json::json &j) const noexcept { return j.is_boolean(); }
     json::json bool_property::to_json() const noexcept
@@ -275,14 +268,13 @@ namespace coco
 
     int_property::int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<long>> default_value, std::optional<long> min, std::optional<long> max) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value), min(min), max(max)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
-            deftemplate += " (slot timestamp (type INTEGER))";
-        deftemplate += ')';
-
-        LOG_TRACE(deftemplate);
-        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
-        assert(prop_dt == BE_NO_ERROR);
+        {
+            std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration() + " (slot timestamp (type INTEGER)))";
+            LOG_TRACE(deftemplate);
+            [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+            assert(prop_dt == BE_NO_ERROR);
+        }
     }
     bool int_property::validate(const json::json &j) const noexcept
     {
@@ -395,14 +387,13 @@ namespace coco
 
     float_property::float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<double>> default_value, std::optional<double> min, std::optional<double> max) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value), min(min), max(max)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
-            deftemplate += " (slot timestamp (type INTEGER))";
-        deftemplate += ')';
-
-        LOG_TRACE(deftemplate);
-        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
-        assert(prop_dt == BE_NO_ERROR);
+        {
+            std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration() + " (slot timestamp (type INTEGER)))";
+            LOG_TRACE(deftemplate);
+            [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+            assert(prop_dt == BE_NO_ERROR);
+        }
     }
     bool float_property::validate(const json::json &j) const noexcept
     {
@@ -515,14 +506,13 @@ namespace coco
 
     string_property::string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple, std::optional<std::vector<std::string>> default_value) noexcept : property(pt, tp, dynamic, name), multiple(multiple), default_value(default_value)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
-            deftemplate += " (slot timestamp (type INTEGER))";
-        deftemplate += ')';
-
-        LOG_TRACE(deftemplate);
-        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
-        assert(prop_dt == BE_NO_ERROR);
+        {
+            std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration() + " (slot timestamp (type INTEGER)))";
+            LOG_TRACE(deftemplate);
+            [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+            assert(prop_dt == BE_NO_ERROR);
+        }
     }
     bool string_property::validate(const json::json &j) const noexcept { return j.is_string(); }
     json::json string_property::to_json() const noexcept
@@ -625,14 +615,13 @@ namespace coco
                                                                            { return std::find(this->values.begin(), this->values.end(), val) != this->values.end(); }));
         assert(!default_value.has_value() || !multiple || default_value->size() <= 1);
 
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
-            deftemplate += " (slot timestamp (type INTEGER))";
-        deftemplate += ')';
-
-        LOG_TRACE(deftemplate);
-        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
-        assert(prop_dt == BE_NO_ERROR);
+        {
+            std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration() + " (slot timestamp (type INTEGER)))";
+            LOG_TRACE(deftemplate);
+            [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+            assert(prop_dt == BE_NO_ERROR);
+        }
     }
     bool symbol_property::validate(const json::json &j) const noexcept
     {
@@ -762,14 +751,13 @@ namespace coco
                                                                                         return false; }));
         assert(!default_value.has_value() || !multiple || default_value->size() <= 1);
 
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
-            deftemplate += " (slot timestamp (type INTEGER))";
-        deftemplate += ')';
-
-        LOG_TRACE(deftemplate);
-        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
-        assert(prop_dt == BE_NO_ERROR);
+        {
+            std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration() + " (slot timestamp (type INTEGER)))";
+            LOG_TRACE(deftemplate);
+            [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+            assert(prop_dt == BE_NO_ERROR);
+        }
     }
     bool item_property::validate(const json::json &j) const noexcept
     {
@@ -889,14 +877,13 @@ namespace coco
 
     json_property::json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema, std::optional<json::json> default_value) noexcept : property(pt, tp, dynamic, name), schema(schema), default_value(default_value)
     {
-        std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration();
         if (dynamic)
-            deftemplate += " (slot timestamp (type INTEGER))";
-        deftemplate += ')';
-
-        LOG_TRACE(deftemplate);
-        [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
-        assert(prop_dt == BE_NO_ERROR);
+        {
+            std::string deftemplate = "(deftemplate " + get_deftemplate_name() + " (slot item_id (type SYMBOL)) " + get_slot_declaration() + " (slot timestamp (type INTEGER)))";
+            LOG_TRACE(deftemplate);
+            [[maybe_unused]] auto prop_dt = Build(get_env(), deftemplate.c_str());
+            assert(prop_dt == BE_NO_ERROR);
+        }
     }
     bool json_property::validate(const json::json &j) const noexcept { return schema.has_value() ? json::validate(j, *schema, get_schemas()) : true; }
     json::json json_property::to_json() const noexcept

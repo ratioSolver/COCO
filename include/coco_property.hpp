@@ -124,7 +124,7 @@ namespace coco
     friend class item;
 
   public:
-    property(const property_type &pt, const type &tp, bool dynamic, std::string_view name) noexcept;
+    property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool nullable = false) noexcept;
     virtual ~property();
 
     /**
@@ -154,6 +154,13 @@ namespace coco
      * @return The name of the property.
      */
     [[nodiscard]] const std::string &get_name() const noexcept { return name; }
+
+    /**
+     * @brief Gets the nullability of the property.
+     *
+     * @return The nullability of the property.
+     */
+    [[nodiscard]] bool is_nullable() const noexcept { return nullable; }
 
     /**
      * @brief Validates the property against a JSON object and schema references.
@@ -213,12 +220,13 @@ namespace coco
     const type &tp;
     const bool dynamic;
     const std::string name;
+    const bool nullable;
   };
 
   class bool_property final : public property
   {
   public:
-    bool_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple = false, std::optional<std::vector<bool>> default_value = std::nullopt) noexcept;
+    bool_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool nullable = false, bool multiple = false, std::optional<std::vector<bool>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
@@ -242,7 +250,7 @@ namespace coco
   class int_property final : public property
   {
   public:
-    int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple = false, std::optional<std::vector<long>> default_value = std::nullopt, std::optional<long> min = std::nullopt, std::optional<long> max = std::nullopt) noexcept;
+    int_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool nullable = false, bool multiple = false, std::optional<std::vector<long>> default_value = std::nullopt, std::optional<long> min = std::nullopt, std::optional<long> max = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
@@ -268,7 +276,7 @@ namespace coco
   class float_property final : public property
   {
   public:
-    float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple = false, std::optional<std::vector<double>> default_value = std::nullopt, std::optional<double> min = std::nullopt, std::optional<double> max = std::nullopt) noexcept;
+    float_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool nullable = false, bool multiple = false, std::optional<std::vector<double>> default_value = std::nullopt, std::optional<double> min = std::nullopt, std::optional<double> max = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
@@ -294,7 +302,7 @@ namespace coco
   class string_property final : public property
   {
   public:
-    string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple = false, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
+    string_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool nullable = false, bool multiple = false, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
@@ -318,7 +326,7 @@ namespace coco
   class symbol_property final : public property
   {
   public:
-    symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool multiple = false, std::vector<std::string> &&values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
+    symbol_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool nullable = false, bool multiple = false, std::vector<std::string> &&values = {}, std::optional<std::vector<std::string>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
@@ -343,7 +351,7 @@ namespace coco
   class item_property final : public property
   {
   public:
-    item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool multiple = false, std::optional<std::vector<std::reference_wrapper<item>>> default_value = std::nullopt) noexcept;
+    item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool nullable = false, bool multiple = false, std::optional<std::vector<std::reference_wrapper<item>>> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 
@@ -368,7 +376,7 @@ namespace coco
   class json_property final : public property
   {
   public:
-    json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, std::optional<json::json> schema = std::nullopt, std::optional<json::json> default_value = std::nullopt) noexcept;
+    json_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, bool nullable = false, std::optional<json::json> schema = std::nullopt, std::optional<json::json> default_value = std::nullopt) noexcept;
 
     [[nodiscard]] bool validate(const json::json &j) const noexcept override;
 

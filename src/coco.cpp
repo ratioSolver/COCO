@@ -6,6 +6,7 @@
 #include "coco_db.hpp"
 #include "logging.hpp"
 #include <algorithm>
+#include <functional>
 #include <cassert>
 
 namespace coco

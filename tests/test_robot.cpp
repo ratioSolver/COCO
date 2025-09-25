@@ -88,7 +88,7 @@ int main()
     auto &user_itm = cc.create_item(user_tp);
 
     // Create the 'Robot' type
-    auto &robot_tp = cc.create_type("Robot", {}, {}, json::json{{"saying", {"type", "string"}}, {"understood", {"type", "string"}}, {"robot_face", {{"type", "symbol"}, {"values", {"happy", "sad", "angry", "surprised", "neutral"}}}}, {"user", {{"type", "item"}, {"domain", "User"}}}, {"listening", {"type", "bool"}}});
+    auto &robot_tp = cc.create_type("Robot", {}, {}, json::json{{"saying", {"type", "string"}}, {"understood", {"type", "string"}}, {"robot_face", {{"type", "symbol"}, {"values", {"happy", "sad", "angry", "surprised", "neutral"}}}}, {"user", {{"type", "item"}, {"domain", "User"}}}, {"listening", {{"type", "bool"}, {"default", false}}}});
     // Create a robot
     auto &robot_itm = cc.create_item(robot_tp);
 
@@ -97,11 +97,11 @@ int main()
 
 #ifdef BUILD_LLM
     // If someone talks to the robot, the robot has to understand the message
-    cc.create_reactive_rule("understand", "(defrule understand (Robot_has_understood (item_id ?robot) (understood ?understood)) => (understand ?robot ?understood) (add_data ?robot (create$ understood) (create$ nil)))");
+    cc.create_reactive_rule("understand", "(defrule understand (Robot (item_id ?robot) (understood ?understood&:(> (str-length ?understood) 0))) => (understand ?robot ?understood) (add_data ?robot (create$ understood) (create$ \"\")))");
     // If the message contains the name of the user, set the name of the user
-    cc.create_reactive_rule("set_name", "(defrule set_name ?f <- (entity (item_id ?robot) (name user_name) (value ?value)) (Robot_has_user (item_id ?robot) (user ?user)) => (set_slots ?robot (create$ user_name) (create$ ?value)) (set_properties ?user (create$ name) (create$ ?value)) (retract ?f))");
+    cc.create_reactive_rule("set_name", "(defrule set_name ?f <- (entity (item_id ?robot) (name user_name) (value ?value)) (Robot (item_id ?robot) (user ?user)) => (set_slots ?robot (create$ user_name) (create$ ?value)) (set_properties ?user (create$ name) (create$ ?value)) (retract ?f))");
     // If the message contains the age of the user, set the age of the user
-    cc.create_reactive_rule("set_age", "(defrule set_age ?f <- (entity (item_id ?robot) (name user_age) (value ?value)) (Robot_has_user (item_id ?robot) (user ?user)) => (set_slots ?robot (create$ user_age) (create$ ?value)) (set_properties ?user (create$ age) (create$ ?value)) (retract ?f))");
+    cc.create_reactive_rule("set_age", "(defrule set_age ?f <- (entity (item_id ?robot) (name user_age) (value ?value)) (Robot (item_id ?robot) (user ?user)) => (set_slots ?robot (create$ user_age) (create$ ?value)) (set_properties ?user (create$ age) (create$ ?value)) (retract ?f))");
     // If the message contains the robot's response, set the robot's response
     cc.create_reactive_rule("set_robot_response", "(defrule set_robot_response ?f <- (entity (item_id ?robot) (name robot_response) (value ?value)) => (add_data ?robot (create$ saying) (create$ ?value)) (retract ?f))");
     // If the message contains the robot's face, set the robot's face

@@ -46,17 +46,25 @@ namespace coco
         LOG_DEBUG("Retrieving all types");
         auto tps = db.get_types();
         LOG_DEBUG("Retrieved " << tps.size() << " types");
-        for (auto &tp : tps)
-            make_type(tp.name, {}, tp.static_props.has_value() ? std::move(*tp.static_props) : json::json{}, tp.dynamic_props.has_value() ? std::move(*tp.dynamic_props) : json::json{}, tp.data.has_value() ? std::move(*tp.data) : json::json{});
 
-        for (auto &tp : tps)
-            if (!tp.parents.empty())
-            {
-                std::vector<std::reference_wrapper<const type>> parents;
-                for (auto &parent : tp.parents)
-                    parents.emplace_back(get_type(parent));
-                get_type(tp.name).set_parents(std::move(parents));
-            }
+        std::map<std::string, db_type> tps_map;
+        for (const auto &tp : tps)
+            tps_map[tp.name] = tp;
+
+        std::function<void(const std::string &)> visit = [&](const std::string &name)
+        {
+            if (types.count(name))
+                return;
+            for (const auto &parent : tps_map.at(name).parents)
+                visit(parent);
+            std::vector<std::reference_wrapper<const type>> parents;
+            for (auto &parent : tps_map.at(name).parents)
+                parents.emplace_back(get_type(parent));
+            make_type(name, std::move(parents), tps_map.at(name).static_props.has_value() ? std::move(*tps_map.at(name).static_props) : json::json{}, tps_map.at(name).dynamic_props.has_value() ? std::move(*tps_map.at(name).dynamic_props) : json::json{}, tps_map.at(name).data.has_value() ? std::move(*tps_map.at(name).data) : json::json{});
+        };
+
+        for (const auto &tp : tps)
+            visit(tp.name);
 
         LOG_DEBUG("Retrieving all items");
         auto itms = db.get_items();
@@ -162,7 +170,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         if (items.find(id.data()) == items.end())
-            throw std::invalid_argument("Type not found: " + std::string(id));
+            throw std::invalid_argument("Item not found: " + std::string(id));
         return *items.at(id.data());
     }
     item &coco::create_item(type &tp, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val, bool infere) noexcept

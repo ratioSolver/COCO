@@ -184,7 +184,20 @@ namespace coco
             assert(prop_dt == BE_NO_ERROR);
         }
     }
-    bool bool_property::validate(const json::json &j) const noexcept { return j.is_boolean(); }
+    bool bool_property::validate(const json::json &j) const noexcept
+    {
+        if (j.is_null())
+            return nullable;
+        if (multiple)
+        {
+            if (!j.is_array())
+                return false;
+            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const json::json &v)
+                               { return v.is_boolean(); });
+        }
+        else
+            return j.is_boolean();
+    }
     json::json bool_property::to_json() const noexcept
     {
         json::json j;
@@ -336,12 +349,32 @@ namespace coco
     }
     bool int_property::validate(const json::json &j) const noexcept
     {
-        if (!j.is_integer())
-            return false;
-        long value = j;
-        if ((min.has_value() && *min > value) || (max.has_value() && *max < value))
-            return false;
-        return true;
+        if (j.is_null())
+            return nullable;
+        if (multiple)
+        {
+            if (!j.is_array())
+                return false;
+            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const json::json &v)
+                               {
+                                   if (!v.is_integer())
+                                       return false;
+                                   if (min.has_value() && (v.get<long>() < *min))
+                                       return false;
+                                   if (max.has_value() && (v.get<long>() > *max))
+                                       return false;
+                                   return true; });
+        }
+        else
+        {
+            if (!j.is_integer())
+                return false;
+            if (min.has_value() && (j.get<long>() < *min))
+                return false;
+            if (max.has_value() && (j.get<long>() > *max))
+                return false;
+            return true;
+        }
     }
     json::json int_property::to_json() const noexcept
     {
@@ -515,12 +548,32 @@ namespace coco
     }
     bool float_property::validate(const json::json &j) const noexcept
     {
-        if (!j.is_number())
-            return false;
-        double value = j;
-        if ((min.has_value() && *min > value) || (max.has_value() && *max < value))
-            return false;
-        return true;
+        if (j.is_null())
+            return nullable;
+        if (multiple)
+        {
+            if (!j.is_array())
+                return false;
+            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const json::json &v)
+                               {
+                                   if (!v.is_number())
+                                       return false;
+                                   if (min.has_value() && (v.get<double>() < *min))
+                                       return false;
+                                   if (max.has_value() && (v.get<double>() > *max))
+                                       return false;
+                                   return true; });
+        }
+        else
+        {
+            if (!j.is_number())
+                return false;
+            if (min.has_value() && (j.get<double>() < *min))
+                return false;
+            if (max.has_value() && (j.get<double>() > *max))
+                return false;
+            return true;
+        }
     }
     json::json float_property::to_json() const noexcept
     {
@@ -692,7 +745,20 @@ namespace coco
             assert(prop_dt == BE_NO_ERROR);
         }
     }
-    bool string_property::validate(const json::json &j) const noexcept { return j.is_string(); }
+    bool string_property::validate(const json::json &j) const noexcept
+    {
+        if (j.is_null())
+            return nullable;
+        if (multiple)
+        {
+            if (!j.is_array())
+                return false;
+            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const json::json &v)
+                               { return v.is_string(); });
+        }
+        else
+            return j.is_string();
+    }
     json::json string_property::to_json() const noexcept
     {
         json::json j;
@@ -863,15 +929,17 @@ namespace coco
     }
     bool symbol_property::validate(const json::json &j) const noexcept
     {
+        if (j.is_null())
+            return nullable;
         if (multiple)
         {
             if (!j.is_array())
                 return false;
-            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const auto &val)
-                               { return val.is_string(); });
+            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const json::json &v)
+                               { return v.is_string() && (values.empty() || (std::find(this->values.begin(), this->values.end(), v.get<std::string>()) != this->values.end())); });
         }
         else
-            return j.is_string();
+            return j.is_string() && (values.empty() || (std::find(this->values.begin(), this->values.end(), j.get<std::string>()) != this->values.end()));
     }
     json::json symbol_property::to_json() const noexcept
     {
@@ -1059,15 +1127,43 @@ namespace coco
     }
     bool item_property::validate(const json::json &j) const noexcept
     {
+        if (j.is_null())
+            return nullable;
         if (multiple)
         {
             if (!j.is_array())
                 return false;
-            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const auto &val)
-                               { return val.is_string(); });
+            return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const json::json &v)
+                               { return v.is_string() && !tp.get_coco().get_item(v.get<std::string>()).get_id().empty() && ([&]()
+                                                                                                                            {
+                                         std::queue<const type *> q;
+                                         q.push(&tp.get_coco().get_item(v.get<std::string>()).get_type());
+                                         while (!q.empty())
+                                         {
+                                             auto tp = q.front();
+                                             q.pop();
+                                             if (tp == &domain)
+                                                 return true;
+                                             for (const auto &[_, p] : tp->get_parents())
+                                                 q.push(&p.get());
+                                         }
+                                         return false; }()); });
         }
         else
-            return j.is_string();
+            return j.is_string() && !tp.get_coco().get_item(j.get<std::string>()).get_id().empty() && ([&]()
+                                                                                                       {
+                    std::queue<const type *> q;
+                    q.push(&tp.get_coco().get_item(j.get<std::string>()).get_type());
+                    while (!q.empty())
+                    {
+                        auto tp = q.front();
+                        q.pop();
+                        if (tp == &domain)
+                            return true;
+                        for (const auto &[_, p] : tp->get_parents())
+                            q.push(&p.get());
+                    }
+                    return false; }());
     }
     json::json item_property::to_json() const noexcept
     {
@@ -1241,7 +1337,14 @@ namespace coco
             assert(prop_dt == BE_NO_ERROR);
         }
     }
-    bool json_property::validate(const json::json &j) const noexcept { return schema.has_value() ? json::validate(j, *schema, get_schemas()) : true; }
+    bool json_property::validate(const json::json &j) const noexcept
+    {
+        if (j.is_null())
+            return nullable;
+        if (schema.has_value())
+            return json::validate(j, *schema, get_schemas());
+        return true;
+    }
     json::json json_property::to_json() const noexcept
     {
         json::json j;

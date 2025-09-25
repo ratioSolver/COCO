@@ -20,8 +20,8 @@ namespace coco
 {
   constexpr const char *type_deftemplate = "(deftemplate type (slot name (type SYMBOL)))";
   constexpr const char *is_a_deftemplate = "(deftemplate is_a (slot type (type SYMBOL)) (slot parent (type SYMBOL)))";
-  constexpr const char *instance_of_deftemplate = "(deftemplate instance_of (slot id (type SYMBOL)) (slot type (type SYMBOL)))";
-  constexpr const char *inheritance_rule = "(defrule inheritance (is_a (type ?t) (parent ?p)) (instance_of (id ?i) (type ?t)) => (assert (instance_of (id ?i) (type ?p))))";
+  constexpr const char *instance_of_deftemplate = "(deftemplate instance_of (slot item_id (type SYMBOL)) (slot type (type SYMBOL)))";
+  constexpr const char *inheritance_rule = "(defrule inheritance (is_a (type ?t) (parent ?p)) (instance_of (item_id ?i) (type ?t)) => (assert (instance_of (item_id ?i) (type ?p))))";
   constexpr const char *all_instances_of_function = "(deffunction all-instances-of (?type) (bind ?instances (create$)) (do-for-all-facts ((?instance_of instance_of)) (eq ?instance_of:type ?type) (bind ?instances (create$ ?instances ?instance_of:id))) (return ?instances))";
 
   class coco_db;

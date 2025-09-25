@@ -30,10 +30,20 @@ namespace coco
             dynamic_properties.emplace(name, cc.get_property_type(prop["type"].get<std::string>()).new_instance(*this, true, name, prop));
 
         std::string deftemplate = "(deftemplate " + get_name() + " (slot item_id (type SYMBOL))";
-        for (const auto &[name, prop] : static_properties)
-            deftemplate += " " + prop->get_slot_declaration();
-        for (const auto &[name, prop] : dynamic_properties)
-            deftemplate += " " + prop->get_slot_declaration();
+        std::queue<const type *> q;
+        q.push(this);
+        while (!q.empty())
+        {
+            const type *t = q.front();
+            q.pop();
+            for (const auto &[name, prop] : t->static_properties)
+                deftemplate += " " + prop->get_slot_declaration();
+            for (const auto &[name, prop] : t->dynamic_properties)
+                deftemplate += " " + prop->get_slot_declaration();
+
+            for (const auto &[p_name, p] : t->parents)
+                q.push(&p.get());
+        }
         deftemplate += ')';
         LOG_TRACE(deftemplate);
         [[maybe_unused]] auto prop_dt = Build(cc.env, deftemplate.c_str());

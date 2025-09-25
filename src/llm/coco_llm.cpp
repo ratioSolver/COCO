@@ -351,7 +351,7 @@ namespace coco
         llm.set_slots(llm.get_coco().get_item(item_id.lexemeValue->contents), std::move(j_slots), false);
     }
 
-    void understand_udf(Environment *env, UDFContext *udfc, UDFValue *)
+    void understand_udf(Environment *, UDFContext *udfc, UDFValue *)
     {
         LOG_DEBUG("Understanding..");
 

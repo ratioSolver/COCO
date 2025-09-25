@@ -323,7 +323,7 @@ namespace coco
     {
         std::string slot_decl = (multiple ? "(multislot " : "(slot ") + std::string(name) + " (type SYMBOL)";
         if (nullable)
-            slot_decl += " (allowed-values TRUE FALSE nil)";
+            slot_decl += " (allowed-values nil TRUE FALSE)";
         else
             slot_decl += " (allowed-values TRUE FALSE)";
         if (default_value.has_value())
@@ -1082,10 +1082,10 @@ namespace coco
         if (!values.empty())
         {
             slot_decl += " (allowed-values";
-            for (const auto &val : values)
-                slot_decl += " " + val;
             if (nullable)
                 slot_decl += " nil";
+            for (const auto &val : values)
+                slot_decl += " " + val;
             slot_decl += ")";
         }
         if (default_value.has_value())

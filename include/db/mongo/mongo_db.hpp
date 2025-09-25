@@ -80,4 +80,6 @@ namespace coco
   private:
     mongocxx::collection types_collection, items_collection, item_data_collection, reactive_rules_collection;
   };
+
+  [[nodiscard]] bsoncxx::array::value to_bson_array(const json::json &j);
 } // namespace coco

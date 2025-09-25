@@ -173,6 +173,9 @@ namespace coco
             case json::json_type::string:
                 update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, prop.get<std::string>()));
                 break;
+            case json::json_type::array:
+                update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, to_bson_array(prop).view()));
+                break;
             default:
                 update_fields.append(bsoncxx::builder::basic::kvp("properties." + nm, bsoncxx::from_json(prop.dump())));
             }
@@ -226,12 +229,15 @@ namespace coco
                 update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, v.get<std::string>()));
                 update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, v.get<std::string>()));
                 break;
+            case json::json_type::array:
+                update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, to_bson_array(v).view()));
+                update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, to_bson_array(v).view()));
+                break;
             default:
                 update_fields.append(bsoncxx::builder::basic::kvp("value.data." + nm, bsoncxx::from_json(v.dump())));
                 update_val_fields.append(bsoncxx::builder::basic::kvp("data." + nm, bsoncxx::from_json(v.dump())));
             }
         update_fields.append(bsoncxx::builder::basic::kvp("value.timestamp", bsoncxx::types::b_date{timestamp}));
-
         bsoncxx::builder::basic::document filter_doc; // Prepare the filter document
         filter_doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}));
         bsoncxx::builder::basic::document update_doc;
@@ -275,5 +281,36 @@ namespace coco
         doc.append(bsoncxx::builder::basic::kvp("content", rule_content.data()));
         if (!reactive_rules_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
+    }
+
+    bsoncxx::array::value to_bson_array(const json::json &j)
+    {
+        bsoncxx::builder::basic::array arr;
+        for (const auto &elem : j.as_array())
+            switch (elem.get_type())
+            {
+            case json::json_type::null:
+                arr.append(bsoncxx::types::b_null{});
+                break;
+            case json::json_type::boolean:
+                arr.append(elem.get<bool>());
+                break;
+            case json::json_type::number:
+                if (elem.is_float())
+                    arr.append(elem.get<double>());
+                else
+                    arr.append(elem.get<int64_t>());
+                break;
+            case json::json_type::string:
+                arr.append(elem.get<std::string>());
+                break;
+            case json::json_type::object:
+                arr.append(bsoncxx::from_json(elem.dump()));
+                break;
+            case json::json_type::array:
+                arr.append(to_bson_array(elem).view());
+                break;
+            }
+        return arr.extract();
     }
 } // namespace coco

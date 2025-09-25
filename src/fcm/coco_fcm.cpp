@@ -47,8 +47,7 @@ namespace coco
         auto jwt = header + "." + claims + "." + utils::base64url_encode(utils::sign_rs256(header + "." + claims, private_key));
         std::string body = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=" + jwt;
         auto res = access_token_client.post("/token", std::move(body), {{"Content-Type", "application/x-www-form-urlencoded"}});
-        auto j_res = json::load(static_cast<network::string_response &>(*res).get_body());
-        access_token = j_res["access_token"].get<std::string>();
+        access_token = static_cast<network::json_response &>(*res).get_body()["access_token"].get<std::string>();
         access_token_expiration = std::chrono::system_clock::now() + std::chrono::seconds(exp - iat);
     }
 

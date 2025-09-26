@@ -387,18 +387,18 @@ namespace coco
 #ifdef BUILD_AUTH
         add_module<server_auth>(*this);
         auto &auth_mdwr = add_middleware<auth_middleware>(*this, get_coco());
-        auth_mdwr.add_authorized_path(network::Get, "/types", {0, 1});
-        auth_mdwr.add_authorized_path(network::Post, "/types", {0});
-        auth_mdwr.add_authorized_path(network::Get, "/types/{name}", {0, 1});
-        auth_mdwr.add_authorized_path(network::Delete, "/types/{name}", {0});
-        auth_mdwr.add_authorized_path(network::Get, "/items", {0, 1});
-        auth_mdwr.add_authorized_path(network::Post, "/items", {0});
-        auth_mdwr.add_authorized_path(network::Get, "/items/{id}", {0, 1}, true);
-        auth_mdwr.add_authorized_path(network::Delete, "/items/{id}", {0});
-        auth_mdwr.add_authorized_path(network::Get, "/data/{id}", {0, 1}, true);
-        auth_mdwr.add_authorized_path(network::Post, "/data/{id}", {0, 1}, true);
-        auth_mdwr.add_authorized_path(network::Get, "/reactive_rules", {0, 1});
-        auth_mdwr.add_authorized_path(network::Post, "/reactive_rules", {0});
+        auth_mdwr.add_authorized_path(network::Get, "^/types$", {0, 1});
+        auth_mdwr.add_authorized_path(network::Post, "^/types$", {0});
+        auth_mdwr.add_authorized_path(network::Get, "^/types/.*$", {0, 1});
+        auth_mdwr.add_authorized_path(network::Delete, "^/types/.*$", {0});
+        auth_mdwr.add_authorized_path(network::Get, "^/items$", {0, 1});
+        auth_mdwr.add_authorized_path(network::Post, "^/items$", {0});
+        auth_mdwr.add_authorized_path(network::Get, "^/items/.*$", {0, 1}, true);
+        auth_mdwr.add_authorized_path(network::Delete, "^/items/.*$", {0});
+        auth_mdwr.add_authorized_path(network::Get, "^/data/.*$", {0, 1}, true);
+        auth_mdwr.add_authorized_path(network::Post, "^/data/.*$", {0, 1}, true);
+        auth_mdwr.add_authorized_path(network::Get, "^/reactive_rules$", {0, 1});
+        auth_mdwr.add_authorized_path(network::Post, "^/reactive_rules$", {0});
 #else
         add_module<server_noauth>(*this);
 #endif

@@ -50,8 +50,8 @@ namespace coco
 #endif
                                             }}}}});
 #ifdef BUILD_AUTH
-        add_authorized_path("/deliberative_rules", network::verb::Get, {0, 1});
-        add_authorized_path("/deliberative_rules", network::verb::Post, {0});
+        add_authorized_path(network::verb::Get, "^/deliberative_rules$", {0, 1});
+        add_authorized_path(network::verb::Post, "^/deliberative_rules$", {0});
 #endif
     }
 

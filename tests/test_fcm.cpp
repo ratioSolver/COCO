@@ -39,7 +39,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #ifdef BUILD_AUTH
     cc.add_module<coco::coco_auth>(cc);
 #endif
-    cc.init();
+    cc.load_rules();
 
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);

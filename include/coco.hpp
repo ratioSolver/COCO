@@ -51,7 +51,12 @@ namespace coco
     coco(coco_db &db) noexcept;
     ~coco();
 
-    void init() noexcept;
+    /**
+     * @brief Initializes the CoCo environment by loading reactive rules from the database.
+     *
+     * This function retrieves all reactive rules stored in the database and loads them into the CoCo environment.
+     */
+    void load_rules() noexcept;
 
     [[nodiscard]] coco_db &get_db() noexcept { return db; }
     [[nodiscard]] const coco_db &get_db() const noexcept { return db; }

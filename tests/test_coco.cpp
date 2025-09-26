@@ -60,7 +60,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #ifdef BUILD_FCM
     [[maybe_unused]] auto &fcm = cc.add_module<coco::coco_fcm>(cc);
 #endif
-    cc.init();
+    cc.load_rules();
 
 #ifdef BUILD_AUTH
     cc.add_module<coco::coco_auth>(cc);

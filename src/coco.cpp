@@ -85,7 +85,7 @@ namespace coco
         assert(de);
     }
 
-    void coco::init() noexcept
+    void coco::load_rules() noexcept
     {
         LOG_DEBUG("Retrieving all reactive rules");
         auto rrs = db.get_reactive_rules();

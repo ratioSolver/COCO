@@ -14,7 +14,7 @@ namespace coco
   class auth_db : public mongo_module
   {
   public:
-    auth_db(mongo_db &db, std::string_view mongodb_users_uri = MONGODB_URI(MONGODB_USERS_HOST, MONGODB_USERS_PORT)) noexcept;
+    auth_db(mongo_db &db, std::string_view mongodb_users_uri = default_mongodb_uri()) noexcept;
 
     [[nodiscard]] db_user get_user(std::string_view id);
 

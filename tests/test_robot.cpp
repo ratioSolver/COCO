@@ -18,11 +18,6 @@
 #ifdef BUILD_LLM
 #include "llm_server.hpp"
 #endif
-#ifdef BUILD_AUTH
-#include "coco_auth.hpp"
-#else
-#include "coco_noauth.hpp"
-#endif
 #include <thread>
 #endif
 
@@ -36,9 +31,6 @@ int main()
 #endif
     coco::coco cc(db);
 
-#ifdef BUILD_AUTH
-    cc.add_module<coco::coco_auth>(cc);
-#endif
 #ifdef BUILD_MQTT
     cc.add_module<coco::coco_mqtt>(cc);
 #endif
@@ -109,12 +101,6 @@ int main()
                              { srv.start(); });
 #ifdef BUILD_SECURE
     srv.load_certificate("cert.pem", "key.pem");
-#endif
-#ifdef BUILD_AUTH
-    srv.add_module<coco::server_auth>(srv);
-    srv.add_middleware<coco::auth_middleware>(srv);
-#else
-    srv.add_module<coco::server_noauth>(srv);
 #endif
 #ifdef BUILD_LLM
     srv.add_module<coco::llm_server>(srv, llm);

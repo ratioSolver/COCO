@@ -86,12 +86,18 @@ namespace coco
   class auth_middleware : public network::middleware
   {
   public:
-    auth_middleware(coco_server &srv);
+    auth_middleware(coco_server &srv, coco &cc, std::map<network::verb, std::vector<std::string>> &&excluded_paths = {{network::Get, {"^/$", "^/assets/.*", "/.+\\.ico", "/.+\\.png", "^/openapi$", "^/asyncapi$"}}, {network::Post, {"^/login$"}}}) noexcept;
+
+    void add_excluded_path(network::verb v, std::string_view pattern);
+    void add_authorized_path(network::verb v, std::string_view pattern, std::set<uint8_t> roles, bool self = false);
 
   private:
     std::unique_ptr<network::response> before_request(const network::request &req) override;
 
   private:
-    coco_server &srv;
+    coco_server &srv;                                                                                        // Reference to the coco_server instance
+    coco &cc;                                                                                                // Reference to the coco instance
+    std::map<network::verb, std::vector<std::string>> excluded_paths;                                        // Paths to exclude from authentication
+    std::map<network::verb, std::vector<std::tuple<std::string, std::set<uint8_t>, bool>>> authorized_paths; // Paths requiring authentication with roles and self-access flag
   };
 } // namespace coco

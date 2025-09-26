@@ -293,31 +293,41 @@ namespace coco
             ws->send(msg_str);
     }
 
-    auth_middleware::auth_middleware(coco_server &srv) : network::middleware(srv), srv(srv) {}
+    auth_middleware::auth_middleware(coco_server &srv, coco &cc, std::map<network::verb, std::vector<std::string>> &&excluded_paths) noexcept : network::middleware(srv), srv(srv), cc(cc), excluded_paths(std::move(excluded_paths)) {}
+
+    void auth_middleware::add_excluded_path(network::verb v, std::string_view pattern) { excluded_paths[v].emplace_back(pattern); }
+    void auth_middleware::add_authorized_path(network::verb v, std::string_view pattern, std::set<uint8_t> roles, bool self) { authorized_paths[v].emplace_back(std::string(pattern), std::move(roles), self); }
 
     std::unique_ptr<network::response> auth_middleware::before_request(const network::request &req)
     {
-        if (std::regex_match(req.get_target(), std::regex("^/$")) || std::regex_match(req.get_target(), std::regex("^/assets/.+")) || std::regex_match(req.get_target(), std::regex("/.+\\.ico")) || std::regex_match(req.get_target(), std::regex("/.+\\.png")))
-            return nullptr;
+        // Check if the request path matches any of the excluded paths
+        if (auto it = excluded_paths.find(req.get_verb()); it != excluded_paths.end())
+            for (const auto &pattern : it->second)
+                if (std::regex_match(req.get_target(), std::regex(pattern)))
+                    return nullptr; // Excluded path, allow request
 
+        // Check for Authorization header
         if (auto auth = req.get_headers().find("authorization"); auth != req.get_headers().end())
             if (auth->second.size() > 7 && auth->second.substr(0, 7) == "Bearer ")
             {
                 std::string token = auth->second.substr(7);
+                if (!cc.get_module<coco_auth>().is_valid_token(token))
+                    return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
                 try
                 {
-                    auto &itm = srv.get_coco().get_item(token);
-                    if (srv.authorized_paths.at(req.get_target()).at(req.get_verb()).second)
-                        return nullptr;
-                    if (itm.get_type().get_name() == user_kw)
-                    {
-                        if (!srv.get_coco().get_module<coco_auth>().is_valid_token(token))
-                            return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
-                        auto user = srv.get_coco().get_db().get_module<auth_db>().get_user(token);
-                        if (std::all_of(srv.authorized_paths.at(req.get_target()).at(req.get_verb()).first.begin(), srv.authorized_paths.at(req.get_target()).at(req.get_verb()).first.end(), [&user](uint8_t role)
-                                        { return role < user.user_role; }))
-                            return std::make_unique<network::json_response>(json::json({{"message", "Forbidden"}}), network::status_code::forbidden);
-                    }
+                    auto &itm = cc.get_item(token);
+                    if (auto it = authorized_paths.find(req.get_verb()); it != authorized_paths.end())
+                        for (const auto &[target, roles, self] : it->second)
+                            if (std::regex_match(req.get_target(), std::regex(target)))
+                            {
+                                if (self && itm.get_id() == token)
+                                    return nullptr; // self-access allowed and user is accessing their own data
+                                // Check roles
+                                if (std::all_of(roles.begin(), roles.end(), [&itm, this](uint8_t role)
+                                                { return role < cc.get_db().get_module<auth_db>().get_user(itm.get_id()).user_role; }))
+                                    return std::make_unique<network::json_response>(json::json({{"message", "Forbidden"}}), network::status_code::forbidden);
+                                return nullptr; // token is valid and user has required roles
+                            }
                 }
                 catch (const std::invalid_argument &)
                 {

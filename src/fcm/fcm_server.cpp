@@ -1,4 +1,7 @@
 #include "fcm_server.hpp"
+#ifdef BUILD_AUTH
+#include "coco_auth.hpp"
+#endif
 #include "logging.hpp"
 
 namespace coco
@@ -21,7 +24,8 @@ namespace coco
                                      {{"description", "Invalid request."}}}}}}});
 #ifdef BUILD_AUTH
         get_path("/fcm_tokens")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        add_authorized_path("/fcm_tokens", network::verb::Post, {0});
+        auto &auth = static_cast<auth_middleware &>(srv.get_middleware<auth_middleware>());
+        auth.add_authorized_path(network::verb::Post, "^/fcm_tokens$", {0});
 #endif
     }
 

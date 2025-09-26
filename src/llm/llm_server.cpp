@@ -1,4 +1,7 @@
 #include "llm_server.hpp"
+#ifdef BUILD_AUTH
+#include "coco_auth.hpp"
+#endif
 
 namespace coco
 {
@@ -93,12 +96,14 @@ namespace coco
         get_path("/entities")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         get_path("/slots")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         get_path("/slots")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        add_authorized_path("/intents", network::verb::Get, {0, 1});
-        add_authorized_path("/intents", network::verb::Post, {0});
-        add_authorized_path("/entities", network::verb::Get, {0, 1});
-        add_authorized_path("/entities", network::verb::Post, {0});
-        add_authorized_path("/slots", network::verb::Get, {0, 1});
-        add_authorized_path("/slots", network::verb::Post, {0});
+
+        auto &auth = static_cast<auth_middleware &>(srv.get_middleware<auth_middleware>());
+        auth.add_authorized_path(network::verb::Get, "^/intents$", {0, 1});
+        auth.add_authorized_path(network::verb::Post, "^/intents$", {0});
+        auth.add_authorized_path(network::verb::Get, "^/entities$", {0, 1});
+        auth.add_authorized_path(network::verb::Post, "^/entities$", {0});
+        auth.add_authorized_path(network::verb::Get, "^/slots$", {0, 1});
+        auth.add_authorized_path(network::verb::Post, "^/slots$", {0});
 #endif
     }
 

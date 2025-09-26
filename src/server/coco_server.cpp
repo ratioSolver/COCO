@@ -3,6 +3,11 @@
 #include "coco_type.hpp"
 #include "coco_property.hpp"
 #include "coco_item.hpp"
+#ifdef BUILD_AUTH
+#include "coco_auth.hpp"
+#else
+#include "coco_noauth.hpp"
+#endif
 #include "logging.hpp"
 
 namespace coco
@@ -24,9 +29,6 @@ namespace coco
             return srv.paths[path];
         throw std::invalid_argument("Path not found: " + std::string(path));
     }
-#ifdef BUILD_AUTH
-    void server_module::add_authorized_path(std::string_view path, network::verb v, std::set<uint8_t> roles, bool self) noexcept { srv.authorized_paths[path.data()][v] = {std::move(roles), self}; }
-#endif
 
 #ifdef BUILD_SECURE
     coco_server::coco_server(coco &cc, std::string_view host, unsigned short port) : coco_module(cc), listener(cc), ssl_server(host, port)
@@ -312,18 +314,23 @@ namespace coco
         paths["/data/{id}"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         paths["/reactive_rules"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
         paths["/reactive_rules"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        authorized_paths["/types"][network::Get] = {{0, 1}, false};
-        authorized_paths["/types"][network::Post] = {{0}, false};
-        authorized_paths["/types/{name}"][network::Get] = {{0, 1}, false};
-        authorized_paths["/types/{name}"][network::Delete] = {{0}, false};
-        authorized_paths["/items"][network::Get] = {{0, 1}, false};
-        authorized_paths["/items"][network::Post] = {{0}, false};
-        authorized_paths["/items/{id}"][network::Get] = {{0, 1}, true};
-        authorized_paths["/items/{id}"][network::Delete] = {{0}, false};
-        authorized_paths["/data/{id}"][network::Get] = {{0, 1}, true};
-        authorized_paths["/data/{id}"][network::Post] = {{0, 1}, true};
-        authorized_paths["/reactive_rules"][network::Get] = {{0, 1}, false};
-        authorized_paths["/reactive_rules"][network::Post] = {{0}, false};
+
+        add_module<server_auth>(*this);
+        auto &auth_mdwr = add_middleware<auth_middleware>(*this, get_coco());
+        auth_mdwr.add_authorized_path(network::Get, "/types", {0, 1});
+        auth_mdwr.add_authorized_path(network::Post, "/types", {0});
+        auth_mdwr.add_authorized_path(network::Get, "/types/{name}", {0, 1});
+        auth_mdwr.add_authorized_path(network::Delete, "/types/{name}", {0});
+        auth_mdwr.add_authorized_path(network::Get, "/items", {0, 1});
+        auth_mdwr.add_authorized_path(network::Post, "/items", {0});
+        auth_mdwr.add_authorized_path(network::Get, "/items/{id}", {0, 1}, true);
+        auth_mdwr.add_authorized_path(network::Delete, "/items/{id}", {0});
+        auth_mdwr.add_authorized_path(network::Get, "/data/{id}", {0, 1}, true);
+        auth_mdwr.add_authorized_path(network::Post, "/data/{id}", {0, 1}, true);
+        auth_mdwr.add_authorized_path(network::Get, "/reactive_rules", {0, 1});
+        auth_mdwr.add_authorized_path(network::Post, "/reactive_rules", {0});
+#else
+        add_module<server_noauth>(*this);
 #endif
     }
 

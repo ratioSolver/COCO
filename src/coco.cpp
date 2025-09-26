@@ -4,6 +4,9 @@
 #include "coco_property.hpp"
 #include "coco_item.hpp"
 #include "coco_db.hpp"
+#ifdef BUILD_AUTH
+#include "coco_auth.hpp"
+#endif
 #include "logging.hpp"
 #include <algorithm>
 #include <functional>
@@ -72,6 +75,10 @@ namespace coco
         LOG_DEBUG("Retrieved " << itms.size() << " items");
         for (auto &itm : itms)
             get_type(itm.type).make_item(itm.id, itm.props.has_value() ? std::move(itm.props.value()) : json::json{}, itm.value.has_value() ? std::make_optional(std::move(itm.value.value())) : std::nullopt);
+
+#ifdef BUILD_AUTH
+        add_module<coco_auth>(*this);
+#endif
     }
     coco::~coco()
     {

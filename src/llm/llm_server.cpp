@@ -40,63 +40,88 @@ namespace coco
         add_path("/intents", {{"get",
                                {{"summary", "Get all intents."},
                                 {"description", "Endpoint to retrieve all intents."},
+#ifdef BUILD_AUTH
+                                {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                 {"responses",
                                  {{"200", {{"description", "List of intents."}, {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/intent"}}}}}}}}}}},
-                                  {"401", {{"description", "Unauthorized."}}}}}}},
+                                  {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}}}}},
                               {"post",
                                {{"summary", "Create a new intent."},
                                 {"description", "Endpoint to create a new intent."},
                                 {"requestBody",
                                  {{"required", true},
                                   {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/intent"}}}}}}}}},
+#ifdef BUILD_AUTH
+                                {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                 {"responses",
                                  {{"201", {{"description", "Intent created successfully."}}},
                                   {"400", {{"description", "Invalid request."}}},
-                                  {"401", {{"description", "Unauthorized."}}},
+#ifdef BUILD_AUTH
+                                  {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                   {"409", {{"description", "Intent already exists."}}}}}}}});
         add_path("/entities", {{"get",
                                 {{"summary", "Get all entities."},
                                  {"description", "Endpoint to retrieve all entities."},
+#ifdef BUILD_AUTH
+                                 {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                  {"responses",
-                                  {{"200", {{"description", "List of entities."}, {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/entity"}}}}}}}}}}},
-                                   {"401", {{"description", "Unauthorized."}}}}}}},
+                                  {{"200", {{"description", "List of entities."}, {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/entity"}}}}}}}}}}}
+#ifdef BUILD_AUTH
+                                   ,
+                                   {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+#endif
+                                  }}}},
                                {"post",
                                 {{"summary", "Create a new entity."},
                                  {"description", "Endpoint to create a new entity."},
                                  {"requestBody",
                                   {{"required", true},
                                    {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/entity"}}}}}}}}},
+#ifdef BUILD_AUTH
+                                 {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                  {"responses",
                                   {{"201", {{"description", "Entity created successfully."}}},
                                    {"400", {{"description", "Invalid request."}}},
-                                   {"401", {{"description", "Unauthorized."}}},
+#ifdef BUILD_AUTH
+                                   {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                    {"409", {{"description", "Entity already exists."}}}}}}}});
         add_path("/slots", {{"get",
                              {{"summary", "Get all slots."},
                               {"description", "Endpoint to retrieve all slots."},
+#ifdef BUILD_AUTH
+                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                               {"responses",
-                               {{"200", {{"description", "List of slots."}, {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/slot"}}}}}}}}}}},
-                                {"401", {{"description", "Unauthorized."}}}}}}},
+                               {{"200", {{"description", "List of slots."}, {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/slot"}}}}}}}}}}}
+#ifdef BUILD_AUTH
+                                ,
+                                {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+#endif
+                               }}}},
                             {"post",
                              {{"summary", "Create a new slot."},
                               {"description", "Endpoint to create a new slot."},
                               {"requestBody",
                                {{"required", true},
                                 {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/slot"}}}}}}}}},
+#ifdef BUILD_AUTH
+                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                               {"responses",
                                {{"201", {{"description", "Slot created successfully."}}},
                                 {"400", {{"description", "Invalid request."}}},
-                                {"401", {{"description", "Unauthorized."}}},
+#ifdef BUILD_AUTH
+                                {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                 {"409", {{"description", "Slot already exists."}}}}}}}});
 
 #ifdef BUILD_AUTH
-        get_path("/intents")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        get_path("/intents")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        get_path("/entities")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        get_path("/entities")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        get_path("/slots")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        get_path("/slots")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-
         auto &auth = static_cast<auth_middleware &>(srv.get_middleware<auth_middleware>());
         auth.add_authorized_path(network::verb::Get, "^/intents$", {0, 1});
         auth.add_authorized_path(network::verb::Post, "^/intents$", {0});

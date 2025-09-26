@@ -20,22 +20,36 @@ namespace coco
         add_path("/deliberative_rules", {{"get",
                                           {{"summary", "Retrieve all the " COCO_NAME " deliberative rules."},
                                            {"description", "Endpoint to fetch all the deliberative rules."},
+#ifdef BUILD_AUTH
+                                           {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                            {"responses",
                                             {{"200",
                                               {{"description", "Successful response with the stored deliberative rules."},
-                                               {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}}}}}}}},
+                                               {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}}}}
+#ifdef BUILD_AUTH
+                                             ,
+                                             {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+#endif
+                                            }}}},
                                          {"post",
                                           {{"summary", "Create a new " COCO_NAME " deliberative rule."},
                                            {"description", "Endpoint to create a new deliberative rule."},
                                            {"requestBody",
                                             {{"required", true},
                                              {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/deliberative_rule"}}}}}}}}},
+#ifdef BUILD_AUTH
+                                           {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                            {"responses",
                                             {{"204",
-                                              {{"description", "Deliberative rule created successfully."}}}}}}}});
+                                              {{"description", "Deliberative rule created successfully."}}}
 #ifdef BUILD_AUTH
-        get_path("/deliberative_rules")["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        get_path("/deliberative_rules")["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
+                                             ,
+                                             {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+#endif
+                                            }}}}});
+#ifdef BUILD_AUTH
         add_authorized_path("/deliberative_rules", network::verb::Get, {0, 1});
         add_authorized_path("/deliberative_rules", network::verb::Post, {0});
 #endif

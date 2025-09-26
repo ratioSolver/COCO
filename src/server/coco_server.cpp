@@ -157,16 +157,27 @@ namespace coco
         paths["/types"] = {{"get",
                             {{"summary", "Retrieve all the " COCO_NAME " types."},
                              {"description", "Endpoint to fetch all the managed types."},
+#ifdef BUILD_AUTH
+                             {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                              {"responses",
                               {{"200",
                                 {{"description", "Successful response containing an array of all managed types with their complete definitions."},
-                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/type"}}}}}}}}}}}}}}},
+                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/type"}}}}}}}}}}}
+#ifdef BUILD_AUTH
+                               ,
+                               {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+#endif
+                              }}}},
                            {"post",
                             {{"summary", "Create a new " COCO_NAME " type."},
                              {"description", "Endpoint to create a new type."},
                              {"requestBody",
                               {{"required", true},
                                {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/type"}}}}}}}}},
+#ifdef BUILD_AUTH
+                             {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                              {"responses",
                               {{"204",
                                 {{"description", "Type created successfully."}}}}}}}};
@@ -175,10 +186,16 @@ namespace coco
                                     {"description", "Endpoint to fetch a specific type by name."},
                                     {"parameters",
                                      {{{"name", "name"}, {"description", "The name of the specific " COCO_NAME " type to get."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}}}}}},
+#ifdef BUILD_AUTH
+                                    {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                     {"responses",
                                      {{"200",
                                        {{"description", "Successful response with the type details."},
                                         {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/type"}}}}}}}}},
+#ifdef BUILD_AUTH
+                                      {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                       {"404",
                                        {{"description", "Type not found"}}}}}}},
                                   {"delete",
@@ -186,9 +203,15 @@ namespace coco
                                     {"description", "Endpoint to delete a specific type by name."},
                                     {"parameters",
                                      {{{"name", "name"}, {"description", "The name of the specific " COCO_NAME " type to delete."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}}}}}},
+#ifdef BUILD_AUTH
+                                    {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                     {"responses",
                                      {{"204",
                                        {{"description", "Type deleted successfully"}}},
+#ifdef BUILD_AUTH
+                                      {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                       {"404",
                                        {{"description", "Type not found"}}}}}}}};
         paths["/items"] = {{"get",
@@ -197,10 +220,16 @@ namespace coco
                              {"parameters",
                               {{{"name", "type"}, {"description", "Filter items by type name."}, {"in", "query"}, {"required", false}, {"schema", {{"type", "string"}}}},
                                {{"name", "\"\""}, {"description", "Filter items by specific properties."}, {"in", "query"}, {"required", false}, {"style", "form"}, {"explode", true}, {"schema", {{"type", "object"}, {"additionalProperties", {{"type", "string"}}}}}}}},
+#ifdef BUILD_AUTH
+                             {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                              {"responses",
                               {{"200",
                                 {{"description", "Successful response containing an array of all managed items with their properties and metadata."},
                                  {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}},
+#ifdef BUILD_AUTH
+                               {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                {"404",
                                 {{"description", "Type not found"}}}}}}},
                            {"post",
@@ -209,10 +238,18 @@ namespace coco
                              {"requestBody",
                               {{"required", true},
                                {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/item"}}}}}}}}},
+#ifdef BUILD_AUTH
+                             {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                              {"responses",
                               {{"201",
                                 {{"description", "Item created successfully."},
-                                 {"content", {{"text/plain", {{"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}, {"description", "The ID of the newly created item."}}}}}}}}}}}}}};
+                                 {"content", {{"text/plain", {{"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}, {"description", "The ID of the newly created item."}}}}}}}}}
+#ifdef BUILD_AUTH
+                               ,
+                               {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+#endif
+                              }}}}};
         paths["/items/{id}"] = {{"get",
                                  {{"summary", "Retrieve a specific " COCO_NAME " item."},
                                   {"description", "Endpoint to fetch a specific item by ID."},
@@ -222,6 +259,9 @@ namespace coco
                                    {{"200",
                                      {{"description", "Successful response with the item details."},
                                       {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/item"}}}}}}}}},
+#ifdef BUILD_AUTH
+                                    {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                     {"404",
                                      {{"description", "Item not found"}}}}}}},
                                 {"patch",
@@ -232,9 +272,15 @@ namespace coco
                                   {"requestBody",
                                    {{"required", true},
                                     {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/item"}}}}}}}}},
+#ifdef BUILD_AUTH
+                                  {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                   {"responses",
                                    {{"204",
                                      {{"description", "Item updated successfully."}}},
+#ifdef BUILD_AUTH
+                                    {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                     {"404",
                                      {{"description", "Item not found"}}}}}}},
                                 {"delete",
@@ -242,9 +288,15 @@ namespace coco
                                   {"description", "Endpoint to delete a specific item by ID."},
                                   {"parameters",
                                    {{{"name", "id"}, {"description", "The ID of the specific " COCO_NAME " item to delete."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}}}}},
+#ifdef BUILD_AUTH
+                                  {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                   {"responses",
                                    {{"204",
                                      {{"description", "Item deleted successfully"}}},
+#ifdef BUILD_AUTH
+                                    {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                     {"404",
                                      {{"description", "Item not found"}}}}}}}};
         paths["/data/{id}"] = {{"get",
@@ -254,10 +306,16 @@ namespace coco
                                   {{{"name", "id"}, {"description", "The ID of the " COCO_NAME " item."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}}}},
                                    {{"name", "from"}, {"description", "Start date for filtering data."}, {"in", "query"}, {"schema", {{"type", "string"}, {"format", "date-time"}}}},
                                    {{"name", "to"}, {"description", "End date for filtering data."}, {"in", "query"}, {"schema", {{"type", "string"}, {"format", "date-time"}}}}}},
+#ifdef BUILD_AUTH
+                                 {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                  {"responses",
                                   {{"200",
                                     {{"description", "Successful response with the item data."},
                                      {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/data"}}}}}}}}}}},
+#ifdef BUILD_AUTH
+                                   {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                    {"404",
                                     {{"description", "Item not found."}}}}}}},
                                {"post",
@@ -269,9 +327,15 @@ namespace coco
                                  {"requestBody",
                                   {{"required", true},
                                    {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/data"}}}}}}}}},
+#ifdef BUILD_AUTH
+                                 {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                  {"responses",
                                   {{"204",
                                     {{"description", "Data added successfully."}}},
+#ifdef BUILD_AUTH
+                                   {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
+#endif
                                    {"404",
                                     {{"description", "Item not found."}}}}}}}};
         paths["/fake/{type}"] = {{"get",
@@ -280,6 +344,9 @@ namespace coco
                                    {"parameters",
                                     {{{"name", "type"}, {"description", "The " COCO_NAME " type of fake data to generate."}, {"in", "path"}, {"required", true}, {"schema", {{"type", "string"}}}},
                                      {{"name", "parameters"}, {"description", "The names of the dynamic parameters to generate fake values for. If omitted, all dynamic parameters will be generated."}, {"in", "query"}, {"style", "form"}, {"explode", false}, {"schema", {{"type", "array"}, {"items", {{"type", "string"}}}}}}}},
+#ifdef BUILD_AUTH
+                                   {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                    {"responses",
                                     {{"200",
                                       {{"description", "Successful response with the generated fake data."},
@@ -287,34 +354,37 @@ namespace coco
         paths["/reactive_rules"] = {{"get",
                                      {{"summary", "Retrieve all the " COCO_NAME " reactive rules."},
                                       {"description", "Endpoint to fetch all the reactive rules."},
+#ifdef BUILD_AUTH
+                                      {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                       {"responses",
                                        {{"200",
                                          {{"description", "Successful response with the stored reactive rules."},
-                                          {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/reactive_rule"}}}}}}}}}}}}}}},
+                                          {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/reactive_rule"}}}}}}}}}}}
+#ifdef BUILD_AUTH
+                                        ,
+                                        {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+#endif
+                                       }}}},
                                     {"post",
                                      {{"summary", "Create a new " COCO_NAME " reactive rule."},
                                       {"description", "Endpoint to create a new reactive rule."},
                                       {"requestBody",
                                        {{"required", true},
                                         {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/reactive_rule"}}}}}}}}},
+#ifdef BUILD_AUTH
+                                      {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+#endif
                                       {"responses",
                                        {{"204",
-                                         {{"description", "Reactive rule created successfully."}}}}}}}};
+                                         {{"description", "Reactive rule created successfully."}}}
+#ifdef BUILD_AUTH
+                                        ,
+                                        {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+#endif
+                                       }}}}};
 
 #ifdef BUILD_AUTH
-        paths["/types"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/types"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/types/{name}"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/types/{name}"]["delete"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/items"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/items"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/items/{id}"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/items/{id}"]["delete"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/data/{id}"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/data/{id}"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/reactive_rules"]["get"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-        paths["/reactive_rules"]["post"]["security"] = std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}};
-
         add_module<server_auth>(*this);
         auto &auth_mdwr = add_middleware<auth_middleware>(*this, get_coco());
         auth_mdwr.add_authorized_path(network::Get, "/types", {0, 1});
@@ -735,6 +805,7 @@ namespace coco
                             {
 #ifdef BUILD_AUTH
                                 {"securitySchemes", {"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}},
+                                {"responses", {"UnauthorizedError", {{"description", "Access token is missing or invalid"}}}},
 #endif
                                 {"schemas", schemas}}},
                            {"paths", paths}};

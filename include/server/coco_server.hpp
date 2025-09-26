@@ -115,7 +115,8 @@ namespace coco
     std::map<std::type_index, std::unique_ptr<server_module>> modules; // the server modules
 
   protected:
-    json::json schemas; // JSON schemas for OpenAPI and AsyncAPI specifications
-    json::json paths;   // Paths for OpenAPI specification
+    json::json schemas;   // JSON schemas for OpenAPI and AsyncAPI specifications
+    json::json paths;     // Paths for OpenAPI specification
+    json::json responses; // Common responses for OpenAPI specification
   };
 } // namespace coco

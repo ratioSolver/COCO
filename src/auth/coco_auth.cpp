@@ -93,7 +93,7 @@ namespace coco
                                {"400",
                                 {{"description", "Invalid request."}}},
                                {"401",
-                                {{"description", "Unauthorized."}}}}}}});
+                                {{"$ref", "#/components/responses/UnauthorizedError"}}}}}}});
         add_path("/users", {{"get",
                              {{"summary", "Get all users."},
                               {"description", "Endpoint to retrieve a list of all users."},
@@ -103,7 +103,7 @@ namespace coco
                                  {{"description", "List of users retrieved successfully."},
                                   {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}},
                                 {"401",
-                                 {{"description", "Unauthorized."}}}}}}},
+                                 {{"$ref", "#/components/responses/UnauthorizedError"}}}}}}},
                             {"post",
                              {{"summary", "Create a new user."},
                               {"description", "Endpoint to create a new user."},
@@ -118,7 +118,7 @@ namespace coco
                                 {"400",
                                  {{"description", "Invalid request."}}},
                                 {"401",
-                                 {{"description", "Unauthorized."}}}}}}}});
+                                 {{"$ref", "#/components/responses/UnauthorizedError"}}}}}}}});
     }
 
     std::unique_ptr<network::response> server_auth::login(const network::request &req)

@@ -1,4 +1,4 @@
-import { App, Settings } from "@ratiosolver/flick";
+import { App, Connection, Settings } from "@ratiosolver/flick";
 
 export namespace coco {
 
@@ -73,14 +73,14 @@ export namespace coco {
      * @param item - The taxonomy item for which data is to be loaded.
      * @param from - The start date of the range (in milliseconds since the Unix epoch). Defaults to 14 days ago.
      * @param to - The end date of the range (in milliseconds since the Unix epoch). Defaults to the current date and time.
-     * @param token - Optional authentication token for the request.
      *
      * If the request is successful, the item's values are updated with the fetched data.
      * If the request fails, an error message is displayed using the application's toast mechanism.
      */
-    load_data(item: taxonomy.Item, from = Date.now() - 1000 * 60 * 60 * 24 * 14, to = Date.now(), token: string | null = null): void {
+    load_data(item: taxonomy.Item, from = Date.now() - 1000 * 60 * 60 * 24 * 14, to = Date.now()): void {
       console.debug('Loading data for ', item.to_string(), ' from ', new Date(from), ' to ', new Date(to));
       const headers: { 'content-type': string, 'authorization'?: string } = { 'content-type': 'application/json' };
+      const token = Connection.get_instance().get_token();
       if (token)
         headers['authorization'] = `Bearer ${token}`;
       fetch(Settings.get_instance().get_host() + '/data/' + item.get_id() + '?' + new URLSearchParams({ from: from.toString(), to: to.toString() }), { method: 'GET', headers }).then(res => {
@@ -91,9 +91,20 @@ export namespace coco {
       });
     }
 
-    publish(item: taxonomy.Item, data: Record<string, unknown>, token: string | null = null): void {
+    /**
+     * Publishes data associated with a given taxonomy item to the server.
+     *
+     * Sends a POST request to the server endpoint `/data/{item_id}` with the provided data
+     * serialized as JSON. Includes an authorization header if a token is available.
+     * Displays a toast notification with an error message if the request fails.
+     *
+     * @param item - The taxonomy item for which the data is being published.
+     * @param data - The data to be published, represented as a record of key-value pairs.
+     */
+    publish(item: taxonomy.Item, data: Record<string, unknown>): void {
       console.debug('Publishing data for ', item.to_string(), ': ', JSON.stringify(data));
       const headers: { 'content-type': string, 'authorization'?: string } = { 'content-type': 'application/json' };
+      const token = Connection.get_instance().get_token();
       if (token)
         headers['authorization'] = `Bearer ${token}`;
       fetch(Settings.get_instance().get_host() + '/data/' + item.get_id(), { method: 'POST', headers, body: JSON.stringify(data) }).then(res => {
@@ -102,9 +113,22 @@ export namespace coco {
       });
     }
 
-    async fake_data(type: taxonomy.Type, pars: string[] | undefined = undefined, token: string | null = null): Promise<Record<string, unknown>> {
+    /**
+     * Generates and retrieves fake data for a given taxonomy type from the backend.
+     *
+     * @param type - The taxonomy type for which to generate fake data.
+     * @param pars - Optional array of string parameters to be sent as query parameters.
+     * @returns A promise that resolves to a record containing the fake data.
+     *
+     * @remarks
+     * - Adds an authorization header if a token is available.
+     * - Displays a toast notification with an error message if the request fails.
+     * - Logs debug information about the type and parameters.
+     */
+    async fake_data(type: taxonomy.Type, pars: string[] | undefined = undefined): Promise<Record<string, unknown>> {
       console.debug('Faking data for ', type.get_name());
       const headers: { 'content-type': string, 'authorization'?: string } = { 'content-type': 'application/json' };
+      const token = Connection.get_instance().get_token();
       if (token)
         headers['authorization'] = `Bearer ${token}`;
       let url = Settings.get_instance().get_host() + '/fake/' + type.get_name();

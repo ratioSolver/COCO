@@ -47,8 +47,17 @@ namespace coco
         auto jwt = header + "." + claims + "." + utils::base64url_encode(utils::sign_rs256(header + "." + claims, private_key));
         std::string body = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=" + jwt;
         auto res = access_token_client.post("/token", std::move(body), {{"Content-Type", "application/x-www-form-urlencoded"}});
-        access_token = static_cast<network::json_response &>(*res).get_body()["access_token"].get<std::string>();
-        access_token_expiration = std::chrono::system_clock::now() + std::chrono::seconds(exp - iat);
+        if (res && res->get_status_code() == network::status_code::ok)
+        {
+            access_token = static_cast<network::json_response &>(*res).get_body()["access_token"].get<std::string>();
+            access_token_expiration = std::chrono::system_clock::now() + std::chrono::seconds(exp - iat);
+        }
+        else
+        {
+            LOG_ERR("Failed to refresh FCM access token");
+            access_token.clear();
+            access_token_expiration = std::chrono::system_clock::now();
+        }
     }
 
     void send_notification_udf(Environment *, UDFContext *udfc, UDFValue *)

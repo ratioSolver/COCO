@@ -7,7 +7,7 @@
 
 namespace coco
 {
-    coco_fcm::coco_fcm(coco &cc, std::string_view client_email, std::string_view private_key) noexcept : coco_module(cc), client_email(client_email), private_key(private_key), access_token_client("oauth2.googleapis.com", 443), client("fcm.googleapis.com", 443)
+    coco_fcm::coco_fcm(coco &cc, std::string_view fcm_project_id, std::string_view client_email, std::string_view private_key) noexcept : coco_module(cc), fcm_project_id(fcm_project_id), client_email(client_email), private_key(private_key), access_token_client("oauth2.googleapis.com", 443), client("fcm.googleapis.com", 443)
     {
         [[maybe_unused]] auto send_notification_err = AddUDF(get_env(), "send_notification", "v", 3, 3, "yss", send_notification_udf, "send_notification_udf", this);
         assert(send_notification_err == AUE_NO_ERROR);
@@ -25,12 +25,16 @@ namespace coco
         for (const auto &token : db.get_tokens(id))
         {
             json::json j_message{{"message", {{"token", token}, {"notification", {{"title", title.data()}, {"body", body.data()}}}}}};
-            auto res = client.post("/v1/projects/" COCO_NAME "/messages:send", std::move(j_message), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " + access_token}});
-            if (res->get_status_code() == network::status_code::forbidden)
+            auto res = client.post("/v1/projects/" + fcm_project_id + "/messages:send", std::move(j_message), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " + access_token}});
+            if (res)
             {
-                LOG_DEBUG("FCM access token is invalid or expired, refreshing...");
-                db.remove_token(id, token);
+                if (res->get_status_code() == network::status_code::ok)
+                    LOG_DEBUG("Sent FCM notification to token " + token + " for item " + std::string(id));
+                else
+                    LOG_ERR("Failed to send FCM notification to token " + token + " for item " + std::string(id) + ": " + static_cast<network::json_response &>(*res).get_body().dump());
             }
+            else
+                LOG_ERR("Failed to send FCM notification to token " + token + " for item " + std::string(id));
         }
     }
 
@@ -47,17 +51,20 @@ namespace coco
         auto jwt = header + "." + claims + "." + utils::base64url_encode(utils::sign_rs256(header + "." + claims, private_key));
         std::string body = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=" + jwt;
         auto res = access_token_client.post("/token", std::move(body), {{"Content-Type", "application/x-www-form-urlencoded"}});
-        if (res && res->get_status_code() == network::status_code::ok)
+        if (res)
         {
-            access_token = static_cast<network::json_response &>(*res).get_body()["access_token"].get<std::string>();
-            access_token_expiration = std::chrono::system_clock::now() + std::chrono::seconds(exp - iat);
+            if (res->get_status_code() == network::status_code::ok)
+            {
+                auto j_res = static_cast<network::json_response &>(*res).get_body();
+                access_token = j_res["access_token"].get<std::string>();
+                access_token_expiration = std::chrono::system_clock::now() + std::chrono::seconds(j_res["expires_in"].get<int>());
+                LOG_DEBUG("Refreshed FCM access token, expires at " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(access_token_expiration.time_since_epoch()).count()));
+            }
+            else
+                LOG_ERR("Failed to refresh FCM access token: " + static_cast<network::json_response &>(*res).get_body().dump());
         }
         else
-        {
             LOG_ERR("Failed to refresh FCM access token");
-            access_token.clear();
-            access_token_expiration = std::chrono::system_clock::now();
-        }
     }
 
     void send_notification_udf(Environment *, UDFContext *udfc, UDFValue *)

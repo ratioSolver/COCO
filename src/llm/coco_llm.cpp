@@ -83,7 +83,7 @@ namespace coco
         if (!UDFFirstArgument(udfc, STRING_BIT, &message))
             return;
 
-        res->lexemeValue = CreateSymbol(env, llm.understand(message.lexemeValue->contents).c_str());
+        res->lexemeValue = CreateString(env, llm.understand(message.lexemeValue->contents).c_str());
     }
 
     void async_understand_udf(Environment *, UDFContext *udfc, UDFValue *)

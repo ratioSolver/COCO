@@ -257,6 +257,7 @@ namespace coco
     std::string content; // the content of the rule.
   };
 
+  void empty_agenda(Environment *env, UDFContext *udfc, UDFValue *out);
   void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
   void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
   void multifield_to_json(Environment *env, UDFContext *udfc, UDFValue *out);

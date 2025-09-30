@@ -24,6 +24,8 @@ namespace coco
         add_property_type(std::make_unique<item_property_type>(*this));
         add_property_type(std::make_unique<json_property_type>(*this));
 
+        [[maybe_unused]] auto agenda_empty_err = AddUDF(env, "empty_agenda", "b", 0, 0, "", empty_agenda, "empty_agenda", this);
+        assert(agenda_empty_err == AUE_NO_ERROR);
         [[maybe_unused]] auto set_props_err = AddUDF(env, "set_properties", "v", 3, 3, "ymm", set_props, "set_props", this);
         assert(set_props_err == AUE_NO_ERROR);
         [[maybe_unused]] auto add_data_err = AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
@@ -313,6 +315,14 @@ namespace coco
         for (auto &[_, mdl] : modules)
             mdl->to_json(jc);
         return jc;
+    }
+
+    void empty_agenda(Environment *env, UDFContext *, UDFValue *out)
+    {
+        LOG_DEBUG("Checking if agenda is empty..");
+        bool is_empty = GetNextActivation(env, nullptr) == nullptr;
+        LOG_DEBUG("Agenda is " << (is_empty ? "empty" : "not empty"));
+        out->lexemeValue = CreateSymbol(env, is_empty ? "TRUE" : "FALSE");
     }
 
     void set_props(Environment *, UDFContext *udfc, UDFValue *)

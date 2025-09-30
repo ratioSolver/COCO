@@ -30,6 +30,8 @@ namespace coco
         assert(add_data_err == AUE_NO_ERROR);
         [[maybe_unused]] auto to_json_err = AddUDF(env, "to_json", "s", 1, 1, "m", multifield_to_json, "multifield_to_json", this);
         assert(to_json_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto from_json_err = AddUDF(env, "from_json", "m", 1, 1, "s", json_to_multifield, "json_to_multifield", this);
+        assert(from_json_err == AUE_NO_ERROR);
 
         LOG_TRACE(type_deftemplate);
         [[maybe_unused]] auto build_type_dt_err = Build(env, type_deftemplate);
@@ -465,6 +467,45 @@ namespace coco
         }
 
         ret->lexemeValue = CreateString(env, j_array.dump().c_str());
+    }
+
+    void json_to_multifield(Environment *env, UDFContext *udfc, UDFValue *ret)
+    {
+        UDFValue json_str;
+        if (!UDFFirstArgument(udfc, STRING_BIT, &json_str))
+            return;
+
+        json::json j = json::load(json_str.lexemeValue->contents);
+        switch (j.get_type())
+        {
+        case json::json_type::array:
+        {
+            Multifield *mf = CreateMultifield(env, j.size());
+            for (size_t i = 0; i < j.size(); ++i)
+                mf->contents[i].lexemeValue = CreateString(env, j[i].dump().c_str());
+            ret->multifieldValue = mf;
+            break;
+        }
+        case json::json_type::object:
+        {
+            Multifield *mf = CreateMultifield(env, j.size() * 2);
+            size_t i = 0;
+            for (auto &[key, value] : j.as_object())
+            {
+                mf->contents[i++].lexemeValue = CreateString(env, key.c_str());
+                mf->contents[i++].lexemeValue = CreateString(env, value.dump().c_str());
+            }
+            ret->multifieldValue = mf;
+            break;
+        }
+        default:
+        {
+            Multifield *mf = CreateMultifield(env, 1);
+            mf->contents[0].lexemeValue = CreateString(env, j.dump().c_str());
+            ret->multifieldValue = mf;
+            break;
+        }
+        }
     }
 
 #ifdef BUILD_LISTENERS

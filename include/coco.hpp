@@ -260,6 +260,7 @@ namespace coco
   void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
   void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
   void multifield_to_json(Environment *env, UDFContext *udfc, UDFValue *out);
+  void json_to_multifield(Environment *env, UDFContext *udfc, UDFValue *out);
 
 #ifdef BUILD_LISTENERS
   class listener

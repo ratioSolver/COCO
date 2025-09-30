@@ -31,7 +31,10 @@ namespace coco
                 if (res->get_status_code() == network::status_code::ok)
                     LOG_DEBUG("Sent FCM notification to token " + token + " for item " + std::string(id));
                 else
-                    LOG_ERR("Failed to send FCM notification to token " + token + " for item " + std::string(id) + ": " + static_cast<network::json_response &>(*res).get_body().dump());
+                {
+                    LOG_DEBUG("Failed to send FCM notification to token " + token + " for item " + std::string(id) + ": " + static_cast<network::json_response &>(*res).get_body().dump());
+                    get_coco().get_db().get_module<fcm_db>().remove_token(id, token);
+                }
             }
             else
                 LOG_ERR("Failed to send FCM notification to token " + token + " for item " + std::string(id));

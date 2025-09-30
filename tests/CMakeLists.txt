@@ -3,22 +3,10 @@ add_dependencies(coco_tests CoCo)
 target_link_libraries(coco_tests PRIVATE CoCo)
 setup_sanitizers(coco_tests)
 
-add_executable(llm_tests test_llm.cpp)
-add_dependencies(llm_tests CoCo)
-target_link_libraries(llm_tests PRIVATE CoCo)
-setup_sanitizers(llm_tests)
-
-add_executable(robot_tests test_robot.cpp)
-add_dependencies(robot_tests CoCo)
-target_link_libraries(robot_tests PRIVATE CoCo)
-setup_sanitizers(robot_tests)
-
 add_executable(fcm_tests test_fcm.cpp)
 add_dependencies(fcm_tests CoCo)
 target_link_libraries(fcm_tests PRIVATE CoCo)
 setup_sanitizers(fcm_tests)
 
 add_test(NAME CoCoTest00 COMMAND coco_tests)
-add_test(NAME LLMTest00 COMMAND llm_tests)
-add_test(NAME RobotTest00 COMMAND robot_tests)
 add_test(NAME FCMRAISETest00 COMMAND fcm_tests)

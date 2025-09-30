@@ -209,11 +209,7 @@ if(BUILD_LLM)
     endif()
 
     target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/llm>)
-    target_sources(CoCo PRIVATE src/llm/coco_llm.cpp src/llm/llm_db.cpp)
-
-    if (BUILD_COCO_SERVER)
-        target_sources(CoCo PRIVATE src/llm/llm_server.cpp)
-    endif()
+    target_sources(CoCo PRIVATE src/llm/coco_llm.cpp)
 
     add_dependencies(CoCo ratioNet)
     target_link_libraries(CoCo PUBLIC ratioNet)

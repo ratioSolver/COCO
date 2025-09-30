@@ -24,9 +24,6 @@
 #ifdef ENABLE_CORS
 #include "cors.hpp"
 #endif
-#ifdef BUILD_LLM
-#include "llm_server.hpp"
-#endif
 #ifdef BUILD_FCM
 #include "fcm_server.hpp"
 #endif
@@ -64,9 +61,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 #endif
 #ifdef BUILD_SECURE
     srv.load_certificate("cert.pem", "key.pem");
-#endif
-#ifdef BUILD_LLM
-    srv.add_module<coco::llm_server>(srv, llm);
 #endif
 #ifdef BUILD_FCM
     srv.add_module<coco::fcm_server>(srv, fcm);

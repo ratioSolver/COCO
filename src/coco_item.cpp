@@ -98,7 +98,13 @@ namespace coco
             if (auto prop = static_props.find(p_name); prop != static_props.end())
             {
                 if (prop->second.get().validate(val))
+                {
                     prop->second.get().set_value(fact_modifier, val);
+                    if (val.is_null())
+                        properties.erase(p_name);
+                    else
+                        properties[p_name] = val;
+                }
                 else
                     LOG_WARN("Property " + p_name + " for item " + id + " is not valid");
             }

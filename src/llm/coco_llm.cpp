@@ -65,7 +65,7 @@ namespace coco
                           [[maybe_unused]] auto fb_err = FBError(get_env());
                           assert(fb_err == FBE_NO_ERROR);
                           assert(item_fact);
-                          LOG_TRACE(get_coco().to_string(item_fact));
+                        //   LOG_TRACE(get_coco().to_string(item_fact));
                           FBDispose(item_fact_builder);
 
                           if (infere)

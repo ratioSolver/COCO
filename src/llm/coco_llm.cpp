@@ -61,11 +61,11 @@ namespace coco
                           FactBuilder *item_fact_builder = CreateFactBuilder(get_env(), "llm-result");
                           FBPutSlotSymbol(item_fact_builder, "item_id", item.get_id().c_str());
                           FBPutSlotString(item_fact_builder, "result", s_res.c_str());
-                          auto item_fact = FBAssert(item_fact_builder);
+                          [[maybe_unused]] auto item_fact = FBAssert(item_fact_builder);
                           [[maybe_unused]] auto fb_err = FBError(get_env());
                           assert(fb_err == FBE_NO_ERROR);
                           assert(item_fact);
-                        //   LOG_TRACE(get_coco().to_string(item_fact));
+                          LOG_TRACE(to_string(item_fact));
                           FBDispose(item_fact_builder);
 
                           if (infere)

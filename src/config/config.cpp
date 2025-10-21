@@ -109,6 +109,7 @@ int main(int argc, char const *argv[])
     out << "// This file is auto-generated. Do not edit manually.\n\n";
     out << "#pragma once\n\n";
     out << "#include \"coco.hpp\"\n";
+    out << "#include \"logging.hpp\"\n";
     out << "#include <fstream>\n\n";
 
     out << "[[nodiscard]] std::string read_rule(const std::string &path)\n{\n";
@@ -138,7 +139,9 @@ int main(int argc, char const *argv[])
     {
         out << "    try {\n";
         out << "        [[maybe_unused]] auto &" << tp_name << " = cc.get_type(\"" << tp_name << "\");\n";
-        out << "    } catch (const std::exception &e) {\n";
+        out << "        LOG_DEBUG(\"Type `" << tp_name << "` found\");\n";
+        out << "    } catch (const std::invalid_argument &e) {\n";
+        out << "        LOG_DEBUG(\"Creating `" << tp_name << "` type\");\n";
         std::string parents;
         if (tps_map.at(tp_name).contains("parents"))
         {
@@ -149,9 +152,9 @@ int main(int argc, char const *argv[])
         }
         else
             parents = "{}";
-        std::string static_props = tps_map.at(tp_name).contains("static_properties") ? "json::json(R\"" + tps_map.at(tp_name)["static_properties"].dump() + "\")" : "{}";
-        std::string dynamic_props = tps_map.at(tp_name).contains("dynamic_properties") ? "json::json(R\"" + tps_map.at(tp_name)["dynamic_properties"].dump() + "\")" : "{}";
-        std::string data = tps_map.at(tp_name).contains("data") ? "json::json(R\"" + tps_map.at(tp_name)["data"].dump() + "\")" : "{}";
+        std::string static_props = tps_map.at(tp_name).contains("static_properties") ? "json::load(R\"(" + tps_map.at(tp_name)["static_properties"].dump() + ")\")" : "{}";
+        std::string dynamic_props = tps_map.at(tp_name).contains("dynamic_properties") ? "json::load(R\"(" + tps_map.at(tp_name)["dynamic_properties"].dump() + ")\")" : "{}";
+        std::string data = tps_map.at(tp_name).contains("data") ? "json::load(R\"(" + tps_map.at(tp_name)["data"].dump() + ")\")" : "{}";
         out << "        [[maybe_unused]] auto &" << tp_name << " = cc.create_type(\"" << tp_name << "\", " << parents << ", " << static_props << ", " << dynamic_props << ", " << data << ");\n";
         out << "    }\n";
     }
@@ -171,7 +174,9 @@ int main(int argc, char const *argv[])
         std::string name_no_ext = rp_path.stem().string();
         out << "    try {\n";
         out << "        [[maybe_unused]] auto &" << name_no_ext << "_rule = cc.get_reactive_rule(\"" << name_no_ext << "\");\n";
-        out << "    } catch (const std::exception &e) {\n";
+        out << "        LOG_DEBUG(\"Reactive rule `" << name_no_ext << "` found\");\n";
+        out << "    } catch (const std::invalid_argument &e) {\n";
+        out << "        LOG_DEBUG(\"Creating `" << name_no_ext << "` reactive rule\");\n";
         out << "        [[maybe_unused]] auto &" << name_no_ext << "_rule = cc.create_reactive_rule(\"" << name_no_ext << "\", read_rule(\"" << rp << "\"));\n";
         out << "    }\n";
     }

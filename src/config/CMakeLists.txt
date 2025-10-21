@@ -3,6 +3,7 @@ project(CoCoGenerator LANGUAGES CXX)
 
 add_executable(CoCoConfig config.cpp)
 target_link_libraries(CoCoConfig json)
+setup_sanitizers(CoCoConfig)
 
 function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES)
     set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_config")

@@ -785,7 +785,7 @@ namespace coco
         std::string content = body["content"];
         try
         {
-            get_coco().create_reactive_rule(name, content);
+            [[maybe_unused]] auto &rule = get_coco().create_reactive_rule(name, content);
             return std::make_unique<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)

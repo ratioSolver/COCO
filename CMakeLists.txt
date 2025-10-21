@@ -260,6 +260,8 @@ if (BUILD_COCO_EXECUTABLE)
     setup_sanitizers(CoCoService)
 endif()
 
+add_subdirectory(src/config)
+
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()

@@ -1,0 +1,6 @@
+{
+  "name": "child",
+  "parents": [
+    "parent"
+  ]
+}

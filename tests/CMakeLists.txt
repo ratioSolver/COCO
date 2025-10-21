@@ -8,5 +8,7 @@ add_dependencies(fcm_tests CoCo)
 target_link_libraries(fcm_tests PRIVATE CoCo)
 setup_sanitizers(fcm_tests)
 
+add_subdirectory(config)
+
 add_test(NAME CoCoTest00 COMMAND coco_tests)
 add_test(NAME FCMRAISETest00 COMMAND fcm_tests)

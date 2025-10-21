@@ -30,6 +30,6 @@ function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES)
         VERBATIM
     )
 
-    add_custom_target("${PROJECT_NAME}_config" ALL DEPENDS "${GENERATED_HEADER}")
+    add_custom_target("${PROJECT_NAME}" ALL DEPENDS "${GENERATED_HEADER}")
     set(${PROJECT_NAME}_CONFIG_INCLUDE_DIR "${GENERATED_DIR}" PARENT_SCOPE)
 endfunction()

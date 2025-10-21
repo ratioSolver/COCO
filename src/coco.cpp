@@ -234,6 +234,13 @@ namespace coco
             res.push_back(*r.second);
         return res;
     }
+    reactive_rule &coco::get_reactive_rule(std::string_view name)
+    {
+        std::lock_guard<std::recursive_mutex> _(mtx);
+        if (auto it = reactive_rules.find(name); it != reactive_rules.end())
+            return *it->second;
+        throw std::invalid_argument("reactive rule `" + std::string(name) + "` not found");
+    }
     void coco::create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);

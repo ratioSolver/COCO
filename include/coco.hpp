@@ -137,13 +137,86 @@ namespace coco
      * @throws std::invalid_argument if the item does not exist.
      */
     [[nodiscard]] item &get_item(std::string_view id);
+    /**
+     * @brief Creates a new item of the specified type.
+     *
+     * This function creates a new item of the specified type with the given properties and value.
+     *
+     * @param tp The type of the item.
+     * @param props The properties of the item.
+     * @param val The value of the item.
+     * @param infere Whether to run inference after creating the item.
+     * @return A reference to the newly created item.
+     */
     [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt, bool infere = true) noexcept;
+    /**
+     * @brief Sets the properties of an item.
+     *
+     * This function sets the properties of the specified item using the provided JSON object.
+     *
+     * @param itm The item whose properties are to be set.
+     * @param props The JSON object containing the properties to be set.
+     * @param infere Whether to run inference after setting the properties.
+     */
     void set_properties(item &itm, json::json &&props, bool infere = true) noexcept;
+    /**
+     * @brief Retrieves the values of an item within a specified time range.
+     *
+     * This function retrieves the values of the specified item that fall within the given time range.
+     *
+     * @param itm The item whose values are to be retrieved.
+     * @param from The start time of the range.
+     * @param to The end time of the range.
+     * @return A JSON object containing the values of the item within the specified time range.
+     */
     [[nodiscard]] json::json get_values(const item &itm, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to = std::chrono::system_clock::now());
+    /**
+     * @brief Sets the value of an item.
+     *
+     * This function sets the value of the specified item using the provided JSON object and timestamp.
+     *
+     * @param itm The item whose value is to be set.
+     * @param val The JSON object representing the value to be set.
+     * @param timestamp The timestamp associated with the value.
+     * @param infere Whether to run inference after setting the value.
+     */
     void set_value(item &itm, json::json &&val, const std::chrono::system_clock::time_point &timestamp = std::chrono::system_clock::now(), bool infere = true);
+    /**
+     * @brief Deletes an item.
+     *
+     * This function deletes the specified item from the CoCo environment.
+     *
+     * @param itm The item to be deleted.
+     * @param infere Whether to run inference after deleting the item.
+     */
     void delete_item(item &itm, bool infere = true) noexcept;
 
+    /**
+     * @brief Returns a vector of references to the reactive rules.
+     *
+     * This function retrieves all the reactive rules stored in the database and returns them as a vector of `reactive_rule` objects. The returned vector contains references to the actual reactive rules stored in the `reactive_rules` map.
+     *
+     * @return A vector of reactive rules.
+     */
     [[nodiscard]] std::vector<std::reference_wrapper<reactive_rule>> get_reactive_rules() noexcept;
+    /**
+     * @brief Retrieves a reactive rule with the specified name.
+     *
+     * This function retrieves the reactive rule with the specified name.
+     *
+     * @param name The name of the reactive rule.
+     * @return A reference to the reactive rule.
+     */
+    [[nodiscard]] reactive_rule &get_reactive_rule(std::string_view name);
+    /**
+     * @brief Creates a new reactive rule.
+     *
+     * This function creates a new reactive rule with the specified name and content.
+     *
+     * @param rule_name The name of the reactive rule.
+     * @param rule_content The content of the reactive rule.
+     * @param infere Whether to run inference after creating the reactive rule.
+     */
     void create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
     [[nodiscard]] json::json to_json() noexcept;

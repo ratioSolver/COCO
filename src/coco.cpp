@@ -249,7 +249,9 @@ namespace coco
         if (!it.second)
             throw std::invalid_argument("reactive rule `" + std::string(rule_name) + "` already exists");
         else
+        {
             CREATED_REACTIVE_RULE(*it.first->second);
+        }
         if (infere)
             Run(env, -1);
         return *it.first->second;

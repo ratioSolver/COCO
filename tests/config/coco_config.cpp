@@ -1,4 +1,4 @@
-#include "CoCo_config.hpp"
+#include "TestConfig_config.hpp"
 #ifdef BUILD_MONGODB
 #include "mongo_db.hpp"
 #include <mongocxx/instance.hpp>

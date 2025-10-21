@@ -4,10 +4,10 @@ project(CoCoGenerator LANGUAGES CXX)
 add_executable(CoCoConfig config.cpp)
 target_link_libraries(CoCoConfig json)
 
-function(coco_config TYPE_FILES RULE_FILES)
-    set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/${COCO_NAME}_config")
+function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES)
+    set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_config")
     file(MAKE_DIRECTORY "${GENERATED_DIR}")
-    set(GENERATED_HEADER "${GENERATED_DIR}/${COCO_NAME}_config.hpp")
+    set(GENERATED_HEADER "${GENERATED_DIR}/${PROJECT_NAME}_config.hpp")
 
     message(STATUS "Type files:")
     foreach(f IN LISTS TYPE_FILES)
@@ -26,10 +26,10 @@ function(coco_config TYPE_FILES RULE_FILES)
         COMMAND $<TARGET_FILE:CoCoConfig> -t ${TYPE_FILES} -r ${RULE_FILES} -o "${GENERATED_HEADER}"
         DEPENDS CoCoConfig ${TYPE_FILES} ${RULE_FILES}
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        COMMENT "Generating CoCo configuration header for ${COCO_NAME}"
+        COMMENT "Generating CoCo configuration header for ${PROJECT_NAME}"
         VERBATIM
     )
 
-    add_custom_target("${COCO_NAME}_config" ALL DEPENDS "${GENERATED_HEADER}")
-    set(${COCO_NAME}_CONFIG_INCLUDE_DIR "${GENERATED_DIR}" PARENT_SCOPE)
+    add_custom_target("${PROJECT_NAME}_config" ALL DEPENDS "${GENERATED_HEADER}")
+    set(${PROJECT_NAME}_CONFIG_INCLUDE_DIR "${GENERATED_DIR}" PARENT_SCOPE)
 endfunction()

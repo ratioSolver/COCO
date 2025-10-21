@@ -241,7 +241,7 @@ namespace coco
             return *it->second;
         throw std::invalid_argument("reactive rule `" + std::string(name) + "` not found");
     }
-    void coco::create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere)
+    reactive_rule &coco::create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.create_reactive_rule(rule_name, rule_content);
@@ -252,6 +252,7 @@ namespace coco
             CREATED_REACTIVE_RULE(*it.first->second);
         if (infere)
             Run(env, -1);
+        return *it.first->second;
     }
 
     void coco::add_property_type(std::unique_ptr<property_type> pt)

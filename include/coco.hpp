@@ -216,8 +216,9 @@ namespace coco
      * @param rule_name The name of the reactive rule.
      * @param rule_content The content of the reactive rule.
      * @param infere Whether to run inference after creating the reactive rule.
+     * @return A reference to the newly created reactive rule.
      */
-    void create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
+    [[nodiscard]] reactive_rule &create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
     [[nodiscard]] json::json to_json() noexcept;
 

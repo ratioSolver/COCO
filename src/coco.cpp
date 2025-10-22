@@ -24,55 +24,27 @@ namespace coco
         add_property_type(std::make_unique<item_property_type>(*this));
         add_property_type(std::make_unique<json_property_type>(*this));
 
-        [[maybe_unused]] auto agenda_empty_err = AddUDF(env, "empty_agenda", "b", 0, 0, "", empty_agenda, "empty_agenda", this);
-        assert(agenda_empty_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto add_type_err = AddUDF(env, "add_type", "v", 2, 2, "yy", add_type, "add_type", this);
+        assert(add_type_err == AUE_NO_ERROR);
+        [[maybe_unused]] auto remove_type_err = AddUDF(env, "remove_type", "v", 2, 2, "yy", remove_type, "remove_type", this);
+        assert(remove_type_err == AUE_NO_ERROR);
         [[maybe_unused]] auto set_props_err = AddUDF(env, "set_properties", "v", 3, 3, "ymm", set_props, "set_props", this);
         assert(set_props_err == AUE_NO_ERROR);
         [[maybe_unused]] auto add_data_err = AddUDF(env, "add_data", "v", 3, 4, "ymml", add_data, "add_data", this);
         assert(add_data_err == AUE_NO_ERROR);
+
+        [[maybe_unused]] auto agenda_empty_err = AddUDF(env, "empty_agenda", "b", 0, 0, "", empty_agenda, "empty_agenda", this);
+        assert(agenda_empty_err == AUE_NO_ERROR);
         [[maybe_unused]] auto to_json_err = AddUDF(env, "to_json", "s", 1, 1, "m", multifield_to_json, "multifield_to_json", this);
         assert(to_json_err == AUE_NO_ERROR);
         [[maybe_unused]] auto from_json_err = AddUDF(env, "from_json", "m", 1, 1, "s", json_to_multifield, "json_to_multifield", this);
         assert(from_json_err == AUE_NO_ERROR);
 
-        LOG_TRACE(type_deftemplate);
-        [[maybe_unused]] auto build_type_dt_err = Build(env, type_deftemplate);
-        assert(build_type_dt_err == BE_NO_ERROR);
-        LOG_TRACE(is_a_deftemplate);
-        [[maybe_unused]] auto build_is_a_dt_err = Build(env, is_a_deftemplate);
-        assert(build_is_a_dt_err == BE_NO_ERROR);
-        LOG_TRACE(instance_of_deftemplate);
-        [[maybe_unused]] auto build_instance_dt_err = Build(env, instance_of_deftemplate);
-        assert(build_instance_dt_err == BE_NO_ERROR);
-        LOG_TRACE(inheritance_rule);
-        [[maybe_unused]] auto build_inh_rl_err = Build(env, inheritance_rule);
-        assert(build_inh_rl_err == BE_NO_ERROR);
-        LOG_TRACE(all_instances_of_function);
-        [[maybe_unused]] auto build_all_insts_fn_err = Build(env, all_instances_of_function);
-        assert(build_all_insts_fn_err == BE_NO_ERROR);
-
         LOG_DEBUG("Retrieving all types");
         auto tps = db.get_types();
         LOG_DEBUG("Retrieved " << tps.size() << " types");
-
-        std::map<std::string, db_type> tps_map;
-        for (const auto &tp : tps)
-            tps_map[tp.name] = tp;
-
-        std::function<void(const std::string &)> visit = [&](const std::string &name)
-        {
-            if (types.count(name))
-                return;
-            for (const auto &parent : tps_map.at(name).parents)
-                visit(parent);
-            std::vector<std::reference_wrapper<const type>> parents;
-            for (auto &parent : tps_map.at(name).parents)
-                parents.emplace_back(get_type(parent));
-            make_type(name, std::move(parents), tps_map.at(name).static_props.has_value() ? std::move(*tps_map.at(name).static_props) : json::json{}, tps_map.at(name).dynamic_props.has_value() ? std::move(*tps_map.at(name).dynamic_props) : json::json{}, tps_map.at(name).data.has_value() ? std::move(*tps_map.at(name).data) : json::json{});
-        };
-
-        for (const auto &tp : tps)
-            visit(tp.name);
+        for (auto &tp : tps)
+            make_type(tp.name, tp.static_props.has_value() ? std::move(*tp.static_props) : json::json{}, tp.dynamic_props.has_value() ? std::move(*tp.dynamic_props) : json::json{}, tp.data.has_value() ? std::move(*tp.data) : json::json{});
 
         LOG_DEBUG("Retrieving all items");
         auto itms = db.get_items();
@@ -125,28 +97,14 @@ namespace coco
         return *types.at(name.data());
     }
 
-    type &coco::create_type(std::string_view name, std::vector<std::reference_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data, bool infere) noexcept
+    type &coco::create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data, bool infere) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        std::vector<std::string> parents_names;
-        for (const auto &parent : parents)
-            parents_names.emplace_back(parent.get().get_name());
-        db.create_type(name, parents_names, data, static_props, dynamic_props);
-        auto &tp = make_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
+        db.create_type(name, data, static_props, dynamic_props);
+        auto &tp = make_type(name, std::move(static_props), std::move(dynamic_props), std::move(data));
         if (infere)
             Run(env, -1);
         return tp;
-    }
-    void coco::set_parents(type &tp, std::vector<std::reference_wrapper<const type>> &&parents, bool infere) noexcept
-    {
-        std::lock_guard<std::recursive_mutex> _(mtx);
-        std::vector<std::string> parents_names;
-        for (const auto &parent : parents)
-            parents_names.emplace_back(parent.get().get_name());
-        db.set_parents(tp.get_name(), parents_names);
-        tp.set_parents(std::move(parents));
-        if (infere)
-            Run(env, -1);
     }
 
     void coco::delete_type(type &tp, bool infere) noexcept
@@ -271,9 +229,9 @@ namespace coco
         throw std::out_of_range("property type `" + std::string(name) + "` not found");
     }
 
-    type &coco::make_type(std::string_view name, std::vector<std::reference_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data)
+    type &coco::make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data)
     {
-        auto tp_ptr = std::make_unique<type>(*this, name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
+        auto tp_ptr = std::make_unique<type>(*this, name, std::move(static_props), std::move(dynamic_props), std::move(data));
         auto &tp = *tp_ptr;
         if (!types.emplace(name, std::move(tp_ptr)).second)
             throw std::invalid_argument("type `" + std::string(name) + "` already exists");
@@ -327,12 +285,40 @@ namespace coco
         return jc;
     }
 
-    void empty_agenda(Environment *env, UDFContext *, UDFValue *out)
+    void add_type(Environment *, UDFContext *udfc, UDFValue *)
     {
-        LOG_DEBUG("Checking if agenda is empty..");
-        bool is_empty = GetNextActivation(env, nullptr) == nullptr;
-        LOG_DEBUG("Agenda is " << (is_empty ? "empty" : "not empty"));
-        out->lexemeValue = CreateSymbol(env, is_empty ? "TRUE" : "FALSE");
+        LOG_DEBUG("Adding type..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue item_id; // we get the item id..
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
+            return;
+        auto &itm = *cc.items.at(item_id.lexemeValue->contents);
+
+        UDFValue type_name; // we get the type name..
+        if (!UDFNextArgument(udfc, SYMBOL_BIT, &type_name))
+            return;
+        auto &tp = cc.get_type(type_name.lexemeValue->contents);
+        tp.add_instance(itm);
+    }
+
+    void remove_type(Environment *, UDFContext *udfc, UDFValue *)
+    {
+        LOG_DEBUG("Removing type..");
+
+        auto &cc = *reinterpret_cast<coco *>(udfc->context);
+
+        UDFValue item_id; // we get the item id..
+        if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
+            return;
+        auto &itm = *cc.items.at(item_id.lexemeValue->contents);
+
+        UDFValue type_name; // we get the type name..
+        if (!UDFNextArgument(udfc, SYMBOL_BIT, &type_name))
+            return;
+        auto &tp = cc.get_type(type_name.lexemeValue->contents);
+        tp.remove_instance(itm);
     }
 
     void set_props(Environment *, UDFContext *udfc, UDFValue *)
@@ -345,7 +331,6 @@ namespace coco
         if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
             return;
         auto &itm = *cc.items.at(item_id.lexemeValue->contents);
-        std::map<std::string, std::reference_wrapper<const property>> static_props = itm.get_type().get_all_static_properties();
 
         UDFValue pars; // we get the parameters..
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &pars))
@@ -401,7 +386,6 @@ namespace coco
         if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
             return;
         auto &itm = *cc.items.at(item_id.lexemeValue->contents);
-        std::map<std::string, std::reference_wrapper<const property>> dynamic_props = itm.get_type().get_all_dynamic_properties();
 
         UDFValue pars; // we get the parameters..
         if (!UDFNextArgument(udfc, MULTIFIELD_BIT, &pars))
@@ -427,7 +411,7 @@ namespace coco
                 data[par.lexemeValue->contents] = val.floatValue->contents;
                 break;
             case STRING_TYPE:
-                if (dynamic_props.at(par.lexemeValue->contents).get().is_complex())
+                if (itm.get_property(par.lexemeValue->contents).is_complex())
                     data[par.lexemeValue->contents] = json::load(val.lexemeValue->contents);
                 else
                     data[par.lexemeValue->contents] = val.lexemeValue->contents;
@@ -456,6 +440,14 @@ namespace coco
         }
         else
             cc.set_value(itm, std::move(data), std::chrono::system_clock::now(), false);
+    }
+
+    void empty_agenda(Environment *env, UDFContext *, UDFValue *out)
+    {
+        LOG_DEBUG("Checking if agenda is empty..");
+        bool is_empty = GetNextActivation(env, nullptr) == nullptr;
+        LOG_DEBUG("Agenda is " << (is_empty ? "empty" : "not empty"));
+        out->lexemeValue = CreateSymbol(env, is_empty ? "TRUE" : "FALSE");
     }
 
     void multifield_to_json(Environment *env, UDFContext *udfc, UDFValue *ret)

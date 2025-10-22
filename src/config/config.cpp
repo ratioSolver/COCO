@@ -88,24 +88,6 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
-    std::map<std::string, json::json> tps_map;
-    for (const auto &tp : types)
-    {
-        LOG_DEBUG("Loading " << tp);
-        std::ifstream in(tp);
-        if (!in)
-        {
-            LOG_ERR("Cannot open type file: " << tp);
-            return 1;
-        }
-        json::json j_t = json::load(in);
-        LOG_DEBUG("Loaded type: " << j_t.dump());
-        tps_map[j_t["name"].get<std::string>()] = std::move(j_t);
-    }
-
-    std::set<std::string> visited_types;
-    std::vector<std::string> generation_order;
-
     out << "// This file is auto-generated. Do not edit manually.\n\n";
     out << "#pragma once\n\n";
     out << "#include \"coco.hpp\"\n";
@@ -120,42 +102,28 @@ int main(int argc, char const *argv[])
     out << "}\n\n";
 
     out << "void load_config(coco::coco &cc)\n{\n";
-
-    std::function<void(const std::string &)> visit = [&](const std::string &name)
+    for (const auto &tp : types)
     {
-        if (visited_types.count(name))
-            return;
-        if (tps_map.at(name).contains("parents"))
-            for (const auto &parent : tps_map.at(name)["parents"].as_array())
-                visit(parent.get<std::string>());
-        visited_types.insert(name);
-        generation_order.push_back(name);
-    };
+        LOG_DEBUG("Loading " << tp);
+        std::ifstream in(tp);
+        if (!in)
+        {
+            LOG_ERR("Cannot open type file: " << tp);
+            return 1;
+        }
+        json::json j_t = json::load(in);
+        LOG_DEBUG("Loaded type: " << j_t.dump());
 
-    for (const auto &tp_pair : tps_map)
-        visit(tp_pair.first);
-
-    for (const auto &tp_name : generation_order)
-    {
+        std::string tp_name = j_t["name"].get<std::string>();
+        std::string static_props = j_t.contains("static_properties") ? "json::load(R\"(" + j_t["static_properties"].dump() + ")\")" : "{}";
+        std::string dynamic_props = j_t.contains("dynamic_properties") ? "json::load(R\"(" + j_t["dynamic_properties"].dump() + ")\")" : "{}";
+        std::string data = j_t.contains("data") ? "json::load(R\"(" + j_t["data"].dump() + ")\")" : "{}";
         out << "    try {\n";
         out << "        [[maybe_unused]] auto &" << tp_name << " = cc.get_type(\"" << tp_name << "\");\n";
         out << "        LOG_DEBUG(\"Type `" << tp_name << "` found\");\n";
         out << "    } catch (const std::invalid_argument &e) {\n";
         out << "        LOG_DEBUG(\"Creating `" << tp_name << "` type\");\n";
-        std::string parents;
-        if (tps_map.at(tp_name).contains("parents"))
-        {
-            out << "        std::vector<std::reference_wrapper<const coco::type>> " << tp_name << "_parents;\n";
-            for (const auto &parent : tps_map.at(tp_name)["parents"].as_array())
-                out << "        " << tp_name << "_parents.emplace_back(cc.get_type(\"" << parent.get<std::string>() << "\"));\n";
-            parents = "std::move(" + tp_name + "_parents)";
-        }
-        else
-            parents = "{}";
-        std::string static_props = tps_map.at(tp_name).contains("static_properties") ? "json::load(R\"(" + tps_map.at(tp_name)["static_properties"].dump() + ")\")" : "{}";
-        std::string dynamic_props = tps_map.at(tp_name).contains("dynamic_properties") ? "json::load(R\"(" + tps_map.at(tp_name)["dynamic_properties"].dump() + ")\")" : "{}";
-        std::string data = tps_map.at(tp_name).contains("data") ? "json::load(R\"(" + tps_map.at(tp_name)["data"].dump() + ")\")" : "{}";
-        out << "        [[maybe_unused]] auto &" << tp_name << " = cc.create_type(\"" << tp_name << "\", " << parents << ", " << static_props << ", " << dynamic_props << ", " << data << ");\n";
+        out << "        [[maybe_unused]] auto &" << tp_name << " = cc.create_type(\"" << tp_name << "\", " << static_props << ", " << dynamic_props << ", " << data << ");\n";
         out << "    }\n";
     }
 

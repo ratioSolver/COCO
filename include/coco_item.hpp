@@ -7,6 +7,8 @@
 
 namespace coco
 {
+  class coco;
+  class property;
   class type;
 
   /**
@@ -16,17 +18,19 @@ namespace coco
    */
   class item
   {
+    friend class type;
+
   public:
     /**
      * @brief Constructs an item object.
      *
-     * @param tp The type of the item.
+     * @param cc The CoCo object.
      * @param id The ID of the item.
      * @param props The properties of the item.
      * @param val The value of the item.
      * @param timestamp The timestamp of the value.
      */
-    item(type &tp, std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
+    item(coco &cc, std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt) noexcept;
     ~item() noexcept;
 
     /**
@@ -37,11 +41,11 @@ namespace coco
     [[nodiscard]] const std::string &get_id() const { return id; }
 
     /**
-     * @brief Gets the type of the item.
+     * @brief Gets the types of the item.
      *
-     * @return The type of the item.
+     * @return The types of the item.
      */
-    [[nodiscard]] type &get_type() const { return tp; }
+    [[nodiscard]] std::vector<std::reference_wrapper<type>> get_types() const noexcept;
 
     /**
      * @brief Gets the properties of the item.
@@ -75,15 +79,19 @@ namespace coco
      */
     void set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val);
 
+    [[nodiscard]] const property &get_property(std::string_view name) const;
+
     [[nodiscard]] json::json to_json() const noexcept;
 
   private:
-    type &tp;                                                                          // The type of the item.
+    void add_type(const type &tp);
+    void remove_type(const type &tp);
+
+  private:
+    coco &cc;                                                                          // The CoCo object..
     const std::string id;                                                              // The ID of the item.
-    Fact *item_fact = nullptr;                                                         // The fact representing the item.
-    Fact *is_instance_of = nullptr;                                                    // The fact representing the type of the item.
-    std::map<std::string, Fact *> properties_facts;                                    // The facts representing the properties of the item.
-    std::map<std::string, Fact *> value_facts;                                         // The facts representing the value of the item.
+    std::map<std::string, Fact *> item_facts;                                          // The facts representing, for each type, the item itself.
+    std::map<std::string, std::map<std::string, Fact *>> value_facts;                  // The facts representing, for each type, the value of the item.
     json::json properties;                                                             // The properties of the item.
     std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> value; // The value of the item.
   };

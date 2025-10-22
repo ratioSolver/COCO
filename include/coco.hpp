@@ -18,12 +18,6 @@
 
 namespace coco
 {
-  constexpr const char *type_deftemplate = "(deftemplate type (slot name (type SYMBOL)))";
-  constexpr const char *is_a_deftemplate = "(deftemplate is_a (slot type (type SYMBOL)) (slot parent (type SYMBOL)))";
-  constexpr const char *instance_of_deftemplate = "(deftemplate instance_of (slot item_id (type SYMBOL)) (slot type (type SYMBOL)))";
-  constexpr const char *inheritance_rule = "(defrule inheritance (is_a (type ?t) (parent ?p)) (instance_of (item_id ?i) (type ?t)) => (assert (instance_of (item_id ?i) (type ?p))))";
-  constexpr const char *all_instances_of_function = "(deffunction all-instances-of (?type) (bind ?instances (create$)) (do-for-all-facts ((?instance_of instance_of)) (eq ?instance_of:type ?type) (bind ?instances (create$ ?instances ?instance_of:id))) (return ?instances))";
-
   class coco_db;
   class coco_module;
   class type;
@@ -104,8 +98,7 @@ namespace coco
      * @throws std::invalid_argument if the type does not exist.
      */
     [[nodiscard]] type &get_type(std::string_view name);
-    [[nodiscard]] type &create_type(std::string_view name, std::vector<std::reference_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json(), bool infere = true) noexcept;
-    void set_parents(type &tp, std::vector<std::reference_wrapper<const type>> &&parents, bool infere = true) noexcept;
+    [[nodiscard]] type &create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json(), bool infere = true) noexcept;
     void delete_type(type &tp, bool infere = true) noexcept;
 
     /**
@@ -230,8 +223,10 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
-    type &make_type(std::string_view name, std::vector<std::reference_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
+    type &make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
 
+    friend void add_type(Environment *env, UDFContext *udfc, UDFValue *out);
+    friend void remove_type(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
@@ -331,9 +326,12 @@ namespace coco
     std::string content; // the content of the rule.
   };
 
-  void empty_agenda(Environment *env, UDFContext *udfc, UDFValue *out);
+  void add_type(Environment *env, UDFContext *udfc, UDFValue *out);
+  void remove_type(Environment *env, UDFContext *udfc, UDFValue *out);
   void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
   void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
+
+  void empty_agenda(Environment *env, UDFContext *udfc, UDFValue *out);
   void multifield_to_json(Environment *env, UDFContext *udfc, UDFValue *out);
   void json_to_multifield(Environment *env, UDFContext *udfc, UDFValue *out);
 

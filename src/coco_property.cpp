@@ -1103,18 +1103,10 @@ namespace coco
     item_property::item_property(const property_type &pt, const type &tp, bool dynamic, std::string_view name, const type &domain, bool nullable, bool multiple, std::optional<std::vector<std::reference_wrapper<item>>> default_value) noexcept : property(pt, tp, dynamic, name, nullable), domain(domain), multiple(multiple), default_value(default_value)
     {
         assert(!default_value.has_value() || default_value->empty() || std::all_of(default_value->begin(), default_value->end(), [&domain](const auto &val)
-                                                                                   { 
-                                                                                        std::queue<const type *> q;
-                                                                                        q.push(&val.get().get_type());
-                                                                                        while (!q.empty())
-                                                                                        {
-                                                                                            auto tp = q.front();
-                                                                                            q.pop();
-                                                                                            if (tp == &domain)
+                                                                                   {
+                                                                                        for (const auto &tp : val.get().get_types())
+                                                                                            if (&tp.get() == &domain)
                                                                                                 return true;
-                                                                                            for (const auto &[_, p] : tp->get_parents())
-                                                                                                q.push(&p.get());
-                                                                                        }
                                                                                         return false; }));
         assert(!default_value.has_value() || !multiple || default_value->size() <= 1);
 
@@ -1137,33 +1129,17 @@ namespace coco
             return std::all_of(j.as_array().begin(), j.as_array().end(), [this](const json::json &v)
                                { return v.is_string() && !tp.get_coco().get_item(v.get<std::string>()).get_id().empty() && ([&]()
                                                                                                                             {
-                                         std::queue<const type *> q;
-                                         q.push(&tp.get_coco().get_item(v.get<std::string>()).get_type());
-                                         while (!q.empty())
-                                         {
-                                             auto tp = q.front();
-                                             q.pop();
-                                             if (tp == &domain)
+                                         for (const auto &tp : tp.get_coco().get_item(v.get<std::string>()).get_types())
+                                             if (&tp.get() == &domain)
                                                  return true;
-                                             for (const auto &[_, p] : tp->get_parents())
-                                                 q.push(&p.get());
-                                         }
                                          return false; }()); });
         }
         else
             return j.is_string() && !tp.get_coco().get_item(j.get<std::string>()).get_id().empty() && ([&]()
                                                                                                        {
-                    std::queue<const type *> q;
-                    q.push(&tp.get_coco().get_item(j.get<std::string>()).get_type());
-                    while (!q.empty())
-                    {
-                        auto tp = q.front();
-                        q.pop();
-                        if (tp == &domain)
+                    for (const auto &tp : tp.get_coco().get_item(j.get<std::string>()).get_types())
+                        if (&tp.get() == &domain)
                             return true;
-                        for (const auto &[_, p] : tp->get_parents())
-                            q.push(&p.get());
-                    }
                     return false; }());
     }
     json::json item_property::to_json() const noexcept

@@ -23,12 +23,11 @@ namespace coco
      *
      * @param cc The CoCo object.
      * @param name The name of the type.
-     * @param parents The parents of the type.
      * @param static_props The static properties of the type.
      * @param dynamic_props The dynamic properties of the type.
      * @param data The (optional) data of the type.
      */
-    type(coco &cc, std::string_view name, std::vector<std::reference_wrapper<const type>> &&parents, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+    type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
     ~type();
 
     /**
@@ -46,20 +45,6 @@ namespace coco
     [[nodiscard]] const std::string &get_name() const noexcept { return name; }
 
     /**
-     * @brief Gets the parent types of the type.
-     *
-     * @return The parent types of the type.
-     */
-    [[nodiscard]] const std::map<std::string, std::reference_wrapper<const type>> &get_parents() const noexcept { return parents; }
-
-    /**
-     * @brief Sets the parents of the type.
-     *
-     * @param parents The parents of the type.
-     */
-    void set_parents(std::vector<std::reference_wrapper<const type>> &&parents) noexcept;
-
-    /**
      * @brief Gets the data of the type.
      *
      * @return The data of the type.
@@ -73,8 +58,6 @@ namespace coco
      */
     [[nodiscard]] const std::map<std::string, std::unique_ptr<property>> &get_static_properties() const noexcept { return static_properties; }
 
-    [[nodiscard]] const std::map<std::string, std::reference_wrapper<const property>> get_all_static_properties() const noexcept;
-
     /**
      * @brief Gets the dynamic properties of the type.
      *
@@ -82,14 +65,25 @@ namespace coco
      */
     [[nodiscard]] const std::map<std::string, std::unique_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
 
-    [[nodiscard]] const std::map<std::string, std::reference_wrapper<const property>> get_all_dynamic_properties() const noexcept;
-
     /**
      * @brief Gets the instances of the type.
      *
      * @return The instances of the type.
      */
     [[nodiscard]] std::vector<std::reference_wrapper<item>> get_instances() const noexcept;
+
+    /**
+     * @brief Adds an instance to the type.
+     *
+     * @param itm The instance to add.
+     */
+    void add_instance(item &itm) noexcept;
+    /**
+     * @brief Removes an instance from the type.
+     *
+     * @param itm The instance to remove.
+     */
+    void remove_instance(item &itm) noexcept;
 
     /**
      * @brief Creates a new instance of the type.
@@ -106,10 +100,7 @@ namespace coco
   private:
     coco &cc;                                                            // The CoCo object..
     std::string name;                                                    // The name of the type..
-    std::map<std::string, std::reference_wrapper<const type>> parents;   // The parent types of the type.
     const json::json data;                                               // The data of the type..
-    Fact *type_fact = nullptr;                                           // The type fact..
-    std::map<std::string, Fact *> parent_facts;                          // The parent facts of the type.
     std::map<std::string, std::unique_ptr<property>> static_properties;  // The static properties..
     std::map<std::string, std::unique_ptr<property>> dynamic_properties; // The dynamic properties..
     std::unordered_set<std::string> instances;                           // The IDs of the instances of the type..

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(CoCoGenerator LANGUAGES CXX)
 
 add_executable(CoCoConfig config.cpp)
-target_link_libraries(CoCoConfig json)
+target_link_libraries(CoCoConfig PRIVATE json)
 setup_sanitizers(CoCoConfig)
 
 function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES)

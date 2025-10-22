@@ -57,8 +57,7 @@ namespace coco
     void drop() noexcept override;
 
     [[nodiscard]] std::vector<db_type> get_types() noexcept override;
-    void create_type(std::string_view tp_name, const std::vector<std::string> &parents, const json::json &data, const json::json &static_props, const json::json &dynamic_props) override;
-    void set_parents(std::string_view tp_name, const std::vector<std::string> &parents) override;
+    void create_type(std::string_view tp_name, const json::json &data, const json::json &static_props, const json::json &dynamic_props) override;
     void delete_type(std::string_view tp_name) override;
 
     [[nodiscard]] std::vector<db_item> get_items() noexcept override;

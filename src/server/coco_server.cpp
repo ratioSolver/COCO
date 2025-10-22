@@ -125,7 +125,6 @@ namespace coco
             {"description", "A " COCO_NAME " type definition that describes the structure and behavior of items."},
             {"properties",
              {{"name", {{"type", "string"}, {"description", "The unique name identifier for this type."}}},
-              {"parents", {{"type", "array"}, {"items", {{"type", "string"}}}, {"description", "Array of parent type names from which this type inherits properties."}}},
               {"static_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}, {"description", "Object containing static properties that define the fixed structure of items of this type. Keys are property names, values are property definitions."}}},
               {"dynamic_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}, {"description", "Object containing dynamic properties that can store time-series data for items of this type. Keys are property names, values are property definitions."}}},
               {"data", {{"type", "object"}, {"description", "Additional metadata or configuration data for this type."}}}}},
@@ -495,27 +494,6 @@ namespace coco
 
         std::string name = body["name"];
 
-        std::vector<std::reference_wrapper<const type>> parents;
-        if (body.contains("parents"))
-        {
-            if (!body["parents"].is_array())
-                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-            for (auto &p : body["parents"].as_array())
-            {
-                if (!p.is_string())
-                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
-                try
-                {
-                    auto &tp = get_coco().get_type(p.get<std::string>());
-                    parents.emplace_back(tp);
-                }
-                catch (const std::exception &)
-                {
-                    return std::make_unique<network::json_response>(json::json({{"message", "Parent type not found"}}), network::status_code::not_found);
-                }
-            }
-        }
-
         json::json static_props;
         if (body.contains("static_properties"))
             static_props = std::move(body["static_properties"]);
@@ -528,7 +506,7 @@ namespace coco
         if (body.contains("data"))
             data = std::move(body["data"]);
 
-        [[maybe_unused]] auto &tp = get_coco().create_type(name, std::move(parents), std::move(static_props), std::move(dynamic_props), std::move(data));
+        [[maybe_unused]] auto &tp = get_coco().create_type(name, std::move(static_props), std::move(dynamic_props), std::move(data));
         return std::make_unique<network::response>(network::status_code::no_content);
     }
     std::unique_ptr<network::response> coco_server::delete_type(const network::request &req)

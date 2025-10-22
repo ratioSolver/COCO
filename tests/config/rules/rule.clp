@@ -1,1 +1,0 @@
-(defrule rule (child (name ?name)) => (printout t "Rule fired for child: " ?name crlf))

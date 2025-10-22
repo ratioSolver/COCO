@@ -1,0 +1,1 @@
+(defrule is_adult (person (item_id ?id) (age ?age&:(>= ?age 18))) => (assert (instance_of (item_id ?id) (type adult))))

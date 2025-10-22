@@ -1,0 +1,6 @@
+{
+  "name": "adult",
+  "parents": [
+    "person"
+  ]
+}

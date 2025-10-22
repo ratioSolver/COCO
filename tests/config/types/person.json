@@ -1,0 +1,11 @@
+{
+  "name": "person",
+  "static_properties": {
+    "name": {
+      "type": "string"
+    },
+    "age": {
+      "type": "int"
+    }
+  }
+}

@@ -43,7 +43,8 @@ namespace coco
     std::vector<db_type> mongo_db::get_types() noexcept
     {
         std::vector<db_type> types;
-        for (const auto &doc : types_collection.find({}))
+        // Sort by _id to have a deterministic order (item properties require domain types to be already defined)..
+        for (const auto &doc : types_collection.find({}, mongocxx::options::find{}.sort(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", 1)))))
         {
             auto name = doc["_id"].get_string().value;
             std::optional<json::json> data, static_props, dynamic_props;

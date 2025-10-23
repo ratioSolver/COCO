@@ -707,19 +707,7 @@ namespace coco
             return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
         }
 
-        std::unordered_map<std::string, std::reference_wrapper<property>> props;
-        std::queue<const type *> q;
-        q.push(tp);
-        while (!q.empty())
-        {
-            auto tp = q.front();
-            q.pop();
-            for (const auto &[name, p] : tp->get_dynamic_properties())
-                props.emplace(name, *p);
-            for (const auto &[_, p] : tp->get_parents())
-                q.push(&p.get());
-        }
-
+        auto &props = tp->get_dynamic_properties();
         json::json j;
 
         if (params.count("parameters"))
@@ -728,7 +716,7 @@ namespace coco
                 const auto pars = json::load(network::decode(params.at("parameters")));
                 for (const auto &par : pars.as_array())
                     if (auto it = props.find(par.get<std::string>()); it != props.end())
-                        j[it->first] = it->second.get().fake();
+                        j[it->first] = it->second->fake();
                     else
                         return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
             }
@@ -738,7 +726,7 @@ namespace coco
             }
         else // fake all properties
             for (auto &[name, prop] : props)
-                j[name] = prop.get().fake();
+                j[name] = prop->fake();
 
         return std::make_unique<network::json_response>(std::move(j));
     }

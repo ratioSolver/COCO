@@ -13,13 +13,13 @@ export class ItemChart extends PayloadComponent<HTMLDivElement, coco.taxonomy.It
   constructor(item: coco.taxonomy.Item) {
     super(document.createElement('div'), item);
     this.node.style.width = '100%';
-    this.node.style.height = item.get_type().get_all_dynamic_properties().size * 200 + 'px';
+    this.node.style.height = coco.taxonomy.get_dynamic_properties(this.payload).size * 200 + 'px';
 
     item.add_item_listener(this);
   }
 
   override mounted(): void {
-    const dynamic_props = this.payload.get_type().get_all_dynamic_properties();
+    const dynamic_props = coco.taxonomy.get_dynamic_properties(this.payload);
     const values: Map<string, chart.Value<unknown>[]> = new Map();
     for (const val of this.payload.get_data())
       for (const [name, v] of Object.entries(val.data)) {

@@ -49,7 +49,7 @@ export class ItemPublisher extends PayloadComponent<HTMLDivElement, coco.taxonom
     v_hrow.appendChild(v_val);
 
     const v_body = v_table.createTBody();
-    for (const [name, prop] of item.get_type().get_all_dynamic_properties()) {
+    for (const [name, prop] of coco.taxonomy.get_dynamic_properties(item)) {
       const row = v_body.insertRow();
 
       const v_name = document.createElement('th');
@@ -104,25 +104,27 @@ export class ItemPublisher extends PayloadComponent<HTMLDivElement, coco.taxonom
         for (const [name, check] of this.v_checks)
           if (check.checked)
             pars.push(name);
-        coco.CoCo.get_instance().fake_data(item.get_type(), pars).then(fake => {
-          const els: HTMLElement[] = [];
-          for (const [name, v] of Object.entries(fake)) {
-            const v_val = this.v_values.get(name)!;
-            els.push(v_val.get_element().children[0] as HTMLElement);
-            v_val.set_value(v);
-          }
-          blink(els);
-        });
+        for (const tp of item.get_types())
+          coco.CoCo.get_instance().fake_data(tp, pars).then(fake => {
+            const els: HTMLElement[] = [];
+            for (const [name, v] of Object.entries(fake)) {
+              const v_val = this.v_values.get(name)!;
+              els.push(v_val.get_element().children[0] as HTMLElement);
+              v_val.set_value(v);
+            }
+            blink(els);
+          });
       } else
-        coco.CoCo.get_instance().fake_data(item.get_type()).then(fake => {
-          const els: HTMLElement[] = [];
-          for (const [name, v] of Object.entries(fake)) {
-            const v_val = this.v_values.get(name)!;
-            els.push(v_val.get_element().children[0] as HTMLElement);
-            v_val.set_value(v);
-          }
-          blink(els);
-        });
+        for (const tp of item.get_types())
+          coco.CoCo.get_instance().fake_data(tp).then(fake => {
+            const els: HTMLElement[] = [];
+            for (const [name, v] of Object.entries(fake)) {
+              const v_val = this.v_values.get(name)!;
+              els.push(v_val.get_element().children[0] as HTMLElement);
+              v_val.set_value(v);
+            }
+            blink(els);
+          });
     });
     b_div.append(fake_button);
     const publish_button = document.createElement('button');
@@ -149,7 +151,7 @@ export class ItemPublisher extends PayloadComponent<HTMLDivElement, coco.taxonom
   slots_updated(_: coco.taxonomy.Item): void { }
 
   private set_value() {
-    const props = this.payload.get_type().get_all_dynamic_properties();
+    const props = coco.taxonomy.get_dynamic_properties(this.payload);
     if (props.size > 0) {
       this.node.hidden = false;
       const val = this.payload.get_datum();

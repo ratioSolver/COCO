@@ -41,14 +41,8 @@ export namespace coco {
 
     new_item(item: taxonomy.Item): void {
       this.items.set(item.get_id(), item);
-      const queue: taxonomy.Type[] = [item.get_type()];
-      while (queue.length > 0) {
-        const tp = queue.shift()!;
+      for (const tp of item.get_types())
         tp._instances.add(item);
-        if (tp.get_parents())
-          for (const par of tp.get_parents()!)
-            queue.push(par);
-      }
       for (const listener of this.coco_listeners) listener.new_item(item);
     }
 
@@ -154,7 +148,7 @@ export namespace coco {
             break;
           case 'new_type':
             const ntm = message as NewTypeMessage;
-            const n_tp = new taxonomy.Type(ntm.name, [], ntm.data);
+            const n_tp = new taxonomy.Type(ntm.name, ntm.data);
             this.new_type(n_tp);
             this.refine_type(n_tp, ntm);
             break;
@@ -186,7 +180,7 @@ export namespace coco {
       if (coco_message.types) {
         this.types.clear();
         for (const [name, tp] of Object.entries(coco_message.types))
-          this.new_type(new taxonomy.Type(name, [], tp.data));
+          this.new_type(new taxonomy.Type(name, tp.data));
         for (const [name, tp] of Object.entries(coco_message.types)) {
           const ctp = this.types.get(name)!;
           this.refine_type(ctp, tp);
@@ -210,8 +204,6 @@ export namespace coco {
     }
 
     private refine_type(tp: taxonomy.Type, tpm: TypeMessage) {
-      if (tpm.parents)
-        tp._set_parents(tpm.parents.map(p => this.types.get(p)!));
       if (tpm.static_properties) {
         const static_props = new Map<string, taxonomy.Property<unknown>>();
         for (const [name, prop] of Object.entries(tpm.static_properties))
@@ -230,7 +222,7 @@ export namespace coco {
       let value = undefined;
       if (itm.value)
         value = { data: itm.value.data, timestamp: new Date(itm.value.timestamp) };
-      return new taxonomy.Item(id, this.types.get(itm.type)!, itm.properties, value);
+      return new taxonomy.Item(id, new Set(itm.types.map(tn => this.types.get(tn)!)), itm.properties, value, (itm as any).slots);
     }
 
     get_type(name: string): taxonomy.Type { return this.types.get(name)!; }
@@ -540,74 +532,25 @@ export namespace coco {
     export class Type {
 
       private readonly name: string;
-      private parents?: Type[];
       private data?: Record<string, any>;
       private static_properties?: Map<string, Property<unknown>>;
       private dynamic_properties?: Map<string, Property<unknown>>;
       readonly _instances: Set<Item> = new Set();
       private readonly listeners = new Set<TypeListener>();
 
-      constructor(name: string, parents?: Type[], data?: Record<string, any>, static_properties?: Map<string, Property<unknown>>, dynamic_properties?: Map<string, Property<unknown>>) {
+      constructor(name: string, data?: Record<string, any>, static_properties?: Map<string, Property<unknown>>, dynamic_properties?: Map<string, Property<unknown>>) {
         this.name = name;
-        this.parents = parents;
         this.data = data;
         this.static_properties = static_properties;
         this.dynamic_properties = dynamic_properties;
       }
 
       get_name(): string { return this.name; }
-      get_parents(): Type[] | undefined { return this.parents; }
-      get_all_parents(): Set<Type> {
-        const parents = new Set<Type>();
-        const q: Type[] = [this];
-        while (q.length > 0) {
-          const t = q.shift()!;
-          if (!parents.has(t)) {
-            parents.add(t);
-            if (t.parents)
-              for (const par of t.parents)
-                q.push(par);
-          }
-        }
-        return parents;
-      }
       get_data(): Record<string, any> | undefined { return this.data; }
       get_static_properties(): Map<string, Property<unknown>> | undefined { return this.static_properties; }
-      get_all_static_properties(): Map<string, Property<unknown>> {
-        const props = new Map<string, coco.taxonomy.Property<unknown>>();
-        const q: Type[] = [this];
-        while (q.length > 0) {
-          const t = q.shift()!;
-          if (t.static_properties)
-            for (const [name, property] of t.static_properties)
-              props.set(name, property);
-          if (t.parents)
-            for (const par of t.parents)
-              q.push(par);
-        }
-        return props;
-      }
       get_dynamic_properties(): Map<string, Property<unknown>> | undefined { return this.dynamic_properties; }
-      get_all_dynamic_properties(): Map<string, Property<unknown>> {
-        const props = new Map<string, coco.taxonomy.Property<unknown>>();
-        const q: Type[] = [this];
-        while (q.length > 0) {
-          const t = q.shift()!;
-          if (t.dynamic_properties)
-            for (const [name, property] of t.dynamic_properties)
-              props.set(name, property);
-          if (t.parents)
-            for (const par of t.parents)
-              q.push(par);
-        }
-        return props;
-      }
       get_instances(): Set<Item> { return this._instances; }
 
-      _set_parents(ps?: Type[]): void {
-        this.parents = ps;
-        for (const l of this.listeners) l.parents_updated(this);
-      }
       _set_data(data?: Record<string, any>): void {
         this.data = data;
         for (const l of this.listeners) l.data_updated(this);
@@ -642,7 +585,6 @@ export namespace coco {
 
     export interface TypeListener {
 
-      parents_updated(type: Type): void;
       data_updated(type: Type): void;
       static_properties_updated(type: Type): void;
       dynamic_properties_updated(type: Type): void;
@@ -653,23 +595,23 @@ export namespace coco {
     export class Item {
 
       private readonly id: string;
-      private readonly type: Type;
+      private readonly types: Set<Type>;
       private properties?: Record<string, unknown>;
       private datum?: Datum;
       private slots?: Record<string, unknown>;
       private data: Datum[] = [];
       private readonly listeners = new Set<ItemListener>();
 
-      constructor(id: string, type: Type, properties?: Record<string, unknown>, value?: Datum, slots?: Record<string, unknown>) {
+      constructor(id: string, types: Set<Type>, properties?: Record<string, unknown>, value?: Datum, slots?: Record<string, unknown>) {
         this.id = id;
-        this.type = type;
+        this.types = types;
         this.properties = properties;
         this.datum = value;
         this.slots = slots;
       }
 
       get_id(): string { return this.id; }
-      get_type(): Type { return this.type; }
+      get_types(): Set<Type> { return this.types; }
       get_properties(): Record<string, unknown> | undefined { return this.properties; }
       get_datum(): Datum | undefined { return this.datum; }
       get_data(): Datum[] { return this.data; }
@@ -705,6 +647,28 @@ export namespace coco {
       values_updated(item: Item): void;
       new_value(item: Item, v: Datum): void;
       slots_updated(item: Item): void;
+    }
+
+    export function get_static_properties(item: Item): Map<string, Property<unknown>> {
+      const static_props = new Map<string, Property<unknown>>();
+      for (const tp of item.get_types()) {
+        const tp_static_props = tp.get_static_properties();
+        if (tp_static_props)
+          for (const [name, prop] of tp_static_props)
+            static_props.set(name, prop);
+      }
+      return static_props;
+    }
+
+    export function get_dynamic_properties(item: Item): Map<string, Property<unknown>> {
+      const dynamic_props = new Map<string, Property<unknown>>();
+      for (const tp of item.get_types()) {
+        const tp_dynamic_props = tp.get_dynamic_properties();
+        if (tp_dynamic_props)
+          for (const [name, prop] of tp_dynamic_props)
+            dynamic_props.set(name, prop);
+      }
+      return dynamic_props;
     }
   }
 
@@ -853,7 +817,6 @@ interface JSONPropertyMessage extends PropMessage<Record<string, any>> {
 type PropertyMessage = BoolPropertyMessage | IntPropertyMessage | FloatPropertyMessage | StringPropertyMessage | SymbolPropertyMessage | ItemPropertyMessage | JSONPropertyMessage;
 
 interface TypeMessage {
-  parents?: string[];
   data?: Record<string, any>;
   static_properties?: Record<string, PropertyMessage>;
   dynamic_properties?: Record<string, PropertyMessage>;
@@ -865,7 +828,7 @@ interface ValueMessage {
 }
 
 interface ItemMessage {
-  type: string;
+  types: string[];
   properties?: Record<string, unknown>;
   value?: ValueMessage;
 }

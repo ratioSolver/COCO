@@ -12,7 +12,6 @@ export class TypeElement extends ListItemComponent<coco.taxonomy.Type> implement
     this.payload.add_type_listener(this);
   }
 
-  parents_updated(_: coco.taxonomy.Type): void { }
   data_updated(_: coco.taxonomy.Type): void { }
   static_properties_updated(_: coco.taxonomy.Type): void { }
   dynamic_properties_updated(_: coco.taxonomy.Type): void { }
@@ -132,7 +131,6 @@ export class Type extends PayloadComponent<HTMLDivElement, coco.taxonomy.Type> i
 
   override unmounting(): void { this.payload.remove_type_listener(this); }
 
-  parents_updated(_: coco.taxonomy.Type): void { }
   data_updated(_: coco.taxonomy.Type): void { }
   static_properties_updated(_: coco.taxonomy.Type): void { this.set_static_properties(); }
   dynamic_properties_updated(_: coco.taxonomy.Type): void { this.set_dynamic_properties(); }

@@ -26,8 +26,8 @@ export class ItemProperties extends PayloadComponent<HTMLDivElement, coco.taxono
     p_hrow.appendChild(p_val);
 
     const p_body = p_table.createTBody();
-    const props = item.get_properties();
-    for (const [name, prop] of item.get_type().get_all_static_properties()) {
+    const itm_props = item.get_properties();
+    for (const [name, prop] of coco.taxonomy.get_static_properties(item)) {
       const row = p_body.insertRow();
       const p_name = document.createElement('th');
       p_name.scope = 'col';
@@ -35,8 +35,8 @@ export class ItemProperties extends PayloadComponent<HTMLDivElement, coco.taxono
       row.appendChild(p_name);
       const p_value = document.createElement('td');
       this.p_values.set(name, p_value);
-      if (props && props[name])
-        p_value.textContent = prop.get_type().to_string(props[name]);
+      if (itm_props && itm_props[name])
+        p_value.textContent = prop.get_type().to_string(itm_props[name]);
       row.appendChild(p_value);
     }
 
@@ -52,15 +52,15 @@ export class ItemProperties extends PayloadComponent<HTMLDivElement, coco.taxono
   slots_updated(_: coco.taxonomy.Item): void { }
 
   private set_properties() {
-    const props = this.payload.get_type().get_all_static_properties();
-    if (props.size > 0) {
+    const static_props = coco.taxonomy.get_static_properties(this.payload);
+    if (static_props.size > 0) {
       this.node.hidden = false;
       const ps = this.payload.get_properties();
       if (ps)
         for (const [name, val] of Object.entries(ps)) {
           const p_val = this.p_values.get(name)!;
           blink(p_val);
-          p_val.textContent = props.get(name)!.get_type().to_string(val);
+          p_val.textContent = static_props.get(name)!.get_type().to_string(val);
         }
     } else
       this.node.hidden = true;

@@ -6,9 +6,9 @@
 #include <cassert>
 
 #ifdef BUILD_LISTENERS
-#define CREATED_ITEM() tp.get_coco().created_item(*this)
-#define UPDATED_ITEM() tp.get_coco().updated_item(*this)
-#define NEW_DATA(data, timestamp) tp.get_coco().new_data(*this, data, timestamp)
+#define CREATED_ITEM() cc.created_item(*this)
+#define UPDATED_ITEM() cc.updated_item(*this)
+#define NEW_DATA(data, timestamp) cc.new_data(*this, data, timestamp)
 #else
 #define CREATED_ITEM()
 #define UPDATED_ITEM()
@@ -207,7 +207,7 @@ namespace coco
         assert(item_fact);
         assert(item_fact);
         RetainFact(item_fact);
-        LOG_TRACE(tp.get_coco().to_string(item_fact));
+        LOG_TRACE(cc.to_string(item_fact));
         FBDispose(item_fact_builder);
         item_facts.emplace(tp.get_name(), item_fact);
     }

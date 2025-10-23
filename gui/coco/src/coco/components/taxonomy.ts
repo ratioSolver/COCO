@@ -113,10 +113,6 @@ export class TaxonomyGraph extends Component<HTMLDivElement> implements coco.CoC
     for (const tp of coco.CoCo.get_instance().get_types())
       this.create_type_node(tp);
     for (const tp of coco.CoCo.get_instance().get_types()) {
-      const pars = tp.get_parents();
-      if (pars)
-        for (const par of pars)
-          this.cy!.add({ group: 'edges', data: { id: `p-${tp.get_name()}-${par.get_name()}`, type: 'is_a', source: tp.get_name(), target: par.get_name() } });
       const static_props = tp.get_static_properties();
       if (static_props)
         for (const [name, prop] of static_props)
@@ -146,13 +142,6 @@ export class TaxonomyGraph extends Component<HTMLDivElement> implements coco.CoC
     type.add_type_listener(this);
   }
 
-  parents_updated(type: coco.taxonomy.Type): void {
-    this.cy!.elements(`edge[id ^= "p-${type.get_name()}"]`).remove();
-    const pars = type.get_parents();
-    if (pars)
-      for (const par of pars)
-        this.cy!.add({ group: 'edges', data: { id: `p-${type.get_name()}-${par.get_name()}`, type: 'is_a', source: type.get_name(), target: par.get_name() } });
-  }
   data_updated(_: coco.taxonomy.Type): void { }
   static_properties_updated(type: coco.taxonomy.Type): void {
     this.cy!.elements(`edge[id ^= "sp-${type.get_name()}"]`).remove();

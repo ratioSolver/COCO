@@ -365,12 +365,12 @@ export class ItemCircleLayer extends CircleLayer<coco.taxonomy.Item> implements 
       this.set_radius_factory(() => data.radius);
     if (data && 'color' in data)
       this.set_color_factory(() => data.color);
-    const static_props = type.get_all_static_properties();
+    const static_props = type.get_static_properties();
     if (static_props && static_props.has('radius'))
       this.set_radius_factory((item: coco.taxonomy.Item) => item.get_properties()!.radius as number);
     if (static_props && static_props.has('color'))
       this.set_color_factory((item: coco.taxonomy.Item) => item.get_properties()!.color as string);
-    const dynamic_props = type.get_all_dynamic_properties();
+    const dynamic_props = type.get_dynamic_properties();
     if (dynamic_props && dynamic_props.has('radius'))
       this.set_radius_factory((item: coco.taxonomy.Item) => item.get_datum()!.data.radius as number);
     if (dynamic_props && dynamic_props.has('color'))
@@ -387,7 +387,7 @@ export class ItemCircleLayer extends CircleLayer<coco.taxonomy.Item> implements 
 
   new_type(_type: coco.taxonomy.Type): void { }
   new_item(item: coco.taxonomy.Item): void {
-    if (item.get_type().get_all_parents().has(this.type) && (is_static_located(item) || is_dynamic_located(item))) {
+    if (item.get_types().has(this.type) && (is_static_located(item) || is_dynamic_located(item))) {
       this.add_elements(item);
       item.add_item_listener(this);
     }
@@ -446,7 +446,7 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
         icon.options.iconSize = [data.iconSize[0], data.iconSize[1]];
       this.set_icon_factory(() => icon);
     }
-    const static_props = type.get_all_static_properties();
+    const static_props = type.get_static_properties();
     if (static_props && static_props.has('iconUrl'))
       this.set_icon_factory((item: coco.taxonomy.Item) => {
         const icon = L.icon({ iconUrl: item.get_properties()!.iconUrl as string });
@@ -454,7 +454,7 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
           icon.options.iconSize = [item.get_properties()!.iconWidth as number, item.get_properties()!.iconHeight as number];
         return icon;
       });
-    const dynamic_props = type.get_all_dynamic_properties();
+    const dynamic_props = type.get_dynamic_properties();
     if (dynamic_props && dynamic_props.has('iconUrl'))
       this.set_icon_factory((item: coco.taxonomy.Item) => {
         const icon = L.icon({ iconUrl: item.get_datum()!.data.iconUrl as string });
@@ -474,7 +474,7 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
 
   new_type(_type: coco.taxonomy.Type): void { }
   new_item(item: coco.taxonomy.Item): void {
-    if (item.get_type().get_all_parents().has(this.type) && (is_static_located(item) || is_dynamic_located(item))) {
+    if (item.get_types().has(this.type) && (is_static_located(item) || is_dynamic_located(item))) {
       this.add_elements(item);
       item.add_item_listener(this);
     }
@@ -521,13 +521,7 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
     const data = type.get_data();
     if (data && 'iconUrl' in data)
       return true;
-    const static_props = type.get_all_static_properties();
-    if (static_props && static_props.has('iconUrl'))
-      return true;
-    const dynamic_props = type.get_all_dynamic_properties();
-    if (dynamic_props && dynamic_props.has('iconUrl'))
-      return true;
-    return false;
+    return type.get_static_properties()?.has('iconUrl') || type.get_dynamic_properties()?.has('iconUrl') || false;
   }
 }
 
@@ -542,13 +536,7 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
  * @returns `true` if the type is located, otherwise `false`.
  */
 export function is_located(type: coco.taxonomy.Type): boolean {
-  const static_props = type.get_all_static_properties();
-  if (static_props.has('location'))
-    return true;
-  const dynamic_props = type.get_all_dynamic_properties();
-  if (dynamic_props.has('lat') && dynamic_props.has('lng'))
-    return true;
-  return false;
+  return type.get_static_properties()?.has('location') || type.get_dynamic_properties()?.has('lat') && type.get_dynamic_properties()?.has('lng') || false;
 }
 
 function is_static_located(item: coco.taxonomy.Item): boolean {

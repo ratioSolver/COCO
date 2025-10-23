@@ -12,17 +12,14 @@ import java.util.Map;
 public class Type {
 
     private final String name;
-    Collection<Type> parents;
     JsonElement data;
     Map<String, Property> static_properties;
     Map<String, Property> dynamic_properties;
     final Collection<Item> instances = new HashSet<>();
 
-    public Type(@NonNull String name, Collection<Type> parents, JsonElement data,
-            Map<String, Property> static_properties,
+    public Type(@NonNull String name, JsonElement data, Map<String, Property> static_properties,
             Map<String, Property> dynamic_properties) {
         this.name = name;
-        this.parents = parents;
         this.data = data;
         this.static_properties = static_properties;
         this.dynamic_properties = dynamic_properties;
@@ -30,10 +27,6 @@ public class Type {
 
     public String getName() {
         return name;
-    }
-
-    public Collection<Type> getParents() {
-        return Collections.unmodifiableCollection(parents);
     }
 
     public JsonElement getData() {

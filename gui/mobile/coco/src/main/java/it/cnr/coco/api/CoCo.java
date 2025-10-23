@@ -158,12 +158,6 @@ public class CoCo implements ConnectionListener {
     }
 
     private void refineType(@NonNull Type type, @NonNull JsonObject type_message) {
-        if (type_message.has("parents")) {
-            Collection<Type> parents = new HashSet<>();
-            for (JsonElement parent : type_message.getAsJsonArray("parents"))
-                parents.add(Objects.requireNonNull(types.get(parent.getAsString())));
-            type.parents = parents;
-        }
         if (type_message.has("static_properties")) {
             Map<String, Property> static_properties = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : type_message.getAsJsonObject("static_properties").entrySet())

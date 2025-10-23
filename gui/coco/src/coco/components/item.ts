@@ -76,9 +76,13 @@ export class Item extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> {
   }
 
   override mounted(): void {
-    if (this.payload.get_type().get_all_dynamic_properties().size > 0) {
-      this.add_child(new ItemChart(this.payload));
-      this.add_child(new ItemPublisher(this.payload));
+    for (const tp of this.payload.get_types()) {
+      const dynamicProps = tp.get_dynamic_properties();
+      if (dynamicProps && dynamicProps.size > 0) {
+        this.add_child(new ItemChart(this.payload));
+        this.add_child(new ItemPublisher(this.payload));
+        break;
+      }
     }
   }
 }

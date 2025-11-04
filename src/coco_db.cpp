@@ -22,15 +22,15 @@ namespace coco
         LOG_WARN("Retrieving all the types..");
         return std::vector<db_type>();
     }
-    void coco_db::create_type(std::string_view tp_name, const json::json &data, const json::json &static_props, const json::json &dynamic_props)
+    void coco_db::create_type(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props, const json::json &data)
     {
         LOG_WARN(std::string("Creating new type: ") + tp_name.data());
-        if (!data.as_object().empty())
-            LOG_WARN(std::string("Data: ") + data.dump());
         if (!static_props.as_object().empty())
             LOG_WARN(std::string("Static properties: ") + static_props.dump());
         if (!dynamic_props.as_object().empty())
             LOG_WARN(std::string("Dynamic properties: ") + dynamic_props.dump());
+        if (!data.as_object().empty())
+            LOG_WARN(std::string("Data: ") + data.dump());
     }
     void coco_db::delete_type(std::string_view name) { LOG_WARN(std::string("Deleting type ") + name.data()); }
 

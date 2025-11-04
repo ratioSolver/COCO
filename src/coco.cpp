@@ -100,7 +100,7 @@ namespace coco
     type &coco::create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data, bool infere) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db.create_type(name, data, static_props, dynamic_props);
+        db.create_type(name, static_props, dynamic_props, data);
         auto &tp = make_type(name, std::move(static_props), std::move(dynamic_props), std::move(data));
         if (infere)
             Run(env, -1);

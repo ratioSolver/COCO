@@ -47,28 +47,28 @@ namespace coco
         for (const auto &doc : types_collection.find({}, mongocxx::options::find{}.sort(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", 1)))))
         {
             auto name = doc["_id"].get_string().value;
-            std::optional<json::json> data, static_props, dynamic_props;
-            if (doc.find("data") != doc.end())
-                data = json::load(bsoncxx::to_json(doc["data"].get_document().view()));
+            std::optional<json::json> static_props, dynamic_props, data;
             if (doc.find("static_properties") != doc.end())
                 static_props = json::load(bsoncxx::to_json(doc["static_properties"].get_document().view()));
             if (doc.find("dynamic_properties") != doc.end())
                 dynamic_props = json::load(bsoncxx::to_json(doc["dynamic_properties"].get_document().view()));
+            if (doc.find("data") != doc.end())
+                data = json::load(bsoncxx::to_json(doc["data"].get_document().view()));
 
-            types.push_back({std::string(name), std::move(data), std::move(static_props), std::move(dynamic_props)});
+            types.push_back({std::string(name), std::move(static_props), std::move(dynamic_props), std::move(data)});
         }
         return types;
     }
-    void mongo_db::create_type(std::string_view name, const json::json &data, const json::json &static_props, const json::json &dynamic_props)
+    void mongo_db::create_type(std::string_view name, const json::json &static_props, const json::json &dynamic_props, const json::json &data)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("_id", name.data()));
-        if (!data.as_object().empty())
-            doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
         if (!static_props.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("static_properties", bsoncxx::from_json(static_props.dump())));
         if (!dynamic_props.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("dynamic_properties", bsoncxx::from_json(dynamic_props.dump())));
+        if (!data.as_object().empty())
+            doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
         if (!types_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert type: " + std::string(name));
     }

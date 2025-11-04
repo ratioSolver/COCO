@@ -14,7 +14,7 @@ namespace coco
   struct db_type
   {
     std::string name;
-    std::optional<json::json> data, static_props, dynamic_props;
+    std::optional<json::json> static_props, dynamic_props, data;
   };
 
   struct db_item
@@ -78,7 +78,7 @@ namespace coco
     virtual void drop() noexcept;
 
     [[nodiscard]] virtual std::vector<db_type> get_types() noexcept;
-    virtual void create_type(std::string_view tp_name, const json::json &data, const json::json &static_props, const json::json &dynamic_props);
+    virtual void create_type(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props, const json::json &data);
     virtual void delete_type(std::string_view tp_name);
 
     [[nodiscard]] virtual std::vector<db_item> get_items() noexcept;

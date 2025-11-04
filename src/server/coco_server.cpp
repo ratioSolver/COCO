@@ -44,7 +44,7 @@ namespace coco
         add_route(network::Post, "^/types$", std::bind(&coco_server::create_type, this, network::placeholders::request));
         add_route(network::Delete, "^/types/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
 
-        add_route(network::Get, "^/items.*$", std::bind(&coco_server::get_items, this, network::placeholders::request));
+        add_route(network::Get, "^/items*$", std::bind(&coco_server::get_items, this, network::placeholders::request));
         add_route(network::Get, "^/items/.*$", std::bind(&coco_server::get_item, this, network::placeholders::request));
         add_route(network::Post, "^/items$", std::bind(&coco_server::create_item, this, network::placeholders::request));
         add_route(network::Patch, "^/items/.*$", std::bind(&coco_server::update_item, this, network::placeholders::request));

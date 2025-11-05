@@ -44,7 +44,7 @@ namespace coco
         add_route(network::Post, "^/types$", std::bind(&coco_server::create_type, this, network::placeholders::request));
         add_route(network::Delete, "^/types/.*$", std::bind(&coco_server::delete_type, this, network::placeholders::request));
 
-        add_route(network::Get, "^/items*$", std::bind(&coco_server::get_items, this, network::placeholders::request));
+        add_route(network::Get, "^/items(\\?([a-zA-Z0-9_\\-]+=[^&=#]+)(\\&[a-zA-Z0-9_\\-]+=[^&=#]+)*)?$", std::bind(&coco_server::get_items, this, network::placeholders::request));
         add_route(network::Get, "^/items/.*$", std::bind(&coco_server::get_item, this, network::placeholders::request));
         add_route(network::Post, "^/items$", std::bind(&coco_server::create_item, this, network::placeholders::request));
         add_route(network::Patch, "^/items/.*$", std::bind(&coco_server::update_item, this, network::placeholders::request));
@@ -218,6 +218,7 @@ namespace coco
                              {"description", "Endpoint to fetch all the managed items. You can filter items by type and other properties using query parameters."},
                              {"parameters",
                               {{{"name", "type"}, {"description", "Filter items by type name."}, {"in", "query"}, {"required", false}, {"schema", {{"type", "string"}}}},
+                               {{"name", "types"}, {"description", "Filter items by multiple type names (comma-separated)."}, {"in", "query"}, {"required", false}, {"schema", {{"type", "string"}}}},
                                {{"name", "\"\""}, {"description", "Filter items by specific properties."}, {"in", "query"}, {"required", false}, {"style", "form"}, {"explode", true}, {"schema", {{"type", "object"}, {"additionalProperties", {{"type", "string"}}}}}}}},
 #ifdef BUILD_AUTH
                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
@@ -545,8 +546,38 @@ namespace coco
             }
             catch (const std::exception &)
             {
-                return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+                return std::make_unique<network::json_response>(json::json({{"message", "Type `" + filter["type"] + "` not found"}}), network::status_code::not_found);
             }
+        else if (filter.count("types")) // filter by multiple types
+        {
+            std::vector<std::reference_wrapper<type>> types;
+            auto tp_names = network::split_string(filter["types"], ',');
+            for (auto &tp_name : tp_names)
+                try
+                {
+                    types.push_back(get_coco().get_type(tp_name));
+                }
+                catch (const std::exception &)
+                {
+                    return std::make_unique<network::json_response>(json::json({{"message", "Type `" + tp_name + "` not found"}}), network::status_code::not_found);
+                }
+            std::unordered_set<std::string> seen_ids;
+            for (auto &tp : types)
+                for (auto &itm : get_coco().get_items(tp))
+                {
+                    for (const auto &[par, val] : filter)
+                        if (par != "types" && (!itm.get().get_properties().contains(par) || itm.get().get_properties()[par] != val))
+                            continue; // skip items that do not match the filter
+                    auto j_itm = itm.get().to_json();
+                    if (seen_ids.count(itm.get().get_id()) == 0)
+                    {
+                        j_itm["id"] = itm.get().get_id();
+                        is.push_back(std::move(j_itm));
+                        seen_ids.insert(itm.get().get_id());
+                    }
+                }
+            return std::make_unique<network::json_response>(std::move(is));
+        }
         else
             for (auto &itm : get_coco().get_items())
             {

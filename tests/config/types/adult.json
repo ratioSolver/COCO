@@ -1,3 +1,9 @@
 {
-  "name": "adult"
+  "name": "adult",
+  "dynamic_properties": {
+    "is_employed": {
+      "type": "bool",
+      "default": false
+    }
+  }
 }

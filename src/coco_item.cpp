@@ -85,7 +85,7 @@ namespace coco
                     else
                         LOG_WARN("Data " + p_name + " for item " + id + " is not valid");
                     if (auto f = v_fs.find(p_name); f != v_fs.end())
-                    {
+                    { // property already exists
                         if (j_val.is_null())
                         { // we retract the old property
                             LOG_TRACE("Retracting data " + p_name + " for item " + id);
@@ -95,7 +95,7 @@ namespace coco
                             value->first.erase(p_name);
                             v_fs.erase(p_name);
                         }
-                        else if (prop->second->validate(j_val))
+                        else
                         { // we update the property
                             LOG_TRACE("Updating data " + p_name + " for item " + id + " with value " + j_val.dump());
                             FactModifier *property_fact_modifier = CreateFactModifier(cc.env, f->second);
@@ -111,29 +111,25 @@ namespace coco
                             value->first[p_name] = j_val;
                             f->second = value_fact;
                         }
-                        else
-                            LOG_WARN("Data " + p_name + " for item " + id + " is not valid");
+                    }
+                    else if (!j_val.is_null())
+                    { // we create a new property
+                        LOG_TRACE("Creating data " + p_name + " for item " + id + " with value " + j_val.dump());
+                        FactBuilder *value_fact_builder = CreateFactBuilder(cc.env, prop->second->get_deftemplate_name().c_str());
+                        FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
+                        prop->second->set_value(value_fact_builder, j_val);
+                        FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
+                        auto value_fact = FBAssert(value_fact_builder);
+                        [[maybe_unused]] auto fb_err = FBError(cc.env);
+                        assert(fb_err == FBE_NO_ERROR);
+                        assert(value_fact);
+                        RetainFact(value_fact);
+                        LOG_TRACE(cc.to_string(value_fact));
+                        FBDispose(value_fact_builder);
+                        value->first[p_name] = j_val;
+                        v_fs.emplace(p_name, value_fact);
                     }
                 }
-                else if (!j_val.is_null() && prop->second->validate(j_val))
-                { // we create a new property
-                    LOG_TRACE("Creating data " + p_name + " for item " + id + " with value " + j_val.dump());
-                    FactBuilder *value_fact_builder = CreateFactBuilder(cc.env, prop->second->get_deftemplate_name().c_str());
-                    FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
-                    prop->second->set_value(value_fact_builder, j_val);
-                    FBPutSlotInteger(value_fact_builder, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
-                    auto value_fact = FBAssert(value_fact_builder);
-                    [[maybe_unused]] auto fb_err = FBError(cc.env);
-                    assert(fb_err == FBE_NO_ERROR);
-                    assert(value_fact);
-                    RetainFact(value_fact);
-                    LOG_TRACE(cc.to_string(value_fact));
-                    FBDispose(value_fact_builder);
-                    value->first[p_name] = j_val;
-                    v_fs.emplace(p_name, value_fact);
-                }
-                else
-                    LOG_WARN("Data " + p_name + " for item " + id + " is not valid");
 
             auto updated_fact = FMModify(fact_modifier);
             [[maybe_unused]] auto fm_err = FMError(cc.env);
@@ -210,6 +206,7 @@ namespace coco
         LOG_TRACE(cc.to_string(item_fact));
         FBDispose(item_fact_builder);
         item_facts.emplace(tp.get_name(), item_fact);
+        value_facts.emplace(tp.get_name(), std::map<std::string, Fact *>());
     }
 
     void item::remove_type(const type &tp)
@@ -220,6 +217,7 @@ namespace coco
             [[maybe_unused]] auto re_err = Retract(tf);
             assert(re_err == RE_NO_ERROR);
         }
+        value_facts.erase(tp.get_name());
 
         auto it = item_facts.find(tp.get_name());
         assert(it != item_facts.end());

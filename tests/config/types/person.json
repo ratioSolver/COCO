@@ -6,6 +6,10 @@
     },
     "age": {
       "type": "int"
+    },
+    "is_active": {
+      "type": "bool",
+      "nullable": true
     }
   }
 }

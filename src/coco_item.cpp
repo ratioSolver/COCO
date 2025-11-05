@@ -24,6 +24,8 @@ namespace coco
             remove_type(tp.get());
     }
 
+    bool item::has_type(const type &tp) const noexcept { return item_facts.find(tp.get_name()) != item_facts.end(); }
+
     std::vector<std::reference_wrapper<type>> item::get_types() const noexcept
     {
         std::vector<std::reference_wrapper<type>> res;
@@ -41,6 +43,7 @@ namespace coco
             for (const auto &[p_name, val] : props.as_object())
                 if (auto prop = static_props.find(p_name); prop != static_props.end())
                 {
+                    LOG_TRACE("Updating property " + p_name + " for item " + id + " with value " + val.dump());
                     if (prop->second->validate(val))
                     {
                         prop->second->set_value(fact_modifier, val);
@@ -80,6 +83,7 @@ namespace coco
             for (const auto &[p_name, j_val] : val.first.as_object())
                 if (auto prop = dynamic_props.find(p_name); prop != dynamic_props.end())
                 {
+                    LOG_TRACE("Updating data " + p_name + " for item " + id + " with value " + j_val.dump());
                     if (prop->second->validate(j_val))
                         prop->second->set_value(fact_modifier, j_val);
                     else

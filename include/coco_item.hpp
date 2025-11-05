@@ -41,6 +41,14 @@ namespace coco
     [[nodiscard]] const std::string &get_id() const { return id; }
 
     /**
+     * @brief Checks if the item has a specific type.
+     *
+     * @param tp The type to check.
+     * @return True if the item has the type, false otherwise.
+     */
+    [[nodiscard]] bool has_type(const type &tp) const noexcept;
+
+    /**
      * @brief Gets the types of the item.
      *
      * @return The types of the item.

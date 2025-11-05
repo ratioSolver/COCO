@@ -315,13 +315,14 @@ namespace coco
         UDFValue item_id; // we get the item id..
         if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
             return;
-        auto &itm = *cc.items.at(item_id.lexemeValue->contents);
+        auto &itm = cc.get_item(item_id.lexemeValue->contents);
 
         UDFValue type_name; // we get the type name..
         if (!UDFNextArgument(udfc, SYMBOL_BIT, &type_name))
             return;
         auto &tp = cc.get_type(type_name.lexemeValue->contents);
-        tp.add_instance(itm);
+        if (!itm.has_type(tp))
+            tp.add_instance(itm);
     }
 
     void remove_type(Environment *, UDFContext *udfc, UDFValue *)
@@ -333,13 +334,14 @@ namespace coco
         UDFValue item_id; // we get the item id..
         if (!UDFFirstArgument(udfc, SYMBOL_BIT, &item_id))
             return;
-        auto &itm = *cc.items.at(item_id.lexemeValue->contents);
+        auto &itm = cc.get_item(item_id.lexemeValue->contents);
 
         UDFValue type_name; // we get the type name..
         if (!UDFNextArgument(udfc, SYMBOL_BIT, &type_name))
             return;
         auto &tp = cc.get_type(type_name.lexemeValue->contents);
-        tp.remove_instance(itm);
+        if (itm.has_type(tp))
+            tp.remove_instance(itm);
     }
 
     void set_props(Environment *, UDFContext *udfc, UDFValue *)

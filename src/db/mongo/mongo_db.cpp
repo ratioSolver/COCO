@@ -93,7 +93,7 @@ namespace coco
             auto id = doc["_id"].get_oid().value.to_string();
             std::vector<std::string> types;
             for (const auto &type_elem : doc["types"].get_array().value)
-                types.push_back(type_elem.get_string().value.to_string());
+                types.push_back(type_elem.get_string().value.data());
 
             std::optional<json::json> props;
             if (doc.find("properties") != doc.end())

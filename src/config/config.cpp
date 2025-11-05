@@ -94,14 +94,14 @@ int main(int argc, char const *argv[])
     out << "#include \"logging.hpp\"\n";
     out << "#include <fstream>\n\n";
 
-    out << "[[nodiscard]] std::string read_rule(const std::string &path)\n{\n";
+    out << "[[nodiscard]] inline std::string read_rule(const std::string &path)\n{\n";
     out << "    std::ifstream in(path);\n";
     out << "    if (!in)\n";
     out << "        throw std::runtime_error(\"Cannot open rule file: \" + path);\n";
     out << "    return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());\n";
     out << "}\n\n";
 
-    out << "void load_config(coco::coco &cc)\n{\n";
+    out << "inline void load_config(coco::coco &cc)\n{\n";
     for (const auto &tp : types)
     {
         LOG_DEBUG("Loading " << tp);

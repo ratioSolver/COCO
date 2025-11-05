@@ -91,7 +91,9 @@ namespace coco
         for (const auto &doc : items_collection.find({}))
         {
             auto id = doc["_id"].get_oid().value.to_string();
-            auto type = doc["type"].get_string().value;
+            std::vector<std::string> types;
+            for (const auto &type_elem : doc["types"].get_array().value)
+                types.push_back(type_elem.get_string().value.to_string());
 
             std::optional<json::json> props;
             if (doc.find("properties") != doc.end())
@@ -101,14 +103,17 @@ namespace coco
             if (doc.find("value") != doc.end())
                 value = {json::load(bsoncxx::to_json(doc["value"]["data"].get_document().view())), doc["value"]["timestamp"].get_date()};
 
-            items.push_back({std::move(id), std::string(type), std::move(props), std::move(value)});
+            items.push_back({std::move(id), std::move(types), std::move(props), std::move(value)});
         }
         return items;
     }
-    std::string mongo_db::create_item(std::string_view type, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val)
+    std::string mongo_db::create_item(const std::vector<std::string> &types, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val)
     {
         bsoncxx::builder::basic::document doc;
-        doc.append(bsoncxx::builder::basic::kvp("type", type.data()));
+        bsoncxx::builder::basic::array types_array;
+        for (const auto &type : types)
+            types_array.append(type);
+        doc.append(bsoncxx::builder::basic::kvp("types", types_array));
         if (!props.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("properties", bsoncxx::from_json(props.dump())));
         if (val.has_value())
@@ -120,7 +125,7 @@ namespace coco
         }
         auto result = items_collection.insert_one(doc.view());
         if (!result)
-            throw std::invalid_argument("Failed to insert " + std::string(type) + " item");
+            throw std::invalid_argument("Failed to insert item");
         return result->inserted_id().get_oid().value.to_string();
     }
     void mongo_db::set_properties(std::string_view itm_id, const json::json &props)

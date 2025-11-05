@@ -576,23 +576,32 @@ namespace coco
     std::unique_ptr<network::response> coco_server::create_item(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
-        if (!body.is_object() || !body.contains("type") || !body["type"].is_string())
+        if (!body.is_object())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
 
-        std::string type_name = body["type"];
-        type *tp;
-        try
+        std::vector<std::reference_wrapper<type>> types;
+        if (body.contains("types"))
         {
-            tp = &get_coco().get_type(type_name);
-        }
-        catch (const std::exception &)
-        {
-            return std::make_unique<network::json_response>(json::json({{"message", "Type not found"}}), network::status_code::not_found);
+            if (!body["types"].is_array())
+                return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+            for (auto &tp_name : body["types"].as_array())
+            {
+                if (!tp_name.is_string())
+                    return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+                try
+                {
+                    types.push_back(get_coco().get_type(tp_name.get<std::string>()));
+                }
+                catch (const std::exception &)
+                {
+                    return std::make_unique<network::json_response>(json::json({{"message", "Type `" + tp_name.get<std::string>() + "` not found"}}), network::status_code::not_found);
+                }
+            }
         }
         try
         {
             json::json props = body.contains("properties") ? body["properties"] : json::json();
-            auto &itm = get_coco().create_item(*tp, std::move(props));
+            auto &itm = get_coco().create_item(std::move(types), std::move(props));
             return std::make_unique<network::string_response>(std::string(itm.get_id()), network::status_code::created);
         }
         catch (const std::exception &e)

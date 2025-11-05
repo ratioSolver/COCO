@@ -643,6 +643,7 @@ export namespace coco {
 
     export interface ItemListener {
 
+      types_updated(item: Item): void;
       properties_updated(item: Item): void;
       values_updated(item: Item): void;
       new_value(item: Item, v: Datum): void;

@@ -2,6 +2,7 @@ import { UListComponent, SelectorGroup, ListItemComponent, App, PayloadComponent
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
+import { ItemTypes } from "./item_types";
 import { ItemProperties } from "./item_properties";
 import { ItemChart } from "./item_chart";
 import { ItemPublisher } from "./item_publisher";
@@ -69,6 +70,8 @@ export class Item extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> {
     id_button_div.append(id_button);
     id_div.append(id_button_div);
     this.node.append(id_div);
+
+    this.add_child(new ItemTypes(item));
 
     this.add_child(new ItemProperties(item));
 

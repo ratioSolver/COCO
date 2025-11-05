@@ -59,6 +59,7 @@ export class ItemChart extends PayloadComponent<HTMLDivElement, coco.taxonomy.It
 
   override unmounting(): void { this.payload.remove_item_listener(this); }
 
+  types_updated(_: coco.taxonomy.Item): void { }
   properties_updated(_: coco.taxonomy.Item): void { }
   values_updated(_: coco.taxonomy.Item): void {
     const values: Map<string, chart.Value<unknown>[]> = new Map();

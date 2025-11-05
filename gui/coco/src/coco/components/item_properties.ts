@@ -46,6 +46,7 @@ export class ItemProperties extends PayloadComponent<HTMLDivElement, coco.taxono
     item.add_item_listener(this);
   }
 
+  types_updated(_: coco.taxonomy.Item): void { }
   properties_updated(_: coco.taxonomy.Item): void { this.set_properties(); }
   values_updated(_: coco.taxonomy.Item): void { }
   new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Datum): void { }

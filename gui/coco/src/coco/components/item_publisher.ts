@@ -145,6 +145,7 @@ export class ItemPublisher extends PayloadComponent<HTMLDivElement, coco.taxonom
 
   override unmounting(): void { this.payload.remove_item_listener(this); }
 
+  types_updated(_: coco.taxonomy.Item): void { }
   properties_updated(_: coco.taxonomy.Item): void { }
   values_updated(_: coco.taxonomy.Item): void { }
   new_value(_i: coco.taxonomy.Item, _v: coco.taxonomy.Datum): void { this.set_value(); }

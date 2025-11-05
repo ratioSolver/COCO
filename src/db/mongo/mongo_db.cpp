@@ -74,13 +74,8 @@ namespace coco
     }
     void mongo_db::delete_type(std::string_view name)
     {
-        bsoncxx::builder::basic::array ids_builder;
-        for (const auto &item : items_collection.find(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("type", name.data())), mongocxx::options::find{}.projection(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", 1)))))
-            ids_builder.append(item["_id"].get_value());
-        if (!item_data_collection.delete_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$in", ids_builder))))))
-            throw std::invalid_argument("Failed to delete item data of items of type: " + std::string(name));
-        if (!items_collection.delete_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("type", name.data()))))
-            throw std::invalid_argument("Failed to delete items of type: " + std::string(name));
+        if (!items_collection.update_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("types", name.data())), bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("types", name.data()))))))
+            throw std::invalid_argument("Failed to remove type from items: " + std::string(name));
         if (!types_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", name.data()))))
             throw std::invalid_argument("Failed to delete type: " + std::string(name));
     }

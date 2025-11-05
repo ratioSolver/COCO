@@ -6,6 +6,7 @@
 #include <vector>
 #include <set>
 #include <functional>
+#include <regex>
 
 enum ParType
 {
@@ -13,6 +14,20 @@ enum ParType
     Rule,
     Output
 };
+
+std::string to_cpp_identifier(const std::string &symbol)
+{
+    std::string result;
+    for (char c : symbol)
+        if (std::isalnum(c) || c == '_')
+            result += c;
+        else
+            result += '_';
+    if (!result.empty() && std::isdigit(result[0]))
+        result = "_" + result;
+    result = std::regex_replace(result, std::regex("_+"), "_");
+    return result;
+}
 
 int main(int argc, char const *argv[])
 {
@@ -118,12 +133,13 @@ int main(int argc, char const *argv[])
         std::string static_props = j_t.contains("static_properties") ? "json::load(R\"(" + j_t["static_properties"].dump() + ")\")" : "{}";
         std::string dynamic_props = j_t.contains("dynamic_properties") ? "json::load(R\"(" + j_t["dynamic_properties"].dump() + ")\")" : "{}";
         std::string data = j_t.contains("data") ? "json::load(R\"(" + j_t["data"].dump() + ")\")" : "{}";
+        std::string cpp_tp_name = to_cpp_identifier(tp_name);
         out << "    try {\n";
-        out << "        [[maybe_unused]] auto &" << tp_name << " = cc.get_type(\"" << tp_name << "\");\n";
+        out << "        [[maybe_unused]] auto &" << cpp_tp_name << " = cc.get_type(\"" << tp_name << "\");\n";
         out << "        LOG_DEBUG(\"Type `" << tp_name << "` found\");\n";
         out << "    } catch (const std::invalid_argument &e) {\n";
         out << "        LOG_DEBUG(\"Creating `" << tp_name << "` type\");\n";
-        out << "        [[maybe_unused]] auto &" << tp_name << " = cc.create_type(\"" << tp_name << "\", " << static_props << ", " << dynamic_props << ", " << data << ");\n";
+        out << "        [[maybe_unused]] auto &" << cpp_tp_name << " = cc.create_type(\"" << tp_name << "\", " << static_props << ", " << dynamic_props << ", " << data << ");\n";
         out << "    }\n";
     }
 

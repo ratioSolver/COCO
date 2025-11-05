@@ -62,16 +62,6 @@ namespace coco
         instances.erase(itm.get_id());
     }
 
-    item &type::make_item(std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val)
-    {
-        auto itm_ptr = std::make_unique<item>(cc, id, std::move(props), std::move(val));
-        auto &itm = *itm_ptr;
-        if (!cc.items.emplace(id.data(), std::move(itm_ptr)).second)
-            throw std::invalid_argument("item `" + std::string(id) + "` already exists");
-        instances.emplace(id);
-        return itm;
-    }
-
     [[nodiscard]] json::json type::to_json() const noexcept
     {
         json::json j = json::json{{"name", name}};

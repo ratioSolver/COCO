@@ -39,10 +39,15 @@ namespace coco
         LOG_WARN("Retrieving all the items..");
         return std::vector<db_item>();
     }
-    std::string coco_db::create_item(std::string_view tp_name, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val)
+    std::string coco_db::create_item(const std::vector<std::string> &types, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val)
     {
         static std::atomic<int> counter{0};
-        LOG_WARN(std::string("Creating new item of type ") + tp_name.data());
+        LOG_WARN(std::string("Creating new item of types: ") + [&types]()
+                 {
+            std::string res;
+            for (const auto &t : types)
+                res += t + " ";
+            return res; }());
         if (!props.as_object().empty())
             LOG_WARN(std::string("Properties: ") + props.dump());
         if (val.has_value())

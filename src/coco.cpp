@@ -50,7 +50,13 @@ namespace coco
         auto itms = db.get_items();
         LOG_DEBUG("Retrieved " << itms.size() << " items");
         for (auto &itm : itms)
-            get_type(itm.type).make_item(itm.id, itm.props.has_value() ? std::move(itm.props.value()) : json::json{}, itm.value.has_value() ? std::make_optional(std::move(itm.value.value())) : std::nullopt);
+        {
+            std::vector<std::reference_wrapper<type>> tps;
+            tps.reserve(itm.types.size());
+            for (auto &tp_name : itm.types)
+                tps.push_back(get_type(tp_name));
+            make_item(itm.id, std::move(tps), itm.props.has_value() ? std::move(itm.props.value()) : json::json{}, itm.value.has_value() ? std::make_optional(std::move(itm.value.value())) : std::nullopt);
+        }
 
 #ifdef BUILD_AUTH
         add_module<coco_auth>(*this);
@@ -143,11 +149,15 @@ namespace coco
             throw std::invalid_argument("Item not found: " + std::string(id));
         return *items.at(id.data());
     }
-    item &coco::create_item(type &tp, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val, bool infere) noexcept
+    item &coco::create_item(std::vector<std::reference_wrapper<type>> &&tps, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val, bool infere) noexcept
     {
+        std::vector<std::string> tp_names;
+        tp_names.reserve(tps.size());
+        for (auto &tp : tps)
+            tp_names.push_back(tp.get().get_name());
         std::lock_guard<std::recursive_mutex> _(mtx);
-        auto id = db.create_item(tp.get_name(), props, val);
-        auto &itm = tp.make_item(id, std::move(props), std::move(val));
+        auto id = db.create_item(tp_names, props, val);
+        auto &itm = make_item(id, std::move(tps), std::move(props), std::move(val));
         if (infere)
             Run(env, -1);
         return itm;
@@ -236,6 +246,17 @@ namespace coco
         if (!types.emplace(name, std::move(tp_ptr)).second)
             throw std::invalid_argument("type `" + std::string(name) + "` already exists");
         return tp;
+    }
+
+    item &coco::make_item(std::string_view id, std::vector<std::reference_wrapper<type>> &&tps, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val)
+    {
+        auto itm_ptr = std::make_unique<item>(*this, id, std::move(props), std::move(val));
+        auto &itm = *itm_ptr;
+        if (!items.emplace(id, std::move(itm_ptr)).second)
+            throw std::invalid_argument("item `" + std::string(id) + "` already exists");
+        for (auto &tp : tps)
+            tp.get().add_instance(itm);
+        return itm;
     }
 
     reactive_rule::reactive_rule(coco &cc, std::string_view name, std::string_view content) noexcept : cc(cc), name(name), content(content)

@@ -131,17 +131,17 @@ namespace coco
      */
     [[nodiscard]] item &get_item(std::string_view id);
     /**
-     * @brief Creates a new item of the specified type.
+     * @brief Creates a new item.
      *
-     * This function creates a new item of the specified type with the given properties and value.
+     * This function creates a new item with the specified types, properties, and value.
      *
-     * @param tp The type of the item.
-     * @param props The properties of the item.
-     * @param val The value of the item.
+     * @param tps A vector of references to the types of the item.
+     * @param props The properties of the item as a JSON object.
+     * @param val The value of the item as an optional pair of JSON object and timestamp.
      * @param infere Whether to run inference after creating the item.
      * @return A reference to the newly created item.
      */
-    [[nodiscard]] item &create_item(type &tp, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt, bool infere = true) noexcept;
+    [[nodiscard]] item &create_item(std::vector<std::reference_wrapper<type>> &&tps = {}, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt, bool infere = true) noexcept;
     /**
      * @brief Sets the properties of an item.
      *
@@ -224,6 +224,7 @@ namespace coco
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
     type &make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
+    item &make_item(std::string_view id, std::vector<std::reference_wrapper<type>> &&tps, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt);
 
     friend void add_type(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void remove_type(Environment *env, UDFContext *udfc, UDFValue *out);

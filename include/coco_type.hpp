@@ -85,16 +85,6 @@ namespace coco
      */
     void remove_instance(item &itm) noexcept;
 
-    /**
-     * @brief Creates a new instance of the type.
-     *
-     * @param id The id of the instance.
-     * @param props The properties of the new instance.
-     * @param val The current value of the new instance and the timestamp of the value.
-     * @return The new instance of the type.
-     */
-    item &make_item(std::string_view id, json::json &&props = json::json(), std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt);
-
     [[nodiscard]] json::json to_json() const noexcept;
 
   private:

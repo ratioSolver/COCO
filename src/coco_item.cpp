@@ -211,6 +211,8 @@ namespace coco
         FBDispose(item_fact_builder);
         item_facts.emplace(tp.get_name(), item_fact);
         value_facts.emplace(tp.get_name(), std::map<std::string, Fact *>());
+
+        UPDATED_ITEM();
     }
 
     void item::remove_type(const type &tp)
@@ -229,5 +231,7 @@ namespace coco
         [[maybe_unused]] auto re_err = Retract(it->second);
         assert(re_err == RE_NO_ERROR);
         item_facts.erase(it);
+
+        UPDATED_ITEM();
     }
 } // namespace coco

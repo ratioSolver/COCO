@@ -47,7 +47,7 @@ export class ItemTypes extends PayloadComponent<HTMLDivElement, coco.taxonomy.It
 
   private add_type(type: coco.taxonomy.Type) {
     const span = document.createElement('span');
-    span.classList.add('badge', 'bg-primary');
+    span.classList.add('badge', 'bg-primary', 'me-1');
     span.textContent = type.get_name();
     this.types_row.appendChild(span);
     this.types.set(type.get_name(), span);

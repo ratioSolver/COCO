@@ -159,7 +159,10 @@ export namespace coco {
           case 'updated_item':
             const uim = message as UpdatedItemMessage;
             const item = this.get_item(uim.id);
-            item._set_properties(uim.properties);
+            if (uim.types)
+              item._set_types(new Set(uim.types.map(tn => this.get_type(tn)!)));
+            if (uim.properties)
+              item._set_properties(uim.properties);
             break;
           case 'new_data':
             const ndm = message as NewItemMessage;
@@ -617,7 +620,13 @@ export namespace coco {
       get_data(): Datum[] { return this.data; }
       get_slots(): Record<string, unknown> | undefined { return this.slots; }
 
-      _set_properties(props?: Record<string, unknown>): void {
+      _set_types(types: Set<Type>): void {
+        this.types.clear();
+        for (const t of types)
+          this.types.add(t);
+        for (const l of this.listeners) l.types_updated(this);
+      }
+      _set_properties(props: Record<string, unknown>): void {
         this.properties = props;
         for (const l of this.listeners) l.properties_updated(this);
       }
@@ -769,7 +778,8 @@ interface NewItemMessage extends ItemMessage {
 
 interface UpdatedItemMessage {
   id: string;
-  properties: Record<string, unknown>;
+  types?: string[];
+  properties?: Record<string, unknown>;
 }
 
 interface NewDataMessage extends ValueMessage {

@@ -1,5 +1,6 @@
-import { blink, PayloadComponent } from "@ratiosolver/flick";
+import { App, blink, PayloadComponent } from "@ratiosolver/flick";
 import { coco } from "../coco";
+import { Type } from "./type";
 
 export class ItemTypes extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> implements coco.taxonomy.ItemListener {
 
@@ -49,6 +50,8 @@ export class ItemTypes extends PayloadComponent<HTMLDivElement, coco.taxonomy.It
     const span = document.createElement('span');
     span.classList.add('badge', 'bg-primary', 'me-1');
     span.textContent = type.get_name();
+    span.style.cursor = "pointer";
+    span.addEventListener('click', () => App.get_instance().selected_component(new Type(type)));
     this.types_row.appendChild(span);
     this.types.set(type.get_name(), span);
     blink(span);

@@ -162,10 +162,6 @@ export class TaxonomyGraph extends Component<HTMLDivElement> implements coco.CoC
 
   new_item(_: coco.taxonomy.Item): void { }
 
-  new_intent(_: coco.llm.Intent): void { }
-  new_entity(_: coco.llm.Entity): void { }
-  new_slot(_: coco.llm.Slot): void { }
-
   private create_type_node(type: coco.taxonomy.Type): cytoscape.CollectionReturnValue {
     const tn = this.cy!.add({ group: 'nodes', data: { id: type.get_name() } });
     tn.on('mouseover', () => {

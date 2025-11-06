@@ -36,9 +36,6 @@ export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco
 
   new_type(_: coco.taxonomy.Type): void { }
   new_item(item: coco.taxonomy.Item): void { this.add_child(new ItemElement(this.group, item)); }
-  new_intent(_: coco.llm.Intent): void { }
-  new_entity(_: coco.llm.Entity): void { }
-  new_slot(_: coco.llm.Slot): void { }
 }
 
 export class Item extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> {

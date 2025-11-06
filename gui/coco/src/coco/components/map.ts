@@ -392,9 +392,6 @@ export class ItemCircleLayer extends CircleLayer<coco.taxonomy.Item> implements 
       item.add_item_listener(this);
     }
   }
-  new_intent(_intent: coco.llm.Intent): void { }
-  new_entity(_entity: coco.llm.Entity): void { }
-  new_slot(_: coco.llm.Slot): void { }
 
   types_updated(_: coco.taxonomy.Item): void { }
   properties_updated(item: coco.taxonomy.Item): void {
@@ -480,9 +477,6 @@ export class ItemIconLayer extends IconLayer<coco.taxonomy.Item> implements coco
       item.add_item_listener(this);
     }
   }
-  new_intent(_intent: coco.llm.Intent): void { }
-  new_entity(_entity: coco.llm.Entity): void { }
-  new_slot(_: coco.llm.Slot): void { }
 
   types_updated(_: coco.taxonomy.Item): void { }
   properties_updated(item: coco.taxonomy.Item): void {

@@ -2,6 +2,7 @@ import { UListComponent, SelectorGroup, ListItemComponent, PayloadComponent, App
 import { coco } from "../coco";
 import { library, icon } from '@fortawesome/fontawesome-svg-core'
 import { faCopy, faCube } from '@fortawesome/free-solid-svg-icons'
+import { ItemsTable } from "./items_table";
 
 library.add(faCopy, faCube);
 
@@ -42,9 +43,6 @@ export class TypeList extends UListComponent<coco.taxonomy.Type> implements coco
 
   new_type(type: coco.taxonomy.Type): void { this.add_child(new TypeElement(this.group, type)); }
   new_item(_: coco.taxonomy.Item): void { }
-  new_intent(_: coco.llm.Intent): void { }
-  new_entity(_: coco.llm.Entity): void { }
-  new_slot(_: coco.llm.Slot): void { }
 }
 
 export class Type extends PayloadComponent<HTMLDivElement, coco.taxonomy.Type> implements coco.taxonomy.TypeListener {
@@ -76,9 +74,7 @@ export class Type extends PayloadComponent<HTMLDivElement, coco.taxonomy.Type> i
     name_button.title = 'Copy type name to clipboard';
     name_button.append(icon(faCopy).node[0]);
     name_button.title = 'Copy type name to clipboard';
-    name_button.addEventListener('click', () => {
-      navigator.clipboard.writeText(type.get_name());
-    });
+    name_button.addEventListener('click', () => navigator.clipboard.writeText(type.get_name()));
     name_button_div.append(name_button);
     name_div.append(name_button_div);
     this.node.append(name_div);
@@ -125,6 +121,8 @@ export class Type extends PayloadComponent<HTMLDivElement, coco.taxonomy.Type> i
 
     this.set_static_properties();
     this.set_dynamic_properties();
+
+    this.add_child(new ItemsTable(type));
 
     type.add_type_listener(this);
   }

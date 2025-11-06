@@ -8,9 +8,6 @@ export namespace coco {
     private readonly property_types = new Map<string, taxonomy.PropertyType<any>>();
     private readonly types: Map<string, taxonomy.Type> = new Map();
     private readonly items: Map<string, taxonomy.Item> = new Map();
-    private readonly intents: Map<string, llm.Intent> = new Map();
-    private readonly entities: Map<string, llm.Entity> = new Map();
-    private readonly slots: Map<string, llm.Slot> = new Map();
     private readonly coco_listeners: Set<CoCoListener> = new Set();
 
     private constructor() {
@@ -44,21 +41,6 @@ export namespace coco {
       for (const tp of item.get_types())
         tp._instances.add(item);
       for (const listener of this.coco_listeners) listener.new_item(item);
-    }
-
-    new_intent(intent: llm.Intent): void {
-      this.intents.set(intent.get_name(), intent);
-      for (const listener of this.coco_listeners) listener.new_intent(intent);
-    }
-
-    new_entity(entity: llm.Entity): void {
-      this.entities.set(entity.get_name(), entity);
-      for (const listener of this.coco_listeners) listener.new_entity(entity);
-    }
-
-    new_slot(slot: llm.Slot): void {
-      this.slots.set(slot.get_name(), slot);
-      for (const listener of this.coco_listeners) listener.new_slot(slot);
     }
 
     /**
@@ -168,14 +150,6 @@ export namespace coco {
             const ndm = message as NewItemMessage;
             this.get_item(ndm.id)._set_datum({ data: ndm.value!.data, timestamp: new Date(ndm.value!.timestamp) });
             break;
-          case 'new_intent':
-            const nim_intent = message as IntentMessage;
-            this.new_intent(new llm.Intent(nim_intent.name, nim_intent.description));
-            break;
-          case 'new_entity':
-            const nim_entity = message as EntityMessage;
-            this.new_entity(new llm.Entity(nim_entity.name, llm.EntityType[nim_entity.type as keyof typeof llm.EntityType], nim_entity.description));
-            break;
         }
     }
 
@@ -193,16 +167,6 @@ export namespace coco {
         this.items.clear();
         for (const [id, itm] of Object.entries(coco_message.items))
           this.new_item(this.make_item(id, itm));
-      }
-      if (coco_message.intents) {
-        this.intents.clear();
-        for (const [name, intent] of Object.entries(coco_message.intents))
-          this.new_intent(new llm.Intent(name, intent.description));
-      }
-      if (coco_message.entities) {
-        this.entities.clear();
-        for (const [name, entity] of Object.entries(coco_message.entities))
-          this.new_entity(new llm.Entity(name, llm.EntityType[entity.type as keyof typeof llm.EntityType], entity.description));
       }
     }
 
@@ -239,10 +203,6 @@ export namespace coco {
 
     new_type(type: taxonomy.Type): void;
     new_item(item: taxonomy.Item): void;
-
-    new_intent(intent: llm.Intent): void;
-    new_entity(entity: llm.Entity): void;
-    new_slot(slot: llm.Slot): void;
   }
 
   export namespace taxonomy {
@@ -768,8 +728,6 @@ type UpdateCoCoMessage = { msg_type: string } & (CoCoMessage | NewTypeMessage | 
 interface CoCoMessage {
   types?: Record<string, TypeMessage>;
   items?: Record<string, ItemMessage>;
-  intents?: Record<string, IntentMessage>;
-  entities?: Record<string, EntityMessage>;
 }
 
 interface NewTypeMessage extends TypeMessage {
@@ -846,15 +804,4 @@ interface ItemMessage {
   types: string[];
   properties?: Record<string, unknown>;
   value?: ValueMessage;
-}
-
-interface IntentMessage {
-  name: string;
-  description: string;
-}
-
-interface EntityMessage {
-  name: string;
-  type: string;
-  description: string;
 }

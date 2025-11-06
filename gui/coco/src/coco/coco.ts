@@ -621,9 +621,13 @@ export namespace coco {
       get_slots(): Record<string, unknown> | undefined { return this.slots; }
 
       _set_types(types: Set<Type>): void {
+        for (const tp of this.types)
+          tp._instances.delete(this);
         this.types.clear();
-        for (const t of types)
-          this.types.add(t);
+        for (const tp of types) {
+          this.types.add(tp);
+          tp._instances.add(this);
+        }
         for (const l of this.listeners) l.types_updated(this);
       }
       _set_properties(props: Record<string, unknown>): void {

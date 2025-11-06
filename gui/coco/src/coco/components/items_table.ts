@@ -12,18 +12,22 @@ export class ItemsTable extends PayloadComponent<HTMLDivElement, coco.taxonomy.I
     this.type = type;
 
     const table = document.createElement("table");
-    table.classList.add("table", "table-striped", "table-bordered", "table-hover", "mt-3");
+    table.classList.add("table", "table-hover", 'caption-top');
+    table.createCaption().textContent = 'Items';
 
     const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
+    const header_row = document.createElement("tr");
+    const id_th = document.createElement("th");
+    id_th.textContent = "ID";
+    header_row.appendChild(id_th);
     const static_props = type.get_static_properties();
     if (static_props)
       for (const [prop_name, _] of static_props) {
         const th = document.createElement("th");
         th.textContent = prop_name;
-        headerRow.appendChild(th);
+        header_row.appendChild(th);
       }
-    thead.appendChild(headerRow);
+    thead.appendChild(header_row);
     table.appendChild(thead);
 
     this.tbody = document.createElement("tbody");
@@ -44,6 +48,10 @@ export class ItemsTable extends PayloadComponent<HTMLDivElement, coco.taxonomy.I
   private add_item(item: coco.taxonomy.Item) {
     const static_props = this.type.get_static_properties();
     const row = document.createElement("tr");
+    row.style.cursor = "pointer";
+    const id_td = document.createElement("td");
+    id_td.textContent = item.get_id();
+    row.appendChild(id_td);
     if (static_props)
       for (const [prop_name, prop] of static_props) {
         const td = document.createElement("td");
@@ -53,9 +61,8 @@ export class ItemsTable extends PayloadComponent<HTMLDivElement, coco.taxonomy.I
         else
           td.textContent = "";
         row.appendChild(td);
-        row.style.cursor = "pointer";
-        row.addEventListener("click", () => App.get_instance().selected_component(new Item(item)));
       }
+    row.addEventListener("click", () => App.get_instance().selected_component(new Item(item)));
     this.tbody.appendChild(row);
   }
 

@@ -558,7 +558,7 @@ export namespace coco {
     export class Item {
 
       private readonly id: string;
-      private readonly types: Set<Type>;
+      private readonly types: Set<Type> = new Set();
       private properties?: Record<string, unknown>;
       private datum?: Datum;
       private slots?: Record<string, unknown>;
@@ -567,7 +567,10 @@ export namespace coco {
 
       constructor(id: string, types: Set<Type>, properties?: Record<string, unknown>, value?: Datum, slots?: Record<string, unknown>) {
         this.id = id;
-        this.types = types;
+        for (const tp of types) {
+          this.types.add(tp);
+          tp._instances.add(this);
+        }
         this.properties = properties;
         this.datum = value;
         this.slots = slots;

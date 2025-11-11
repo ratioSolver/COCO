@@ -453,14 +453,9 @@ namespace coco
     }
     void coco_server::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) { broadcast({{"msg_type", "new_data"}, {"id", itm.get_id()}, {"value", {{"data", data}, {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count()}}}}); }
 
-    std::unique_ptr<network::response> coco_server::index([[maybe_unused]] const network::request &req)
-    {
-        LOG_TRACE(req);
-        return std::make_unique<network::file_response>(CLIENT_DIR "/dist/index.html");
-    }
+    std::unique_ptr<network::response> coco_server::index([[maybe_unused]] const network::request &req) { return std::make_unique<network::file_response>(CLIENT_DIR "/dist/index.html"); }
     std::unique_ptr<network::response> coco_server::assets(const network::request &req)
     {
-        LOG_TRACE(req);
         std::string target = req.get_target();
         if (target.find('?') != std::string::npos)
             target = target.substr(0, target.find('?'));
@@ -469,7 +464,6 @@ namespace coco
 
     std::unique_ptr<network::response> coco_server::get_types([[maybe_unused]] const network::request &req)
     {
-        LOG_TRACE(req);
         json::json ts(json::json_type::array);
         for (auto &tp : get_coco().get_types())
         {
@@ -481,7 +475,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::get_type(const network::request &req)
     {
-        LOG_TRACE(req);
         try
         { // get type by name in the path
             auto &tp = get_coco().get_type(req.get_target().substr(7));
@@ -496,7 +489,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::create_type(const network::request &req)
     {
-        LOG_TRACE(req);
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (!body.is_object() || !body.contains("name") || !body["name"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -520,7 +512,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::delete_type(const network::request &req)
     {
-        LOG_TRACE(req);
         try
         { // get type by name in the path
             get_coco().delete_type(get_coco().get_type(req.get_target().substr(7)));
@@ -534,7 +525,6 @@ namespace coco
 
     std::unique_ptr<network::response> coco_server::get_items(const network::request &req)
     {
-        LOG_TRACE(req);
         std::map<std::string, std::string> filter;
         if (req.get_target().find('?') != std::string::npos)
             filter = network::parse_query(req.get_target().substr(req.get_target().find('?') + 1));
@@ -602,7 +592,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::get_item(const network::request &req)
     {
-        LOG_TRACE(req);
         try
         { // get item by id in the path
             auto &itm = get_coco().get_item(req.get_target().substr(7));
@@ -617,7 +606,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::create_item(const network::request &req)
     {
-        LOG_TRACE(req);
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (!body.is_object())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -654,7 +642,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::update_item(const network::request &req)
     {
-        LOG_TRACE(req);
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (!body.is_object())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -678,7 +665,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::delete_item(const network::request &req)
     {
-        LOG_TRACE(req);
         try
         { // get item by id in the path
             get_coco().delete_item(get_coco().get_item(req.get_target().substr(7)));
@@ -692,7 +678,6 @@ namespace coco
 
     std::unique_ptr<network::response> coco_server::get_data(const network::request &req)
     {
-        LOG_TRACE(req);
         // get item by id in the path
         auto id = req.get_target().substr(6);
         std::map<std::string, std::string> params;
@@ -716,7 +701,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::set_datum(const network::request &req)
     {
-        LOG_TRACE(req);
         // get item by id in the path
         auto id = req.get_target().substr(6);
         std::map<std::string, std::string> params;
@@ -748,7 +732,6 @@ namespace coco
 
     std::unique_ptr<network::response> coco_server::fake(const network::request &req)
     {
-        LOG_TRACE(req);
         auto name = req.get_target().substr(6);
         std::map<std::string, std::string> params;
         if (name.find('?') != std::string::npos)
@@ -792,7 +775,6 @@ namespace coco
 
     std::unique_ptr<network::response> coco_server::get_reactive_rules([[maybe_unused]] const network::request &req)
     {
-        LOG_TRACE(req);
         json::json is(json::json_type::array);
         for (auto &rr : get_coco().get_reactive_rules())
         {
@@ -804,7 +786,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::create_reactive_rule(const network::request &req)
     {
-        LOG_TRACE(req);
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (!body.is_object() || !body.contains("name") || !body["name"].is_string() || !body.contains("content") || !body["content"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
@@ -823,7 +804,6 @@ namespace coco
 
     std::unique_ptr<network::response> coco_server::get_openapi_spec([[maybe_unused]] const network::request &req)
     {
-        LOG_TRACE(req);
         json::json spec = {{"openapi", "3.1.0"},
                            {"info",
                             {{"title", COCO_NAME " Server API"},
@@ -841,7 +821,6 @@ namespace coco
     }
     std::unique_ptr<network::response> coco_server::get_asyncapi_spec([[maybe_unused]] const network::request &req)
     {
-        LOG_TRACE(req);
         json::json spec = {{"asyncapi", "3.0.0"},
                            {"info",
                             {{"title", COCO_NAME " Server API"},

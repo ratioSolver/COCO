@@ -31,7 +31,6 @@ namespace coco
 
     std::unique_ptr<network::response> fcm_server::new_token(const network::request &req)
     {
-        LOG_TRACE(req);
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (!body.is_object() || !body.contains("id") || !body["id"].is_string() || !body.contains("token") || !body["token"].is_string())
             return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);

@@ -21,9 +21,6 @@
 #endif
 #ifdef BUILD_SERVER
 #include "coco_server.hpp"
-#ifdef ENABLE_CORS
-#include "cors.hpp"
-#endif
 #ifdef BUILD_FCM
 #include "fcm_server.hpp"
 #endif
@@ -56,9 +53,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
 #ifdef BUILD_SERVER
     coco::coco_server srv(cc);
-#ifdef ENABLE_CORS
-    srv.add_middleware<network::cors>(srv);
-#endif
 #ifdef BUILD_SECURE
     srv.load_certificate("cert.pem", "key.pem");
 #endif

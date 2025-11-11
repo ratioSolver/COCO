@@ -12,6 +12,8 @@ enable_testing()
 
 set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
 
+set(ENABLE_LOG ON CACHE BOOL "Enable logging functionality" FORCE)
+
 set(CLIPS_INCLUDE_DIR /usr/local/include/clips CACHE PATH "CLIPS include directory")
 set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 

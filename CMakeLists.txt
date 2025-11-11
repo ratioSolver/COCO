@@ -12,8 +12,6 @@ enable_testing()
 
 set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
 
-set(ENABLE_LOG ON CACHE BOOL "Enable logging functionality" FORCE)
-
 set(CLIPS_INCLUDE_DIR /usr/local/include/clips CACHE PATH "CLIPS include directory")
 set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 
@@ -40,7 +38,7 @@ endif()
 
 if(BUILD_FCM)
     set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
-    set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
+    set(RATIONET_SSL ON CACHE BOOL "Enable SSL" FORCE)
     set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
 endif()
 
@@ -57,7 +55,7 @@ endif()
 
 if(BUILD_LLM)
     set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
-    set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
+    set(RATIONET_SSL ON CACHE BOOL "Enable SSL" FORCE)
     set(LLM_HOST "router.huggingface.co" CACHE STRING "The LLM Host")
     set(LLM_PORT "443" CACHE STRING "The LLM Port")
     set(LLM_PROVIDER "novita" CACHE STRING "The LLM Provider")
@@ -72,12 +70,12 @@ if (BUILD_COCO_SERVER)
     set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gui/app CACHE STRING "Client directory")
 
     if(BUILD_SECURE)
-        set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
+        set(RATIONET_SSL ON CACHE BOOL "Enable SSL" FORCE)
     endif()
 
     if(BUILD_AUTH)
         set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
-        set(ENABLE_SSL ON CACHE BOOL "Enable SSL" FORCE)
+        set(RATIONET_SSL ON CACHE BOOL "Enable SSL" FORCE)
         set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
 
         set(MONGODB_USERS_HOST "localhost" CACHE STRING "The MongoDB Users Host")

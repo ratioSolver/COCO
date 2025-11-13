@@ -41,21 +41,25 @@ namespace coco
         assert(from_json_err == AUE_NO_ERROR);
 
         LOG_DEBUG("Retrieving all types");
-        auto tps = db.get_types();
-        LOG_DEBUG("Retrieved " << tps.size() << " types");
-        for (auto &tp : tps)
-            make_type(tp.name, tp.static_props.has_value() ? std::move(*tp.static_props) : json::json{}, tp.dynamic_props.has_value() ? std::move(*tp.dynamic_props) : json::json{}, tp.data.has_value() ? std::move(*tp.data) : json::json{});
+        auto db_tps = db.get_types();
+        LOG_DEBUG("Retrieved " << db_tps.size() << " types");
+        // First create all types..
+        for (auto &db_tp : db_tps)
+            make_type(db_tp.name, db_tp.data.has_value() ? std::move(*db_tp.data) : json::json{});
+        // Then set their properties (to handle dependencies)..
+        for (auto &db_tp : db_tps)
+            get_type(db_tp.name).set_properties(db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
 
         LOG_DEBUG("Retrieving all items");
-        auto itms = db.get_items();
-        LOG_DEBUG("Retrieved " << itms.size() << " items");
-        for (auto &itm : itms)
+        auto db_itms = db.get_items();
+        LOG_DEBUG("Retrieved " << db_itms.size() << " items");
+        for (auto &db_itm : db_itms)
         {
             std::vector<std::reference_wrapper<type>> tps;
-            tps.reserve(itm.types.size());
-            for (auto &tp_name : itm.types)
+            tps.reserve(db_itm.types.size());
+            for (auto &tp_name : db_itm.types)
                 tps.push_back(get_type(tp_name));
-            make_item(itm.id, std::move(tps), itm.props.has_value() ? std::move(itm.props.value()) : json::json{}, itm.value.has_value() ? std::make_optional(std::move(itm.value.value())) : std::nullopt);
+            make_item(db_itm.id, std::move(tps), db_itm.props.has_value() ? std::move(db_itm.props.value()) : json::json{}, db_itm.value.has_value() ? std::make_optional(std::move(db_itm.value.value())) : std::nullopt);
         }
 
 #ifdef BUILD_AUTH
@@ -107,7 +111,8 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.create_type(name, static_props, dynamic_props, data);
-        auto &tp = make_type(name, std::move(static_props), std::move(dynamic_props), std::move(data));
+        auto &tp = make_type(name, std::move(data));
+        tp.set_properties(std::move(static_props), std::move(dynamic_props));
         if (infere)
             Run(env, -1);
         return tp;
@@ -239,9 +244,9 @@ namespace coco
         throw std::out_of_range("property type `" + std::string(name) + "` not found");
     }
 
-    type &coco::make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data)
+    type &coco::make_type(std::string_view name, json::json &&data)
     {
-        auto tp_ptr = std::make_unique<type>(*this, name, std::move(static_props), std::move(dynamic_props), std::move(data));
+        auto tp_ptr = std::make_unique<type>(*this, name, std::move(data));
         auto &tp = *tp_ptr;
         if (!types.emplace(name, std::move(tp_ptr)).second)
             throw std::invalid_argument("type `" + std::string(name) + "` already exists");

@@ -6,18 +6,18 @@
 #include <cassert>
 
 #ifdef BUILD_LISTENERS
-#define CREATED_ITEM() cc.created_item(*this)
-#define UPDATED_ITEM() cc.updated_item(*this)
-#define NEW_DATA(data, timestamp) cc.new_data(*this, data, timestamp)
+#define CREATED_ITEM(itm) cc.created_item(itm)
+#define UPDATED_ITEM(itm) cc.updated_item(itm)
+#define NEW_DATA(itm, data, timestamp) cc.new_data(itm, data, timestamp)
 #else
-#define CREATED_ITEM()
-#define UPDATED_ITEM()
-#define NEW_DATA(data, timestamp)
+#define CREATED_ITEM(itm)
+#define UPDATED_ITEM(itm)
+#define NEW_DATA(itm, data, timestamp)
 #endif
 
 namespace coco
 {
-    item::item(coco &cc, std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept : cc(cc), id(id), properties(std::move(props)), value(std::move(val)) { CREATED_ITEM(); }
+    item::item(coco &cc, std::string_view id, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val) noexcept : cc(cc), id(id), properties(std::move(props)), value(std::move(val)) { CREATED_ITEM(*this); }
     item::~item() noexcept
     {
         for (auto &tp : get_types())
@@ -64,8 +64,7 @@ namespace coco
             item_fact.second = updated_fact;
             FMDispose(fact_modifier);
         }
-
-        UPDATED_ITEM();
+        UPDATED_ITEM(*this);
     }
 
     void item::set_value(std::pair<json::json, std::chrono::system_clock::time_point> &&val)
@@ -144,8 +143,7 @@ namespace coco
             item_fact = updated_fact;
             FMDispose(fact_modifier);
         }
-
-        NEW_DATA(val.first, val.second);
+        NEW_DATA(*this, value->first, value->second);
     }
 
     const property &item::get_property(std::string_view name) const
@@ -211,8 +209,7 @@ namespace coco
         FBDispose(item_fact_builder);
         item_facts.emplace(tp.get_name(), item_fact);
         value_facts.emplace(tp.get_name(), std::map<std::string, Fact *>());
-
-        UPDATED_ITEM();
+        UPDATED_ITEM(*this);
     }
 
     void item::remove_type(const type &tp)
@@ -231,7 +228,6 @@ namespace coco
         [[maybe_unused]] auto re_err = Retract(it->second);
         assert(re_err == RE_NO_ERROR);
         item_facts.erase(it);
-
-        UPDATED_ITEM();
+        UPDATED_ITEM(*this);
     }
 } // namespace coco

@@ -5,6 +5,7 @@
 #include <string>
 #include <fstream>
 #include <unordered_map>
+#include <filesystem>
 
 namespace coco
 {
@@ -19,13 +20,15 @@ namespace coco
     void generate_types(std::ofstream &out);
     void generate_rules(std::ofstream &out);
 
-    void generate_messages(const std::vector<std::string> &type_files);
+    void generate_messages();
 
     static std::string to_cpp_identifier(const std::string &symbol);
+    static std::string prop_to_ros(const std::string &name, const json::json &prop);
 
   private:
     std::unordered_map<std::string, json::json> types;
     std::unordered_map<std::string, std::string> rules;
-    std::string output_file;
+    std::filesystem::path output;
+    std::string config_file;
   };
 } // namespace coco

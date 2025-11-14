@@ -7,10 +7,12 @@
 
 namespace coco
 {
+  [[nodiscard]] inline json::json default_fcm_config() noexcept { return json::load(std::ifstream("run/secrets/fcm.json")); }
+
   class coco_fcm final : public coco_module
   {
   public:
-    coco_fcm(coco &cc, std::string_view fcm_project_id = std::getenv("FCM_PROJECT_ID"), std::string_view client_email = std::getenv("FCM_CLIENT_EMAIL"), std::string_view private_key = std::getenv("FCM_PRIVATE_KEY")) noexcept;
+    coco_fcm(coco &cc, json::json config = default_fcm_config()) noexcept;
 
     void add_token(std::string_view id, std::string_view token);
     void send_notification(std::string_view id, std::string_view title, std::string_view body);

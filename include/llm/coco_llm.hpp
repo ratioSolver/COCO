@@ -9,10 +9,32 @@ namespace coco
 {
   constexpr const char *llm_result_deftemplate = "(deftemplate llm-result (slot item_id (type SYMBOL)) (slot result (type STRING)))";
 
+  [[nodiscard]] inline std::string default_llm_host() noexcept
+  {
+    const char *host = std::getenv("LLM_HOST");
+    if (host)
+      return host;
+    return "api.coco-llm.com";
+  }
+
+  [[nodiscard]] inline unsigned short default_llm_port() noexcept
+  {
+    const char *port = std::getenv("LLM_PORT");
+    if (port)
+      return static_cast<unsigned short>(std::stoi(port));
+    return 443;
+  }
+
+  [[nodiscard]] inline std::string default_llm_api_key() noexcept
+  {
+    std::ifstream file("run/secrets/llm_api_key");
+    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  }
+
   class coco_llm final : public coco_module
   {
   public:
-    coco_llm(coco &cc, std::string_view host = LLM_HOST, unsigned short port = LLM_PORT, std::string_view api_key = std::getenv("LLM_API_KEY")) noexcept;
+    coco_llm(coco &cc, std::string_view host = default_llm_host(), unsigned short port = default_llm_port(), std::string_view api_key = default_llm_api_key()) noexcept;
 
     std::string understand(std::string_view message) noexcept;
 

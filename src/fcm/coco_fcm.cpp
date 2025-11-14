@@ -7,7 +7,7 @@
 
 namespace coco
 {
-    coco_fcm::coco_fcm(coco &cc, std::string_view fcm_project_id, std::string_view client_email, std::string_view private_key) noexcept : coco_module(cc), fcm_project_id(fcm_project_id), client_email(client_email), private_key(private_key), access_token_client("oauth2.googleapis.com", 443), client("fcm.googleapis.com", 443)
+    coco_fcm::coco_fcm(coco &cc, json::json config) noexcept : coco_module(cc), fcm_project_id(config.get<std::string>("fcm_project_id")), client_email(config.get<std::string>("client_email")), private_key(config.get<std::string>("private_key")), access_token_client("oauth2.googleapis.com", 443), client("fcm.googleapis.com", 443)
     {
         [[maybe_unused]] auto send_notification_err = AddUDF(get_env(), "send_notification", "v", 3, 3, "yss", send_notification_udf, "send_notification_udf", this);
         assert(send_notification_err == AUE_NO_ERROR);

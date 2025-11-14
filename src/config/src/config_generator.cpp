@@ -58,14 +58,15 @@ namespace coco
         out << "    std::vector<db_type> types;\n";
         for (const auto &[tp_name, j_t] : types)
         {
-            out << "    std::optional<json::json> " << tp_name << "_static_props, " << tp_name << "_dynamic_props, " << tp_name << "_data;\n";
+            auto cpp_tp_name = to_cpp_identifier(tp_name);
+            out << "    std::optional<json::json> " << cpp_tp_name << "_static_props, " << cpp_tp_name << "_dynamic_props, " << cpp_tp_name << "_data;\n";
             if (j_t.contains("static_properties"))
-                out << "    " << tp_name << "_static_props = json::load(R\"(" << j_t["static_properties"].dump() << ")\");\n";
+                out << "    " << cpp_tp_name << "_static_props = json::load(R\"(" << j_t["static_properties"].dump() << ")\");\n";
             if (j_t.contains("dynamic_properties"))
-                out << "    " << tp_name << "_dynamic_props = json::load(R\"(" << j_t["dynamic_properties"].dump() << ")\");\n";
+                out << "    " << cpp_tp_name << "_dynamic_props = json::load(R\"(" << j_t["dynamic_properties"].dump() << ")\");\n";
             if (j_t.contains("data"))
-                out << "    " << tp_name << "_data = json::load(R\"(" << j_t["data"].dump() << ")\");\n";
-            out << "    types.push_back(db_type{\"" << tp_name << "\", " << tp_name << "_static_props, " << tp_name << "_dynamic_props, " << tp_name << "_data});\n";
+                out << "    " << cpp_tp_name << "_data = json::load(R\"(" << j_t["data"].dump() << ")\");\n";
+            out << "    types.push_back(db_type{\"" << tp_name << "\", " << cpp_tp_name << "_static_props, " << cpp_tp_name << "_dynamic_props, " << cpp_tp_name << "_data});\n";
         }
         out << "\n";
 
@@ -92,7 +93,7 @@ namespace coco
             out << "        LOG_DEBUG(\"Reactive rule `" << r_name << "` found\");\n";
             out << "    } catch (const std::invalid_argument &e) {\n";
             out << "        LOG_DEBUG(\"Creating `" << r_name << "` reactive rule\");\n";
-            out << "        [[maybe_unused]] auto &" << r_name << "_rule = cc.create_reactive_rule(\"" << r_name << "\", \"" << r_content << "\");\n";
+            out << "        [[maybe_unused]] auto &" << r_name << "_rule = cc.create_reactive_rule(\"" << r_name << "\", R\"" << r_content << "\");\n";
             out << "    }\n";
         }
     }
@@ -167,6 +168,8 @@ namespace coco
             return "string " + name + "\n";
         else if (prop_tp == "bool")
             return "bool " + name + "\n";
+        else if (prop_tp == "item")
+            return "string " + name + "_id\n";
         else
             throw std::runtime_error("Unsupported property type for ROS message: " + prop_tp);
     }

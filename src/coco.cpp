@@ -43,12 +43,7 @@ namespace coco
         LOG_DEBUG("Retrieving all types");
         auto db_tps = db.get_types();
         LOG_DEBUG("Retrieved " << db_tps.size() << " types");
-        // First create all types..
-        for (auto &db_tp : db_tps)
-            make_type(db_tp.name, db_tp.data.has_value() ? std::move(*db_tp.data) : json::json{});
-        // Then set their properties (to handle dependencies)..
-        for (auto &db_tp : db_tps)
-            get_type(db_tp.name).set_properties(db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
+        make_types(std::move(db_tps));
 
         LOG_DEBUG("Retrieving all items");
         auto db_itms = db.get_items();
@@ -242,6 +237,16 @@ namespace coco
         if (auto it = property_types.find(name); it != property_types.end())
             return *it->second;
         throw std::out_of_range("property type `" + std::string(name) + "` not found");
+    }
+
+    void coco::make_types(std::vector<db_type> &&db_types) noexcept
+    {
+        // First create all types..
+        for (auto &db_tp : db_types)
+            make_type(db_tp.name, db_tp.data.has_value() ? std::move(*db_tp.data) : json::json{});
+        // Then set their properties (to handle dependencies)..
+        for (auto &db_tp : db_types)
+            get_type(db_tp.name).set_properties(db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
     }
 
     type &coco::make_type(std::string_view name, json::json &&data)

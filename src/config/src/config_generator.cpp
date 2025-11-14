@@ -36,28 +36,29 @@ namespace coco
 
     void config_generator::generate_types(std::ofstream &out)
     {
-        out << "    std::unordered_map<std::string, json::json> types;\n";
-        for (const auto &[tp_name, j_t] : types)
-            out << "    types[\"" << tp_name << "\"] = json::load(R\"(" << j_t.dump() << ")\");\n";
-
-        out << "    std::vector<std::string> created_types;\n";
+        out << "    std::vector<db_type> types;\n";
         for (const auto &[tp_name, j_t] : types)
         {
-            // std::string static_props = j_t.contains("static_properties") ? "json::load(R\"(" + j_t["static_properties"].dump() + ")\")" : "{}";
-            // std::string dynamic_props = j_t.contains("dynamic_properties") ? "json::load(R\"(" + j_t["dynamic_properties"].dump() + ")\")" : "{}";
-            // std::string data = j_t.contains("data") ? "json::load(R\"(" + j_t["data"].dump() + ")\")" : "{}";
-            std::string cpp_tp_name = to_cpp_identifier(tp_name);
-            out << "    try {\n";
-            out << "        [[maybe_unused]] auto &" << cpp_tp_name << " = cc.get_type(\"" << tp_name << "\");\n";
-            out << "        LOG_DEBUG(\"Type `" << tp_name << "` found\");\n";
-            out << "    } catch (const std::invalid_argument &e) {\n";
-            out << "        LOG_DEBUG(\"Creating `" << tp_name << "` type\");\n";
-            out << "        [[maybe_unused]] auto &" << cpp_tp_name << " = cc.make_type(\"" << tp_name << "\", types.at(\"" << tp_name << "\").contains(\"data\") ? types.at(\"" << tp_name << "\")[\"data\"] : {});\n";
-            out << "        created_types.push_back(\"" << tp_name << "\");\n";
-            out << "    }\n";
+            out << "    std::optional<json::json> " << tp_name << "_static_props, " << tp_name << "_dynamic_props, " << tp_name << "_data;\n";
+            if (j_t.contains("static_properties"))
+                out << "    " << tp_name << "_static_props = json::load(R\"(" << j_t["static_properties"].dump() << ")\");\n";
+            if (j_t.contains("dynamic_properties"))
+                out << "    " << tp_name << "_dynamic_props = json::load(R\"(" << j_t["dynamic_properties"].dump() << ")\");\n";
+            if (j_t.contains("data"))
+                out << "    " << tp_name << "_data = json::load(R\"(" << j_t["data"].dump() << ")\");\n";
+            out << "    types.push_back(db_type{\"" << tp_name << "\", " << tp_name << "_static_props, " << tp_name << "_dynamic_props, " << tp_name << "_data});\n";
         }
-        out << "    for (const auto &tp_name : created_types)";
-        out << "        cc.get_type(tp_name).set_properties(types.at(tp_name).contains(\"static_properties\") ? types.at(tp_name)[\"static_properties\"] : {}, types.at(tp_name).contains(\"dynamic_properties\") ? types.at(tp_name)[\"dynamic_properties\"] : {});\n";
+
+        out << "    for (auto it = types.begin(); it != types.end(); )\n";
+        out << "        try {\n";
+        out << "            [[maybe_unused]] auto &" << "tp = cc.get_type(it->name);\n";
+        out << "            LOG_DEBUG(\"Type `\" << it->name << \"` found\");\n";
+        out << "            it = types.erase(it);\n";
+        out << "        } catch (const std::invalid_argument &e) {\n";
+        out << "            LOG_DEBUG(\"Creating `\" << it->name << \"` type\");\n";
+        out << "            ++it;\n";
+        out << "        }\n";
+        out << "    cc.make_types(std::move(types));\n";
     }
 
     void config_generator::generate_rules(std::ofstream &out)
@@ -116,6 +117,7 @@ namespace coco
         out << "// This file is auto-generated. Do not edit manually.\n\n";
         out << "#pragma once\n\n";
         out << "#include \"coco.hpp\"\n";
+        out << "#include \"coco_db.hpp\"\n";
         out << "#include \"logging.hpp\"\n";
         out << "#include <fstream>\n\n";
 

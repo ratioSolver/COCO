@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 project(CoCoGenerator LANGUAGES CXX)
 
-add_executable(CoCoConfig config.cpp)
-target_link_libraries(CoCoConfig PRIVATE json)
-setup_sanitizers(CoCoConfig)
+add_executable(ConfigGenerator main.cpp src/config_generator.cpp)
+target_compile_features(ConfigGenerator PUBLIC cxx_std_17)
+target_include_directories(ConfigGenerator PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_link_libraries(ConfigGenerator PRIVATE json)
+setup_sanitizers(ConfigGenerator)
 
 function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES)
     set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_config")
@@ -24,8 +26,8 @@ function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES)
 
     add_custom_command(
         OUTPUT "${GENERATED_HEADER}"
-        COMMAND $<TARGET_FILE:CoCoConfig> -t ${TYPE_FILES} -r ${RULE_FILES} -o "${GENERATED_HEADER}"
-        DEPENDS CoCoConfig ${TYPE_FILES} ${RULE_FILES}
+        COMMAND $<TARGET_FILE:ConfigGenerator> -t ${TYPE_FILES} -r ${RULE_FILES} -o "${GENERATED_HEADER}"
+        DEPENDS ConfigGenerator ${TYPE_FILES} ${RULE_FILES}
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Generating CoCo configuration header for ${PROJECT_NAME}"
         VERBATIM

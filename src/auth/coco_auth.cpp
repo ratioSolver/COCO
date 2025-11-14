@@ -58,7 +58,7 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         auto &tp = get_coco().get_type(user_kw);
-        auto &itm = get_coco().create_item(tp);
+        auto &itm = get_coco().create_item({tp});
         get_coco().get_db().get_module<auth_db>().create_user(itm.get_id(), username, password, user_role, std::move(personal_data));
         return itm;
     }

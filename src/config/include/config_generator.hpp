@@ -1,20 +1,31 @@
 #pragma once
 
+#include "json.hpp"
 #include <vector>
 #include <string>
 #include <fstream>
+#include <unordered_map>
 
 namespace coco
 {
   class config_generator
   {
   public:
-    static void generate_config(const std::vector<std::string> &type_files, const std::vector<std::string> &rule_files, const std::string &output_file);
+    config_generator(const std::vector<std::string> &type_files, const std::vector<std::string> &rule_files, const std::string &output_file);
+
+    void generate_config();
 
   private:
-    static void generate_types(const std::vector<std::string> &type_files, std::ofstream &out);
-    static void generate_rules(const std::vector<std::string> &rule_files, std::ofstream &out);
+    void generate_types(std::ofstream &out);
+    void generate_rules(std::ofstream &out);
+
+    void generate_messages(const std::vector<std::string> &type_files);
 
     static std::string to_cpp_identifier(const std::string &symbol);
+
+  private:
+    std::unordered_map<std::string, json::json> types;
+    std::unordered_map<std::string, std::string> rules;
+    std::string output_file;
   };
 } // namespace coco

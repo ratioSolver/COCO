@@ -21,7 +21,7 @@ int main()
     LOG_INFO("Creating CoCo instance");
     coco::coco cc(db);
     LOG_INFO("Loading configuration");
-    load_config(cc);
+    coco::config(cc);
     LOG_INFO("Configuration loaded successfully");
 
     std::vector<std::reference_wrapper<coco::type>> types = {cc.get_type("person")};

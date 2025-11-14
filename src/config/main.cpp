@@ -56,7 +56,8 @@ int main(int argc, char const *argv[])
 
     try
     {
-        coco::config_generator::generate_config(type_files, rule_files, output);
+        coco::config_generator gen(type_files, rule_files, output);
+        gen.generate_config();
     }
     catch (const std::exception &e)
     {

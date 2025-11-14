@@ -11,4 +11,4 @@ setup_sanitizers(fcm_tests)
 add_subdirectory(config)
 
 add_test(NAME CoCoTest00 COMMAND coco_tests)
-add_test(NAME FCMRAISETest00 COMMAND fcm_tests)
+add_test(NAME FCMTest00 COMMAND fcm_tests)

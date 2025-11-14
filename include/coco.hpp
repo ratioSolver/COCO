@@ -224,7 +224,6 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
-    void make_types(std::vector<db_type> &&db_types) noexcept;
     type &make_type(std::string_view name, json::json &&data = json::json());
     item &make_item(std::string_view id, std::vector<std::reference_wrapper<type>> &&tps, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt);
 
@@ -233,7 +232,7 @@ namespace coco
     friend void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
-    friend void config(coco &cc);
+    friend void set_types(coco &cc, std::vector<db_type> &&db_types) noexcept;
 
 #ifdef BUILD_LISTENERS
   private:
@@ -330,6 +329,8 @@ namespace coco
     std::string name;    // the name of the rule.
     std::string content; // the content of the rule.
   };
+
+  void set_types(coco &cc, std::vector<db_type> &&db_types) noexcept;
 
   void add_type(Environment *env, UDFContext *udfc, UDFValue *out);
   void remove_type(Environment *env, UDFContext *udfc, UDFValue *out);

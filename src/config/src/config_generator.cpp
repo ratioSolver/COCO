@@ -79,7 +79,7 @@ namespace coco
         out << "            LOG_DEBUG(\"Creating `\" << it->name << \"` type\");\n";
         out << "            ++it;\n";
         out << "        }\n";
-        out << "    cc.make_types(std::move(types));\n";
+        out << "    set_types(cc, std::move(types));\n";
         out << "\n";
     }
 

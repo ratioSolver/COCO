@@ -7,15 +7,38 @@
 #include <cassert>
 
 #ifdef BUILD_LISTENERS
-#define CREATED_TYPE() cc.created_type(*this)
+#define CREATED_TYPE(tp) cc.created_type(tp)
 #else
-#define CREATED_TYPE()
+#define CREATED_TYPE(tp)
 #endif
 
 namespace coco
 {
-    type::type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data))
+    type::type(coco &cc, std::string_view name, json::json &&data) noexcept : cc(cc), name(name), data(std::move(data)) {}
+    type::~type()
     {
+        for (const auto &id : instances)
+            cc.items.erase(id);
+        auto dt = FindDeftemplate(cc.env, name.c_str());
+        assert(dt);
+        assert(DeftemplateIsDeletable(dt));
+        [[maybe_unused]] auto undef_dt = Undeftemplate(dt, cc.env);
+        assert(undef_dt);
+    }
+
+    void type::set_properties(json::json &&static_props, json::json &&dynamic_props) noexcept
+    {
+        if (!static_properties.empty() || !dynamic_properties.empty())
+        { // Remove existing deftemplate..
+            auto dt = FindDeftemplate(cc.env, name.c_str());
+            assert(dt);
+            assert(DeftemplateIsDeletable(dt));
+            [[maybe_unused]] auto undef_dt = Undeftemplate(dt, cc.env);
+            assert(undef_dt);
+            static_properties.clear();
+            dynamic_properties.clear();
+        }
+
         for (auto &[name, prop] : static_props.as_object())
             static_properties.emplace(name, cc.get_property_type(prop["type"].get<std::string>()).new_instance(*this, false, name, prop));
         for (auto &[name, prop] : dynamic_props.as_object())
@@ -31,17 +54,7 @@ namespace coco
         [[maybe_unused]] auto prop_dt = Build(cc.env, deftemplate.c_str());
         assert(prop_dt == BE_NO_ERROR);
 
-        CREATED_TYPE();
-    }
-    type::~type()
-    {
-        for (const auto &id : instances)
-            cc.items.erase(id);
-        auto dt = FindDeftemplate(cc.env, name.c_str());
-        assert(dt);
-        assert(DeftemplateIsDeletable(dt));
-        [[maybe_unused]] auto undef_dt = Undeftemplate(dt, cc.env);
-        assert(undef_dt);
+        CREATED_TYPE(*this);
     }
 
     std::vector<std::reference_wrapper<item>> type::get_instances() const noexcept

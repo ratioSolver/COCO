@@ -23,11 +23,9 @@ namespace coco
      *
      * @param cc The CoCo object.
      * @param name The name of the type.
-     * @param static_props The static properties of the type.
-     * @param dynamic_props The dynamic properties of the type.
      * @param data The (optional) data of the type.
      */
-    type(coco &cc, std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json()) noexcept;
+    type(coco &cc, std::string_view name, json::json &&data = json::json()) noexcept;
     ~type();
 
     /**
@@ -64,6 +62,8 @@ namespace coco
      * @return The dynamic properties of the type.
      */
     [[nodiscard]] const std::map<std::string, std::unique_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
+
+    void set_properties(json::json &&static_props, json::json &&dynamic_props) noexcept;
 
     /**
      * @brief Gets the instances of the type.

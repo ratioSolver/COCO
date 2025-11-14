@@ -35,7 +35,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     coco::coco_server srv(cc);
     auto srv_ft = std::async(std::launch::async, [&srv]
                              { srv.start(); });
-#ifdef ENABLE_SSL
+#ifdef RATIONET_SSL
     srv.load_certificate("cert.pem", "key.pem");
 #endif
 #ifdef BUILD_LLM

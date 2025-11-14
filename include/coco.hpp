@@ -223,7 +223,7 @@ namespace coco
   private:
     [[nodiscard]] property_type &get_property_type(std::string_view name) const;
 
-    type &make_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json());
+    type &make_type(std::string_view name, json::json &&data = json::json());
     item &make_item(std::string_view id, std::vector<std::reference_wrapper<type>> &&tps, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt);
 
     friend void add_type(Environment *env, UDFContext *udfc, UDFValue *out);

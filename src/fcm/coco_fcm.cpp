@@ -7,7 +7,7 @@
 
 namespace coco
 {
-    coco_fcm::coco_fcm(coco &cc, json::json config) noexcept : coco_module(cc), fcm_project_id(config.get<std::string>("fcm_project_id")), client_email(config.get<std::string>("client_email")), private_key(config.get<std::string>("private_key")), access_token_client("oauth2.googleapis.com", 443), client("fcm.googleapis.com", 443)
+    coco_fcm::coco_fcm(coco &cc, json::json config) noexcept : coco_module(cc), fcm_project_id(config["fcm_project_id"].get<std::string>()), client_email(config["client_email"].get<std::string>()), private_key(config["private_key"].get<std::string>()), access_token_client("oauth2.googleapis.com", 443), client("fcm.googleapis.com", 443)
     {
         [[maybe_unused]] auto send_notification_err = AddUDF(get_env(), "send_notification", "v", 3, 3, "yss", send_notification_udf, "send_notification_udf", this);
         assert(send_notification_err == AUE_NO_ERROR);
@@ -27,15 +27,19 @@ namespace coco
             json::json j_message{{"message", {{"token", token}, {"notification", {{"title", title.data()}, {"body", body.data()}}}}}};
             auto res = client.post("/v1/projects/" + fcm_project_id + "/messages:send", std::move(j_message), {{"Content-Type", "application/json"}, {"Authorization", "Bearer " + access_token}});
             if (res)
-            {
-                if (res->get_status_code() == network::status_code::ok)
-                    LOG_DEBUG("Sent FCM notification to token " + token + " for item " + std::string(id));
-                else
+                switch (res->get_status_code())
                 {
-                    LOG_DEBUG("Failed to send FCM notification to token " + token + " for item " + std::string(id) + ": " + static_cast<network::json_response &>(*res).get_body().dump());
+                case network::status_code::ok:
+                    LOG_DEBUG("Sent FCM notification to token " + token + " for item " + std::string(id));
+                    break;
+                case network::status_code::not_found:
+                    LOG_DEBUG("FCM token not found, removing token " + token + " for item " + std::string(id));
                     get_coco().get_db().get_module<fcm_db>().remove_token(id, token);
+                    break;
+                default:
+                    LOG_DEBUG("Failed to send FCM notification to token " + token + " for item " + std::string(id) + ": " + static_cast<network::json_response &>(*res).get_body().dump());
+                    break;
                 }
-            }
             else
                 LOG_ERR("Failed to send FCM notification to token " + token + " for item " + std::string(id));
         }

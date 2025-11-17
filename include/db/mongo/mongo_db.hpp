@@ -23,27 +23,19 @@ namespace coco
     const char *user = std::getenv("MONGODB_USER");
     if (user)
       uri += user;
-    else
-      uri += MONGODB_USER;
     uri += ":";
     const char *pass = std::getenv("MONGODB_PASSWORD");
     if (pass)
       uri += pass;
-    else
-      uri += MONGODB_PASSWORD;
     uri += "@";
 #endif
     const char *host = std::getenv("MONGODB_HOST");
     if (host)
       uri += host;
-    else
-      uri += MONGODB_HOST;
     uri += ":";
     const char *port = std::getenv("MONGODB_PORT");
     if (port)
       uri += port;
-    else
-      uri += MONGODB_PORT;
     return uri;
   }
 

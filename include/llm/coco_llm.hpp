@@ -14,7 +14,7 @@ namespace coco
     const char *host = std::getenv("LLM_HOST");
     if (host)
       return host;
-    return "api.coco-llm.com";
+    return "router.huggingface.co";
   }
 
   [[nodiscard]] inline unsigned short default_llm_port() noexcept
@@ -31,10 +31,26 @@ namespace coco
     return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   }
 
+  [[nodiscard]] inline std::string default_llm_provider() noexcept
+  {
+    const char *provider = std::getenv("LLM_PROVIDER");
+    if (provider)
+      return provider;
+    return "novita";
+  }
+
+  [[nodiscard]] inline std::string default_llm_model() noexcept
+  {
+    const char *model = std::getenv("LLM_MODEL");
+    if (model)
+      return model;
+    return "meta-llama/llama-3.3-70b-instruct";
+  }
+
   class coco_llm final : public coco_module
   {
   public:
-    coco_llm(coco &cc, std::string_view host = default_llm_host(), unsigned short port = default_llm_port(), std::string_view api_key = default_llm_api_key()) noexcept;
+    coco_llm(coco &cc, std::string_view host = default_llm_host(), unsigned short port = default_llm_port(), std::string_view api_key = default_llm_api_key(), std::string_view provider = default_llm_provider(), std::string_view model = default_llm_model()) noexcept;
 
     std::string understand(std::string_view message) noexcept;
 
@@ -48,6 +64,8 @@ namespace coco
     network::ssl_async_client async_client;                // The asynchronous client used to communicate with the LLM server
     std::shared_ptr<network::client_session_base> session; // The client session used for asynchronous requests
     const std::string api_key;                             // The API key used to authenticate with the LLM server
+    const std::string provider;                            // The provider used to communicate with the LLM server
+    const std::string model;                               // The model used to communicate with the LLM server
   };
 
   void understand_udf(Environment *env, UDFContext *udfc, UDFValue *out);

@@ -5,7 +5,7 @@
 
 namespace coco
 {
-    coco_llm::coco_llm(coco &cc, std::string_view host, unsigned short port, std::string_view api_key) noexcept : coco_module(cc), client(host, port), async_client(), session(async_client.get_session(host, port)), api_key(api_key)
+    coco_llm::coco_llm(coco &cc, std::string_view host, unsigned short port, std::string_view api_key, std::string_view provider, std::string_view model) noexcept : coco_module(cc), client(host, port), async_client(), session(async_client.get_session(host, port)), api_key(api_key), provider(provider), model(model)
     {
         LOG_TRACE(llm_result_deftemplate);
         [[maybe_unused]] auto build_llm_result_dt_err = Build(get_env(), llm_result_deftemplate);
@@ -21,11 +21,11 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(get_mtx());
         json::json j_prompt;
-        j_prompt["model"] = LLM_MODEL;
+        j_prompt["model"] = model;
         j_prompt["messages"] = std::vector<json::json>{{{"role", "user"}, {"content", message.data()}}};
         j_prompt["stream"] = false;
 
-        auto res = client.post("/" LLM_PROVIDER "/v3/openai/chat/completions", std::move(j_prompt), {{"Content-Type", "application/json"}, {"Authorization", std::string("Bearer ") + api_key}});
+        auto res = client.post("/" + provider + "/v3/openai/chat/completions", std::move(j_prompt), {{"Content-Type", "application/json"}, {"Authorization", std::string("Bearer ") + api_key}});
         if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to understand..");
@@ -41,11 +41,11 @@ namespace coco
     void coco_llm::async_understand(item &item, std::string_view message, bool infere) noexcept
     {
         json::json j_prompt;
-        j_prompt["model"] = LLM_MODEL;
+        j_prompt["model"] = model;
         j_prompt["messages"] = std::vector<json::json>{{{"role", "user"}, {"content", message.data()}}};
         j_prompt["stream"] = true;
 
-        session->post("/" LLM_PROVIDER "/v3/openai/chat/completions", std::move(j_prompt), [this, &item, infere](const network::response &res)
+        session->post("/" + provider + "/v3/openai/chat/completions", std::move(j_prompt), [this, &item, infere](const network::response &res)
                       {
                           if (res.get_status_code() != network::ok)
                           {

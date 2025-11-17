@@ -1,5 +1,8 @@
 # CoCo
 
+![Build Status](https://github.com/ratioSolver/COCO/actions/workflows/cmake.yml/badge.svg)
+[![codecov](https://codecov.io/gh/ratioSolver/COCO/branch/master/graph/badge.svg)](https://codecov.io/gh/ratioSolver/COCO)
+
 combined deduCtiOn and abduCtiOn (CoCo) reasoner.
 
 ## How to use

@@ -1,0 +1,15 @@
+{
+  "name": "person",
+  "static_properties": {
+    "name": {
+      "type": "string"
+    },
+    "age": {
+      "type": "int"
+    },
+    "is_active": {
+      "type": "bool",
+      "nullable": true
+    }
+  }
+}

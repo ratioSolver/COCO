@@ -1,0 +1,22 @@
+{
+  "name": "coco-gui",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
+    "typescript": "~5.8.3",
+    "vite": "^6.2.0"
+  },
+  "dependencies": {
+    "@ratiosolver/coco": "^0.0.81",
+    "@ratiosolver/flick": "^0.1.12",
+    "@ratiosolver/solver": "^0.0.42",
+    "bootstrap": "^5.3.6"
+  }
+}

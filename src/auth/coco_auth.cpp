@@ -1,0 +1,340 @@
+#include "coco_auth.hpp"
+#include "coco.hpp"
+#include "coco_type.hpp"
+#include "coco_property.hpp"
+#include "coco_item.hpp"
+#include "auth_db.hpp"
+#include "logging.hpp"
+
+namespace coco
+{
+    coco_auth::coco_auth(coco &cc) noexcept : coco_module(cc)
+    {
+        get_coco().get_db().add_module<auth_db>(static_cast<mongo_db &>(get_coco().get_db()));
+        try
+        {
+            [[maybe_unused]] auto &tp = get_coco().get_type(user_kw);
+        }
+        catch (const std::invalid_argument &)
+        { // Type does not exist, create it
+            [[maybe_unused]] auto &tp = get_coco().create_type(user_kw, {}, {}, {}, {});
+            LOG_WARN("Creating default user (username: admin, password: admin). Please change the password as soon as possible.");
+            [[maybe_unused]] auto &admin = create_user("admin", "admin", 0, json::json());
+        }
+    }
+
+    bool coco_auth::is_valid_token(std::string_view token) const noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        try
+        {
+            [[maybe_unused]] auto user = get_coco().get_db().get_module<auth_db>().get_user(token);
+            return true;
+        }
+        catch (const std::invalid_argument &)
+        {
+            return false;
+        }
+    }
+
+    std::string coco_auth::get_token(std::string_view username, std::string_view password)
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        auto user = get_coco().get_db().get_module<auth_db>().get_user(username, password);
+        return user.id;
+    }
+
+    std::vector<std::reference_wrapper<item>> coco_auth::get_users() noexcept
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        auto &tp = get_coco().get_type(user_kw);
+        std::vector<std::reference_wrapper<item>> users;
+        for (auto &itm : get_coco().get_items(tp))
+            users.push_back(itm);
+        return users;
+    }
+
+    item &coco_auth::create_user(std::string_view username, std::string_view password, int8_t user_role, json::json &&personal_data)
+    {
+        std::lock_guard<std::recursive_mutex> _(get_mtx());
+        auto &tp = get_coco().get_type(user_kw);
+        auto &itm = get_coco().create_item({tp});
+        get_coco().get_db().get_module<auth_db>().create_user(itm.get_id(), username, password, user_role, std::move(personal_data));
+        return itm;
+    }
+
+    server_auth::server_auth(coco_server &srv) noexcept : server_module(srv)
+    {
+        srv.add_route(network::verb::Post, "^/login$", std::bind(&server_auth::login, this, std::placeholders::_1));
+        srv.add_route(network::verb::Get, "^/users$", std::bind(&server_auth::get_users, this, std::placeholders::_1));
+        srv.add_route(network::verb::Post, "^/users$", std::bind(&server_auth::create_user, this, std::placeholders::_1));
+
+        // Define schemas for user
+        add_schema("user", {{"type", "object"},
+                            {"description", "A user item with authentication capabilities."},
+                            {"properties",
+                             {{"id", {{"type", "string"}, {"description", "Unique identifier for the user."}}},
+                              {"username", {{"type", "string"}, {"description", "Username of the user."}}},
+                              {"password", {{"type", "string"}, {"description", "Password of the user."}}},
+                              {"personal_data", {{"type", "object"}, {"description", "Personal data of the user."}}}}},
+                            {"required", std::vector<json::json>{"id", "username", "password"}}});
+
+        // Define OpenAPI paths for authentication endpoints
+        add_path("/login", {"post",
+                            {{"summary", "User login."},
+                             {"description", "Endpoint to authenticate a user and obtain a token."},
+                             {"requestBody",
+                              {{"required", true},
+                               {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"username", {{"type", "string"}, {"description", "Username of the user"}}}, {"password", {{"type", "string"}, {"description", "Password of the user"}}}}}}}}}}}}},
+                             {"responses",
+                              {{"200",
+                                {{"description", "Token generated successfully."},
+                                 {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}, {"description", "Authentication token"}}}}}}}}}}}}},
+                               {"400",
+                                {{"description", "Invalid request."}}},
+                               {"401",
+                                {{"$ref", "#/components/responses/UnauthorizedError"}}}}}}});
+        add_path("/users", {{"get",
+                             {{"summary", "Get all users."},
+                              {"description", "Endpoint to retrieve a list of all users."},
+                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+                              {"responses",
+                               {{"200",
+                                 {{"description", "List of users retrieved successfully."},
+                                  {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}},
+                                {"401",
+                                 {{"$ref", "#/components/responses/UnauthorizedError"}}}}}}},
+                            {"post",
+                             {{"summary", "Create a new user."},
+                              {"description", "Endpoint to create a new user."},
+                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+                              {"requestBody",
+                               {{"required", true},
+                                {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/user"}}}}}}}}},
+                              {"responses",
+                               {{"201",
+                                 {{"description", "User created successfully."},
+                                  {"content", {{"application/json", {{"schema", {{"type", "object"}, {"properties", {{"token", {{"type", "string"}, {"description", "Authentication token"}}}}}}}}}}}}},
+                                {"400",
+                                 {{"description", "Invalid request."}}},
+                                {"401",
+                                 {{"$ref", "#/components/responses/UnauthorizedError"}}}}}}}});
+    }
+
+    std::unique_ptr<network::response> server_auth::login(const network::request &req)
+    {
+        LOG_TRACE("Login request received");
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (!body.is_object() || !body.contains("username") || !body["username"].is_string() || !body.contains("password") || !body["password"].is_string())
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        std::string username = body["username"];
+        std::string password = body["password"];
+
+        try
+        {
+            auto token = get_coco().get_module<coco_auth>().get_token(username, password);
+            if (token.empty())
+                return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
+            return std::make_unique<network::json_response>(json::json({{"token", token}}), network::status_code::ok);
+        }
+        catch (const std::invalid_argument &)
+        {
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid credentials"}}), network::status_code::unauthorized);
+        }
+    }
+
+    std::unique_ptr<network::response> server_auth::get_users(const network::request &)
+    {
+        LOG_TRACE("Get users request received");
+        auto users = get_coco().get_module<coco_auth>().get_users();
+        json::json users_json = json::json(json::json_type::array);
+        for (auto &user : users)
+        {
+            auto j_itm = user.get().to_json();
+            users_json.push_back(std::move(j_itm));
+        }
+        return std::make_unique<network::json_response>(std::move(users_json), network::status_code::ok);
+    }
+
+    std::unique_ptr<network::response> server_auth::create_user(const network::request &req)
+    {
+        LOG_TRACE("Create user request received");
+        auto &body = static_cast<const network::json_request &>(req).get_body();
+        if (!body.is_object() || !body.contains("username") || !body["username"].is_string() || !body.contains("password") || !body["password"].is_string() || !body.contains("role") || !body["role"].is_unsigned())
+            return std::make_unique<network::json_response>(json::json({{"message", "Invalid request"}}), network::status_code::bad_request);
+        std::string username = body["username"];
+        std::string password = body["password"];
+        int8_t user_role = static_cast<int8_t>(body["role"].get<int64_t>());
+        json::json personal_data = json::json(json::json_type::object);
+        if (body.contains("personal_data"))
+            personal_data = body["personal_data"];
+
+        try
+        {
+            [[maybe_unused]] auto &itm = get_coco().get_module<coco_auth>().create_user(username, password, user_role, std::move(personal_data));
+            return std::make_unique<network::json_response>(json::json({{"token", get_coco().get_module<coco_auth>().get_token(username, password)}}), network::status_code::created);
+        }
+        catch (const std::invalid_argument &e)
+        {
+            return std::make_unique<network::json_response>(json::json({{"message", e.what()}}), network::status_code::bad_request);
+        }
+    }
+
+    void server_auth::on_ws_open(network::ws_server_session_base &ws)
+    {
+        LOG_TRACE("New connection");
+
+        std::lock_guard<std::mutex> _(mtx);
+        clients.emplace(&ws, "");
+    }
+    void server_auth::on_ws_message(network::ws_server_session_base &ws, const network::message &msg)
+    {
+        auto x = json::load(msg.get_payload());
+        if (!x.is_object() || !x.contains("msg_type") || !x["msg_type"].is_string())
+        {
+            ws.close();
+            return;
+        }
+
+        std::string msg_type = x["msg_type"];
+        if (msg_type == "login")
+        {
+            LOG_TRACE("Login request received");
+            if (!x.contains("token") || !x["token"].is_string())
+            {
+                json::json resp{{"msg_type", "error"}, {"message", "Invalid login request"}};
+                ws.send(resp.dump());
+                ws.close();
+                return;
+            }
+            std::string token = x["token"];
+
+            auto &auth = get_coco().get_module<coco_auth>();
+            if (auth.is_valid_token(token))
+            {
+                LOG_DEBUG("User authenticated successfully");
+
+                clients.at(&ws) = token;
+                devices[token].emplace(&ws);
+
+                // Send user data
+                auto usr = get_coco().get_db().get_module<auth_db>().get_user(token);
+                json::json resp{{"msg_type", "login"}};
+                if (usr.personal_data.size())
+                    resp["personal_data"] = usr.personal_data;
+                ws.send(resp.dump());
+
+                // Send current state
+                auto jc = get_coco().to_json();
+                jc["msg_type"] = "coco";
+                ws.send(jc.dump());
+            }
+            else
+            {
+                LOG_DEBUG("Invalid token provided");
+                json::json resp{{"msg_type", "error"}, {"message", "Invalid token"}};
+                ws.send(resp.dump());
+                ws.close();
+            }
+            LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
+        }
+        else if (msg_type == "data")
+        {
+            LOG_TRACE("Data request received");
+            if (!x.contains("id") || !x["id"].is_string() || !x.contains("data") || !x["data"].is_object())
+            {
+                json::json resp{{"msg_type", "error"}, {"message", "Invalid data request"}};
+                ws.send(resp.dump());
+                ws.close();
+                return;
+            }
+            std::string item_id = x["id"];
+            json::json &data = x["data"];
+
+            try
+            {
+                auto &itm = get_coco().get_item(item_id);
+                get_coco().set_value(itm, std::move(data));
+            }
+            catch (const std::invalid_argument &e)
+            {
+                json::json resp{{"msg_type", "error"}, {"message", e.what()}};
+                ws.send(resp.dump());
+            }
+        }
+        else
+        {
+            LOG_TRACE("Unknown message type: " << msg_type);
+            json::json resp{{"msg_type", "error"}, {"message", "Unknown message type"}};
+            ws.send(resp.dump());
+            ws.close();
+        }
+    }
+    void server_auth::on_ws_close(network::ws_server_session_base &ws)
+    {
+        LOG_TRACE("Connection closed");
+        std::lock_guard<std::mutex> _(mtx);
+        auto token = clients.at(&ws);
+        if (devices.count(token))
+            devices.at(token).erase(&ws);
+        clients.erase(&ws);
+        LOG_DEBUG("Connected clients: " + std::to_string(clients.size()));
+    }
+    void server_auth::on_ws_error(network::ws_server_session_base &ws, [[maybe_unused]] const std::error_code &ec)
+    {
+        LOG_TRACE("Connection error: " << ec.message());
+        on_ws_close(ws);
+    }
+
+    void server_auth::broadcast(json::json &msg)
+    {
+        auto msg_str = msg.dump();
+        for (auto &[ws, _] : clients)
+            ws->send(msg_str);
+    }
+
+    auth_middleware::auth_middleware(coco_server &srv, coco &cc, std::map<network::verb, std::vector<std::string>> &&excluded_paths) noexcept : network::middleware(srv), srv(srv), cc(cc), excluded_paths(std::move(excluded_paths)) {}
+
+    void auth_middleware::add_excluded_path(network::verb v, std::string_view pattern) { excluded_paths[v].emplace_back(pattern); }
+    void auth_middleware::add_authorized_path(network::verb v, std::string_view pattern, std::set<uint8_t> roles, bool self) { authorized_paths[v].emplace_back(std::string(pattern), std::move(roles), self); }
+
+    std::unique_ptr<network::response> auth_middleware::before_request(const network::request &req)
+    {
+        // Check if the request path matches any of the excluded paths
+        if (auto it = excluded_paths.find(req.get_verb()); it != excluded_paths.end())
+            for (const auto &pattern : it->second)
+                if (std::regex_match(req.get_target(), std::regex(pattern)))
+                    return nullptr; // Excluded path, allow request
+
+        // Check for Authorization header
+        if (auto auth = req.get_headers().find("authorization"); auth != req.get_headers().end())
+            if (auth->second.size() > 7 && auth->second.substr(0, 7) == "Bearer ")
+            {
+                std::string token = auth->second.substr(7);
+                if (!cc.get_module<coco_auth>().is_valid_token(token))
+                    return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
+                try
+                {
+                    auto &itm = cc.get_item(token);
+                    if (auto it = authorized_paths.find(req.get_verb()); it != authorized_paths.end())
+                        for (const auto &[target, roles, self] : it->second)
+                            if (std::regex_match(req.get_target(), std::regex(target)))
+                            {
+                                if (self && itm.get_id() == token)
+                                    return nullptr; // self-access allowed and user is accessing their own data
+                                // Check roles
+                                if (std::all_of(roles.begin(), roles.end(), [&itm, this](uint8_t role)
+                                                { return role < cc.get_db().get_module<auth_db>().get_user(itm.get_id()).user_role; }))
+                                    return std::make_unique<network::json_response>(json::json({{"message", "Forbidden"}}), network::status_code::forbidden);
+                                return nullptr; // token is valid and user has required roles
+                            }
+                }
+                catch (const std::invalid_argument &)
+                {
+                    return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
+                }
+                return nullptr; // token is valid and user has required roles
+            }
+        return std::make_unique<network::json_response>(json::json({{"message", "Unauthorized"}}), network::status_code::unauthorized);
+    }
+} // namespace coco

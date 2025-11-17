@@ -1,0 +1,43 @@
+{
+  "name": "@ratiosolver/coco",
+  "version": "0.0.81",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ratioSolver/COCO.git"
+  },
+  "files": [
+    "/dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/cytoscape": "^3.21.8",
+    "@types/cytoscape-dagre": "^2.3.3",
+    "@types/d3-scale": "^4.0.9",
+    "@types/d3-scale-chromatic": "^3.1.0",
+    "@types/leaflet": "^1.9.18",
+    "@types/plotly.js-dist-min": "^2.3.4",
+    "typescript": "~5.8.3"
+  },
+  "peerDependencies": {
+    "@ratiosolver/flick": "^0.1.12",
+    "@ratiosolver/solver": "^0.0.42",
+    "bootstrap": "^5.3.6",
+    "leaflet": "^1.9.4"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.6.13",
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "cytoscape": "^3.30.4",
+    "cytoscape-dagre": "^2.5.0",
+    "cytoscape-popper": "^4.0.1",
+    "d3-scale": "^4.0.2",
+    "d3-scale-chromatic": "^3.1.0",
+    "plotly.js-dist-min": "^2.34.0"
+  }
+}

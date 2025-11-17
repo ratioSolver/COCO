@@ -1,0 +1,88 @@
+import { UListComponent, SelectorGroup, ListItemComponent, App, PayloadComponent } from "@ratiosolver/flick";
+import { coco } from "../coco";
+import { library, icon } from '@fortawesome/fontawesome-svg-core'
+import { faCopy, faTag } from '@fortawesome/free-solid-svg-icons'
+import { ItemTypes } from "./item_types";
+import { ItemProperties } from "./item_properties";
+import { ItemChart } from "./item_chart";
+import { ItemPublisher } from "./item_publisher";
+
+library.add(faCopy, faTag);
+
+export class ItemElement extends ListItemComponent<coco.taxonomy.Item> {
+
+  constructor(group: SelectorGroup, item: coco.taxonomy.Item) {
+    super(group, item, icon(faTag).node[0], item.to_string());
+  }
+
+  override select(): void {
+    super.select();
+    App.get_instance().selected_component(new Item(this.payload));
+  }
+}
+
+export class ItemList extends UListComponent<coco.taxonomy.Item> implements coco.CoCoListener {
+
+  private group: SelectorGroup;
+
+  constructor(group: SelectorGroup = new SelectorGroup(), itms: coco.taxonomy.Item[] = []) {
+    super(itms.map(itm => new ItemElement(group, itm)));
+    this.group = group;
+    this.node.classList.add('nav', 'nav-pills', 'list-group', 'flex-column');
+    coco.CoCo.get_instance().add_coco_listener(this);
+  }
+
+  override unmounting(): void { coco.CoCo.get_instance().remove_coco_listener(this); }
+
+  new_type(_: coco.taxonomy.Type): void { }
+  new_item(item: coco.taxonomy.Item): void { this.add_child(new ItemElement(this.group, item)); }
+}
+
+export class Item extends PayloadComponent<HTMLDivElement, coco.taxonomy.Item> {
+
+  constructor(item: coco.taxonomy.Item) {
+    super(document.createElement('div'), item);
+    this.node.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+    this.node.style.margin = '1em';
+
+    const id_div = document.createElement('div');
+    id_div.classList.add('input-group');
+    const id_input = document.createElement('input');
+    id_input.classList.add('form-control');
+    id_input.type = 'text';
+    id_input.placeholder = 'Item ID';
+    id_input.value = item.get_id();
+    id_input.disabled = true;
+    id_div.append(id_input);
+    const id_button_div = document.createElement('div');
+    id_button_div.classList.add('input-group-append');
+    const id_button = document.createElement('button');
+    id_button.classList.add('btn', 'btn-outline-secondary');
+    id_button.type = 'button';
+    id_button.append(icon(faCopy).node[0]);
+    id_button.title = 'Copy item ID to clipboard';
+    id_button.addEventListener('click', () => {
+      navigator.clipboard.writeText(item.get_id());
+    });
+    id_button_div.append(id_button);
+    id_div.append(id_button_div);
+    this.node.append(id_div);
+
+    this.add_child(new ItemTypes(item));
+
+    this.add_child(new ItemProperties(item));
+
+    coco.CoCo.get_instance().load_data(item);
+  }
+
+  override mounted(): void {
+    for (const tp of this.payload.get_types()) {
+      const dynamicProps = tp.get_dynamic_properties();
+      if (dynamicProps && dynamicProps.size > 0) {
+        this.add_child(new ItemChart(this.payload));
+        this.add_child(new ItemPublisher(this.payload));
+        break;
+      }
+    }
+  }
+}

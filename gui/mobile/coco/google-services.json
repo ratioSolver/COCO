@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "685209289275",
+    "project_id": "ratio-coco",
+    "storage_bucket": "ratio-coco.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:685209289275:android:11952ef85a41fd2284121e",
+        "android_client_info": {
+          "package_name": "it.cnr.coco"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDABjlQloUdjlAmt2SLB1bykds7F8_lLrI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

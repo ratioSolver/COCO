@@ -1,77 +1,108 @@
-#include "coco_db.h"
-#include <functional>
-#include <cassert>
+#include "coco_db.hpp"
+#include "logging.hpp"
+#include <atomic>
+#include <iomanip>
 
 namespace coco
 {
-    coco_db::coco_db(const std::string &name) : name(name) {}
+    db_module::db_module(coco_db &db) noexcept : db(db) {}
+    void db_module::drop() noexcept {}
 
-    void coco_db::init()
-    {
-        sensor_types.clear();
-        sensors.clear();
-    }
+    coco_db::coco_db(json::json &&config) noexcept : config(std::move(config)) {}
 
-    std::string coco_db::create_sensor_type(const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters)
+    void coco_db::drop() noexcept
     {
-        size_t c_id = sensor_types.size();
-        while (sensor_types.count(std::to_string(c_id)))
-            c_id++;
-        create_sensor_type(std::to_string(c_id), name, description, std::move(parameters));
-        return std::to_string(c_id);
-    }
-    sensor_type &coco_db::create_sensor_type(const std::string &id, const std::string &name, const std::string &description, std::vector<parameter_ptr> &&parameters)
-    {
-        auto st = new sensor_type(id, name, description, std::move(parameters));
-        sensor_types.emplace(id, st);
-        sensor_types_by_name.emplace(name, *st);
-        return *st;
-    }
-    std::vector<std::reference_wrapper<sensor_type>> coco_db::get_sensor_types()
-    {
-        std::vector<std::reference_wrapper<sensor_type>> sts;
-        sts.reserve(sensor_types.size());
-        for (auto &[id, st] : sensor_types)
-            sts.push_back(*st);
-        return sts;
+        LOG_WARN("Dropping database..");
+        for (auto &[_, mod] : modules)
+            mod->drop();
     }
 
-    std::string coco_db::create_sensor(const std::string &name, sensor_type &type, location_ptr l)
+    std::vector<db_type> coco_db::get_types() noexcept
     {
-        size_t c_id = sensors.size();
-        while (sensors.count(std::to_string(c_id)))
-            c_id++;
-        create_sensor(std::to_string(c_id), name, type, std::move(l));
-        return std::to_string(c_id);
+        LOG_WARN("Retrieving all the types..");
+        return std::vector<db_type>();
     }
-    sensor &coco_db::create_sensor(const std::string &id, const std::string &name, sensor_type &type, location_ptr l)
+    void coco_db::create_type(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props, const json::json &data)
     {
-        auto s = new sensor(id, name, type, std::move(l));
-        type.sensors.push_back(*s);
-        sensors.emplace(id, s);
-        assert(&s->type == &type);
-        return *s;
+        LOG_WARN(std::string("Creating new type: ") + tp_name.data());
+        if (!static_props.as_object().empty())
+            LOG_WARN(std::string("Static properties: ") + static_props.dump());
+        if (!dynamic_props.as_object().empty())
+            LOG_WARN(std::string("Dynamic properties: ") + dynamic_props.dump());
+        if (!data.as_object().empty())
+            LOG_WARN(std::string("Data: ") + data.dump());
     }
-    std::vector<std::reference_wrapper<sensor>> coco_db::get_sensors()
-    {
-        std::vector<std::reference_wrapper<sensor>> sts;
-        sts.reserve(sensors.size());
-        for (auto &[id, st] : sensors)
-            sts.push_back(*st);
-        return sts;
-    }
-    json::json coco_db::get_last_sensor_value([[maybe_unused]] sensor &s) { return s.has_value() ? s.get_value() : json::json(); }
-    json::json coco_db::get_sensor_data([[maybe_unused]] sensor &s, [[maybe_unused]] const std::chrono::system_clock::time_point &from, [[maybe_unused]] const std::chrono::system_clock::time_point &to) { return json::json(json::json_type::array); }
-    void coco_db::delete_sensor(sensor &s)
-    {
-        s.type.sensors.erase(std::find_if(s.type.sensors.begin(), s.type.sensors.end(), [&](auto &s2)
-                                          { return s2.get().id == s.id; }));
-        sensors.erase(s.id);
-    }
+    void coco_db::delete_type(std::string_view name) { LOG_WARN(std::string("Deleting type ") + name.data()); }
 
-    void coco_db::drop()
+    std::vector<db_item> coco_db::get_items() noexcept
     {
-        sensors.clear();
-        sensor_types.clear();
+        LOG_WARN("Retrieving all the items..");
+        return std::vector<db_item>();
+    }
+    std::string coco_db::create_item(const std::vector<std::string> &types, const json::json &props, const std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &val)
+    {
+        static std::atomic<int> counter{0};
+        LOG_WARN(std::string("Creating new item of types: ") + [&types]()
+                 {
+            std::string res;
+            for (const auto &t : types)
+                res += t + " ";
+            return res; }());
+        if (!props.as_object().empty())
+            LOG_WARN(std::string("Properties: ") + props.dump());
+        if (val.has_value())
+        {
+            LOG_WARN(std::string("Value: ") + val->first.dump());
+            std::time_t time = std::chrono::system_clock::to_time_t(val->second);
+            std::tm tm = *std::localtime(&time);
+            std::ostringstream oss;
+            oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+            LOG_WARN(std::string("Timestamp: ") + oss.str());
+        }
+        return std::to_string(counter++);
+    }
+    void coco_db::set_properties(std::string_view itm_id, const json::json &props)
+    {
+        LOG_WARN(std::string("Setting properties for item ") + itm_id.data());
+        if (!props.as_object().empty())
+            LOG_WARN(std::string("Properties: ") + props.dump());
+    }
+    json::json coco_db::get_values(std::string_view itm_id, const std::chrono::system_clock::time_point &from, const std::chrono::system_clock::time_point &to)
+    {
+        LOG_WARN(std::string("Getting values for item ") + itm_id.data());
+        std::time_t from_time = std::chrono::system_clock::to_time_t(from);
+        std::tm from_tm = *std::localtime(&from_time);
+        std::ostringstream from_oss;
+        from_oss << std::put_time(&from_tm, "%Y-%m-%d %H:%M:%S");
+        LOG_WARN(std::string("FROM: ") + from_oss.str());
+        std::time_t to_time = std::chrono::system_clock::to_time_t(to);
+        std::tm to_tm = *std::localtime(&to_time);
+        std::ostringstream to_oss;
+        to_oss << std::put_time(&to_tm, "%Y-%m-%d %H:%M:%S");
+        LOG_WARN(std::string("FROM: ") + to_oss.str());
+        json::json res(json::json_type::array);
+        return res;
+    }
+    void coco_db::set_value(std::string_view itm_id, const json::json &val, const std::chrono::system_clock::time_point &timestamp)
+    {
+        LOG_WARN(std::string("Setting value for item ") + itm_id.data());
+        LOG_WARN(std::string("Value: ") + val.dump());
+        std::time_t time = std::chrono::system_clock::to_time_t(timestamp);
+        std::tm tm = *std::localtime(&time);
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+        LOG_WARN(std::string("Timestamp: ") + oss.str());
+    }
+    void coco_db::delete_item(std::string_view itm_id) { LOG_WARN(std::string("Deleting item ") + itm_id.data()); }
+
+    std::vector<db_rule> coco_db::get_reactive_rules() noexcept
+    {
+        LOG_WARN("Retrieving all the reactive rules..");
+        return std::vector<db_rule>();
+    }
+    void coco_db::create_reactive_rule(std::string_view rule_name, std::string_view rule_content)
+    {
+        LOG_WARN(std::string("Creating new reactive rule: ") + rule_name.data());
+        LOG_WARN(std::string("Content: ") + rule_content.data());
     }
 } // namespace coco

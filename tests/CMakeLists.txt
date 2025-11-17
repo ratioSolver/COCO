@@ -1,9 +1,14 @@
 add_executable(coco_tests test_coco.cpp)
-target_link_libraries(coco_tests PRIVATE COCO ${CMAKE_THREAD_LIBS_INIT} clips mongo::bsoncxx_shared mongo::mongocxx_shared)
-target_compile_definitions(coco_tests PRIVATE COCO_NAME="${COCO_NAME}")
+add_dependencies(coco_tests CoCo)
+target_link_libraries(coco_tests PRIVATE CoCo)
+setup_sanitizers(coco_tests)
 
-if(MONGO_DB)
-    target_compile_definitions(coco_tests PRIVATE MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
-endif()
+add_executable(fcm_tests test_fcm.cpp)
+add_dependencies(fcm_tests CoCo)
+target_link_libraries(fcm_tests PRIVATE CoCo)
+setup_sanitizers(fcm_tests)
 
-add_test(NAME COCOTest00 COMMAND coco_tests)
+add_subdirectory(config)
+
+add_test(NAME CoCoTest00 COMMAND coco_tests)
+add_test(NAME FCMTest00 COMMAND fcm_tests)

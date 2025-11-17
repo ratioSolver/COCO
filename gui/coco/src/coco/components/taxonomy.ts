@@ -1,0 +1,194 @@
+import { App, Component, Selector, SelectorGroup } from "@ratiosolver/flick";
+import { coco } from "../coco";
+import cytoscape from 'cytoscape';
+import { library, icon } from '@fortawesome/fontawesome-svg-core'
+import { faSitemap } from '@fortawesome/free-solid-svg-icons'
+
+library.add(faSitemap);
+
+export class TaxonomyElement extends Component<HTMLLIElement> implements Selector {
+
+  private group: SelectorGroup;
+  private a: HTMLAnchorElement;
+
+  constructor(group: SelectorGroup) {
+    super(document.createElement('li'));
+    this.group = group;
+    this.node.classList.add('nav-item', 'list-group-item');
+
+    this.a = document.createElement('a');
+    this.a.classList.add('nav-link', 'd-flex', 'align-items-center');
+    this.a.href = '#';
+    const icn = icon(faSitemap).node[0];
+    icn.classList.add('me-2');
+    this.a.append(icn);
+    this.a.append(document.createTextNode('Taxonomy'));
+    this.a.addEventListener('click', (event) => {
+      event.preventDefault();
+      group.set_selected(this);
+    });
+
+    this.node.append(this.a);
+    group.add_selector(this);
+  }
+
+  override unmounting(): void { this.group.remove_selector(this); }
+
+  select(): void {
+    this.a.classList.add('active');
+    App.get_instance().selected_component(new TaxonomyGraph());
+  }
+  unselect(): void { this.a.classList.remove('active'); }
+}
+
+export class TaxonomyGraph extends Component<HTMLDivElement> implements coco.CoCoListener, coco.taxonomy.TypeListener {
+
+  private cy: cytoscape.Core | null = null;
+  private layout = {
+    name: 'dagre',
+    rankDir: 'BT',
+    fit: false,
+    nodeDimensionsIncludeLabels: true
+  };
+  private tooltip_style = "position: absolute; top: 0; left: 0; background-color: #444; color: white; border-radius: 4px; opacity: 0.8;";
+
+  constructor(id: string = 'taxonomy-graph') {
+    super(document.createElement('div'));
+    this.node.id = id;
+    this.node.classList.add('d-flex', 'flex-column', 'flex-grow-1');
+  }
+
+  override mounted(): void {
+    this.cy = cytoscape({
+      container: this.node,
+      layout: this.layout,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'shape': 'ellipse',
+            'label': 'data(id)',
+            'border-width': '1px',
+            'border-color': '#666',
+            'background-color': '#FFD700',
+          }
+        },
+        {
+          selector: 'edge[type="is_a"]',
+          style: {
+            'curve-style': 'bezier',
+            'line-color': '#666',
+            'target-arrow-color': '#666',
+            'target-arrow-shape': 'triangle',
+            'width': '1px'
+          }
+        },
+        {
+          selector: 'edge[type="static_property"]',
+          style: {
+            'curve-style': 'bezier',
+            'label': 'data(name)',
+            'line-color': '#666',
+            'target-arrow-color': '#666',
+            'target-arrow-shape': 'diamond',
+            'width': '1px',
+            'line-style': 'dashed'
+          }
+        },
+        {
+          selector: 'edge[type="dynamic_property"]',
+          style: {
+            'curve-style': 'bezier',
+            'label': 'data(name)',
+            'line-color': '#666',
+            'target-arrow-color': '#666',
+            'target-arrow-shape': 'diamond',
+            'width': '1px',
+            'line-style': 'dotted'
+          }
+        }
+      ]
+    });
+
+    for (const tp of coco.CoCo.get_instance().get_types())
+      this.create_type_node(tp);
+    for (const tp of coco.CoCo.get_instance().get_types()) {
+      const static_props = tp.get_static_properties();
+      if (static_props)
+        for (const [name, prop] of static_props)
+          if (prop instanceof coco.taxonomy.ItemProperty)
+            this.cy!.add({ group: 'edges', data: { id: `sp-${tp.get_name()}-${name}-${prop.get_domain().get_name()}`, type: 'static_property', name: name, source: tp.get_name(), target: prop.get_domain().get_name() } });
+      const dynamic_props = tp.get_dynamic_properties();
+      if (dynamic_props)
+        for (const [name, prop] of dynamic_props)
+          if (prop instanceof coco.taxonomy.ItemProperty)
+            this.cy!.add({ group: 'edges', data: { id: `dp-${tp.get_name()}-${name}-${prop.get_domain().get_name()}`, type: 'dynamic_property', name: name, source: tp.get_name(), target: prop.get_domain().get_name() } });
+    }
+
+    this.cy.layout(this.layout).run();
+
+    coco.CoCo.get_instance().add_coco_listener(this);
+  }
+
+  override unmounting(): void {
+    for (const tp of coco.CoCo.get_instance().get_types())
+      tp.remove_type_listener(this);
+    coco.CoCo.get_instance().remove_coco_listener(this);
+  }
+
+  new_type(type: coco.taxonomy.Type): void {
+    this.create_type_node(type);
+    this.cy!.layout(this.layout).run();
+    type.add_type_listener(this);
+  }
+
+  data_updated(_: coco.taxonomy.Type): void { }
+  static_properties_updated(type: coco.taxonomy.Type): void {
+    this.cy!.elements(`edge[id ^= "sp-${type.get_name()}"]`).remove();
+    const static_props = type.get_static_properties();
+    if (static_props)
+      for (const [name, prop] of static_props)
+        if (prop instanceof coco.taxonomy.ItemProperty)
+          this.cy!.add({ group: 'edges', data: { id: `sp-${type.get_name()}-${name}-${prop.get_domain().get_name()}`, type: 'static_property', name: name, source: type.get_name(), target: prop.get_domain().get_name() } });
+  }
+  dynamic_properties_updated(type: coco.taxonomy.Type): void {
+    this.cy!.elements(`edge[id ^= "dp-${type.get_name()}"]`).remove();
+    const dynamic_props = type.get_static_properties();
+    if (dynamic_props)
+      for (const [name, prop] of dynamic_props)
+        if (prop instanceof coco.taxonomy.ItemProperty)
+          this.cy!.add({ group: 'edges', data: { id: `dp-${type.get_name()}-${name}-${prop.get_domain().get_name()}`, type: 'dynamic_property', name: name, source: type.get_name(), target: prop.get_domain().get_name() } });
+  }
+
+  new_item(_: coco.taxonomy.Item): void { }
+
+  private create_type_node(type: coco.taxonomy.Type): cytoscape.CollectionReturnValue {
+    const tn = this.cy!.add({ group: 'nodes', data: { id: type.get_name() } });
+    tn.on('mouseover', () => {
+      const popper = tn.popper({
+        content: () => {
+          var div = document.createElement('div');
+          div.style.cssText = this.tooltip_style;
+          div.innerHTML = type.to_string();
+          document.body.appendChild(div);
+          return div;
+        }
+      });
+      tn.scratch('popper', popper);
+    });
+    tn.on('mouseout', () => {
+      const popper = tn.scratch('popper');
+      if (popper) {
+        popper.destroy();
+        tn.removeScratch('popper');
+      }
+    });
+    tn.on('position', () => {
+      const popper = tn.scratch('popper');
+      if (popper)
+        popper.update();
+    });
+
+    return tn;
+  }
+}

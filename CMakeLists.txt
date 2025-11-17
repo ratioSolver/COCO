@@ -1,105 +1,223 @@
-cmake_minimum_required(VERSION 3.0.0)
-project(COCO VERSION 0.1.0)
+cmake_minimum_required(VERSION 3.21)
+project(CoCo VERSION 0.2.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined")
-
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-include(GenerateExportHeader)
-include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
-
-find_package(Threads REQUIRED)
+# Option to enable interactive test mode globally
+option(INTERACTIVE_TEST "Enable interactive test mode" OFF)
+if(INTERACTIVE_TEST)
+    add_compile_definitions(INTERACTIVE_TEST)
+endif()
 
 include(CTest)
 enable_testing()
 
+set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
+
 set(CLIPS_INCLUDE_DIR /usr/local/include/clips CACHE PATH "CLIPS include directory")
 set(CLIPS_LIB_DIR /usr/local/lib CACHE PATH "CLIPS library directory")
 
-set(COCO_NAME "CoCo" CACHE STRING "The CoCo Application Name")
-set(MONGO_DB ON CACHE BOOL "Enables MongoDB")
+option(BUILD_DELIBERATIVE "Build CoCo deliberative" OFF)
+option(BUILD_MONGODB "Build MongoDB connection" OFF)
+option(BUILD_FCM "Build Firebase Cloud Messaging" OFF)
+option(BUILD_MQTT "Build MQTT middleware" OFF)
+option(BUILD_LLM "Build CoCo LLM" OFF)
+option(BUILD_COCO_SERVER "Build the CoCo server" OFF)
+option(BUILD_COCO_EXECUTABLE "Build the CoCo executable" OFF)
 
-file(GLOB COCO_SOURCES src/*.cpp)
-file(GLOB COCO_HEADERS include/*.h)
+if(BUILD_DELIBERATIVE)
+    set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
+endif()
 
-if(MONGO_DB)
+if(BUILD_FCM)
+    set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
+    set(RATIONET_SSL ON CACHE BOOL "Enable SSL" FORCE)
+    set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
+endif()
+
+if(BUILD_MQTT)
+    option(MQTT_SECURE "Build MQTT secure connection" OFF)
+    option(MQTT_AUTH "Build MQTT authentication" OFF)
+endif()
+
+if(BUILD_LLM)
+    set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
+    set(RATIONET_SSL ON CACHE BOOL "Enable SSL" FORCE)
+endif()
+
+if (BUILD_COCO_SERVER)
+    option(BUILD_SECURE "Build CoCo secure server (HTTPS)" OFF)
+    option(BUILD_AUTH "Build CoCo authentication" OFF)
+    option(BUILD_WEB_APP "Build the CoCo web application" OFF)
+    option(BUILD_ANDROID "Build the CoCo Android application" OFF)
+    set(CLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gui/app CACHE STRING "Client directory")
+
+    if(BUILD_SECURE)
+        set(RATIONET_SSL ON CACHE BOOL "Enable SSL" FORCE)
+    endif()
+
+    if(BUILD_AUTH)
+        set(BUILD_MONGODB ON CACHE BOOL "Build MongoDB connection" FORCE)
+        set(RATIONET_SSL ON CACHE BOOL "Enable SSL" FORCE)
+        set(BUILD_CRYPTO ON CACHE BOOL "Build the crypto library" FORCE)
+    endif()
+endif()
+
+message(STATUS "CoCo name: ${COCO_NAME}")
+message(STATUS "Build CoCo deliberative: ${BUILD_DELIBERATIVE}")
+message(STATUS "Build MongoDB connection: ${BUILD_MONGODB}")
+if(BUILD_MONGODB)
+    message(STATUS "Build MongoDB authentication: ${MONGODB_AUTH}")
+endif()
+message(STATUS "Build CoCo server: ${BUILD_COCO_SERVER}")
+message(STATUS "Build Firebase Cloud Messaging: ${BUILD_FCM}")
+message(STATUS "Build MQTT middleware: ${BUILD_MQTT}")
+if(BUILD_MQTT)
+    message(STATUS "Build MQTT authentication: ${MQTT_AUTH}")
+    if(MQTT_AUTH)
+        message(STATUS "MQTT user: ${MQTT_USER}")
+    endif()
+endif()
+message(STATUS "Build CoCo LLM: ${BUILD_LLM}")
+if(BUILD_COCO_SERVER)
+    message(STATUS "Build secure server (HTTPS): ${BUILD_SECURE}")
+    message(STATUS "Build CoCo authentication: ${BUILD_AUTH}")
+    if(BUILD_AUTH)
+        message(STATUS "Build Firebase Cloud Messaging: ${BUILD_FCM}")
+    endif()
+    message(STATUS "Build CoCo web application: ${BUILD_WEB_APP}")
+    message(STATUS "Client directory: ${CLIENT_DIR}")
+    message(STATUS "Build CoCo Android application: ${BUILD_ANDROID}")
+endif()
+
+add_library(CoCo src/coco.cpp src/coco_module.cpp src/coco_property.cpp src/coco_type.cpp src/coco_item.cpp src/coco_db.cpp)
+target_compile_features(CoCo PUBLIC cxx_std_17)
+target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> ${CLIPS_INCLUDE_DIR})
+if(NOT TARGET json)
+    add_subdirectory(extern/json)
+endif()
+add_dependencies(CoCo json)
+target_link_directories(CoCo PUBLIC ${CLIPS_LIB_DIR})
+target_link_libraries(CoCo PUBLIC json clips)
+target_compile_definitions(CoCo PUBLIC COCO_NAME="${COCO_NAME}")
+setup_sanitizers(CoCo)
+
+if(BUILD_DELIBERATIVE)
+    add_subdirectory(extern/plexa)
+
+    target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/deliberative>)
+    target_sources(CoCo PRIVATE src/deliberative/coco_deliberative.cpp src/deliberative/coco_executor.cpp src/deliberative/deliberative_db.cpp)
+    target_compile_definitions(CoCo PUBLIC BUILD_DELIBERATIVE)
+
+    if (BUILD_COCO_SERVER)
+        target_sources(CoCo PRIVATE src/deliberative/deliberative_server.cpp)
+    endif()
+
+    add_dependencies(CoCo PlExA)
+    target_link_libraries(CoCo PUBLIC PlExA)
+endif()
+
+if(BUILD_MONGODB)
     find_package(mongocxx REQUIRED)
     find_package(bsoncxx REQUIRED)
 
-    set(MONGODB_HOST "localhost" CACHE STRING "The MongoDB Host")
-    set(MONGODB_PORT "27017" CACHE STRING "The MongoDB Port")
+    target_sources(CoCo PRIVATE src/db/mongo/mongo_db.cpp)
+    target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/db/mongo> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})
+    target_link_libraries(CoCo PUBLIC mongo::bsoncxx_shared mongo::mongocxx_shared)
+    target_compile_definitions(CoCo PUBLIC BUILD_MONGODB)
 
-    message(STATUS "MongoDB host:           ${MONGODB_HOST}")
-    message(STATUS "MongoDB port:           ${MONGODB_PORT}")
-
-    list(APPEND COCO_SOURCES src/mongo/mongo_db.cpp)
-    list(APPEND COCO_HEADERS include/mongo/mongo_db.h)
+    if(MONGODB_AUTH)
+        target_compile_definitions(CoCo PUBLIC MONGODB_AUTH)
+    endif()
 endif()
 
-option(SOLVING_MONITORING "Publishes any changes during the resolution process" OFF)
+if(BUILD_FCM)
+    if(NOT TARGET ratioNet)
+        add_subdirectory(extern/rationet)
+    endif()
 
-set(MULTIPLE_EXECUTORS ON CACHE BOOL "Allows different executors" FORCE)
-set(COMPUTE_NAMES ON CACHE BOOL "Computes the objects' names" FORCE)
+    target_sources(CoCo PRIVATE src/fcm/coco_fcm.cpp src/fcm/fcm_db.cpp)
+    target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/fcm>)
 
-message(STATUS "CoCo app name:          ${COCO_NAME}")
+    if (BUILD_COCO_SERVER)
+        target_sources(CoCo PRIVATE src/fcm/fcm_server.cpp)
+    endif()
 
-add_subdirectory(extern/plexa)
-
-add_library(${PROJECT_NAME} STATIC ${COCO_SOURCES})
-GENERATE_EXPORT_HEADER(${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> $<INSTALL_INTERFACE:> ${CLIPS_INCLUDE_DIR})
-target_link_directories(${PROJECT_NAME} PUBLIC ${CLIPS_LIB_DIR})
-target_link_libraries(${PROJECT_NAME} PUBLIC PlExA clips)
-target_compile_definitions(${PROJECT_NAME} PUBLIC COCO_NAME="${COCO_NAME}")
-
-if(MONGO_DB)
-    target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/mongo $<INSTALL_INTERFACE:> ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR})
-    target_link_libraries(${PROJECT_NAME} PUBLIC mongo::bsoncxx_shared mongo::mongocxx_shared)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC MONGODB_HOST="${MONGODB_HOST}" MONGODB_PORT="${MONGODB_PORT}")
+    add_dependencies(CoCo ratioNet)
+    target_link_libraries(CoCo PUBLIC ratioNet)
+    target_compile_definitions(CoCo PUBLIC BUILD_FCM)
 endif()
 
-configure_file(rules/rules.clp rules/rules.clp COPYONLY)
+if(BUILD_MQTT)
+    find_package(PahoMqttCpp REQUIRED)
 
-message(STATUS "Solving monitoring:     ${SOLVING_MONITORING}")
-if(SOLVING_MONITORING)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE SOLVING_MONITORING)
+    target_include_directories(CoCo PUBLIC ${PAHO_MQTT_CPP_INCLUDE_DIR} $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/mqtt>)
+    target_sources(CoCo PRIVATE src/mqtt/coco_mqtt.cpp)
+    target_link_libraries(CoCo PUBLIC PahoMqttCpp::paho-mqttpp3)
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
 endif()
+
+if(BUILD_LLM)
+    if(NOT TARGET ratioNet)
+        add_subdirectory(extern/rationet)
+    endif()
+
+    target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/llm>)
+    target_sources(CoCo PRIVATE src/llm/coco_llm.cpp)
+
+    add_dependencies(CoCo ratioNet)
+    target_link_libraries(CoCo PUBLIC ratioNet)
+    target_compile_definitions(CoCo PUBLIC BUILD_LLM)
+endif()
+
+if(BUILD_COCO_SERVER)
+    if(NOT TARGET ratioNet)
+        add_subdirectory(extern/rationet)
+    endif()
+
+    target_sources(CoCo PRIVATE src/server/coco_server.cpp)
+    target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/server> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/auth>)
+    add_dependencies(CoCo ratioNet)
+    target_link_libraries(CoCo PUBLIC ratioNet)
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_SERVER CLIENT_DIR="${CLIENT_DIR}")
+
+    if(BUILD_SECURE)
+        target_compile_definitions(CoCo PUBLIC BUILD_SECURE)
+    endif()
+
+    if(BUILD_AUTH)
+        target_sources(CoCo PRIVATE src/auth/coco_auth.cpp src/auth/auth_db.cpp)
+        target_compile_definitions(CoCo PUBLIC BUILD_AUTH)
+    else()
+        target_sources(CoCo PRIVATE src/auth/coco_noauth.cpp)
+        target_compile_definitions(CoCo PUBLIC BUILD_NOAUTH)
+    endif()
+
+    add_custom_target(npm_coco_install ALL COMMAND npm install WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/coco COMMENT "Installing the CoCo TypeScript library" VERBATIM)
+    add_custom_target(npm_coco_build ALL COMMAND npm run build WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/coco COMMENT "Building the CoCo TypeScript library" VERBATIM DEPENDS npm_coco_install)
+
+    if(BUILD_WEB_APP)
+        add_custom_target(npm_app_install ALL COMMAND npm install WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Installing the CoCo web application" VERBATIM DEPENDS npm_coco_build)
+        add_custom_target(npm_app_build ALL COMMAND npm run build WORKING_DIRECTORY ${CLIENT_DIR} COMMENT "Building the CoCo web application" VERBATIM DEPENDS npm_app_install)
+    endif()
+
+    if(BUILD_ANDROID)
+        add_custom_target(mobile_coco_build ALL COMMAND ./gradlew build WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gui/mobile COMMENT "Building the CoCo mobile application" VERBATIM)
+    endif()
+endif()
+
+if (BUILD_COCO_EXECUTABLE)
+    add_executable(CoCoService src/exec/main.cpp)
+    add_dependencies(CoCoService CoCo)
+    target_link_libraries(CoCoService PUBLIC CoCo)
+
+    setup_sanitizers(CoCoService)
+endif()
+
+add_subdirectory(src/config)
 
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic)
-endif()
-
-install(
-    TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-install(
-    FILES ${COCO_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_export.h
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
-)
-install(
-    FILES rules/rules.clp
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-configure_package_config_file(src/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME} PATH_VARS CMAKE_INSTALL_INCLUDEDIR)
-write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake VERSION 1.0.0 COMPATIBILITY SameMajorVersion)
-install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-)
-
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
+set(CPACK_PROJECT_NAME CoCo)
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)

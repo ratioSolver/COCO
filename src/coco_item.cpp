@@ -203,7 +203,6 @@ namespace coco
                 }
         auto item_fact = FBAssert(item_fact_builder);
         assert(item_fact);
-        assert(item_fact);
         RetainFact(item_fact);
         LOG_TRACE(cc.to_string(item_fact));
         FBDispose(item_fact_builder);

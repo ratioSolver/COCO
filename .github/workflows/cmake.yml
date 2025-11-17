@@ -5,6 +5,9 @@ on: [push, pull_request]
 jobs:
   ubuntu-address-undefined-coverage:
     runs-on: ubuntu-latest
+    env:
+      MONGODB_HOST: localhost
+      MONGODB_PORT: "27017"
 
     services:
       mongo:
@@ -68,6 +71,9 @@ jobs:
 
   ubuntu-memcheck:
     runs-on: ubuntu-latest
+    env:
+      MONGODB_HOST: localhost
+      MONGODB_PORT: "27017"
 
     steps:
       - uses: actions/checkout@v4
@@ -105,6 +111,9 @@ jobs:
 
   ubuntu-release:
     runs-on: ubuntu-latest
+    env:
+      MONGODB_HOST: localhost
+      MONGODB_PORT: "27017"
 
     services:
       mongo:

@@ -32,10 +32,14 @@ namespace coco
     const char *host = std::getenv("MONGODB_HOST");
     if (host)
       uri += host;
+    else
+      uri += "localhost";
     uri += ":";
     const char *port = std::getenv("MONGODB_PORT");
     if (port)
       uri += port;
+    else
+      uri += "27017";
     return uri;
   }
 

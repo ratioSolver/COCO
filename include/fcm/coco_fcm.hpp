@@ -9,7 +9,7 @@ namespace coco
 {
   [[nodiscard]] inline json::json default_fcm_config() noexcept
   {
-    std::ifstream file("run/secrets/fcm.json");
+    std::ifstream file("/run/secrets/fcm_json");
     return json::load(file);
   }
 

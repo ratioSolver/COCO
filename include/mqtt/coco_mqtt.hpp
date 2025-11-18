@@ -21,13 +21,13 @@ namespace coco
     if (host)
       uri += host;
     else
-      uri += MQTT_HOST;
+      uri += "localhost";
     uri += ":";
     const char *port = std::getenv("MQTT_PORT");
     if (port)
       uri += port;
     else
-      uri += MQTT_PORT;
+      uri += "1883";
     return uri;
   }
 

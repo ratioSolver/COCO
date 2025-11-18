@@ -152,7 +152,7 @@ if(BUILD_MQTT)
     target_include_directories(CoCo PUBLIC ${PAHO_MQTT_CPP_INCLUDE_DIR} $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/mqtt>)
     target_sources(CoCo PRIVATE src/mqtt/coco_mqtt.cpp)
     target_link_libraries(CoCo PUBLIC PahoMqttCpp::paho-mqttpp3)
-    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_MQTT MQTT_HOST="${MQTT_HOST}" MQTT_PORT="${MQTT_PORT}")
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_MQTT)
 endif()
 
 if(BUILD_LLM)

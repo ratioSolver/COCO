@@ -150,6 +150,10 @@ if(BUILD_MQTT)
     target_sources(CoCo PRIVATE src/mqtt/coco_mqtt.cpp)
     target_link_libraries(CoCo PUBLIC PahoMqttCpp::paho-mqttpp3)
     target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS BUILD_MQTT)
+
+    if(MQTT_AUTH)
+        target_compile_definitions(CoCo PUBLIC MQTT_AUTH)
+    endif()
 endif()
 
 if(BUILD_LLM)

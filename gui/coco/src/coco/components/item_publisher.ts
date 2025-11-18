@@ -159,6 +159,10 @@ export class ItemPublisher extends PayloadComponent<HTMLDivElement, coco.taxonom
       if (val) {
         const els: HTMLElement[] = [];
         for (const [name, v] of Object.entries(val.data)) {
+          if (!props.has(name)) {
+            console.warn(`Value "${name}" is not a dynamic property of item's types.`);
+            continue;
+          }
           const v_val = this.v_values.get(name)!;
           els.push(v_val.get_element().children[0] as HTMLElement);
           if (!this.v_checks.get(name)!.checked)

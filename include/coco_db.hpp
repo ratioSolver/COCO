@@ -80,6 +80,7 @@ namespace coco
 
     [[nodiscard]] virtual std::vector<db_type> get_types() noexcept;
     virtual void create_type(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props, const json::json &data);
+    virtual void set_properties(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props);
     virtual void delete_type(std::string_view tp_name);
 
     [[nodiscard]] virtual std::vector<db_item> get_items() noexcept;

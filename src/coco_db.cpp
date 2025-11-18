@@ -32,6 +32,14 @@ namespace coco
         if (!data.as_object().empty())
             LOG_WARN(std::string("Data: ") + data.dump());
     }
+    void coco_db::set_properties(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props)
+    {
+        LOG_WARN(std::string("Setting properties for type ") + tp_name.data());
+        if (!static_props.as_object().empty())
+            LOG_WARN(std::string("Static properties: ") + static_props.dump());
+        if (!dynamic_props.as_object().empty())
+            LOG_WARN(std::string("Dynamic properties: ") + dynamic_props.dump());
+    }
     void coco_db::delete_type(std::string_view name) { LOG_WARN(std::string("Deleting type ") + name.data()); }
 
     std::vector<db_item> coco_db::get_items() noexcept

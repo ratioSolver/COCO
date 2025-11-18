@@ -72,6 +72,23 @@ namespace coco
         if (!types_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert type: " + std::string(name));
     }
+    void mongo_db::set_properties(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props)
+    {
+        bsoncxx::builder::basic::document update_fields; // Fields to set
+        if (!static_props.as_object().empty())
+            update_fields.append(bsoncxx::builder::basic::kvp("static_properties", bsoncxx::from_json(static_props.dump())));
+        if (!dynamic_props.as_object().empty())
+            update_fields.append(bsoncxx::builder::basic::kvp("dynamic_properties", bsoncxx::from_json(dynamic_props.dump())));
+
+        bsoncxx::builder::basic::document filter_doc; // Prepare the filter document
+        filter_doc.append(bsoncxx::builder::basic::kvp("_id", tp_name.data()));
+
+        bsoncxx::builder::basic::document update_doc; // Prepare the update document
+        update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
+
+        if (!types_collection.update_one(filter_doc.view(), update_doc.view()))
+            throw std::invalid_argument("Failed to update type: " + std::string(tp_name));
+    }
     void mongo_db::delete_type(std::string_view name)
     {
         if (!items_collection.update_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("types", name.data())), bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("types", name.data()))))))

@@ -43,7 +43,12 @@ namespace coco
         LOG_DEBUG("Retrieving all types");
         auto db_tps = db.get_types();
         LOG_DEBUG("Retrieved " << db_tps.size() << " types");
-        set_types(*this, std::move(db_tps));
+        // First create all types..
+        for (auto &db_tp : db_tps)
+            make_type(db_tp.name, db_tp.data.has_value() ? std::move(*db_tp.data) : json::json{});
+        // Then set their properties (to handle dependencies)..
+        for (auto &db_tp : db_tps)
+            get_type(db_tp.name).set_properties(db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
 
         LOG_DEBUG("Retrieving all items");
         auto db_itms = db.get_items();
@@ -309,11 +314,18 @@ namespace coco
     void set_types(coco &cc, std::vector<db_type> &&db_types) noexcept
     {
         // First create all types..
+        std::lock_guard<std::recursive_mutex> _(cc.mtx);
         for (auto &db_tp : db_types)
+        {
+            cc.db.create_type(db_tp.name, db_tp.static_props.has_value() ? *db_tp.static_props : json::json(), db_tp.dynamic_props.has_value() ? *db_tp.dynamic_props : json::json(), db_tp.data.has_value() ? *db_tp.data : json::json());
             cc.make_type(db_tp.name, db_tp.data.has_value() ? std::move(*db_tp.data) : json::json{});
+        }
         // Then set their properties (to handle dependencies)..
         for (auto &db_tp : db_types)
+        {
+            cc.db.set_properties(db_tp.name, db_tp.static_props.has_value() ? *db_tp.static_props : json::json(), db_tp.dynamic_props.has_value() ? *db_tp.dynamic_props : json::json());
             cc.get_type(db_tp.name).set_properties(db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
+        }
     }
 
     void add_type(Environment *, UDFContext *udfc, UDFValue *)

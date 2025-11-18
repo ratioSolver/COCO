@@ -59,6 +59,10 @@ export class ItemProperties extends PayloadComponent<HTMLDivElement, coco.taxono
       const ps = this.payload.get_properties();
       if (ps)
         for (const [name, val] of Object.entries(ps)) {
+          if (!static_props.has(name)) {
+            console.warn(`Property "${name}" is not a static property of item's types.`);
+            continue;
+          }
           const p_val = this.p_values.get(name)!;
           blink(p_val);
           p_val.textContent = static_props.get(name)!.get_type().to_string(val);

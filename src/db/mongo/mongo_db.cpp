@@ -1,6 +1,7 @@
 #include "mongo_db.hpp"
 #include "logging.hpp"
 #include "crypto.hpp"
+#include <mongocxx/client.hpp>
 #include <bsoncxx/json.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
 #include <cassert>
@@ -8,25 +9,24 @@
 namespace coco
 {
     mongo_module::mongo_module(mongo_db &db) noexcept : db_module(db) {}
-    mongocxx::database &mongo_module::get_db() const noexcept { return static_cast<mongo_db &>(db).db; }
+    [[nodiscard]] mongocxx::v_noabi::pool::entry mongo_module::get_client() const noexcept { return static_cast<mongo_db &>(db).pool.acquire(); }
 
-    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), conn(mongocxx::uri(mongodb_uri.data())), db(conn[config["name"].get<std::string>()]), types_collection(db["types"]), items_collection(db["items"]), item_data_collection(db["item_data"]), reactive_rules_collection(db["reactive_rules"])
+    mongo_db::mongo_db(json::json &&cnfg, std::string_view mongodb_uri) noexcept : coco_db(std::move(cnfg)), pool(mongocxx::uri(mongodb_uri.data())), db_name(config["name"].get<std::string>())
     {
-        assert(conn);
-        for ([[maybe_unused]] const auto &c : conn.uri().hosts())
-            LOG_DEBUG("Connected to MongoDB server at " + c.name + ":" + std::to_string(c.port));
-
+        LOG_DEBUG("Connecting to MongoDB at " + std::string(mongodb_uri));
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
         assert(db);
-        assert(types_collection);
-        assert(items_collection);
-        assert(item_data_collection);
-        assert(reactive_rules_collection);
 
+        auto item_data_collection = db[item_data_collection_name];
+        assert(item_data_collection);
         if (item_data_collection.list_indexes().begin() == item_data_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for item data collection");
             item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
+        auto reactive_rules_collection = db[reactive_rules_collection_name];
+        assert(reactive_rules_collection);
         if (reactive_rules_collection.list_indexes().begin() == reactive_rules_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for reactive rules collection");
@@ -34,15 +34,13 @@ namespace coco
         }
     }
 
-    void mongo_db::drop() noexcept
-    {
-        coco_db::drop();
-        db.drop();
-    }
-
     std::vector<db_type> mongo_db::get_types() noexcept
     {
         std::vector<db_type> types;
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto types_collection = db[types_collection_name];
+        assert(types_collection);
         // Sort by _id to have a deterministic order (item properties require domain types to be already defined)..
         for (const auto &doc : types_collection.find({}, mongocxx::options::find{}.sort(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", 1)))))
         {
@@ -69,6 +67,10 @@ namespace coco
             doc.append(bsoncxx::builder::basic::kvp("dynamic_properties", bsoncxx::from_json(dynamic_props.dump())));
         if (!data.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("data", bsoncxx::from_json(data.dump())));
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto types_collection = db[types_collection_name];
+        assert(types_collection);
         if (!types_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert type: " + std::string(name));
     }
@@ -86,19 +88,33 @@ namespace coco
         bsoncxx::builder::basic::document update_doc; // Prepare the update document
         update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
 
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto types_collection = db[types_collection_name];
+        assert(types_collection);
         if (!types_collection.update_one(filter_doc.view(), update_doc.view()))
             throw std::invalid_argument("Failed to update type: " + std::string(tp_name));
     }
     void mongo_db::delete_type(std::string_view name)
     {
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto items_collection = db[items_collection_name];
+        assert(items_collection);
         if (!items_collection.update_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("types", name.data())), bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$pull", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("types", name.data()))))))
             throw std::invalid_argument("Failed to remove type from items: " + std::string(name));
+        auto types_collection = db[types_collection_name];
+        assert(types_collection);
         if (!types_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", name.data()))))
             throw std::invalid_argument("Failed to delete type: " + std::string(name));
     }
 
     [[nodiscard]] std::vector<db_item> mongo_db::get_items() noexcept
     {
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto items_collection = db[items_collection_name];
+        assert(items_collection);
         std::vector<db_item> items;
         for (const auto &doc : items_collection.find({}))
         {
@@ -136,6 +152,10 @@ namespace coco
             data_doc.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::types::b_date{val->second}));
             doc.append(bsoncxx::builder::basic::kvp("value", data_doc));
         }
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto items_collection = db[items_collection_name];
+        assert(items_collection);
         auto result = items_collection.insert_one(doc.view());
         if (!result)
             throw std::invalid_argument("Failed to insert item");
@@ -174,6 +194,11 @@ namespace coco
         filter_doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}));
         bsoncxx::builder::basic::document update_doc; // Prepare the update document
         update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
+
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto items_collection = db[items_collection_name];
+        assert(items_collection);
         if (!items_collection.update_one(filter_doc.view(), update_doc.view()))
             throw std::invalid_argument("Failed to set properties for item: " + std::string(itm_id));
     }
@@ -183,6 +208,11 @@ namespace coco
         query.append(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}));
         query.append(bsoncxx::builder::basic::kvp("timestamp", bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$gte", bsoncxx::types::b_date{from}), bsoncxx::builder::basic::kvp("$lte", bsoncxx::types::b_date{to}))));
         json::json data = json::json_type::array;
+
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto item_data_collection = db[item_data_collection_name];
+        assert(item_data_collection);
         for (const auto &doc : item_data_collection.find(query.view()))
             data.push_back(json::json{{"data", json::load(bsoncxx::to_json(doc["data"].get_document().view()))}, {"timestamp", doc["timestamp"].get_date().to_int64()}});
         return data;
@@ -232,6 +262,11 @@ namespace coco
         filter_doc.append(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}));
         bsoncxx::builder::basic::document update_doc;
         update_doc.append(bsoncxx::builder::basic::kvp("$set", update_fields.view()));
+
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto items_collection = db[items_collection_name];
+        assert(items_collection);
         if (!items_collection.update_one(filter_doc.view(), update_doc.view()))
             throw std::invalid_argument("Failed to set value for item: " + std::string(itm_id));
 
@@ -242,13 +277,22 @@ namespace coco
         update_data_doc.append(bsoncxx::builder::basic::kvp("$set", update_val_fields.view()));
         mongocxx::options::update update_opts;
         update_opts.upsert(true); // Create a new document if no document matches the filter
+
+        auto item_data_collection = db[item_data_collection_name];
+        assert(item_data_collection);
         if (!item_data_collection.update_one(filter_data_doc.view(), update_data_doc.view(), update_opts))
             throw std::invalid_argument("Failed to set value for item: " + std::string(itm_id));
     }
     void mongo_db::delete_item(std::string_view itm_id)
     {
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto item_data_collection = db[item_data_collection_name];
+        assert(item_data_collection);
         if (!item_data_collection.delete_many(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("item_id", bsoncxx::oid{itm_id.data()}))))
             throw std::invalid_argument("Failed to delete item data for item: " + std::string(itm_id));
+        auto items_collection = db[items_collection_name];
+        assert(items_collection);
         if (!items_collection.delete_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", bsoncxx::oid{itm_id.data()}))))
             throw std::invalid_argument("Failed to delete item: " + std::string(itm_id));
     }
@@ -256,6 +300,10 @@ namespace coco
     std::vector<db_rule> mongo_db::get_reactive_rules() noexcept
     {
         std::vector<db_rule> rules;
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto reactive_rules_collection = db[reactive_rules_collection_name];
+        assert(reactive_rules_collection);
         for (const auto &doc : reactive_rules_collection.find({}))
         {
             auto name = doc["name"].get_string().value;
@@ -269,8 +317,20 @@ namespace coco
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", rule_name.data()));
         doc.append(bsoncxx::builder::basic::kvp("content", rule_content.data()));
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        auto reactive_rules_collection = db[reactive_rules_collection_name];
+        assert(reactive_rules_collection);
         if (!reactive_rules_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
+    }
+
+    void mongo_db::drop() noexcept
+    {
+        coco_db::drop();
+        auto client = pool.acquire();
+        auto db = (*client)[db_name];
+        db.drop();
     }
 
     bsoncxx::array::value to_bson_array(const json::json &j)

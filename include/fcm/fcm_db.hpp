@@ -13,7 +13,6 @@ namespace coco
     void remove_token(std::string_view id, std::string_view token);
     [[nodiscard]] std::vector<std::string> get_tokens(std::string_view id) noexcept;
 
-  private:
-    mongocxx::collection fcm_collection;
+    static constexpr const char *fcm_collection_name = "fcm_tokens";
   };
 } // namespace coco

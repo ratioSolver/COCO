@@ -12,7 +12,6 @@ namespace coco
     [[nodiscard]] std::vector<db_rule> get_deliberative_rules() noexcept;
     void create_deliberative_rule(std::string_view rule_name, std::string_view rule_content);
 
-  private:
-    mongocxx::collection deliberative_rules_collection;
+    static constexpr const char *deliberative_collection_name = "deliberative_rules";
   };
 } // namespace coco

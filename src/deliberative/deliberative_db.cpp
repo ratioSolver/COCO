@@ -5,8 +5,11 @@
 
 namespace coco
 {
-    deliberative_db::deliberative_db(mongo_db &db) noexcept : mongo_module(db), deliberative_rules_collection(get_db()["deliberative_rules"])
+    deliberative_db::deliberative_db(mongo_db &db) noexcept : mongo_module(db)
     {
+        auto client = get_client();
+        auto database = (*client)[db.get_db_name()];
+        auto deliberative_rules_collection = database[deliberative_collection_name];
         assert(deliberative_rules_collection);
         if (deliberative_rules_collection.list_indexes().begin() == deliberative_rules_collection.list_indexes().end())
         {
@@ -18,6 +21,10 @@ namespace coco
     std::vector<db_rule> deliberative_db::get_deliberative_rules() noexcept
     {
         std::vector<db_rule> rules;
+        auto client = get_client();
+        auto database = (*client)[db.get_db_name()];
+        auto deliberative_rules_collection = database[deliberative_collection_name];
+        assert(deliberative_rules_collection);
         for (const auto &doc : deliberative_rules_collection.find({}))
         {
             auto name = doc["name"].get_string().value;
@@ -31,6 +38,10 @@ namespace coco
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", rule_name.data()));
         doc.append(bsoncxx::builder::basic::kvp("content", rule_content.data()));
+        auto client = get_client();
+        auto database = (*client)[db.get_db_name()];
+        auto deliberative_rules_collection = database[deliberative_collection_name];
+        assert(deliberative_rules_collection);
         if (!deliberative_rules_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
     }

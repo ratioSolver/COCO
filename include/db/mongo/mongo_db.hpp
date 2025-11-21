@@ -1,7 +1,7 @@
 #pragma once
 
 #include "coco_db.hpp"
-#include <mongocxx/client.hpp>
+#include <mongocxx/pool.hpp>
 
 namespace coco
 {
@@ -13,7 +13,7 @@ namespace coco
     mongo_module(mongo_db &db) noexcept;
 
   protected:
-    [[nodiscard]] mongocxx::database &get_db() const noexcept;
+    [[nodiscard]] mongocxx::v_noabi::pool::entry get_client() const noexcept;
   };
 
   [[nodiscard]] inline std::string default_mongodb_uri() noexcept
@@ -50,7 +50,7 @@ namespace coco
   public:
     mongo_db(json::json &&cnfg = {{"name", COCO_NAME}}, std::string_view mongodb_uri = default_mongodb_uri()) noexcept;
 
-    void drop() noexcept override;
+    [[nodiscard]] const std::string &get_db_name() const noexcept { return db_name; }
 
     [[nodiscard]] std::vector<db_type> get_types() noexcept override;
     void create_type(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props, const json::json &data) override;
@@ -67,14 +67,18 @@ namespace coco
     [[nodiscard]] std::vector<db_rule> get_reactive_rules() noexcept override;
     void create_reactive_rule(std::string_view rule_name, std::string_view rule_content) override;
 
+    void drop() noexcept override;
+
+    static constexpr const char *types_collection_name = "types";
+    static constexpr const char *items_collection_name = "items";
+    static constexpr const char *item_data_collection_name = "item_data";
+    static constexpr const char *reactive_rules_collection_name = "reactive_rules";
+
   private:
-    mongocxx::client conn;
+    mongocxx::pool pool;
 
   protected:
-    mongocxx::database db;
-
-  private:
-    mongocxx::collection types_collection, items_collection, item_data_collection, reactive_rules_collection;
+    const std::string db_name;
   };
 
   [[nodiscard]] bsoncxx::array::value to_bson_array(const json::json &j);

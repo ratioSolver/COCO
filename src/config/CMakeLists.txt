@@ -7,20 +7,10 @@ target_include_directories(ConfigGenerator PUBLIC $<BUILD_INTERFACE:${CMAKE_CURR
 target_link_libraries(ConfigGenerator PRIVATE json)
 setup_sanitizers(ConfigGenerator)
 
-function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES ITEM_FILES)
+function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES)
     set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_config")
     file(MAKE_DIRECTORY "${GENERATED_DIR}")
     set(GENERATED_HEADER "${GENERATED_DIR}/${PROJECT_NAME}_config.hpp")
-
-    if(NOT TYPE_FILES)
-        set(TYPE_FILES "")
-    endif()
-    if(NOT RULE_FILES)
-        set(RULE_FILES "")
-    endif()
-    if(NOT ITEM_FILES)
-        set(ITEM_FILES "")
-    endif()
 
     message(STATUS "Type files:")
     foreach(f IN LISTS TYPE_FILES)
@@ -32,16 +22,11 @@ function(coco_config PROJECT_NAME TYPE_FILES RULE_FILES ITEM_FILES)
         message(STATUS "${f}")
     endforeach()
 
-    message(STATUS "Item files:")
-    foreach(f IN LISTS ITEM_FILES)
-        message(STATUS "${f}")
-    endforeach()
-
     message(STATUS "CoCo configuration header " "${GENERATED_HEADER}")
 
     add_custom_command(
         OUTPUT "${GENERATED_HEADER}"
-        COMMAND $<TARGET_FILE:ConfigGenerator> -t ${TYPE_FILES} -r ${RULE_FILES} -o "${GENERATED_HEADER}" -i ${ITEM_FILES}
+        COMMAND $<TARGET_FILE:ConfigGenerator> -t ${TYPE_FILES} -r ${RULE_FILES} -o "${GENERATED_HEADER}"
         DEPENDS ConfigGenerator ${TYPE_FILES} ${RULE_FILES}
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Generating CoCo configuration header for ${PROJECT_NAME}"

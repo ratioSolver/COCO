@@ -8,9 +8,10 @@ target_link_libraries(ConfigGenerator PRIVATE json)
 setup_sanitizers(ConfigGenerator)
 
 function(coco_config)
+    set(options ROS_INTERFACE)
     set(oneValueArgs PROJ_NAME)
     set(multiValueArgs TYPE_FILES RULE_FILES ITEM_FILES)
-    cmake_parse_arguments(COCO_CONFIG "" "${oneValueArgs}" "${multiValueArgs}" "${multiValueArgs}" ${ARGN})
+    cmake_parse_arguments(COCO_CONFIG "${options}" "${oneValueArgs}" "${multiValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/${COCO_CONFIG_PROJ_NAME}_config")
     file(MAKE_DIRECTORY "${GENERATED_DIR}")
@@ -26,6 +27,11 @@ function(coco_config)
         message(STATUS "${f}")
     endforeach()
 
+    message(STATUS "Item files:")
+    foreach(f IN LISTS COCO_CONFIG_ITEM_FILES)
+        message(STATUS "${f}")
+    endforeach()
+
     message(STATUS "CoCo configuration header " "${GENERATED_HEADER}")
 
     add_custom_command(
@@ -35,7 +41,10 @@ function(coco_config)
             -r ${COCO_CONFIG_RULE_FILES}
             -i ${COCO_CONFIG_ITEM_FILES}
             -o "${GENERATED_HEADER}"
-        DEPENDS ConfigGenerator ${COCO_CONFIG_TYPE_FILES} ${COCO_CONFIG_RULE_FILES} ${COCO_CONFIG_ITEM_FILES}
+        DEPENDS ConfigGenerator
+            ${COCO_CONFIG_TYPE_FILES}
+            ${COCO_CONFIG_RULE_FILES}
+            ${COCO_CONFIG_ITEM_FILES}
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Generating CoCo configuration header for ${COCO_CONFIG_PROJ_NAME}"
         VERBATIM

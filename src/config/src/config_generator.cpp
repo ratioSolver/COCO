@@ -126,10 +126,17 @@ namespace coco
             out << "        std::vector<std::reference_wrapper<type>> " << cpp_it_name << "_types;\n";
             for (const auto &tp_name : j_it["types"].as_array())
                 out << "        " << cpp_it_name << "_types.push_back(cc.get_type(\"" << tp_name.get<std::string>() << "\"));\n";
-            out << "        json::json " << cpp_it_name << "_props;\n";
-            if (j_it.contains("properties"))
-                out << "        " << cpp_it_name << "_props = json::load(R\"(" << j_it["properties"].dump() << ")\");\n";
-            out << "        [[maybe_unused]] auto &" << cpp_it_name << " = cc.create_item(std::move(" << cpp_it_name << "_types), std::move(" << cpp_it_name << "_props));\n";
+            out << "        [[maybe_unused]] auto &" << cpp_it_name << " = cc.create_item(std::move(" << cpp_it_name << "_types));\n";
+            out << "\n";
+        }
+        for (const auto &[it_name, j_it] : items)
+        {
+            if (!j_it.contains("properties"))
+                continue;
+            LOG_DEBUG("Setting properties for item: " << it_name);
+            auto cpp_it_name = to_cpp_identifier(it_name);
+            out << "        json::json " << cpp_it_name << "_props = json::load(R\"(" << j_it["properties"].dump() << ")\");\n";
+            out << "        cc.set_properties(" << cpp_it_name << ", std::move(" << cpp_it_name << "_props));\n";
             out << "\n";
         }
         out << "        LOG_INFO(\"Default items created.\");\n";

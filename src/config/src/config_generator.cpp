@@ -200,17 +200,26 @@ namespace coco
     std::string config_generator::prop_to_ros(const std::string &name, const json::json &prop)
     {
         std::string prop_tp = prop["type"].get<std::string>();
+        std::string ros_def;
+        bool multiple = prop.contains("multiple") && prop["multiple"].get<bool>();
         if (prop_tp == "int")
-            return "int32 " + name + "\n";
+            ros_def = "int32";
         else if (prop_tp == "float")
-            return "float32 " + name + "\n";
+            ros_def = "float32";
         else if (prop_tp == "string")
-            return "string " + name + "\n";
+            ros_def = "string";
+        else if (prop_tp == "symbol")
+            ros_def = "string";
         else if (prop_tp == "bool")
-            return "bool " + name + "\n";
+            ros_def = "bool";
         else if (prop_tp == "item")
-            return "string " + name + "_id\n";
+            ros_def = "string";
         else
             throw std::runtime_error("Unsupported property type for ROS message: " + prop_tp);
+
+        if (multiple)
+            ros_def += "[]";
+
+        return ros_def + " " + name + "\n";
     }
 } // namespace coco

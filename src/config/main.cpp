@@ -5,6 +5,7 @@ enum ParType
 {
     Type,
     Rule,
+    Item,
     Output
 };
 
@@ -12,6 +13,7 @@ int main(int argc, char const *argv[])
 {
     std::vector<std::string> type_files;
     std::vector<std::string> rule_files;
+    std::vector<std::string> items_files;
     std::string output;
 
     ParType current_par = Type;
@@ -32,6 +34,11 @@ int main(int argc, char const *argv[])
             current_par = Output;
             continue;
         }
+        else if (std::string(argv[i]) == "-i")
+        {
+            current_par = Item;
+            continue;
+        }
 
         switch (current_par)
         {
@@ -40,6 +47,9 @@ int main(int argc, char const *argv[])
             break;
         case Rule:
             rule_files.push_back(argv[i]);
+            break;
+        case Item:
+            items_files.push_back(argv[i]);
             break;
         case Output:
             output = argv[i];
@@ -56,7 +66,7 @@ int main(int argc, char const *argv[])
 
     try
     {
-        coco::config_generator gen(type_files, rule_files, output);
+        coco::config_generator gen(type_files, rule_files, items_files, output);
         gen.generate_config();
     }
     catch (const std::exception &e)

@@ -5,7 +5,7 @@
 
 namespace coco
 {
-    config_generator::config_generator(const std::vector<std::string> &type_files, const std::vector<std::string> &rule_files, const std::string &output_file) : output(output_file), config_file(output_file)
+    config_generator::config_generator(const std::vector<std::string> &type_files, const std::vector<std::string> &rule_files, const std::vector<std::string> &items_files, const std::string &output_file) : output(output_file), config_file(output_file)
     {
         LOG_DEBUG("Loading types");
         for (const auto &tp_file : type_files)
@@ -30,6 +30,20 @@ namespace coco
             std::filesystem::path rp_path(r_file);
             std::string name_no_ext = rp_path.stem().string();
             rules[name_no_ext] = std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        }
+
+        LOG_DEBUG("Loading items");
+        for (const auto &it_file : items_files)
+        {
+            LOG_DEBUG("Loading " << it_file);
+            std::ifstream in(it_file);
+            if (!in)
+                throw std::runtime_error("Cannot open items file: " + it_file);
+            json::json j_it = json::load(in);
+            std::filesystem::path it_path(it_file);
+            auto it_name = it_path.stem().string();
+            items[it_name] = j_it;
+            LOG_DEBUG("Loaded item: " << it_name);
         }
 
         try
@@ -88,6 +102,7 @@ namespace coco
         out << "    cc.load_rules();\n";
         for (const auto &[r_name, r_content] : rules)
         {
+            LOG_DEBUG("Generating rule: " << r_name);
             out << "    try {\n";
             out << "        [[maybe_unused]] auto &" << r_name << "_rule = cc.get_reactive_rule(\"" << r_name << "\");\n";
             out << "        LOG_DEBUG(\"Reactive rule `" << r_name << "` found\");\n";
@@ -96,6 +111,29 @@ namespace coco
             out << "        [[maybe_unused]] auto &" << r_name << "_rule = cc.create_reactive_rule(\"" << r_name << "\", R\"(" << r_content << ")\");\n";
             out << "    }\n";
         }
+    }
+
+    void config_generator::generate_items(std::ofstream &out)
+    {
+        out << "    auto itms = cc.get_items();\n";
+        out << "    if (itms.empty())\n";
+        out << "    {\n";
+        out << "        LOG_WARN(\"No items found in the database. Creating default items.\");\n";
+        for (const auto &[it_name, j_it] : items)
+        {
+            LOG_DEBUG("Generating item: " << it_name);
+            auto cpp_it_name = to_cpp_identifier(it_name);
+            out << "        std::vector<std::reference_wrapper<type>> " << cpp_it_name << "_types;\n";
+            for (const auto &tp_name : j_it["types"].as_array())
+                out << "        " << cpp_it_name << "_types.push_back(cc.get_type(\"" << tp_name.get<std::string>() << "\"));\n";
+            out << "        json::json " << cpp_it_name << "_props;\n";
+            if (j_it.contains("properties"))
+                out << "        " << cpp_it_name << "_props = json::load(R\"(" << j_it["properties"].dump() << ")\");\n";
+            out << "        [[maybe_unused]] auto &" << cpp_it_name << " = cc.create_item(std::move(" << cpp_it_name << "_types), std::move(" << cpp_it_name << "_props));\n";
+            out << "\n";
+        }
+        out << "        LOG_INFO(\"Default items created.\");\n";
+        out << "    }\n";
     }
 
     void config_generator::generate_messages()
@@ -136,6 +174,8 @@ namespace coco
         out << "inline void config(coco &cc)\n{\n";
         generate_types(out);
         generate_rules(out);
+        out << "\n";
+        generate_items(out);
         out << "}\n";
         out << "} // namespace coco\n";
 

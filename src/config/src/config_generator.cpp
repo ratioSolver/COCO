@@ -136,6 +136,13 @@ namespace coco
             LOG_DEBUG("Setting properties for item: " << it_name);
             auto cpp_it_name = to_cpp_identifier(it_name);
             out << "        json::json " << cpp_it_name << "_props = json::load(R\"(" << j_it["properties"].dump() << ")\");\n";
+            for (const auto &[prop_name, prop_value] : j_it["properties"].as_object())
+                if (prop_value.is_object() && prop_value.contains("item"))
+                {
+                    auto ref_it_name = prop_value["item"].get<std::string>();
+                    auto cpp_ref_it_name = to_cpp_identifier(ref_it_name);
+                    out << "        " << cpp_it_name << "_props[\"" << prop_name << "\"] = " << cpp_ref_it_name << ".get_id();\n";
+                }
             out << "        cc.set_properties(" << cpp_it_name << ", std::move(" << cpp_it_name << "_props));\n";
             out << "\n";
         }
@@ -174,6 +181,7 @@ namespace coco
         out << "#pragma once\n\n";
         out << "#include \"coco.hpp\"\n";
         out << "#include \"coco_db.hpp\"\n";
+        out << "#include \"coco_item.hpp\"\n";
         out << "#include \"logging.hpp\"\n";
         out << "#include <fstream>\n\n";
 

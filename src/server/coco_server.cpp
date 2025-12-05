@@ -534,14 +534,13 @@ namespace coco
             {
                 auto &tp = get_coco().get_type(filter["type"]);
                 for (auto &itm : get_coco().get_items(tp))
-                {
-                    for (const auto &[par, val] : filter)
-                        if (par != "type" && (!itm.get().get_properties().contains(par) || itm.get().get_properties()[par] != val))
-                            continue; // skip items that do not match the filter
-                    auto j_itm = itm.get().to_json();
-                    j_itm["id"] = itm.get().get_id();
-                    is.push_back(std::move(j_itm));
-                }
+                    if (std::all_of(filter.begin(), filter.end(), [&](const auto &p)
+                                    { return p.first == "type" || (itm.get().get_properties().contains(p.first) && itm.get().get_properties()[p.first] == p.second); }))
+                    {
+                        auto j_itm = itm.get().to_json();
+                        j_itm["id"] = itm.get().get_id();
+                        is.push_back(std::move(j_itm));
+                    }
                 return std::make_unique<network::json_response>(std::move(is));
             }
             catch (const std::exception &)

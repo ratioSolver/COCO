@@ -23,8 +23,10 @@ namespace coco
 
     void generate_messages();
     void generate_package_xml();
+    void generate_cmake_lists();
 
     static std::string to_cpp_identifier(const std::string &symbol);
+    static std::string to_ros_identifier(const std::string &symbol);
     static std::string prop_to_ros(const std::string &name, const json::json &prop);
 
   private:

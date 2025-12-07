@@ -152,6 +152,8 @@ namespace coco
 
     void config_generator::generate_messages()
     {
+        LOG_DEBUG("Generating message files");
+
         for (const auto &[name, j_tp] : types)
         {
             std::ofstream msg_file((output.parent_path() / (name + ".msg")).string(), std::ios::out | std::ios::trunc);
@@ -165,6 +167,27 @@ namespace coco
                 for (const auto &[prop_name, prop_value] : j_tp["static_properties"].as_object())
                     msg_file << prop_to_ros(prop_name, prop_value);
         }
+    }
+
+    void config_generator::generate_package_xml()
+    {
+        std::ofstream pkg_file((output.parent_path() / "package.xml").string(), std::ios::out | std::ios::trunc);
+        if (!pkg_file)
+        {
+            LOG_ERR("Cannot create package.xml file");
+            return;
+        }
+        LOG_DEBUG("Generating package.xml file");
+
+        pkg_file << "<?xml version=\"1.0\"?>\n";
+        pkg_file << "<?xml-model href=\"http://download.ros.org/schema/package_format3.xsd\" schematypens=\"http://www.w3.org/2001/XMLSchema\"?>\n";
+        pkg_file << "<package format=\"3\">\n";
+        pkg_file << "  <name>coco_config</name>\n";
+        pkg_file << "  <version>0.1.0</version>\n";
+        pkg_file << "  <description>Auto-generated COCO configuration package</description>\n";
+        pkg_file << "  <maintainer email=\"riccardo.debenedictis@cnr.it\">Riccardo De Benedictis</maintainer>\n";
+        pkg_file << "  <license>MIT</license>\n";
+        pkg_file << "</package>\n";
     }
 
     void config_generator::generate_config()
@@ -194,8 +217,8 @@ namespace coco
         out << "}\n";
         out << "} // namespace coco\n";
 
-        LOG_DEBUG("Generating message files");
         generate_messages();
+        generate_package_xml();
     }
 
     std::string config_generator::to_cpp_identifier(const std::string &symbol)

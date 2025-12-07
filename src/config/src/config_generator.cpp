@@ -153,10 +153,17 @@ namespace coco
     void config_generator::generate_messages()
     {
         LOG_DEBUG("Generating message files");
-
+        auto msg_dir = output.parent_path() / "msg";
+        std::error_code ec;
+        std::filesystem::create_directories(msg_dir, ec);
+        if (ec)
+        {
+            LOG_ERR("Cannot create msg directory: " << msg_dir << " : " << ec.message());
+            return;
+        }
         for (const auto &[name, j_tp] : types)
         {
-            std::ofstream msg_file((output.parent_path() / (name + ".msg")).string(), std::ios::out | std::ios::trunc);
+            std::ofstream msg_file((msg_dir / (name + ".msg")).string(), std::ios::out | std::ios::trunc);
             if (!msg_file)
             {
                 LOG_ERR("Cannot create message file: " << name << ".msg");
@@ -187,6 +194,9 @@ namespace coco
         pkg_file << "  <description>Auto-generated COCO configuration package</description>\n";
         pkg_file << "  <maintainer email=\"riccardo.debenedictis@cnr.it\">Riccardo De Benedictis</maintainer>\n";
         pkg_file << "  <license>MIT</license>\n";
+        pkg_file << "  <buildtool_depend>rosidl_default_generators</buildtool_depend>\n";
+        pkg_file << "  <exec_depend>rosidl_default_runtime</exec_depend>\n";
+        pkg_file << "  <member_of_group>rosidl_interface_packages</member_of_group>\n";
         pkg_file << "</package>\n";
     }
 

@@ -57,7 +57,7 @@ public class CoCo implements ConnectionListener {
         for (JsonElement typeElement : typeArray) {
             JsonObject typeObject = typeElement.getAsJsonObject();
             types.put(typeObject.get("name").getAsString(),
-                    new Type(typeObject.get("name").getAsString(), null, typeObject.get("data"), null, null));
+                    new Type(typeObject.get("name").getAsString(), typeObject.get("data"), null, null));
         }
         for (JsonElement typeElement : typeArray) {
             JsonObject typeObject = typeElement.getAsJsonObject();
@@ -107,7 +107,7 @@ public class CoCo implements ConnectionListener {
                     types.clear();
                     for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("types").entrySet())
                         types.put(entry.getKey(),
-                                new Type(entry.getKey(), null, entry.getValue().getAsJsonObject().get("data"), null,
+                                new Type(entry.getKey(), entry.getValue().getAsJsonObject().get("data"), null,
                                         null));
                     for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("types").entrySet())
                         refineType(Objects.requireNonNull(types.get(entry.getKey())),
@@ -135,7 +135,7 @@ public class CoCo implements ConnectionListener {
                 }
                 break;
             case "new_type":
-                Type type = new Type(message.get("name").getAsString(), null, message.get("data"), null, null);
+                Type type = new Type(message.get("name").getAsString(), message.get("data"), null, null);
                 types.put(message.get("name").getAsString(), type);
                 refineType(type, message);
                 for (CoCoListener listener : listeners)

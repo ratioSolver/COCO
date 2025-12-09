@@ -152,12 +152,22 @@ namespace coco
 
     void config_generator::generate_messages()
     {
+        LOG_DEBUG("Generating message files");
+        auto msg_dir = output.parent_path() / "msg";
+        std::error_code ec;
+        std::filesystem::create_directories(msg_dir, ec);
+        if (ec)
+        {
+            LOG_ERR("Cannot create msg directory: " << msg_dir << " : " << ec.message());
+            return;
+        }
         for (const auto &[name, j_tp] : types)
         {
-            std::ofstream msg_file((output.parent_path() / (name + ".msg")).string(), std::ios::out | std::ios::trunc);
+            auto ros_name = to_ros_identifier(name);
+            std::ofstream msg_file((msg_dir / (ros_name + ".msg")).string(), std::ios::out | std::ios::trunc);
             if (!msg_file)
             {
-                LOG_ERR("Cannot create message file: " << name << ".msg");
+                LOG_ERR("Cannot create message file: " << ros_name << ".msg");
                 continue;
             }
             LOG_DEBUG("Generating message file for type: " << name);
@@ -165,6 +175,54 @@ namespace coco
                 for (const auto &[prop_name, prop_value] : j_tp["static_properties"].as_object())
                     msg_file << prop_to_ros(prop_name, prop_value);
         }
+    }
+
+    void config_generator::generate_package_xml()
+    {
+        std::ofstream pkg_file((output.parent_path() / "package.xml").string(), std::ios::out | std::ios::trunc);
+        if (!pkg_file)
+        {
+            LOG_ERR("Cannot create package.xml file");
+            return;
+        }
+        LOG_DEBUG("Generating package.xml file");
+
+        pkg_file << "<?xml version=\"1.0\"?>\n";
+        pkg_file << "<?xml-model href=\"http://download.ros.org/schema/package_format3.xsd\" schematypens=\"http://www.w3.org/2001/XMLSchema\"?>\n";
+        pkg_file << "<package format=\"3\">\n";
+        pkg_file << "  <name>ros_coco</name>\n";
+        pkg_file << "  <version>0.1.0</version>\n";
+        pkg_file << "  <description>Auto-generated COCO configuration package</description>\n";
+        pkg_file << "  <maintainer email=\"riccardo.debenedictis@cnr.it\">Riccardo De Benedictis</maintainer>\n";
+        pkg_file << "  <license>MIT</license>\n";
+        pkg_file << "  <buildtool_depend>rosidl_default_generators</buildtool_depend>\n";
+        pkg_file << "  <exec_depend>rosidl_default_runtime</exec_depend>\n";
+        pkg_file << "  <member_of_group>rosidl_interface_packages</member_of_group>\n";
+        pkg_file << "</package>\n";
+    }
+
+    void config_generator::generate_cmake_lists()
+    {
+        std::ofstream cmake_file((output.parent_path() / "CMakeLists.txt").string(), std::ios::out | std::ios::trunc);
+        if (!cmake_file)
+        {
+            LOG_ERR("Cannot create CMakeLists.txt file");
+            return;
+        }
+        LOG_DEBUG("Generating CMakeLists.txt file");
+
+        cmake_file << "cmake_minimum_required(VERSION 3.5)\n";
+        cmake_file << "project(ros_coco)\n\n";
+        cmake_file << "find_package(ament_cmake REQUIRED)\n";
+        cmake_file << "find_package(rosidl_default_generators REQUIRED)\n\n";
+        cmake_file << "rosidl_generate_interfaces(${PROJECT_NAME}\n";
+        for (const auto &[name, j_tp] : types)
+        {
+            const auto ros_name = to_ros_identifier(name);
+            cmake_file << "  \"msg/" << ros_name << ".msg\"\n";
+        }
+        cmake_file << ")\n\n";
+        cmake_file << "ament_package()\n";
     }
 
     void config_generator::generate_config()
@@ -194,8 +252,9 @@ namespace coco
         out << "}\n";
         out << "} // namespace coco\n";
 
-        LOG_DEBUG("Generating message files");
         generate_messages();
+        generate_package_xml();
+        generate_cmake_lists();
     }
 
     std::string config_generator::to_cpp_identifier(const std::string &symbol)
@@ -207,8 +266,29 @@ namespace coco
             else
                 result += '_';
         if (!result.empty() && std::isdigit(result[0]))
-            result = "_" + result;
+            result.insert(result.begin(), '_');
         result = std::regex_replace(result, std::regex("_+"), "_");
+        return result;
+    }
+
+    std::string config_generator::to_ros_identifier(const std::string &symbol)
+    {
+        std::string result;
+        bool cap_next = false;
+        for (char c : symbol)
+            if (c == '_' || c == ' ' || c == '-')
+                cap_next = true;
+            else if (cap_next)
+            {
+                result += std::toupper(c);
+                cap_next = false;
+            }
+            else
+                result += c;
+        if (result.empty() || std::isdigit(result[0]))
+            result.insert(result.begin(), 'T');
+        else
+            result.front() = std::toupper(result.front());
         return result;
     }
 

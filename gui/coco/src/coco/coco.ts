@@ -601,6 +601,8 @@ export namespace coco {
       _set_data(data: Datum[]): void {
         this.data = data;
         for (const l of this.listeners) l.values_updated(this);
+        if (data.length > 0)
+          this._set_datum(data[data.length - 1]);
       }
       _set_datum(datum: Datum): void {
         this.datum = datum;
@@ -657,48 +659,6 @@ export namespace coco {
 
     get_id(): string { return this.id; }
     get_personal_data(): Record<string, unknown> { return this.personal_data; }
-  }
-
-  export namespace llm {
-
-    export class Intent {
-
-      private readonly name: string;
-      private readonly description: string;
-
-      constructor(name: string, description: string) {
-        this.name = name;
-        this.description = description;
-      }
-
-      get_name(): string { return this.name; }
-      get_description(): string { return this.description; }
-    }
-
-    export enum EntityType {
-      string,
-      int,
-      float,
-      bool,
-      symbol
-    }
-
-    export class Entity {
-
-      private readonly name: string;
-      private readonly type: EntityType;
-      private readonly description: string;
-
-      constructor(name: string, type: EntityType, description: string) {
-        this.name = name;
-        this.type = type;
-        this.description = description;
-      }
-
-      get_name(): string { return this.name; }
-      get_type(): EntityType { return this.type; }
-      get_description(): string { return this.description; }
-    }
   }
 }
 

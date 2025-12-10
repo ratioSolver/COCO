@@ -53,8 +53,10 @@ namespace coco
         LOG_DEBUG("Retrieving all items");
         auto db_itms = db.get_items();
         LOG_DEBUG("Retrieved " << db_itms.size() << " items");
+        [[maybe_unused]] size_t item_count = 0;
         for (auto &db_itm : db_itms)
         {
+            LOG_TRACE("Creating item " << ++item_count << "/" << db_itms.size());
             std::vector<std::reference_wrapper<type>> tps;
             tps.reserve(db_itm.types.size());
             for (auto &tp_name : db_itm.types)

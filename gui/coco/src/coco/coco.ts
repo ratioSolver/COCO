@@ -189,7 +189,11 @@ export namespace coco {
       let value = undefined;
       if (itm.value)
         value = { data: itm.value.data, timestamp: new Date(itm.value.timestamp) };
-      return new taxonomy.Item(id, new Set(itm.types.map(tn => this.types.get(tn)!)), itm.properties, value, (itm as any).slots);
+      const types: Set<taxonomy.Type> = new Set();
+      if (itm.types)
+        for (const tn of itm.types)
+          types.add(this.get_type(tn)!);
+      return new taxonomy.Item(id, types, itm.properties, value, (itm as any).slots);
     }
 
     get_type(name: string): taxonomy.Type { return this.types.get(name)!; }
@@ -804,7 +808,7 @@ interface ValueMessage {
 }
 
 interface ItemMessage {
-  types: string[];
+  types?: string[];
   properties?: Record<string, unknown>;
   value?: ValueMessage;
 }

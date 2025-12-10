@@ -5,10 +5,11 @@
 
 namespace coco
 {
-    coco_mqtt::coco_mqtt(coco &cc, std::string_view mqtt_uri, std::string_view client_id) noexcept : coco_module(cc), listener(cc), client(mqtt_uri.data(), client_id.data())
+    coco_mqtt::coco_mqtt(coco &cc, std::string_view mqtt_uri, std::string_view client_id) noexcept : coco_module(cc), listener(cc), client(mqtt_uri.data(), client_id.data(), MQTT_MAX_BUFFERED_MSGS)
     {
         conn_opts.set_keep_alive_interval(20);
         conn_opts.set_clean_session(true);
+        conn_opts.set_automatic_reconnect(true);
         conn_opts.set_mqtt_version(MQTTVERSION_5);
 #ifdef MQTT_AUTH
         LOG_DEBUG("Setting MQTT authentication");
@@ -55,8 +56,10 @@ namespace coco
 
         mqtt::subscribe_options opts;
         opts.set_no_local(true); // Prevent receiving messages from self
+        [[maybe_unused]] size_t item_count = 0;
         for (auto &itm : get_coco().get_items())
         {
+            LOG_TRACE("Subscribing/publishing item " << ++item_count << "/" << get_coco().get_items().size());
             client.publish(COCO_NAME "/items/" + itm.get().get_id(), itm.get().to_json().dump(), QOS, true); // Publish each item
             client.subscribe(COCO_NAME "/data/" + itm.get().get_id(), QOS, opts);                            // Subscribe to data updates for each item
         }
@@ -64,17 +67,6 @@ namespace coco
     void coco_mqtt::on_connection_lost(const std::string &cause)
     {
         LOG_ERR("Connection lost: " << cause);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2500));
-        LOG_DEBUG("Reconnecting to MQTT broker...");
-        try
-        {
-            client.connect(conn_opts);
-            LOG_DEBUG("Reconnected to MQTT broker");
-        }
-        catch (const mqtt::exception &e)
-        {
-            LOG_ERR("Failed to reconnect: " << e.what());
-        }
     }
 
     void coco_mqtt::created_type(const type &tp)

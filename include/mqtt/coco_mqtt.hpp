@@ -12,7 +12,7 @@
 
 namespace coco
 {
-  constexpr const int QOS = 1; // Quality of Service level for MQTT messages
+  constexpr const int QOS = 1;                    // Quality of Service level for MQTT messages
 
   [[nodiscard]] inline std::string default_mqtt_uri() noexcept
   {

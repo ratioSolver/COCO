@@ -193,7 +193,7 @@ export namespace coco {
       if (itm.types)
         for (const tn of itm.types)
           types.add(this.get_type(tn)!);
-      return new taxonomy.Item(id, types, itm.properties, value, (itm as any).slots);
+      return new taxonomy.Item(id, types, itm.properties, value);
     }
 
     get_type(name: string): taxonomy.Type { return this.types.get(name)!; }
@@ -565,11 +565,10 @@ export namespace coco {
       private readonly types: Set<Type> = new Set();
       private properties?: Record<string, unknown>;
       private datum?: Datum;
-      private slots?: Record<string, unknown>;
       private data: Datum[] = [];
       private readonly listeners = new Set<ItemListener>();
 
-      constructor(id: string, types: Set<Type>, properties?: Record<string, unknown>, value?: Datum, slots?: Record<string, unknown>) {
+      constructor(id: string, types: Set<Type>, properties?: Record<string, unknown>, value?: Datum) {
         this.id = id;
         for (const tp of types) {
           this.types.add(tp);
@@ -577,7 +576,6 @@ export namespace coco {
         }
         this.properties = properties;
         this.datum = value;
-        this.slots = slots;
       }
 
       get_id(): string { return this.id; }
@@ -585,7 +583,6 @@ export namespace coco {
       get_properties(): Record<string, unknown> | undefined { return this.properties; }
       get_datum(): Datum | undefined { return this.datum; }
       get_data(): Datum[] { return this.data; }
-      get_slots(): Record<string, unknown> | undefined { return this.slots; }
 
       _set_types(types: Set<Type>): void {
         for (const tp of this.types)
@@ -610,10 +607,6 @@ export namespace coco {
         this.data.push(datum);
         for (const l of this.listeners) l.new_value(this, datum);
       }
-      _set_slots(slots?: Record<string, unknown>): void {
-        this.slots = slots;
-        for (const l of this.listeners) l.slots_updated(this);
-      }
 
       add_item_listener(l: ItemListener): void { this.listeners.add(l); }
       remove_item_listener(l: ItemListener): void { this.listeners.delete(l); }
@@ -627,7 +620,6 @@ export namespace coco {
       properties_updated(item: Item): void;
       values_updated(item: Item): void;
       new_value(item: Item, v: Datum): void;
-      slots_updated(item: Item): void;
     }
 
     export function get_static_properties(item: Item): Map<string, Property<unknown>> {
@@ -706,26 +698,6 @@ export namespace coco {
       get_name(): string { return this.name; }
       get_type(): EntityType { return this.type; }
       get_description(): string { return this.description; }
-    }
-
-    export class Slot {
-
-      private readonly name: string;
-      private readonly type: EntityType;
-      private readonly description: string;
-      private readonly influence_context: boolean;
-
-      constructor(name: string, type: EntityType, description: string, influence_context: boolean) {
-        this.name = name;
-        this.type = type;
-        this.description = description;
-        this.influence_context = influence_context;
-      }
-
-      get_name(): string { return this.name; }
-      get_type(): EntityType { return this.type; }
-      get_description(): string { return this.description; }
-      is_influencing_context(): boolean { return this.influence_context; }
     }
   }
 }

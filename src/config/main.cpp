@@ -4,8 +4,11 @@
 enum ParType
 {
     Type,
+    TypeFolder,
     Rule,
+    RuleFolder,
     Item,
+    ItemFolder,
     Output
 };
 
@@ -24,19 +27,34 @@ int main(int argc, char const *argv[])
             current_par = Type;
             continue;
         }
+        else if (std::string(argv[i]) == "-tf")
+        {
+            current_par = TypeFolder;
+            continue;
+        }
         else if (std::string(argv[i]) == "-r")
         {
             current_par = Rule;
             continue;
         }
-        else if (std::string(argv[i]) == "-o")
+        else if (std::string(argv[i]) == "-rf")
         {
-            current_par = Output;
+            current_par = RuleFolder;
             continue;
         }
         else if (std::string(argv[i]) == "-i")
         {
             current_par = Item;
+            continue;
+        }
+        else if (std::string(argv[i]) == "-if")
+        {
+            current_par = ItemFolder;
+            continue;
+        }
+        else if (std::string(argv[i]) == "-o")
+        {
+            current_par = Output;
             continue;
         }
 
@@ -45,11 +63,26 @@ int main(int argc, char const *argv[])
         case Type:
             type_files.push_back(argv[i]);
             break;
+        case TypeFolder:
+            for (const auto &entry : std::filesystem::directory_iterator(argv[i]))
+                if (entry.is_regular_file())
+                    type_files.push_back(entry.path().string());
+            break;
         case Rule:
             rule_files.push_back(argv[i]);
             break;
+        case RuleFolder:
+            for (const auto &entry : std::filesystem::directory_iterator(argv[i]))
+                if (entry.is_regular_file())
+                    rule_files.push_back(entry.path().string());
+            break;
         case Item:
             items_files.push_back(argv[i]);
+            break;
+        case ItemFolder:
+            for (const auto &entry : std::filesystem::directory_iterator(argv[i]))
+                if (entry.is_regular_file())
+                    items_files.push_back(entry.path().string());
             break;
         case Output:
             output = argv[i];

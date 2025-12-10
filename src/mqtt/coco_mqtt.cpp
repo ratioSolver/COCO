@@ -46,7 +46,7 @@ namespace coco
             get_coco().set_value(get_coco().get_item(msg->get_topic().substr(strlen(COCO_NAME "/data/"))), json::load(msg->to_string())); // Set value for the item based on the topic
     }
 
-    void coco_mqtt::on_connect(const std::string &cause)
+    void coco_mqtt::on_connect([[maybe_unused]] const std::string &cause)
     {
         LOG_DEBUG("Connected to MQTT broker: " << cause);
 

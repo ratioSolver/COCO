@@ -10,8 +10,8 @@ setup_sanitizers(ConfigGenerator)
 function(coco_config)
     set(options ROS_INTERFACE)
     set(oneValueArgs PROJ_NAME)
-    set(multiValueArgs TYPE_FILES RULE_FILES ITEM_FILES)
-    cmake_parse_arguments(COCO_CONFIG "${options}" "${oneValueArgs}" "${multiValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(multiValueArgs TYPE_FILES TYPE_FOLDERS RULE_FILES RULE_FOLDERS ITEM_FILES ITEM_FOLDERS)
+    cmake_parse_arguments(COCO_CONFIG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/${COCO_CONFIG_PROJ_NAME}_config")
     file(MAKE_DIRECTORY "${GENERATED_DIR}")
@@ -38,8 +38,11 @@ function(coco_config)
         OUTPUT "${GENERATED_HEADER}"
         COMMAND $<TARGET_FILE:ConfigGenerator>
             -t ${COCO_CONFIG_TYPE_FILES}
+            -tf ${COCO_CONFIG_TYPE_FOLDERS}
             -r ${COCO_CONFIG_RULE_FILES}
+            -rf ${COCO_CONFIG_RULE_FOLDERS}
             -i ${COCO_CONFIG_ITEM_FILES}
+            -if ${COCO_CONFIG_ITEM_FOLDERS}
             -o "${GENERATED_HEADER}"
         DEPENDS ConfigGenerator
             ${COCO_CONFIG_TYPE_FILES}

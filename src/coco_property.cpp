@@ -929,7 +929,6 @@ namespace coco
     }
     bool symbol_property::validate(const json::json &j) const noexcept
     {
-        LOG_DEBUG(j.dump());
         if (j.is_null())
             return nullable;
         if (multiple)

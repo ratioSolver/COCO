@@ -213,7 +213,9 @@ namespace coco
         auto db = (*client)[db_name];
         auto item_data_collection = db[item_data_collection_name];
         assert(item_data_collection);
-        for (const auto &doc : item_data_collection.find(query.view()))
+        mongocxx::options::find find_opts;
+        find_opts.sort(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("timestamp", 1)));
+        for (const auto &doc : item_data_collection.find(query.view(), find_opts))
             data.push_back(json::json{{"data", json::load(bsoncxx::to_json(doc["data"].get_document().view()))}, {"timestamp", doc["timestamp"].get_date().to_int64()}});
         return data;
     }

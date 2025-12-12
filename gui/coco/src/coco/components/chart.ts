@@ -162,15 +162,15 @@ export namespace chart {
   class IntChart implements Chart<number> {
 
     private readonly prop: coco.taxonomy.IntProperty;
-    private data: Partial<PlotData>;
+    private data: Partial<PlotData> = {};
 
     constructor(prop: coco.taxonomy.IntProperty, vals: Value<number>[]) {
       this.prop = prop;
-      this.data = { x: [], y: [], type: 'scatter' };
       this.set_data(vals);
     }
 
     set_data(vals: Value<number>[]): void {
+      this.data = { x: [], y: [], type: 'scatter' };
       for (let i = 0; i < vals.length - 1; i++) {
         (this.data.x! as number[]).push(vals[i].timestamp.valueOf());
         (this.data.y! as number[]).push(vals[i].value);
@@ -204,15 +204,15 @@ export namespace chart {
   class FloatChart implements Chart<number> {
 
     private readonly prop: coco.taxonomy.FloatProperty;
-    private data: Partial<PlotData>;
+    private data: Partial<PlotData> = {};
 
     constructor(prop: coco.taxonomy.FloatProperty, vals: Value<number>[]) {
       this.prop = prop;
-      this.data = { x: [], y: [], type: 'scatter' };
       this.set_data(vals);
     }
 
     set_data(vals: Value<number>[]): void {
+      this.data = { x: [], y: [], type: 'scatter' };
       for (let i = 0; i < vals.length - 1; i++) {
         (this.data.x! as number[]).push(vals[i].timestamp.valueOf());
         (this.data.y! as number[]).push(vals[i].value);

@@ -26,14 +26,14 @@ def create_types(session, url):
         logger.info(f'Type {type["name"]} created successfully')
 
 
-def create_reactive_rules(session, url):
+def create_rules(session, url):
     with open("sprinkler.clp", "r") as f:
         content = f.read()
-        response = session.post(url + '/reactive_rules', json={'name': 'dry_garden', 'content': content})
+        response = session.post(url + '/rules', json={'name': 'dry_garden', 'content': content})
         if response.status_code != 204:
-            logger.error('Failed to create reactive rule dry_garden')
+            logger.error('Failed to create rule dry_garden')
             return
-        logger.info('Reactive rule dry_garden created successfully')        
+        logger.info('rule dry_garden created successfully')        
 
 
 def create_items(session, url):
@@ -58,5 +58,5 @@ if __name__ == '__main__':
     session = requests.Session()
 
     create_types(session, url)
-    create_reactive_rules(session, url)
+    create_rules(session, url)
     create_items(session, url)

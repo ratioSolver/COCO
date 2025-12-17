@@ -83,9 +83,9 @@ namespace coco
 
     void coco::load_rules() noexcept
     {
-        LOG_DEBUG("Retrieving all reactive rules");
+        LOG_DEBUG("Retrieving all rules");
         auto rrs = db.get_rules();
-        LOG_DEBUG("Retrieved " << rrs.size() << " reactive rules");
+        LOG_DEBUG("Retrieved " << rrs.size() << " rules");
         for (auto &r : rrs)
             rules.emplace(r.name, std::make_unique<rule>(*this, r.name, r.content));
 
@@ -215,7 +215,7 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(mtx);
         if (auto it = rules.find(name); it != rules.end())
             return *it->second;
-        throw std::invalid_argument("reactive rule `" + std::string(name) + "` not found");
+        throw std::invalid_argument("rule `" + std::string(name) + "` not found");
     }
     rule &coco::create_rule(std::string_view rule_name, std::string_view rule_content, bool infere)
     {
@@ -223,7 +223,7 @@ namespace coco
         db.create_rule(rule_name, rule_content);
         auto it = rules.emplace(rule_name, std::make_unique<rule>(*this, rule_name, rule_content));
         if (!it.second)
-            throw std::invalid_argument("reactive rule `" + std::string(rule_name) + "` already exists");
+            throw std::invalid_argument("rule `" + std::string(rule_name) + "` already exists");
         else
         {
             CREATED_RULE(*it.first->second);

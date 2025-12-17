@@ -29,7 +29,7 @@ namespace coco
         assert(rules_collection);
         if (rules_collection.list_indexes().begin() == rules_collection.list_indexes().end())
         {
-            LOG_DEBUG("Creating indexes for reactive rules collection");
+            LOG_DEBUG("Creating indexes for rules collection");
             rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
     }
@@ -324,7 +324,7 @@ namespace coco
         auto rules_collection = db[rules_collection_name];
         assert(rules_collection);
         if (!rules_collection.insert_one(doc.view()))
-            throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
+            throw std::invalid_argument("Failed to insert rule: " + std::string(rule_name));
     }
 
     void mongo_db::drop() noexcept

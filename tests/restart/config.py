@@ -118,7 +118,7 @@ def create_types(session: requests.Session, url: str):
 
 def create_rules(session: requests.Session, url: str):
     # Create the next-id rule
-    response = session.post(url + '/reactive_rules', json={
+    response = session.post(url + '/rules', json={
         'name': 'next_id',
         'content': '(defglobal ?*next-id* = 1)'
     })
@@ -127,7 +127,7 @@ def create_rules(session: requests.Session, url: str):
         return
 
     # Create the exercise template
-    response = session.post(url + '/reactive_rules', json={
+    response = session.post(url + '/rules', json={
         'name': 'exercise_template',
         'content': '(deftemplate exercise (slot id) (slot exercise-type (type SYMBOL)) (slot exercise-level (type INTEGER) (range 0 6)))'
     })
@@ -136,7 +136,7 @@ def create_rules(session: requests.Session, url: str):
         return
 
     # Create the enqueue-exercise function
-    response = session.post(url + '/reactive_rules', json={
+    response = session.post(url + '/rules', json={
         'name': 'enqueue_exercise',
         'content': '(deffunction enqueue-exercise (?type ?level) (bind ?id ?*next-id*) (bind ?*next-id* (+ ?*next-id* 1)) (assert (exercise (id ?id) (exercise-type ?type) (exercise-level ?level))))'
     })
@@ -145,14 +145,14 @@ def create_rules(session: requests.Session, url: str):
         return
 
     # Associating a user to a robot starts a session by welcoming the user
-    response = session.post(url + '/reactive_rules', json={
+    response = session.post(url + '/rules', json={
         'name': 'robot_session', 'content': '(defrule robot_session (Robot_has_associated_user (item_id ?robot) (associated_user ?user)) => (add_data ?robot (create$ current_command current_modality) (create$ welcome formal)))'})
     if response.status_code != 204:
         logger.error('Failed to create rule robot_session')
         return
 
     # Completing the welcome command triggers the robot to switch to the rot command
-    response = session.post(url + '/reactive_rules', json={
+    response = session.post(url + '/rules', json={
         'name': 'robot_rot', 'content': '(defrule robot_rot (Robot_has_command_completed (item_id ?robot) (command_completed welcome)) => (add_data ?robot (create$ current_command) (create$ rot)))'})
     if response.status_code != 204:
         logger.error('Failed to create rule robot_rot')
@@ -162,20 +162,20 @@ def create_rules(session: requests.Session, url: str):
     with open('robot_training.clp', 'r') as file:
         robot_training = file.read()
     response = session.post(
-        url + '/reactive_rules', json={'name': 'robot_training', 'content': robot_training})
+        url + '/rules', json={'name': 'robot_training', 'content': robot_training})
     if response.status_code != 204:
         logger.error('Failed to create rule robot_training')
         return
 
     # Completing the training command triggers the robot to switch to the goodbye command
-    response = session.post(url + '/reactive_rules', json={
+    response = session.post(url + '/rules', json={
         'name': 'robot_goodbye', 'content': '(defrule robot_goodbye (Robot_has_command_completed (item_id ?robot) (command_completed training)) => (add_data ?robot (create$ current_command) (create$ goodbye)))'})
     if response.status_code != 204:
         logger.error('Failed to create rule robot_goodbye')
         return
 
     # Completing the goodbye command ends the session
-    response = session.post(url + '/reactive_rules', json={
+    response = session.post(url + '/rules', json={
         'name': 'robot_end_session', 'content': '(defrule robot_end_session (Robot_has_command_completed (item_id ?robot) (command_completed goodbye)) => (add_data ?robot (create$ associated_user command_completed current_command) (create$ nil nil nil nil)))'})
     if response.status_code != 204:
         logger.error('Failed to create rule robot_end_session')

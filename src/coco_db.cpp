@@ -105,12 +105,12 @@ namespace coco
 
     std::vector<db_rule> coco_db::get_rules() noexcept
     {
-        LOG_WARN("Retrieving all the reactive rules..");
+        LOG_WARN("Retrieving all the rules..");
         return std::vector<db_rule>();
     }
     void coco_db::create_rule(std::string_view rule_name, std::string_view rule_content)
     {
-        LOG_WARN(std::string("Creating new reactive rule: ") + rule_name.data());
+        LOG_WARN(std::string("Creating new rule: ") + rule_name.data());
         LOG_WARN(std::string("Content: ") + rule_content.data());
     }
 } // namespace coco

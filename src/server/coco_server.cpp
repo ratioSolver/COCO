@@ -153,10 +153,10 @@ namespace coco
             {"required", std::vector<json::json>{"data", "timestamp"}}};
         schemas["rule"] = {
             {"type", "object"},
-            {"description", "A reactive rule is a CLIPS rule that can be triggered by changes in the system."},
+            {"description", "A rule is a CLIPS rule that can be triggered by changes in the system."},
             {"properties",
              {{"name", {{"type", "string"}}},
-              {"content", {{"type", "string"}, {"description", "The content of the reactive rule in CLIPS format."}}}}},
+              {"content", {{"type", "string"}, {"description", "The content of the rule in CLIPS format."}}}}},
             {"required", std::vector<json::json>{"name", "content"}}};
 
         paths["/types"] = {{"get",
@@ -358,14 +358,14 @@ namespace coco
                                       {{"description", "Successful response with the generated fake data."},
                                        {"content", {{"application/json", {{"schema", {{"type", "object"}}}}}}}}}}}}}},
         paths["/rules"] = {{"get",
-                            {{"summary", "Retrieve all the " COCO_NAME " reactive rules."},
-                             {"description", "Endpoint to fetch all the reactive rules."},
+                            {{"summary", "Retrieve all the " COCO_NAME " rules."},
+                             {"description", "Endpoint to fetch all the rules."},
 #ifdef BUILD_AUTH
                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
 #endif
                              {"responses",
                               {{"200",
-                                {{"description", "Successful response with the stored reactive rules."},
+                                {{"description", "Successful response with the stored rules."},
                                  {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/rule"}}}}}}}}}}}
 #ifdef BUILD_AUTH
                                ,
@@ -373,8 +373,8 @@ namespace coco
 #endif
                               }}}},
                            {"post",
-                            {{"summary", "Create a new " COCO_NAME " reactive rule."},
-                             {"description", "Endpoint to create a new reactive rule."},
+                            {{"summary", "Create a new " COCO_NAME " rule."},
+                             {"description", "Endpoint to create a new rule."},
                              {"requestBody",
                               {{"required", true},
                                {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/rule"}}}}}}}}},
@@ -383,7 +383,7 @@ namespace coco
 #endif
                              {"responses",
                               {{"204",
-                                {{"description", "Reactive rule created successfully."}}}
+                                {{"description", "rule created successfully."}}}
 #ifdef BUILD_AUTH
                                ,
                                {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
@@ -813,7 +813,7 @@ namespace coco
                            {"info",
                             {{"title", COCO_NAME " Server API"},
                              {"version", "1.0.0"},
-                             {"description", "RESTful API for the " COCO_NAME " server. This API provides comprehensive management of types, items, dynamic data, and reactive rules. Types define the structure and behavior of items, items are instances of types with static properties, and dynamic data provides time-series storage capabilities. Reactive rules enable event-driven processing using CLIPS rule engine."}}},
+                             {"description", "RESTful API for the " COCO_NAME " server. This API provides comprehensive management of types, items, dynamic data, and rules. Types define the structure and behavior of items, items are instances of types with static properties, and dynamic data provides time-series storage capabilities. rules enable event-driven processing using CLIPS rule engine."}}},
                            {"components",
                             {
 #ifdef BUILD_AUTH

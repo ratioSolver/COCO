@@ -1,9 +1,9 @@
 export namespace rule {
 
   /**
-   * Represents a reactive rule.
+   * Represents a rule.
    */
-  export class ReactiveRule {
+  export class Rule {
 
     name: string;
     content: string;

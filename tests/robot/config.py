@@ -109,7 +109,7 @@ def create_rules(session, url):
         }
     ]
     for rule in rules:
-        response = session.post(url + '/reactive_rules', json=rule)
+        response = session.post(url + '/rules', json=rule)
         if response.status_code != 204:
             logger.error(f'Failed to create rule {rule["name"]}')
             return

@@ -43,6 +43,6 @@ namespace coco
         auto deliberative_rules_collection = database[deliberative_collection_name];
         assert(deliberative_rules_collection);
         if (!deliberative_rules_collection.insert_one(doc.view()))
-            throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
+            throw std::invalid_argument("Failed to insert rule: " + std::string(rule_name));
     }
 } // namespace coco

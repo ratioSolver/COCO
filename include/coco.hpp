@@ -47,9 +47,9 @@ namespace coco
     ~coco();
 
     /**
-     * @brief Initializes the CoCo environment by loading reactive rules from the database.
+     * @brief Initializes the CoCo environment by loading rules from the database.
      *
-     * This function retrieves all reactive rules stored in the database and loads them into the CoCo environment.
+     * This function retrieves all rules stored in the database and loads them into the CoCo environment.
      */
     void load_rules() noexcept;
 
@@ -186,31 +186,31 @@ namespace coco
     void delete_item(item &itm, bool infere = true) noexcept;
 
     /**
-     * @brief Returns a vector of references to the reactive rules.
+     * @brief Returns a vector of references to the rules.
      *
-     * This function retrieves all the reactive rules stored in the database and returns them as a vector of `rule` objects. The returned vector contains references to the actual reactive rules stored in the `rules` map.
+     * This function retrieves all the rules stored in the database and returns them as a vector of `rule` objects. The returned vector contains references to the actual rules stored in the `rules` map.
      *
-     * @return A vector of reactive rules.
+     * @return A vector of rules.
      */
     [[nodiscard]] std::vector<std::reference_wrapper<rule>> get_rules() noexcept;
     /**
-     * @brief Retrieves a reactive rule with the specified name.
+     * @brief Retrieves a rule with the specified name.
      *
-     * This function retrieves the reactive rule with the specified name.
+     * This function retrieves the rule with the specified name.
      *
-     * @param name The name of the reactive rule.
-     * @return A reference to the reactive rule.
+     * @param name The name of the rule.
+     * @return A reference to the rule.
      */
     [[nodiscard]] rule &get_rule(std::string_view name);
     /**
-     * @brief Creates a new reactive rule.
+     * @brief Creates a new rule.
      *
-     * This function creates a new reactive rule with the specified name and content.
+     * This function creates a new rule with the specified name and content.
      *
-     * @param rule_name The name of the reactive rule.
-     * @param rule_content The content of the reactive rule.
-     * @param infere Whether to run inference after creating the reactive rule.
-     * @return A reference to the newly created reactive rule.
+     * @param rule_name The name of the rule.
+     * @param rule_content The content of the rule.
+     * @param infere Whether to run inference after creating the rule.
+     * @return A reference to the newly created rule.
      */
     [[nodiscard]] rule &create_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
@@ -284,7 +284,7 @@ namespace coco
     Environment *env;                                                                  // The CLIPS environment..
     std::map<std::string, std::unique_ptr<type>, std::less<>> types;                   // The types managed by CoCo by name.
     std::unordered_map<std::string, std::unique_ptr<item>> items;                      // The items by their ID..
-    std::map<std::string, std::unique_ptr<rule>, std::less<>> rules; // The reactive rules..
+    std::map<std::string, std::unique_ptr<rule>, std::less<>> rules; // The rules..
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif
@@ -342,9 +342,9 @@ namespace coco
     virtual void new_data([[maybe_unused]] const item &itm, [[maybe_unused]] const json::json &data, [[maybe_unused]] const std::chrono::system_clock::time_point &timestamp) {}
 
     /**
-     * @brief Notifies when the reactive rule is created.
+     * @brief Notifies when the rule is created.
      *
-     * @param rr The created reactive rule.
+     * @param rr The created rule.
      */
     virtual void created_rule([[maybe_unused]] const rule &rr) {}
 

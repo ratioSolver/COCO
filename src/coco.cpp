@@ -316,7 +316,6 @@ namespace coco
     {
         std::vector<db_type> types;
         for (auto &entry : std::filesystem::directory_iterator(type_dir))
-        {
             if (entry.is_regular_file())
             {
                 std::ifstream in(entry.path());
@@ -324,7 +323,6 @@ namespace coco
                 if (cc.types.find(j_t["name"].get<std::string>()) == cc.types.end())
                     types.push_back(db_type(std::move(j_t)));
             }
-        }
         set_types(cc, std::move(types));
     }
 
@@ -342,6 +340,141 @@ namespace coco
         {
             cc.db.set_properties(db_tp.name, db_tp.static_props.has_value() ? *db_tp.static_props : json::json(), db_tp.dynamic_props.has_value() ? *db_tp.dynamic_props : json::json());
             cc.get_type(db_tp.name).set_properties(db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
+        }
+    }
+
+    void set_rules(coco &cc, std::vector<std::string> &&rule_files) noexcept
+    {
+        std::vector<db_rule> rules;
+        for (auto &fname : rule_files)
+        {
+            std::ifstream in(fname);
+            std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            auto rule_name = std::filesystem::path(fname).stem().string();
+            if (cc.rules.find(rule_name) == cc.rules.end())
+                rules.push_back(db_rule{rule_name, content});
+        }
+        set_rules(cc, std::move(rules));
+    }
+
+    void set_rules(coco &cc, std::string_view rule_dir) noexcept
+    {
+        std::vector<db_rule> rules;
+        for (auto &entry : std::filesystem::directory_iterator(rule_dir))
+            if (entry.is_regular_file())
+            {
+                std::ifstream in(entry.path());
+                std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                auto rule_name = entry.path().stem().string();
+                if (cc.rules.find(rule_name) == cc.rules.end())
+                    rules.push_back(db_rule{rule_name, content});
+            }
+        set_rules(cc, std::move(rules));
+    }
+
+    void set_rules(coco &cc, std::vector<db_rule> &&db_rules) noexcept
+    {
+        for (auto &db_r : db_rules)
+        {
+            cc.db.create_rule(db_r.name, db_r.content);
+            cc.rules.emplace(db_r.name, std::make_unique<rule>(cc, db_r.name, db_r.content));
+        }
+    }
+
+    void set_items(coco &cc, std::vector<std::string> &&item_files) noexcept
+    {
+        std::unordered_map<std::string, db_item> db_items;
+        for (auto &fname : item_files)
+        {
+            std::filesystem::path it_path(fname);
+            auto it_name = it_path.stem().string();
+            std::ifstream in(fname);
+            json::json j_itm = json::load(in);
+            std::vector<std::string> types;
+            if (j_itm.contains("types"))
+                for (auto &j_tp_name : j_itm["types"].as_array())
+                    types.push_back(j_tp_name.get<std::string>());
+            std::optional<json::json> props = std::nullopt;
+            if (j_itm.contains("properties"))
+                props = j_itm["properties"];
+            std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> val = std::nullopt;
+            if (j_itm.contains("value"))
+            {
+                json::json v = j_itm["value"];
+                std::chrono::system_clock::time_point ts = std::chrono::system_clock::now();
+                if (j_itm.contains("timestamp"))
+                {
+                    auto t_s = j_itm["timestamp"].get<std::int64_t>();
+                    ts = std::chrono::system_clock::time_point(std::chrono::milliseconds(t_s));
+                }
+                val = std::make_pair(std::move(v), ts);
+            }
+            db_items.emplace(it_name, db_item{"", std::move(types), std::move(props), std::move(val)});
+        }
+        set_items(cc, std::move(db_items));
+    }
+
+    void set_items(coco &cc, std::string_view item_dir) noexcept
+    {
+        std::unordered_map<std::string, db_item> db_items;
+        for (auto &entry : std::filesystem::directory_iterator(item_dir))
+            if (entry.is_regular_file())
+            {
+                std::filesystem::path it_path = entry.path();
+                auto it_name = it_path.stem().string();
+                std::ifstream in(entry.path());
+                json::json j_itm = json::load(in);
+                std::vector<std::string> types;
+                if (j_itm.contains("types"))
+                    for (auto &j_tp_name : j_itm["types"].as_array())
+                        types.push_back(j_tp_name.get<std::string>());
+                std::optional<json::json> props = std::nullopt;
+                if (j_itm.contains("properties"))
+                    props = j_itm["properties"];
+                std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> val = std::nullopt;
+                if (j_itm.contains("value"))
+                {
+                    json::json v = j_itm["value"];
+                    std::chrono::system_clock::time_point ts = std::chrono::system_clock::now();
+                    if (j_itm.contains("timestamp"))
+                    {
+                        auto t_s = j_itm["timestamp"].get<std::int64_t>();
+                        ts = std::chrono::system_clock::time_point(std::chrono::milliseconds(t_s));
+                    }
+                    val = std::make_pair(std::move(v), ts);
+                }
+                db_items.emplace(it_name, db_item{"", std::move(types), std::move(props), std::move(val)});
+            }
+        set_items(cc, std::move(db_items));
+    }
+
+    void set_items(coco &cc, std::unordered_map<std::string, db_item> &&db_items) noexcept
+    {
+        std::unordered_map<std::string, std::string> nm_ids;
+        for (auto &[it_name, db_itm] : db_items)
+        {
+            std::vector<std::reference_wrapper<type>> tps;
+            for (auto &tp_name : db_itm.types)
+                tps.push_back(cc.get_type(tp_name));
+            nm_ids.emplace(it_name, cc.create_item(std::move(tps)).get_id());
+        }
+        for (auto &[it_name, db_itm] : db_items)
+        {
+            json::json props;
+            if (db_itm.props.has_value())
+            {
+                for (auto &[prop_name, prop_value] : db_itm.props->as_object())
+                    if (prop_value.is_object() && prop_value.contains("item"))
+                    {
+                        auto ref_it_name = prop_value["item"].get<std::string>();
+                        props[prop_name] = nm_ids.at(ref_it_name);
+                    }
+                    else
+                        props[prop_name] = std::move(prop_value);
+            }
+            cc.set_properties(cc.get_item(nm_ids.at(it_name)), std::move(props));
+            if (db_itm.value.has_value())
+                cc.set_value(cc.get_item(nm_ids.at(it_name)), std::move(db_itm.value->first), db_itm.value->second, false);
         }
     }
 

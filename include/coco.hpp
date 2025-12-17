@@ -25,7 +25,7 @@ namespace coco
   class item;
   class property_type;
   class property;
-  class reactive_rule;
+  class rule;
 #ifdef BUILD_LISTENERS
   class listener;
 #endif
@@ -37,7 +37,7 @@ namespace coco
     friend class item;
     friend class property_type;
     friend class property;
-    friend class reactive_rule;
+    friend class rule;
 #ifdef BUILD_LISTENERS
     friend class listener;
 #endif
@@ -192,7 +192,7 @@ namespace coco
      *
      * @return A vector of reactive rules.
      */
-    [[nodiscard]] std::vector<std::reference_wrapper<reactive_rule>> get_reactive_rules() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<rule>> get_reactive_rules() noexcept;
     /**
      * @brief Retrieves a reactive rule with the specified name.
      *
@@ -201,7 +201,7 @@ namespace coco
      * @param name The name of the reactive rule.
      * @return A reference to the reactive rule.
      */
-    [[nodiscard]] reactive_rule &get_reactive_rule(std::string_view name);
+    [[nodiscard]] rule &get_reactive_rule(std::string_view name);
     /**
      * @brief Creates a new reactive rule.
      *
@@ -212,7 +212,7 @@ namespace coco
      * @param infere Whether to run inference after creating the reactive rule.
      * @return A reference to the newly created reactive rule.
      */
-    [[nodiscard]] reactive_rule &create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
+    [[nodiscard]] rule &create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
     [[nodiscard]] json::json to_json() noexcept;
 
@@ -284,50 +284,10 @@ namespace coco
     Environment *env;                                                                  // The CLIPS environment..
     std::map<std::string, std::unique_ptr<type>, std::less<>> types;                   // The types managed by CoCo by name.
     std::unordered_map<std::string, std::unique_ptr<item>> items;                      // The items by their ID..
-    std::map<std::string, std::unique_ptr<reactive_rule>, std::less<>> reactive_rules; // The reactive rules..
+    std::map<std::string, std::unique_ptr<rule>, std::less<>> reactive_rules; // The reactive rules..
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif
-  };
-
-  /**
-   * @brief Represents a reactive CoCo rule.
-   *
-   * This class represents a reactive CoCo rule in the form of a name and content.
-   */
-  class reactive_rule final
-  {
-  public:
-    /**
-     * @brief Constructs a rule object.
-     *
-     * @param cc The CoCo core object.
-     * @param name The name of the rule.
-     * @param content The content of the rule.
-     */
-    reactive_rule(coco &cc, std::string_view name, std::string_view content) noexcept;
-    ~reactive_rule();
-
-    /**
-     * @brief Gets the name of the rule.
-     *
-     * @return The name of the rule.
-     */
-    [[nodiscard]] const std::string &get_name() const { return name; }
-
-    /**
-     * @brief Gets the content of the rule.
-     *
-     * @return The content of the rule.
-     */
-    [[nodiscard]] const std::string &get_content() const { return content; }
-
-    [[nodiscard]] json::json to_json() const noexcept;
-
-  private:
-    coco &cc;            // the CoCo core object.
-    std::string name;    // the name of the rule.
-    std::string content; // the content of the rule.
   };
 
   void set_types(coco &cc, std::vector<db_type> &&db_types) noexcept;

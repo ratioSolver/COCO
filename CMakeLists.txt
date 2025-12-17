@@ -88,7 +88,7 @@ if(BUILD_COCO_SERVER)
     message(STATUS "Build CoCo Android application: ${BUILD_ANDROID}")
 endif()
 
-add_library(CoCo src/coco.cpp src/coco_module.cpp src/coco_property.cpp src/coco_type.cpp src/coco_item.cpp src/coco_db.cpp)
+add_library(CoCo src/coco.cpp src/coco_module.cpp src/coco_property.cpp src/coco_type.cpp src/coco_item.cpp  src/coco_rule.cpp src/coco_db.cpp)
 target_compile_features(CoCo PUBLIC cxx_std_17)
 target_include_directories(CoCo PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> ${CLIPS_INCLUDE_DIR})
 if(NOT TARGET json)

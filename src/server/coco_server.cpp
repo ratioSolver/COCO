@@ -3,6 +3,7 @@
 #include "coco_type.hpp"
 #include "coco_property.hpp"
 #include "coco_item.hpp"
+#include "coco_rule.hpp"
 #ifdef BUILD_AUTH
 #include "coco_auth.hpp"
 #else

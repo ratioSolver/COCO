@@ -232,6 +232,7 @@ namespace coco
     friend void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
+    friend void add_types(coco &cc, std::vector<std::string> &&type_files) noexcept;
     friend void set_types(coco &cc, std::vector<db_type> &&db_types) noexcept;
 
 #ifdef BUILD_LISTENERS
@@ -284,7 +285,7 @@ namespace coco
     Environment *env;                                                                  // The CLIPS environment..
     std::map<std::string, std::unique_ptr<type>, std::less<>> types;                   // The types managed by CoCo by name.
     std::unordered_map<std::string, std::unique_ptr<item>> items;                      // The items by their ID..
-    std::map<std::string, std::unique_ptr<rule>, std::less<>> rules; // The rules..
+    std::map<std::string, std::unique_ptr<rule>, std::less<>> rules;                   // The rules..
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif

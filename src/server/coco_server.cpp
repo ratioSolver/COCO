@@ -55,8 +55,8 @@ namespace coco
 
         add_route(network::Get, "^/fake/.*$", std::bind(&coco_server::fake, this, network::placeholders::request));
 
-        add_route(network::Get, "^/reactive_rules$", std::bind(&coco_server::get_reactive_rules, this, network::placeholders::request));
-        add_route(network::Post, "^/reactive_rules$", std::bind(&coco_server::create_reactive_rule, this, network::placeholders::request));
+        add_route(network::Get, "^/rules$", std::bind(&coco_server::get_rules, this, network::placeholders::request));
+        add_route(network::Post, "^/rules$", std::bind(&coco_server::create_rule, this, network::placeholders::request));
 
         add_route(network::Get, "^/openapi$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
         add_route(network::Get, "^/asyncapi$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
@@ -151,7 +151,7 @@ namespace coco
              {{"data", {{"type", "object"}, {"description", "Dynamic data of the item defined by its type."}}},
               {"timestamp", {{"type", "integer"}, {"format", "int64"}, {"description", "Unix timestamp in milliseconds when this data was recorded."}}}}},
             {"required", std::vector<json::json>{"data", "timestamp"}}};
-        schemas["reactive_rule"] = {
+        schemas["rule"] = {
             {"type", "object"},
             {"description", "A reactive rule is a CLIPS rule that can be triggered by changes in the system."},
             {"properties",
@@ -357,38 +357,38 @@ namespace coco
                                     {{"200",
                                       {{"description", "Successful response with the generated fake data."},
                                        {"content", {{"application/json", {{"schema", {{"type", "object"}}}}}}}}}}}}}},
-        paths["/reactive_rules"] = {{"get",
-                                     {{"summary", "Retrieve all the " COCO_NAME " reactive rules."},
-                                      {"description", "Endpoint to fetch all the reactive rules."},
+        paths["/rules"] = {{"get",
+                            {{"summary", "Retrieve all the " COCO_NAME " reactive rules."},
+                             {"description", "Endpoint to fetch all the reactive rules."},
 #ifdef BUILD_AUTH
-                                      {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+                             {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
 #endif
-                                      {"responses",
-                                       {{"200",
-                                         {{"description", "Successful response with the stored reactive rules."},
-                                          {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/reactive_rule"}}}}}}}}}}}
+                             {"responses",
+                              {{"200",
+                                {{"description", "Successful response with the stored reactive rules."},
+                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/rule"}}}}}}}}}}}
 #ifdef BUILD_AUTH
-                                        ,
-                                        {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+                               ,
+                               {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
 #endif
-                                       }}}},
-                                    {"post",
-                                     {{"summary", "Create a new " COCO_NAME " reactive rule."},
-                                      {"description", "Endpoint to create a new reactive rule."},
-                                      {"requestBody",
-                                       {{"required", true},
-                                        {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/reactive_rule"}}}}}}}}},
+                              }}}},
+                           {"post",
+                            {{"summary", "Create a new " COCO_NAME " reactive rule."},
+                             {"description", "Endpoint to create a new reactive rule."},
+                             {"requestBody",
+                              {{"required", true},
+                               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/rule"}}}}}}}}},
 #ifdef BUILD_AUTH
-                                      {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
+                             {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
 #endif
-                                      {"responses",
-                                       {{"204",
-                                         {{"description", "Reactive rule created successfully."}}}
+                             {"responses",
+                              {{"204",
+                                {{"description", "Reactive rule created successfully."}}}
 #ifdef BUILD_AUTH
-                                        ,
-                                        {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
+                               ,
+                               {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
 #endif
-                                       }}}}};
+                              }}}}};
 
 #ifdef BUILD_AUTH
         add_module<server_auth>(*this);
@@ -403,8 +403,8 @@ namespace coco
         auth_mdwr.add_authorized_path(network::Delete, "^/items/.*$", {0});
         auth_mdwr.add_authorized_path(network::Get, "^/data/.*$", {0, 1}, true);
         auth_mdwr.add_authorized_path(network::Post, "^/data/.*$", {0, 1}, true);
-        auth_mdwr.add_authorized_path(network::Get, "^/reactive_rules$", {0, 1});
-        auth_mdwr.add_authorized_path(network::Post, "^/reactive_rules$", {0});
+        auth_mdwr.add_authorized_path(network::Get, "^/rules$", {0, 1});
+        auth_mdwr.add_authorized_path(network::Post, "^/rules$", {0});
 #else
         add_module<server_noauth>(*this);
 #endif
@@ -778,10 +778,10 @@ namespace coco
         return std::make_unique<network::json_response>(std::move(j));
     }
 
-    std::unique_ptr<network::response> coco_server::get_reactive_rules([[maybe_unused]] const network::request &req)
+    std::unique_ptr<network::response> coco_server::get_rules([[maybe_unused]] const network::request &req)
     {
         json::json is(json::json_type::array);
-        for (auto &rr : get_coco().get_reactive_rules())
+        for (auto &rr : get_coco().get_rules())
         {
             auto j_rrs = rr.get().to_json();
             j_rrs["name"] = rr.get().get_name();
@@ -789,7 +789,7 @@ namespace coco
         }
         return std::make_unique<network::json_response>(std::move(is));
     }
-    std::unique_ptr<network::response> coco_server::create_reactive_rule(const network::request &req)
+    std::unique_ptr<network::response> coco_server::create_rule(const network::request &req)
     {
         auto &body = static_cast<const network::json_request &>(req).get_body();
         if (!body.is_object() || !body.contains("name") || !body["name"].is_string() || !body.contains("content") || !body["content"].is_string())
@@ -798,7 +798,7 @@ namespace coco
         std::string content = body["content"];
         try
         {
-            [[maybe_unused]] auto &rule = get_coco().create_reactive_rule(name, content);
+            [[maybe_unused]] auto &rule = get_coco().create_rule(name, content);
             return std::make_unique<network::response>(network::status_code::no_content);
         }
         catch (const std::exception &e)

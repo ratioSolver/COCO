@@ -104,11 +104,11 @@ namespace coco
         {
             LOG_DEBUG("Generating rule: " << r_name);
             out << "    try {\n";
-            out << "        [[maybe_unused]] auto &" << r_name << "_rule = cc.get_reactive_rule(\"" << r_name << "\");\n";
+            out << "        [[maybe_unused]] auto &" << r_name << "_rule = cc.get_rule(\"" << r_name << "\");\n";
             out << "        LOG_DEBUG(\"Reactive rule `" << r_name << "` found\");\n";
             out << "    } catch (const std::invalid_argument &e) {\n";
             out << "        LOG_DEBUG(\"Creating `" << r_name << "` reactive rule\");\n";
-            out << "        [[maybe_unused]] auto &" << r_name << "_rule = cc.create_reactive_rule(\"" << r_name << "\", R\"(" << r_content << ")\");\n";
+            out << "        [[maybe_unused]] auto &" << r_name << "_rule = cc.create_rule(\"" << r_name << "\", R\"(" << r_content << ")\");\n";
             out << "    }\n";
         }
     }

@@ -11,9 +11,9 @@
 #include <typeindex>
 
 #ifdef BUILD_LISTENERS
-#define CREATED_REACTIVE_RULE(rr) created_reactive_rule(rr)
+#define CREATED_RULE(rr) created_rule(rr)
 #else
-#define CREATED_REACTIVE_RULE(rr)
+#define CREATED_RULE(rr)
 #endif
 
 namespace coco
@@ -188,11 +188,11 @@ namespace coco
     /**
      * @brief Returns a vector of references to the reactive rules.
      *
-     * This function retrieves all the reactive rules stored in the database and returns them as a vector of `reactive_rule` objects. The returned vector contains references to the actual reactive rules stored in the `reactive_rules` map.
+     * This function retrieves all the reactive rules stored in the database and returns them as a vector of `rule` objects. The returned vector contains references to the actual reactive rules stored in the `rules` map.
      *
      * @return A vector of reactive rules.
      */
-    [[nodiscard]] std::vector<std::reference_wrapper<rule>> get_reactive_rules() noexcept;
+    [[nodiscard]] std::vector<std::reference_wrapper<rule>> get_rules() noexcept;
     /**
      * @brief Retrieves a reactive rule with the specified name.
      *
@@ -201,7 +201,7 @@ namespace coco
      * @param name The name of the reactive rule.
      * @return A reference to the reactive rule.
      */
-    [[nodiscard]] rule &get_reactive_rule(std::string_view name);
+    [[nodiscard]] rule &get_rule(std::string_view name);
     /**
      * @brief Creates a new reactive rule.
      *
@@ -212,7 +212,7 @@ namespace coco
      * @param infere Whether to run inference after creating the reactive rule.
      * @return A reference to the newly created reactive rule.
      */
-    [[nodiscard]] rule &create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
+    [[nodiscard]] rule &create_rule(std::string_view rule_name, std::string_view rule_content, bool infere = true);
 
     [[nodiscard]] json::json to_json() noexcept;
 
@@ -271,7 +271,7 @@ namespace coco
      *
      * @param itm The deleted item.
      */
-    void created_reactive_rule(const reactive_rule &rr) const;
+    void created_rule(const rule &rr) const;
 #endif
 
   protected:
@@ -284,7 +284,7 @@ namespace coco
     Environment *env;                                                                  // The CLIPS environment..
     std::map<std::string, std::unique_ptr<type>, std::less<>> types;                   // The types managed by CoCo by name.
     std::unordered_map<std::string, std::unique_ptr<item>> items;                      // The items by their ID..
-    std::map<std::string, std::unique_ptr<rule>, std::less<>> reactive_rules; // The reactive rules..
+    std::map<std::string, std::unique_ptr<rule>, std::less<>> rules; // The reactive rules..
 #ifdef BUILD_LISTENERS
     std::vector<listener *> listeners; // The CoCo listeners..
 #endif
@@ -346,7 +346,7 @@ namespace coco
      *
      * @param rr The created reactive rule.
      */
-    virtual void created_reactive_rule([[maybe_unused]] const reactive_rule &rr) {}
+    virtual void created_rule([[maybe_unused]] const rule &rr) {}
 
   private:
     coco &cc;

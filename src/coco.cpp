@@ -72,7 +72,7 @@ namespace coco
     coco::~coco()
     {
         items.clear();
-        reactive_rules.clear();
+        rules.clear();
         types.clear();
         Reset(env);
         [[maybe_unused]] auto ce = Clear(env);
@@ -84,10 +84,10 @@ namespace coco
     void coco::load_rules() noexcept
     {
         LOG_DEBUG("Retrieving all reactive rules");
-        auto rrs = db.get_reactive_rules();
+        auto rrs = db.get_rules();
         LOG_DEBUG("Retrieved " << rrs.size() << " reactive rules");
         for (auto &r : rrs)
-            reactive_rules.emplace(r.name, std::make_unique<rule>(*this, r.name, r.content));
+            rules.emplace(r.name, std::make_unique<rule>(*this, r.name, r.content));
 
         Run(env, -1);
     }
@@ -201,32 +201,32 @@ namespace coco
             Run(env, -1);
     }
 
-    std::vector<std::reference_wrapper<rule>> coco::get_reactive_rules() noexcept
+    std::vector<std::reference_wrapper<rule>> coco::get_rules() noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         std::vector<std::reference_wrapper<rule>> res;
-        res.reserve(reactive_rules.size());
-        for (auto &r : reactive_rules)
+        res.reserve(rules.size());
+        for (auto &r : rules)
             res.push_back(*r.second);
         return res;
     }
-    rule &coco::get_reactive_rule(std::string_view name)
+    rule &coco::get_rule(std::string_view name)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        if (auto it = reactive_rules.find(name); it != reactive_rules.end())
+        if (auto it = rules.find(name); it != rules.end())
             return *it->second;
         throw std::invalid_argument("reactive rule `" + std::string(name) + "` not found");
     }
-    rule &coco::create_reactive_rule(std::string_view rule_name, std::string_view rule_content, bool infere)
+    rule &coco::create_rule(std::string_view rule_name, std::string_view rule_content, bool infere)
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db.create_reactive_rule(rule_name, rule_content);
-        auto it = reactive_rules.emplace(rule_name, std::make_unique<rule>(*this, rule_name, rule_content));
+        db.create_rule(rule_name, rule_content);
+        auto it = rules.emplace(rule_name, std::make_unique<rule>(*this, rule_name, rule_content));
         if (!it.second)
             throw std::invalid_argument("reactive rule `" + std::string(rule_name) + "` already exists");
         else
         {
-            CREATED_REACTIVE_RULE(*it.first->second);
+            CREATED_RULE(*it.first->second);
         }
         if (infere)
             Run(env, -1);
@@ -285,12 +285,12 @@ namespace coco
                 jitms[id] = itm->to_json();
             jc["items"] = std::move(jitms);
         }
-        if (!reactive_rules.empty())
+        if (!rules.empty())
         {
             json::json jrrs;
-            for (auto &[name, rr] : reactive_rules)
+            for (auto &[name, rr] : rules)
                 jrrs[name] = rr->to_json();
-            jc["reactive_rules"] = std::move(jrrs);
+            jc["rules"] = std::move(jrrs);
         }
         for (auto &[_, mdl] : modules)
             mdl->to_json(jc);
@@ -572,10 +572,10 @@ namespace coco
         for (auto &l : listeners)
             l->new_data(itm, data, timestamp);
     }
-    void coco::created_reactive_rule(const reactive_rule &rr) const
+    void coco::created_rule(const rule &rr) const
     {
         for (auto &l : listeners)
-            l->created_reactive_rule(rr);
+            l->created_rule(rr);
     }
 
     listener::listener(coco &cc) noexcept : cc(cc) { cc.listeners.emplace_back(this); }

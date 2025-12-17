@@ -25,12 +25,12 @@ namespace coco
             LOG_DEBUG("Creating indexes for item data collection");
             item_data_collection.create_index(bsoncxx::builder::stream::document{} << "item_id" << 1 << "timestamp" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
-        auto reactive_rules_collection = db[reactive_rules_collection_name];
-        assert(reactive_rules_collection);
-        if (reactive_rules_collection.list_indexes().begin() == reactive_rules_collection.list_indexes().end())
+        auto rules_collection = db[rules_collection_name];
+        assert(rules_collection);
+        if (rules_collection.list_indexes().begin() == rules_collection.list_indexes().end())
         {
             LOG_DEBUG("Creating indexes for reactive rules collection");
-            reactive_rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
+            rules_collection.create_index(bsoncxx::builder::stream::document{} << "name" << 1 << bsoncxx::builder::stream::finalize, mongocxx::options::index{}.unique(true));
         }
     }
 
@@ -299,14 +299,14 @@ namespace coco
             throw std::invalid_argument("Failed to delete item: " + std::string(itm_id));
     }
 
-    std::vector<db_rule> mongo_db::get_reactive_rules() noexcept
+    std::vector<db_rule> mongo_db::get_rules() noexcept
     {
         std::vector<db_rule> rules;
         auto client = pool.acquire();
         auto db = (*client)[db_name];
-        auto reactive_rules_collection = db[reactive_rules_collection_name];
-        assert(reactive_rules_collection);
-        for (const auto &doc : reactive_rules_collection.find({}))
+        auto rules_collection = db[rules_collection_name];
+        assert(rules_collection);
+        for (const auto &doc : rules_collection.find({}))
         {
             auto name = doc["name"].get_string().value;
             auto content = doc["content"].get_string().value;
@@ -314,16 +314,16 @@ namespace coco
         }
         return rules;
     }
-    void mongo_db::create_reactive_rule(std::string_view rule_name, std::string_view rule_content)
+    void mongo_db::create_rule(std::string_view rule_name, std::string_view rule_content)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("name", rule_name.data()));
         doc.append(bsoncxx::builder::basic::kvp("content", rule_content.data()));
         auto client = pool.acquire();
         auto db = (*client)[db_name];
-        auto reactive_rules_collection = db[reactive_rules_collection_name];
-        assert(reactive_rules_collection);
-        if (!reactive_rules_collection.insert_one(doc.view()))
+        auto rules_collection = db[rules_collection_name];
+        assert(rules_collection);
+        if (!rules_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert reactive rule: " + std::string(rule_name));
     }
 

@@ -100,8 +100,8 @@ namespace coco
 
     std::unique_ptr<network::response> fake(const network::request &req);
 
-    std::unique_ptr<network::response> get_reactive_rules(const network::request &req);
-    std::unique_ptr<network::response> create_reactive_rule(const network::request &req);
+    std::unique_ptr<network::response> get_rules(const network::request &req);
+    std::unique_ptr<network::response> create_rule(const network::request &req);
 
     std::unique_ptr<network::response> get_openapi_spec(const network::request &req);
     std::unique_ptr<network::response> get_asyncapi_spec(const network::request &req);

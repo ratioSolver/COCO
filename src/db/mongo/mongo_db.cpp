@@ -44,16 +44,15 @@ namespace coco
         // Sort by _id to have a deterministic order (item properties require domain types to be already defined)..
         for (const auto &doc : types_collection.find({}, mongocxx::options::find{}.sort(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("_id", 1)))))
         {
-            auto name = doc["_id"].get_string().value;
-            std::optional<json::json> static_props, dynamic_props, data;
+            json::json j_t{{"name", std::string(doc["_id"].get_string().value)}};
             if (doc.find("static_properties") != doc.end())
-                static_props = json::load(bsoncxx::to_json(doc["static_properties"].get_document().view()));
+                j_t["static_properties"] = json::load(bsoncxx::to_json(doc["static_properties"].get_document().view()));
             if (doc.find("dynamic_properties") != doc.end())
-                dynamic_props = json::load(bsoncxx::to_json(doc["dynamic_properties"].get_document().view()));
+                j_t["dynamic_properties"] = json::load(bsoncxx::to_json(doc["dynamic_properties"].get_document().view()));
             if (doc.find("data") != doc.end())
-                data = json::load(bsoncxx::to_json(doc["data"].get_document().view()));
+                j_t["data"] = json::load(bsoncxx::to_json(doc["data"].get_document().view()));
 
-            types.push_back({std::string(name), std::move(static_props), std::move(dynamic_props), std::move(data)});
+            types.push_back(db_type(std::move(j_t)));
         }
         return types;
     }

@@ -232,7 +232,8 @@ namespace coco
     friend void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
-    friend void add_types(coco &cc, std::vector<std::string> &&type_files) noexcept;
+    friend void set_types(coco &cc, std::vector<std::string> &&type_files) noexcept;
+    friend void set_types(coco &cc, std::string_view type_dir) noexcept;
     friend void set_types(coco &cc, std::vector<db_type> &&db_types) noexcept;
 
 #ifdef BUILD_LISTENERS

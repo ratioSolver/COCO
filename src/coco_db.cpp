@@ -5,6 +5,17 @@
 
 namespace coco
 {
+    db_type::db_type(json::json &&tp_data) noexcept
+    {
+        name = tp_data["name"].get<std::string>();
+        if (tp_data.contains("static_properties"))
+            static_props = std::move(tp_data["static_properties"]);
+        if (tp_data.contains("dynamic_properties"))
+            dynamic_props = std::move(tp_data["dynamic_properties"]);
+        if (tp_data.contains("data"))
+            data = std::move(tp_data["data"]);
+    }
+
     db_module::db_module(coco_db &db) noexcept : db(db) {}
     void db_module::drop() noexcept {}
 

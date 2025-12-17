@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <functional>
 #include <fstream>
+#include <filesystem>
 #include <cassert>
 
 namespace coco
@@ -298,24 +299,31 @@ namespace coco
         return jc;
     }
 
-    void add_types(coco &cc, std::vector<std::string> &&type_files) noexcept
+    void set_types(coco &cc, std::vector<std::string> &&type_files) noexcept
     {
         std::vector<db_type> types;
         for (auto &fname : type_files)
         {
             std::ifstream in(fname);
             json::json j_t = json::load(in);
-            const auto &tp_name = j_t["name"].get<std::string>();
-            if (cc.types.find(tp_name) != cc.types.end())
-                continue;
-            db_type t{tp_name, std::nullopt, std::nullopt, std::nullopt};
-            if (j_t.contains("static_properties"))
-                t.static_props = std::move(j_t["static_properties"]);
-            if (j_t.contains("dynamic_properties"))
-                t.dynamic_props = std::move(j_t["dynamic_properties"]);
-            if (j_t.contains("data"))
-                t.data = std::move(j_t["data"]);
-            types.push_back(std::move(t));
+            if (cc.types.find(j_t["name"].get<std::string>()) == cc.types.end())
+                types.push_back(db_type(std::move(j_t)));
+        }
+        set_types(cc, std::move(types));
+    }
+
+    void set_types(coco &cc, std::string_view type_dir) noexcept
+    {
+        std::vector<db_type> types;
+        for (auto &entry : std::filesystem::directory_iterator(type_dir))
+        {
+            if (entry.is_regular_file())
+            {
+                std::ifstream in(entry.path());
+                json::json j_t = json::load(in);
+                if (cc.types.find(j_t["name"].get<std::string>()) == cc.types.end())
+                    types.push_back(db_type(std::move(j_t)));
+            }
         }
         set_types(cc, std::move(types));
     }

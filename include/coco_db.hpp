@@ -13,6 +13,8 @@ namespace coco
 
   struct db_type
   {
+    db_type(json::json &&tp_data) noexcept;
+
     std::string name;
     std::optional<json::json> static_props, dynamic_props, data;
   };

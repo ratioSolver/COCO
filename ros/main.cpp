@@ -138,6 +138,7 @@ int main(int argc, char const *argv[])
     pkg_file << "  <description>COCO ROS Module</description>\n";
     pkg_file << "  <maintainer email=\"riccardo.debenedictis@cnr.it\">Riccardo De Benedictis</maintainer>\n";
     pkg_file << "  <license>MIT</license>\n";
+    pkg_file << "  <member_of_group>rosidl_interface_packages</member_of_group>\n";
     pkg_file << "  <buildtool_depend>ament_cmake</buildtool_depend>\n";
     pkg_file << "  <build_depend>rclcpp</build_depend>\n";
     pkg_file << "  <exec_depend>rclcpp</exec_depend>\n";
@@ -146,7 +147,14 @@ int main(int argc, char const *argv[])
     pkg_file << "</package>\n";
 
     LOG_INFO("Generating coco_ros.hpp");
-    std::ofstream header_out(module_name + "/coco_ros.hpp", std::ios::out | std::ios::trunc);
+    auto include_dir = std::filesystem::path(module_name) / "include";
+    if (!std::filesystem::exists(include_dir))
+        if (!std::filesystem::create_directories(include_dir))
+        {
+            LOG_ERR("Failed to create 'include' directory");
+            return 1;
+        }
+    std::ofstream header_out(include_dir / "coco_ros.hpp", std::ios::out | std::ios::trunc);
     if (!header_out)
     {
         LOG_ERR("Cannot open output file: coco_ros.hpp");
@@ -165,7 +173,14 @@ int main(int argc, char const *argv[])
     header_out << "} // namespace coco\n\n";
 
     LOG_INFO("Generating coco_ros.cpp");
-    std::ofstream source_out(module_name + "/coco_ros.cpp", std::ios::out | std::ios::trunc);
+    auto src_dir = std::filesystem::path(module_name) / "src";
+    if (!std::filesystem::exists(src_dir))
+        if (!std::filesystem::create_directories(src_dir))
+        {
+            LOG_ERR("Failed to create 'src' directory");
+            return 1;
+        }
+    std::ofstream source_out(src_dir / "coco_ros.cpp", std::ios::out | std::ios::trunc);
     if (!source_out)
     {
         LOG_ERR("Cannot open output file: coco_ros.cpp");
@@ -176,5 +191,45 @@ int main(int argc, char const *argv[])
     source_out << "    coco_ros::coco_ros(coco &cc) noexcept : coco_module(cc), listener(cc)\n";
     source_out << "    {}\n";
     source_out << "} // namespace coco\n";
+
+    LOG_INFO("Generating CMakeLists.txt");
+    std::ofstream cmake_out(module_name + "/CMakeLists.txt", std::ios::out | std::ios::trunc);
+    if (!cmake_out)
+    {
+        LOG_ERR("Cannot open output file: CMakeLists.txt");
+        return 1;
+    }
+    cmake_out << "cmake_minimum_required(VERSION 3.5)\n";
+    cmake_out << "project(ros_coco)\n\n";
+    cmake_out << "find_package(ament_cmake REQUIRED)\n";
+    cmake_out << "find_package(rclcpp REQUIRED)\n";
+    cmake_out << "find_package(rosidl_default_generators REQUIRED)\n\n";
+    cmake_out << "rosidl_generate_interfaces(${PROJECT_NAME}\n";
+    ;
+    for (const auto &[name, j_tp] : types)
+    {
+        auto ros_name = to_ros_identifier(name);
+        cmake_out << "  \"msg/" << ros_name << ".msg\"\n";
+    }
+    cmake_out << ")\n\n";
+    cmake_out << "ament_export_dependencies(rosidl_default_runtime)\n\n";
+    cmake_out << "add_library(coco_ros SHARED\n";
+    cmake_out << "  src/coco_ros.cpp\n";
+    cmake_out << ")\n";
+    cmake_out << "ament_target_dependencies(coco_ros rclcpp rosidl_default_runtime)\n\n";
+    cmake_out << "target_include_directories(coco_ros PUBLIC\n";
+    cmake_out << "  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>\n";
+    cmake_out << "  $<INSTALL_INTERFACE:include>\n";
+    cmake_out << ")\n\n";
+    cmake_out << "install(TARGETS coco_ros\n";
+    cmake_out << "  EXPORT export_" << module_name << "\n";
+    cmake_out << "  LIBRARY DESTINATION lib\n";
+    cmake_out << "  ARCHIVE DESTINATION lib\n";
+    cmake_out << "  RUNTIME DESTINATION bin\n";
+    cmake_out << ")\n\n";
+    cmake_out << "install(DIRECTORY include/\n";
+    cmake_out << "  DESTINATION include\n";
+    cmake_out << ")\n\n";
+    cmake_out << "ament_package()\n";
     return 0;
 }

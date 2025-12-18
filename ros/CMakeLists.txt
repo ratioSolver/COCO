@@ -13,7 +13,9 @@ function(generate_ros_interface)
 
     message(STATUS "Generating ROS interface configuration")
     set(ROS_GEN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ros)
-    set(STAMP   ${ROS_GEN_DIR}/.generated.stamp)
+    set(ROS_GEN_CPP ${ROS_GEN_DIR}/coco_ros.cpp)
+    set(ROS_GEN_HPP ${ROS_GEN_DIR}/coco_ros.hpp)
+    set(ROS_GEN_PKG ${ROS_GEN_DIR}/package.xml)
 
     message(STATUS "Type files:")
     foreach(f IN LISTS COCO_ROS_TYPE_FILES)
@@ -25,18 +27,39 @@ function(generate_ros_interface)
         message(STATUS "${f}")
     endforeach()
 
+    set(ROS_GEN_DEPENDS)
+    foreach(tp_file IN LISTS COCO_ROS_TYPE_FILES)
+        if(IS_ABSOLUTE "${tp_file}")
+            list(APPEND ROS_GEN_DEPENDS "${tp_file}")
+        else()
+            list(APPEND ROS_GEN_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${tp_file}")
+        endif()
+    endforeach()
+
+    foreach(tp_folder IN LISTS COCO_ROS_TYPE_FOLDERS)
+        if(IS_ABSOLUTE "${tp_folder}")
+            set(_folder_path "${tp_folder}")
+        else()
+            set(_folder_path "${CMAKE_CURRENT_SOURCE_DIR}/${tp_folder}")
+        endif()
+        file(GLOB_RECURSE _folder_types CONFIGURE_DEPENDS LIST_DIRECTORIES FALSE
+            "${_folder_path}/*")
+        list(APPEND ROS_GEN_DEPENDS ${_folder_types})
+    endforeach()
+
     add_custom_command(
-        OUTPUT ${STAMP}
+        OUTPUT ${ROS_GEN_CPP} ${ROS_GEN_HPP} ${ROS_GEN_PKG}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ROS_GEN_DIR}
         COMMAND $<TARGET_FILE:ROSGenerator>
             -t ${COCO_ROS_TYPE_FILES}
             -tf ${COCO_ROS_TYPE_FOLDERS}
             -o ${ROS_GEN_DIR}
-        DEPENDS ROSGenerator
+        DEPENDS ROSGenerator ${ROS_GEN_DEPENDS}
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Generating ROS configuration header"
         VERBATIM
     )
-    add_custom_target(GenerateROSInterface ALL DEPENDS ${STAMP})
+    set_source_files_properties(${ROS_GEN_CPP} ${ROS_GEN_HPP} PROPERTIES GENERATED TRUE)
+    add_custom_target(GenerateROSInterface ALL DEPENDS ${ROS_GEN_CPP} ${ROS_GEN_HPP} ${ROS_GEN_PKG})
     set(ROS_GEN_DIR ${ROS_GEN_DIR} PARENT_SCOPE)
 endfunction()

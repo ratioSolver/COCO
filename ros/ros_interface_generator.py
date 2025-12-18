@@ -62,7 +62,7 @@ def _load_types(type_paths: Iterable[pathlib.Path]) -> Dict[str, Any]:
     return types
 
 def _write_messages(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
-    msg_dir = output_dir / "msg"
+    msg_dir = output_dir / "src" / "coco_ros_interfaces" / "msg"
     msg_dir.mkdir(parents=True, exist_ok=True)
     for existing in msg_dir.glob("*.msg"):
         existing.unlink()
@@ -75,7 +75,7 @@ def _write_messages(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
                 handle.write(_prop_to_ros(prop_name, dynamic_props[prop_name]))
 
 def _write_package_xml(output_dir: pathlib.Path) -> None:
-    pkg_path = output_dir / "package.xml"
+    pkg_path = output_dir / "src" / "coco_ros_interfaces" / "package.xml"
     with pkg_path.open("w", encoding="utf-8") as handle:
         handle.write("<?xml version=\"1.0\"?>\n")
         handle.write("<package format=\"3\">\n")
@@ -91,7 +91,7 @@ def _write_package_xml(output_dir: pathlib.Path) -> None:
         handle.write("</package>\n")
 
 def _write_cmake_lists(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
-    cmake_path = output_dir / "CMakeLists.txt"
+    cmake_path = output_dir / "src" / "coco_ros_interfaces" / "CMakeLists.txt"
     with cmake_path.open("w", encoding="utf-8") as handle:
         handle.write("cmake_minimum_required(VERSION 3.5)\n")
         handle.write("project(coco_ros_interfaces)\n\n")

@@ -124,6 +124,27 @@ int main(int argc, char const *argv[])
                 msg_file << prop_to_ros(prop_name, prop_value);
     }
 
+    LOG_INFO("Generating package.xml");
+    std::ofstream pkg_file(module_name + "/package.xml", std::ios::out | std::ios::trunc);
+    if (!pkg_file)
+    {
+        LOG_ERR("Cannot open output file: package.xml");
+        return 1;
+    }
+    pkg_file << "<?xml version=\"1.0\"?>\n";
+    pkg_file << "<package format=\"2\">\n";
+    pkg_file << "  <name>ros_coco</name>\n";
+    pkg_file << "  <version>0.1.0</version>\n";
+    pkg_file << "  <description>COCO ROS Module</description>\n";
+    pkg_file << "  <maintainer email=\"riccardo.debenedictis@cnr.it\">Riccardo De Benedictis</maintainer>\n";
+    pkg_file << "  <license>MIT</license>\n";
+    pkg_file << "  <buildtool_depend>ament_cmake</buildtool_depend>\n";
+    pkg_file << "  <build_depend>rclcpp</build_depend>\n";
+    pkg_file << "  <exec_depend>rclcpp</exec_depend>\n";
+    pkg_file << "  <build_depend>rosidl_default_generators</build_depend>\n";
+    pkg_file << "  <exec_depend>rosidl_default_runtime</exec_depend>\n";
+    pkg_file << "</package>\n";
+
     LOG_INFO("Generating coco_ros.hpp");
     std::ofstream header_out(module_name + "/coco_ros.hpp", std::ios::out | std::ios::trunc);
     if (!header_out)
@@ -133,13 +154,14 @@ int main(int argc, char const *argv[])
     }
     header_out << "#pragma once\n\n";
     header_out << "#include \"coco_module.hpp\"\n";
+    header_out << "#include \"coco.hpp\"\n";
     header_out << "#include \"rclcpp/rclcpp.hpp\"\n\n";
     header_out << "namespace coco\n{\n";
-    header_out << "    class coco_ros : public coco_module\n";
-    header_out << "    {\n";
-    header_out << "    public:\n";
-    header_out << "        coco_ros(coco &cc) noexcept;\n";
-    header_out << "    };\n";
+    header_out << "  class coco_ros : public coco_module, private listener\n";
+    header_out << "  {\n";
+    header_out << "  public:\n";
+    header_out << "    coco_ros(coco &cc) noexcept;\n";
+    header_out << "  };\n";
     header_out << "} // namespace coco\n\n";
 
     LOG_INFO("Generating coco_ros.cpp");
@@ -150,9 +172,9 @@ int main(int argc, char const *argv[])
         return 1;
     }
     source_out << "#include \"coco_ros.hpp\"\n\n";
-    source_out << "namespace coco\n{\n\n";
-    source_out << "    coco_ros::coco_ros(coco &cc) noexcept : coco_module(cc)\n";
-    source_out << "    {}\n\n";
+    source_out << "namespace coco\n{\n";
+    source_out << "    coco_ros::coco_ros(coco &cc) noexcept : coco_module(cc), listener(cc)\n";
+    source_out << "    {}\n";
     source_out << "} // namespace coco\n";
     return 0;
 }

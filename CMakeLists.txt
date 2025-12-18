@@ -162,6 +162,7 @@ if(BUILD_MQTT)
 endif()
 
 if(BUILD_ROS)
+    target_compile_definitions(CoCo PUBLIC BUILD_LISTENERS)
     add_subdirectory(ros)
 endif()
 

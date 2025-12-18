@@ -9,6 +9,7 @@
 #include <mutex>
 #include <random>
 #include <typeindex>
+#include <filesystem>
 
 #ifdef BUILD_LISTENERS
 #define CREATED_RULE(rr) created_rule(rr)
@@ -234,16 +235,16 @@ namespace coco
     friend void set_props(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void add_data(Environment *env, UDFContext *udfc, UDFValue *out);
 
-    friend void set_types(coco &cc, std::vector<std::string> &&type_files) noexcept;
-    friend void set_types(coco &cc, std::string_view type_dir) noexcept;
+    friend void set_types(coco &cc, std::vector<std::filesystem::path> &&type_files) noexcept;
+    friend void set_types(coco &cc, const std::filesystem::path &type_dir) noexcept;
     friend void set_types(coco &cc, std::vector<db_type> &&db_types) noexcept;
 
-    friend void set_rules(coco &cc, std::vector<std::string> &&rule_files) noexcept;
-    friend void set_rules(coco &cc, std::string_view rule_dir) noexcept;
+    friend void set_rules(coco &cc, std::vector<std::filesystem::path> &&rule_files) noexcept;
+    friend void set_rules(coco &cc, const std::filesystem::path &rule_dir) noexcept;
     friend void set_rules(coco &cc, std::vector<db_rule> &&db_rules) noexcept;
 
-    friend void set_items(coco &cc, std::vector<std::string> &&item_files) noexcept;
-    friend void set_items(coco &cc, std::string_view item_dir) noexcept;
+    friend void set_items(coco &cc, std::vector<std::filesystem::path> &&item_files) noexcept;
+    friend void set_items(coco &cc, const std::filesystem::path &item_dir) noexcept;
     friend void set_items(coco &cc, std::unordered_map<std::string, db_item> &&db_items) noexcept;
 
 #ifdef BUILD_LISTENERS
@@ -302,7 +303,17 @@ namespace coco
 #endif
   };
 
+  void set_types(coco &cc, std::vector<std::filesystem::path> &&type_files) noexcept;
+  void set_types(coco &cc, const std::filesystem::path &type_dir) noexcept;
   void set_types(coco &cc, std::vector<db_type> &&db_types) noexcept;
+
+  void set_rules(coco &cc, std::vector<std::filesystem::path> &&rule_files) noexcept;
+  void set_rules(coco &cc, const std::filesystem::path &rule_dir) noexcept;
+  void set_rules(coco &cc, std::vector<db_rule> &&db_rules) noexcept;
+
+  void set_items(coco &cc, std::vector<std::filesystem::path> &&item_files) noexcept;
+  void set_items(coco &cc, const std::filesystem::path &item_dir) noexcept;
+  void set_items(coco &cc, std::unordered_map<std::string, db_item> &&db_items) noexcept;
 
   void add_type(Environment *env, UDFContext *udfc, UDFValue *out);
   void remove_type(Environment *env, UDFContext *udfc, UDFValue *out);

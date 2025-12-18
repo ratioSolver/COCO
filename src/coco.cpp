@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <functional>
 #include <fstream>
-#include <filesystem>
 #include <cassert>
 
 namespace coco
@@ -299,7 +298,7 @@ namespace coco
         return jc;
     }
 
-    void set_types(coco &cc, std::vector<std::string> &&type_files) noexcept
+    void set_types(coco &cc, std::vector<std::filesystem::path> &&type_files) noexcept
     {
         std::vector<db_type> types;
         for (auto &fname : type_files)
@@ -312,7 +311,7 @@ namespace coco
         set_types(cc, std::move(types));
     }
 
-    void set_types(coco &cc, std::string_view type_dir) noexcept
+    void set_types(coco &cc, const std::filesystem::path &type_dir) noexcept
     {
         std::vector<db_type> types;
         for (auto &entry : std::filesystem::directory_iterator(type_dir))
@@ -343,7 +342,7 @@ namespace coco
         }
     }
 
-    void set_rules(coco &cc, std::vector<std::string> &&rule_files) noexcept
+    void set_rules(coco &cc, std::vector<std::filesystem::path> &&rule_files) noexcept
     {
         std::vector<db_rule> rules;
         for (auto &fname : rule_files)
@@ -357,7 +356,7 @@ namespace coco
         set_rules(cc, std::move(rules));
     }
 
-    void set_rules(coco &cc, std::string_view rule_dir) noexcept
+    void set_rules(coco &cc, const std::filesystem::path &rule_dir) noexcept
     {
         std::vector<db_rule> rules;
         for (auto &entry : std::filesystem::directory_iterator(rule_dir))
@@ -381,7 +380,7 @@ namespace coco
         }
     }
 
-    void set_items(coco &cc, std::vector<std::string> &&item_files) noexcept
+    void set_items(coco &cc, std::vector<std::filesystem::path> &&item_files) noexcept
     {
         std::unordered_map<std::string, db_item> db_items;
         for (auto &fname : item_files)
@@ -414,7 +413,7 @@ namespace coco
         set_items(cc, std::move(db_items));
     }
 
-    void set_items(coco &cc, std::string_view item_dir) noexcept
+    void set_items(coco &cc, const std::filesystem::path &item_dir) noexcept
     {
         std::unordered_map<std::string, db_item> db_items;
         for (auto &entry : std::filesystem::directory_iterator(item_dir))
@@ -456,7 +455,7 @@ namespace coco
             std::vector<std::reference_wrapper<type>> tps;
             for (auto &tp_name : db_itm.types)
                 tps.push_back(cc.get_type(tp_name));
-            nm_ids.emplace(it_name, cc.create_item(std::move(tps)).get_id());
+            nm_ids.emplace(it_name, cc.create_item(std::move(tps), json::json{}, std::nullopt, false).get_id());
         }
         for (auto &[it_name, db_itm] : db_items)
         {
@@ -472,7 +471,7 @@ namespace coco
                     else
                         props[prop_name] = std::move(prop_value);
             }
-            cc.set_properties(cc.get_item(nm_ids.at(it_name)), std::move(props));
+            cc.set_properties(cc.get_item(nm_ids.at(it_name)), std::move(props), false);
             if (db_itm.value.has_value())
                 cc.set_value(cc.get_item(nm_ids.at(it_name)), std::move(db_itm.value->first), db_itm.value->second, false);
         }

@@ -21,5 +21,13 @@ int main(int argc, char const *argv[])
     header_out << "#pragma once\n\n";
     header_out << "#include \"coco_module.hpp\"\n";
     header_out << "#include \"rclcpp/rclcpp.hpp\"\n\n";
+
+    std::ofstream source_out(module_name + "/coco_ros.cpp", std::ios::out | std::ios::trunc);
+    if (!source_out)
+    {
+        LOG_ERR("Cannot open output file: coco_ros.cpp");
+        return 1;
+    }
+    source_out << "#include \"coco_ros.hpp\"\n";
     return 0;
 }

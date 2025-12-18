@@ -1,4 +1,3 @@
-find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 
 generate_ros_interface(TYPE_FOLDERS "types")

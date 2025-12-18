@@ -1,3 +1,19 @@
 {
-  "name": "Robot"
+  "name": "Robot",
+  "static_properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "dynamic_properties": {
+    "listening": {
+      "type": "bool"
+    },
+    "understood": {
+      "type": "string"
+    },
+    "saying": {
+      "type": "string"
+    }
+  }
 }

@@ -71,7 +71,7 @@ int main(int argc, char const *argv[])
             while (i + 1 < argc && std::string(argv[i + 1])[0] != '-')
             {
                 for (const auto &entry : std::filesystem::directory_iterator(argv[i + 1]))
-                    if (entry.path().extension() == ".type")
+                    if (entry.is_regular_file())
                         type_files.push_back(entry.path().string());
                 ++i;
             }
@@ -84,7 +84,7 @@ int main(int argc, char const *argv[])
         }
 
     std::unordered_map<std::string, json::json> types;
-    LOG_INFO("Loading types");
+    LOG_INFO("Loading " << type_files.size() << " type files");
     for (const auto &tp_file : type_files)
     {
         LOG_INFO("Loading " << tp_file);
@@ -119,8 +119,8 @@ int main(int argc, char const *argv[])
             return 1;
         }
         LOG_INFO("Generating message file for type: " << name);
-        if (j_tp.contains("static_properties"))
-            for (const auto &[prop_name, prop_value] : j_tp["static_properties"].as_object())
+        if (j_tp.contains("dynamic_properties"))
+            for (const auto &[prop_name, prop_value] : j_tp["dynamic_properties"].as_object())
                 msg_file << prop_to_ros(prop_name, prop_value);
     }
 
@@ -134,6 +134,13 @@ int main(int argc, char const *argv[])
     header_out << "#pragma once\n\n";
     header_out << "#include \"coco_module.hpp\"\n";
     header_out << "#include \"rclcpp/rclcpp.hpp\"\n\n";
+    header_out << "namespace coco\n{\n";
+    header_out << "    class coco_ros : public coco_module\n";
+    header_out << "    {\n";
+    header_out << "    public:\n";
+    header_out << "        coco_ros(coco &cc) noexcept;\n";
+    header_out << "    };\n";
+    header_out << "} // namespace coco\n\n";
 
     LOG_INFO("Generating coco_ros.cpp");
     std::ofstream source_out(module_name + "/coco_ros.cpp", std::ios::out | std::ios::trunc);
@@ -142,6 +149,10 @@ int main(int argc, char const *argv[])
         LOG_ERR("Cannot open output file: coco_ros.cpp");
         return 1;
     }
-    source_out << "#include \"coco_ros.hpp\"\n";
+    source_out << "#include \"coco_ros.hpp\"\n\n";
+    source_out << "namespace coco\n{\n\n";
+    source_out << "    coco_ros::coco_ros(coco &cc) noexcept : coco_module(cc)\n";
+    source_out << "    {}\n\n";
+    source_out << "} // namespace coco\n";
     return 0;
 }

@@ -10,5 +10,9 @@ setup_sanitizers(fcm_tests)
 
 add_subdirectory(config)
 
+if(BUILD_ROS)
+    add_subdirectory(ros)
+endif()
+
 add_test(NAME CoCoTest00 COMMAND coco_tests)
 add_test(NAME FCMTest00 COMMAND fcm_tests)

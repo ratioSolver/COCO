@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(ROSGenerator LANGUAGES CXX)
 
-add_executable(ROSGenerator main.cpp)
+add_executable(ROSGenerator main.cpp src/interface_generator.cpp)
 target_compile_features(ROSGenerator PUBLIC cxx_std_17)
 target_include_directories(ROSGenerator PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_link_libraries(ROSGenerator PRIVATE json)

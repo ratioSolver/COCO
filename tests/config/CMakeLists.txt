@@ -7,4 +7,5 @@ coco_config(PROJ_NAME TestConfig TYPE_FILES "${COCO_CONFIG_TYPES}" RULE_FILES "$
 add_dependencies(coco_config CoCo TestConfig)
 target_include_directories(coco_config PRIVATE "${TestConfig_CONFIG_INCLUDE_DIR}")
 target_link_libraries(coco_config PRIVATE CoCo)
+target_compile_definitions(coco_config PRIVATE PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}")
 setup_sanitizers(coco_config)

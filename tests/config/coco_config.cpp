@@ -21,11 +21,12 @@ int main()
     LOG_INFO("Creating CoCo instance");
     coco::coco cc(db);
     LOG_INFO("Loading configuration");
-    coco::set_types(cc, "types");
+    const std::filesystem::path config_root = PROJECT_ROOT;
+    coco::set_types(cc, config_root / "types");
     cc.load_rules();
-    coco::set_rules(cc, "rules");
+    coco::set_rules(cc, config_root / "rules");
     if (cc.get_items().empty())
-        coco::set_items(cc, "items");
+        coco::set_items(cc, config_root / "items");
     LOG_INFO("Configuration loaded successfully");
 
     LOG_INFO("Testing item manipulation");

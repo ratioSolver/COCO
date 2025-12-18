@@ -109,7 +109,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate ROS interface package from COCO types")
     parser.add_argument("-t", "--type-files", nargs="*", default=[], help="Explicit type definition files")
     parser.add_argument("-tf", "--type-folders", nargs="*", default=[], help="Folders containing type definitions")
-    parser.add_argument("-o", "--output", required=True, help="Output directory for the ROS package")
+    parser.add_argument("-o", "--output-dir", required=True, help="Output directory for the ROS package")
     args = parser.parse_args()
 
     type_paths = _collect_type_files(args.type_files, args.type_folders)
@@ -117,7 +117,7 @@ def main() -> int:
         parser.error("No type files were provided")
 
     types = _load_types(type_paths)
-    output_dir = pathlib.Path(args.output)
+    output_dir = pathlib.Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     _write_messages(output_dir, types)

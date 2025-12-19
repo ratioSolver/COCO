@@ -61,9 +61,13 @@ def _load_types(type_paths: Iterable[pathlib.Path]) -> Dict[str, Any]:
         types[name] = data
     return types
 
+def _create_project_structure(output_dir: pathlib.Path) -> None:
+    base_dir = output_dir / "src" / "coco_ros_interfaces"
+    msg_dir = base_dir / "msg"
+    msg_dir.mkdir(parents=True, exist_ok=True)
+
 def _write_messages(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
     msg_dir = output_dir / "src" / "coco_ros_interfaces" / "msg"
-    msg_dir.mkdir(parents=True, exist_ok=True)
     for existing in msg_dir.glob("*.msg"):
         existing.unlink()
     for name in sorted(types):
@@ -119,8 +123,8 @@ def main() -> int:
 
     types = _load_types(type_paths)
     output_dir = pathlib.Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
 
+    _create_project_structure(output_dir)
     _write_messages(output_dir, types)
     _write_package_xml(output_dir)
     _write_cmake_lists(output_dir, types)

@@ -51,6 +51,8 @@ def _write_package_xml(output_dir: pathlib.Path) -> None:
         handle.write("  <description>CoCo ROS</description>\n")
         handle.write("  <maintainer email=\"riccardo.debenedictis@cnr.it\">Riccardo De Benedictis</maintainer>\n")
         handle.write("  <license>Apache-2.0</license>\n")
+        handle.write("  <depend>coco_ros_interfaces</depend>\n")
+        handle.write("  <build_depend>rclcpp</build_depend>\n")
         handle.write("  <buildtool_depend>ament_cmake</buildtool_depend>\n")
         handle.write("</package>\n")
 
@@ -60,7 +62,9 @@ def _write_cmake_lists(output_dir: pathlib.Path) -> None:
         handle.write("cmake_minimum_required(VERSION 3.5)\n")
         handle.write("project(coco_ros)\n\n")
         handle.write("find_package(ament_cmake REQUIRED)\n")
-        handle.write("find_package(rclcpp REQUIRED)\n\n")
+        handle.write("find_package(rclcpp REQUIRED)\n")
+        handle.write("find_package(coco_ros_interfaces REQUIRED)\n")
+        handle.write("find_package(CoCo REQUIRED)\n\n")
         handle.write("ament_package()\n")
 
 def main() -> int:

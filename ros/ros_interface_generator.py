@@ -78,16 +78,17 @@ def _write_package_xml(output_dir: pathlib.Path) -> None:
     pkg_path = output_dir / "src" / "coco_ros_interfaces" / "package.xml"
     with pkg_path.open("w", encoding="utf-8") as handle:
         handle.write("<?xml version=\"1.0\"?>\n")
+        handle.write("<?xml-model href=\"http://download.ros.org/schema/package_format3.xsd\" schematypens=\"http://www.w3.org/2001/XMLSchema\"?>")
         handle.write("<package format=\"3\">\n")
         handle.write("  <name>coco_ros_interfaces</name>\n")
         handle.write("  <version>0.1.0</version>\n")
         handle.write("  <description>COCO ROS Interfaces</description>\n")
         handle.write("  <maintainer email=\"riccardo.debenedictis@cnr.it\">Riccardo De Benedictis</maintainer>\n")
         handle.write("  <license>Apache-2.0</license>\n")
-        handle.write("  <member_of_group>rosidl_interface_packages</member_of_group>\n")
         handle.write("  <buildtool_depend>ament_cmake</buildtool_depend>\n")
-        handle.write("  <build_depend>rosidl_default_generators</build_depend>\n")
+        handle.write("  <buildtool_depend>rosidl_default_generators</buildtool_depend>\n")
         handle.write("  <exec_depend>rosidl_default_runtime</exec_depend>\n")
+        handle.write("  <member_of_group>rosidl_interface_packages</member_of_group>\n")
         handle.write("</package>\n")
 
 def _write_cmake_lists(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:

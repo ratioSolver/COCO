@@ -78,6 +78,20 @@ def _write_messages(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
             for prop_name in sorted(dynamic_props):
                 handle.write(_prop_to_ros(prop_name, dynamic_props[prop_name]))
 
+def _write_header_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
+    header_dir = output_dir / "include"
+    header_dir.mkdir(parents=True, exist_ok=True)
+    header_path = header_dir / "coco_ros.hpp"
+    with header_path.open("w", encoding="utf-8") as handle:
+        handle.write("#pragma once\n")
+
+def _write_source_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
+    src_dir = output_dir / "src"
+    src_dir.mkdir(parents=True, exist_ok=True)
+    source_path = src_dir / "coco_ros.cpp"
+    with source_path.open("w", encoding="utf-8") as handle:
+        handle.write("#include \"coco_ros.hpp\"\n")
+
 def _write_package_xml(output_dir: pathlib.Path) -> None:
     pkg_path = output_dir / "package.xml"
     with pkg_path.open("w", encoding="utf-8") as handle:
@@ -105,8 +119,10 @@ def _write_cmake_lists(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
             ros_name = _to_ros_identifier(name)
             handle.write(f"  \"msg/{ros_name}.msg\"\n")
         handle.write(")\n\n")
-        handle.write("rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)\n")
-        handle.write("set(cpp_typesupport_target ${cpp_typesupport_target} PARENT_SCOPE)\n\n")
+        handle.write("rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)\n\n")
+        handle.write("add_library(coco_ros_lib src/coco_ros.cpp)\n")
+        handle.write("target_include_directories(coco_ros_lib PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)\n")
+        handle.write("target_link_libraries(coco_ros_lib PUBLIC CoCo ${cpp_typesupport_target})\n\n")
         handle.write("ament_export_dependencies(rosidl_default_runtime)\n")
         handle.write("ament_package()\n")
 
@@ -126,6 +142,8 @@ def main() -> int:
 
     _create_project_structure(output_dir)
     _write_messages(output_dir, types)
+    _write_header_file(output_dir, types)
+    _write_source_file(output_dir, types)
     _write_package_xml(output_dir)
     _write_cmake_lists(output_dir, types)
     return 0

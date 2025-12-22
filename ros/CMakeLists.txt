@@ -27,7 +27,7 @@ function(generate_ros_interface)
     if(COCO_ROS_OUTPUT_DIR)
         list(APPEND _ros_intf_cmd --output-dir ${COCO_ROS_OUTPUT_DIR})
     else()
-        list(APPEND _ros_intf_cmd --output-dir ros_interface)
+        list(APPEND _ros_intf_cmd --output-dir coco_ros)
     endif()
 
     execute_process(COMMAND ${_ros_intf_cmd}

@@ -127,6 +127,8 @@ def _write_source_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
         handle.write("  coco_ros::coco_ros(coco& cc) : coco_module(cc), listener(cc), rclcpp::Node(\"coco_ros_node\") {\n")
         handle.write("  }\n\n")
         handle.write("  void coco_ros::created_item(const item &itm) {\n")
+        handle.write("    rclcpp::SubscriptionOptions sub_options;\n")
+        handle.write("    sub_options.ignore_local_publications = true;\n")
         handle.write("    for (const auto& tp : itm.get_types()) {\n")
         handle.write("      const std::string &type_name = tp.get().get_name();\n")
         for name in sorted(types):
@@ -140,7 +142,7 @@ def _write_source_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
             for prop_name in sorted(dynamic_props):
                 handle.write(f"          data[\"{prop_name}\"] = msg->{prop_name};\n")
             handle.write("          get_coco().set_value(get_coco().get_item(itm.get_id()), std::move(data));\n")
-            handle.write("        }));\n")
+            handle.write("        }, sub_options));\n")
             handle.write("      }\n")
         handle.write("    }\n")
         handle.write("  }\n\n")

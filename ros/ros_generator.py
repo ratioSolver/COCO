@@ -108,6 +108,10 @@ def _write_header_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
             ros_name = _to_ros_identifier(name)
             ros_header = _ros_header_name(ros_name)
             handle.write(f"    std::unordered_map<std::string, rclcpp::Publisher<coco_ros_lib::msg::{ros_name}>::SharedPtr> {ros_header}_publishers;\n")
+        for name in sorted(types):
+            ros_name = _to_ros_identifier(name)
+            ros_header = _ros_header_name(ros_name)
+            handle.write(f"    std::vector<rclcpp::Subscription<coco_ros_lib::msg::{ros_name}>::SharedPtr> {ros_header}_subscriptions;\n")
         handle.write("  };\n\n")
         handle.write("}  // namespace coco\n")
 
@@ -128,10 +132,35 @@ def _write_source_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
         for name in sorted(types):
             ros_name = _to_ros_identifier(name)
             ros_header = _ros_header_name(ros_name)
-            handle.write(f"      if (type_name == \"{name}\")\n")
+            handle.write(f"      if (type_name == \"{name}\") {{\n")
             handle.write(f"        {ros_header}_publishers.emplace(itm.get_id(), this->create_publisher<coco_ros_lib::msg::{ros_name}>(itm.get_id(), 10));\n")
-        handle.write("    }\n\n")
-        handle.write("}\n\n")
+            handle.write(f"        {ros_header}_subscriptions.emplace_back(this->create_subscription<coco_ros_lib::msg::{ros_name}>(itm.get_id(), 10, [this, itm](const coco_ros_lib::msg::{ros_name}::SharedPtr msg) {{\n")
+            handle.write(f"          json::json data;\n")
+            dynamic_props = types[name].get("dynamic_properties", {})
+            for prop_name in sorted(dynamic_props):
+                handle.write(f"          data[\"{prop_name}\"] = msg->{prop_name};\n")
+            handle.write("          get_coco().set_value(get_coco().get_item(itm.get_id()), std::move(data));\n")
+            handle.write("        }));\n")
+            handle.write("      }\n")
+        handle.write("    }\n")
+        handle.write("  }\n\n")
+        handle.write("  void coco_ros::new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) {\n")
+        handle.write("    for (const auto& tp : itm.get_types()) {\n")
+        handle.write("      const std::string &type_name = tp.get().get_name();\n")
+        for name in sorted(types):
+            ros_name = _to_ros_identifier(name)
+            ros_header = _ros_header_name(ros_name)
+            handle.write(f"      if (type_name == \"{name}\") {{\n")
+            handle.write(f"        if (auto it = {ros_header}_publishers.find(itm.get_id()); it != {ros_header}_publishers.end()) {{\n")
+            handle.write(f"          auto msg = coco_ros_lib::msg::{ros_name}();\n")
+            dynamic_props = types[name].get("dynamic_properties", {})
+            for prop_name in sorted(dynamic_props):
+                handle.write(f"          msg.{prop_name} = data[\"{prop_name}\"].get<decltype(msg.{prop_name})>();\n")
+            handle.write("          it->second->publish(msg);\n")
+            handle.write("        }\n")
+            handle.write("      }\n")
+        handle.write("    }\n")
+        handle.write("  }\n")
         handle.write("}  // namespace coco\n")
 
 def _write_package_xml(output_dir: pathlib.Path) -> None:

@@ -7,6 +7,7 @@
 #include "coco.hpp"
 // #include "coco_ros.hpp"
 #include "logging.hpp"
+#include "coco_ros/msg/robot.hpp"
 
 int main()
 {

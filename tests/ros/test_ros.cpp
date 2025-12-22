@@ -9,7 +9,7 @@
 #include "logging.hpp"
 #include "coco_ros/msg/robot.hpp"
 
-int main()
+int main(int argc, char *argv[])
 {
 #ifdef BUILD_MONGODB
     mongocxx::instance inst{}; // This should be done only once.
@@ -19,6 +19,7 @@ int main()
     LOG_INFO("Creating default CoCo database instance");
     coco::coco_db db;
 #endif
+    rclcpp::init(argc, argv);
     LOG_INFO("Creating CoCo instance");
     coco::coco cc(db);
     LOG_INFO("Adding CoCo ROS module");

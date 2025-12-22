@@ -90,17 +90,29 @@ def _write_header_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
         handle.write("#pragma once\n\n")
         handle.write("#include \"coco_module.hpp\"\n")
         handle.write("#include \"coco.hpp\"\n\n")
+        handle.write("#include \"rclcpp/rclcpp.hpp\"\n\n")
         for name in sorted(types):
             ros_name = _to_ros_identifier(name)
             ros_header = _ros_header_name(ros_name)
             handle.write(f"#include \"coco_ros/msg/{ros_header}.hpp\"\n")
+        handle.write("\n")
+        handle.write("namespace coco {\n\n")
+        handle.write("  class coco_ros : public coco_module, public rclcpp::Node {\n")
+        handle.write("    public:\n")
+        handle.write("      coco_ros(coco& cc);\n")
+        handle.write("  };\n\n")
+        handle.write("}  // namespace coco\n")
 
 def _write_source_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
     src_dir = output_dir / "src"
     src_dir.mkdir(parents=True, exist_ok=True)
     source_path = src_dir / "coco_ros.cpp"
     with source_path.open("w", encoding="utf-8") as handle:
-        handle.write("#include \"coco_ros.hpp\"\n")
+        handle.write("#include \"coco_ros.hpp\"\n\n")
+        handle.write("namespace coco {\n\n")
+        handle.write("  coco_ros::coco_ros(coco& cc) : coco_module(cc), rclcpp::Node(\"coco_ros_node\") {\n")
+        handle.write("  }\n\n")
+        handle.write("}  // namespace coco\n")
 
 def _write_package_xml(output_dir: pathlib.Path) -> None:
     pkg_path = output_dir / "package.xml"
@@ -130,9 +142,9 @@ def _write_cmake_lists(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
             handle.write(f"  \"msg/{ros_name}.msg\"\n")
         handle.write(")\n\n")
         handle.write("rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)\n\n")
-        handle.write("add_library(coco_ros_lib src/coco_ros.cpp)\n")
+        handle.write("add_library(coco_ros_lib STATIC src/coco_ros.cpp)\n")
         handle.write("target_include_directories(coco_ros_lib PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)\n")
-        handle.write("target_link_libraries(coco_ros_lib PUBLIC CoCo ${cpp_typesupport_target})\n\n")
+        handle.write("target_link_libraries(coco_ros_lib PUBLIC CoCo rclcpp::rclcpp ${cpp_typesupport_target})\n\n")
         handle.write("ament_export_dependencies(rosidl_default_runtime)\n")
         handle.write("ament_package()\n")
 

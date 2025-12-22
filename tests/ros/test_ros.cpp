@@ -5,7 +5,7 @@
 #include "coco_db.hpp"
 #endif
 #include "coco.hpp"
-// #include "coco_ros.hpp"
+#include "coco_ros.hpp"
 #include "logging.hpp"
 #include "coco_ros/msg/robot.hpp"
 
@@ -21,8 +21,8 @@ int main()
 #endif
     LOG_INFO("Creating CoCo instance");
     coco::coco cc(db);
-    // LOG_INFO("Adding CoCo ROS module");
-    // cc.add_module<coco::coco_ros>(cc);
+    LOG_INFO("Adding CoCo ROS module");
+    cc.add_module<coco::coco_ros>(cc);
     LOG_INFO("Loading configuration");
     const std::filesystem::path config_root = PROJECT_ROOT;
     coco::set_types(cc, config_root / "types");

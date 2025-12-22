@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import re
 import json
 import sys
 import pathlib
@@ -40,6 +41,9 @@ def _prop_to_ros(name: str, definition: Dict[str, Any]) -> str:
     if definition.get("multiple"):
         ros_type += "[]"
     return f"{ros_type} {name}\n"
+
+def _ros_header_name(ros_name: str) -> str:
+    return re.sub(r"(?<!^)([A-Z])", r"_\1", ros_name).lower()
 
 def _collect_type_files(files: Iterable[str], folders: Iterable[str]) -> Iterable[pathlib.Path]:
     collected = [pathlib.Path(entry) for entry in files]
@@ -83,7 +87,13 @@ def _write_header_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
     header_dir.mkdir(parents=True, exist_ok=True)
     header_path = header_dir / "coco_ros.hpp"
     with header_path.open("w", encoding="utf-8") as handle:
-        handle.write("#pragma once\n")
+        handle.write("#pragma once\n\n")
+        handle.write("#include \"coco_module.hpp\"\n")
+        handle.write("#include \"coco.hpp\"\n\n")
+        for name in sorted(types):
+            ros_name = _to_ros_identifier(name)
+            ros_header = _ros_header_name(ros_name)
+            handle.write(f"#include \"coco_ros/msg/{ros_header}.hpp\"\n")
 
 def _write_source_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
     src_dir = output_dir / "src"

@@ -94,12 +94,20 @@ def _write_header_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
         for name in sorted(types):
             ros_name = _to_ros_identifier(name)
             ros_header = _ros_header_name(ros_name)
-            handle.write(f"#include \"coco_ros/msg/{ros_header}.hpp\"\n")
+            handle.write(f"#include \"coco_ros_lib/msg/{ros_header}.hpp\"\n")
         handle.write("\n")
         handle.write("namespace coco {\n\n")
-        handle.write("  class coco_ros : public coco_module, public rclcpp::Node {\n")
+        handle.write("  class coco_ros : public coco_module, private listener, public rclcpp::Node {\n")
         handle.write("    public:\n")
-        handle.write("      coco_ros(coco& cc);\n")
+        handle.write("      coco_ros(coco& cc);\n\n")
+        handle.write("  private:\n")
+        handle.write("    void created_item(const item &itm) override;\n\n")
+        handle.write("    void new_data(const item &itm, const json::json &data, const std::chrono::system_clock::time_point &timestamp) override;\n\n")
+        handle.write("  private:\n")
+        for name in sorted(types):
+            ros_name = _to_ros_identifier(name)
+            ros_header = _ros_header_name(ros_name)
+            handle.write(f"    std::unordered_map<std::string, rclcpp::Publisher<coco_ros_lib::msg::{ros_name}>::SharedPtr> {ros_header}_publishers;\n")
         handle.write("  };\n\n")
         handle.write("}  // namespace coco\n")
 
@@ -108,10 +116,22 @@ def _write_source_file(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
     src_dir.mkdir(parents=True, exist_ok=True)
     source_path = src_dir / "coco_ros.cpp"
     with source_path.open("w", encoding="utf-8") as handle:
-        handle.write("#include \"coco_ros.hpp\"\n\n")
+        handle.write("#include \"coco_ros.hpp\"\n")
+        handle.write("#include \"coco_item.hpp\"\n")
+        handle.write("#include \"coco_type.hpp\"\n\n")
         handle.write("namespace coco {\n\n")
-        handle.write("  coco_ros::coco_ros(coco& cc) : coco_module(cc), rclcpp::Node(\"coco_ros_node\") {\n")
+        handle.write("  coco_ros::coco_ros(coco& cc) : coco_module(cc), listener(cc), rclcpp::Node(\"coco_ros_node\") {\n")
         handle.write("  }\n\n")
+        handle.write("  void coco_ros::created_item(const item &itm) {\n")
+        handle.write("    for (const auto& tp : itm.get_types()) {\n")
+        handle.write("      const std::string &type_name = tp.get().get_name();\n")
+        for name in sorted(types):
+            ros_name = _to_ros_identifier(name)
+            ros_header = _ros_header_name(ros_name)
+            handle.write(f"      if (type_name == \"{name}\")\n")
+            handle.write(f"        {ros_header}_publishers.emplace(itm.get_id(), this->create_publisher<coco_ros_lib::msg::{ros_name}>(itm.get_id(), 10));\n")
+        handle.write("    }\n\n")
+        handle.write("}\n\n")
         handle.write("}  // namespace coco\n")
 
 def _write_package_xml(output_dir: pathlib.Path) -> None:
@@ -120,7 +140,7 @@ def _write_package_xml(output_dir: pathlib.Path) -> None:
         handle.write("<?xml version=\"1.0\"?>\n")
         handle.write("<?xml-model href=\"http://download.ros.org/schema/package_format3.xsd\" schematypens=\"http://www.w3.org/2001/XMLSchema\"?>")
         handle.write("<package format=\"3\">\n")
-        handle.write("  <name>coco_ros</name>\n")
+        handle.write("  <name>coco_ros_lib</name>\n")
         handle.write("  <version>0.1.0</version>\n")
         handle.write("  <description>COCO ROS Interfaces</description>\n")
         handle.write("  <maintainer email=\"riccardo.debenedictis@cnr.it\">Riccardo De Benedictis</maintainer>\n")
@@ -135,16 +155,16 @@ def _write_cmake_lists(output_dir: pathlib.Path, types: Dict[str, Any]) -> None:
     cmake_path = output_dir / "CMakeLists.txt"
     with cmake_path.open("w", encoding="utf-8") as handle:
         handle.write("cmake_minimum_required(VERSION 3.5)\n")
-        handle.write("project(coco_ros)\n\n")
+        handle.write("project(coco_ros_lib)\n\n")
         handle.write("rosidl_generate_interfaces(${PROJECT_NAME}\n")
         for name in sorted(types):
             ros_name = _to_ros_identifier(name)
             handle.write(f"  \"msg/{ros_name}.msg\"\n")
         handle.write(")\n\n")
         handle.write("rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)\n\n")
-        handle.write("add_library(coco_ros_lib STATIC src/coco_ros.cpp)\n")
-        handle.write("target_include_directories(coco_ros_lib PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)\n")
-        handle.write("target_link_libraries(coco_ros_lib PUBLIC CoCo rclcpp::rclcpp ${cpp_typesupport_target})\n\n")
+        handle.write("add_library(coco_ros STATIC src/coco_ros.cpp)\n")
+        handle.write("target_include_directories(coco_ros PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)\n")
+        handle.write("target_link_libraries(coco_ros PUBLIC CoCo rclcpp::rclcpp ${cpp_typesupport_target})\n\n")
         handle.write("ament_export_dependencies(rosidl_default_runtime)\n")
         handle.write("ament_package()\n")
 

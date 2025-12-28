@@ -12,7 +12,7 @@ combined deduCtiOn and abduCtiOn (CoCo) reasoner.
 ### CLIPS
 
 CoCo relies on [CLIPS](https://www.clipsrules.net) for reacting to the dynamic changes which happen into the urban environment.
- - Download [CLIPS v6.4.2](https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.1/clips_core_source_641.zip/download) and unzip the zip file into the `clips_core_source_642` folder.
+ - Download [CLIPS v6.4.2](https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download) and unzip the zip file into the `clips_core_source_642` folder.
  - Reach the `clips_core_source_642/core` folder and compile CLIPS through `make release_cpp`.
  - Copy all the header files into the `/usr/local/include/clips` folder through `sudo cp *.h /usr/local/include/clips/`.
  - Copy the library into the `/usr/local/lib` folder through `sudo cp libclips.a /usr/local/lib/`.
@@ -32,15 +32,15 @@ sudo apt-get install libssl-dev
 Download and configure the mongo-cxx driver.
 
 ```shell
-curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r3.10.1/mongo-cxx-driver-r3.10.1.tar.gz
-tar -xzf mongo-cxx-driver-r3.10.1.tar.gz
-cd mongo-cxx-driver-r3.10.1/build
+curl -OL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.1.4/mongo-cxx-driver-r4.1.4.tar.gz
+tar -xzf mongo-cxx-driver-r4.1.4.tar.gz
+cd mongo-cxx-driver-r4.1.4/build
 ```
 
 Configure the driver.
 
 ```shell
-cmake .. -DCMAKE_BUILD_TYPE=Release -DMONGOCXX_OVERRIDE_DEFAULT_INSTALL_PREFIX=OFF
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
 ```
 
 Build and install il.
@@ -69,7 +69,7 @@ Download and configure the Paho MQTT C++ library.
 ```shell
 git clone https://github.com/eclipse/paho.mqtt.cpp
 cd paho.mqtt.cpp
-git checkout v1.4.0
+git checkout v1.5.4
 git submodule init
 git submodule update
 

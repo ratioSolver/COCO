@@ -1,4 +1,4 @@
-package it.cnr.nanodroid;
+package it.cnr.coco;
 
 import android.util.Log;
 import com.google.firebase.messaging.FirebaseMessagingService;

@@ -121,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements CoCoListener, Con
 
     @Override
     public void new_item(Item item) {
-        if (item.getType().getName().equals("Robot")) {
+        if (item.getTypes().stream().anyMatch(type -> type.getName().equals("Robot"))) {
             Log.d(TAG, "New robot item received: " + item.getId());
             runOnUiThread(() -> {
                 // Initialize the Language class to handle speech and text-to-speech

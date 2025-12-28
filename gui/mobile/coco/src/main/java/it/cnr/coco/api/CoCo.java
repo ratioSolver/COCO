@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import it.cnr.coco.utils.Connection;
 import it.cnr.coco.utils.ConnectionListener;
@@ -81,13 +82,16 @@ public class CoCo implements ConnectionListener {
         items.clear();
         for (JsonElement itemElement : itemArray) {
             JsonObject itemObject = itemElement.getAsJsonObject();
-            Type type = Objects.requireNonNull(types.get(itemObject.get("type").getAsString()));
+            Set<Type> itemTypes = new HashSet<>();
+            for (JsonElement typeElement : itemObject.getAsJsonArray("types")) {
+                Type type = Objects.requireNonNull(types.get(typeElement.getAsString()));
+                itemTypes.add(type);
+            }
             Value value = itemObject.has("value") ? new Value(itemObject.get("value").getAsJsonObject().get("data"),
                     Instant.ofEpochMilli(itemObject.get("value").getAsJsonObject().get("timestamp").getAsLong()))
                     : null;
-            Item item = new Item(itemObject.get("id").getAsString(), type, itemObject.get("data"), value);
+            Item item = new Item(itemObject.get("id").getAsString(), itemTypes, itemObject.get("data"), value);
             items.put(itemObject.get("id").getAsString(), item);
-            type.instances.add(item);
             for (CoCoListener listener : listeners)
                 listener.new_item(item);
         }
@@ -105,33 +109,11 @@ public class CoCo implements ConnectionListener {
             case "coco":
                 if (message.has("types")) {
                     types.clear();
-                    for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("types").entrySet())
-                        types.put(entry.getKey(),
-                                new Type(entry.getKey(), entry.getValue().getAsJsonObject().get("data"), null,
-                                        null));
-                    for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("types").entrySet())
-                        refineType(Objects.requireNonNull(types.get(entry.getKey())),
-                                entry.getValue().getAsJsonObject());
-                    for (Type type : types.values())
-                        for (CoCoListener listener : listeners)
-                            listener.new_type(type);
+                    setTypes(message.getAsJsonObject("types").getAsJsonArray("array"));
                 }
                 if (message.has("items")) {
                     items.clear();
-                    for (Map.Entry<String, JsonElement> entry : message.getAsJsonObject("items").entrySet()) {
-                        JsonObject itemObject = entry.getValue().getAsJsonObject();
-                        Type type = Objects.requireNonNull(types.get(itemObject.get("type").getAsString()));
-                        Value value = itemObject.has("value")
-                                ? new Value(itemObject.get("value").getAsJsonObject().get("data"),
-                                        Instant.ofEpochMilli(
-                                                itemObject.get("value").getAsJsonObject().get("timestamp").getAsLong()))
-                                : null;
-                        Item item = new Item(entry.getKey(), type, itemObject.get("data"), value);
-                        items.put(entry.getKey(), item);
-                        type.instances.add(item);
-                        for (CoCoListener listener : listeners)
-                            listener.new_item(item);
-                    }
+                    setItems(message.getAsJsonObject("items").getAsJsonArray("array"));
                 }
                 break;
             case "new_type":
@@ -142,15 +124,18 @@ public class CoCo implements ConnectionListener {
                     listener.new_type(type);
                 break;
             case "new_item":
-                Type itemType = Objects.requireNonNull(types.get(message.get("type").getAsString()));
+                Set<Type> itemTypes = new HashSet<>();
+                for (JsonElement typeElement : message.getAsJsonArray("types")) {
+                    Type t = Objects.requireNonNull(types.get(typeElement.getAsString()));
+                    itemTypes.add(t);
+                }
                 Value itemValue = message.has("value")
                         ? new Value(message.get("value").getAsJsonObject().get("data"),
                                 Instant.ofEpochMilli(
                                         message.get("value").getAsJsonObject().get("timestamp").getAsLong()))
                         : null;
-                Item item = new Item(message.get("id").getAsString(), itemType, message.get("data"), itemValue);
+                Item item = new Item(message.get("id").getAsString(), itemTypes, message.get("data"), itemValue);
                 items.put(message.get("id").getAsString(), item);
-                itemType.instances.add(item);
                 for (CoCoListener listener : listeners)
                     listener.new_item(item);
                 break;

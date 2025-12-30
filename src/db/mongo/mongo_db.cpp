@@ -56,10 +56,12 @@ namespace coco
         }
         return types;
     }
-    void mongo_db::create_type(std::string_view name, const json::json &static_props, const json::json &dynamic_props, const json::json &data)
+    void mongo_db::create_type(std::string_view name, const json::json &is_a, const json::json &static_props, const json::json &dynamic_props, const json::json &data)
     {
         bsoncxx::builder::basic::document doc;
         doc.append(bsoncxx::builder::basic::kvp("_id", name.data()));
+        if (!is_a.as_array().empty())
+            doc.append(bsoncxx::builder::basic::kvp("is_a", bsoncxx::from_json(is_a.dump())));
         if (!static_props.as_object().empty())
             doc.append(bsoncxx::builder::basic::kvp("static_properties", bsoncxx::from_json(static_props.dump())));
         if (!dynamic_props.as_object().empty())
@@ -73,9 +75,11 @@ namespace coco
         if (!types_collection.insert_one(doc.view()))
             throw std::invalid_argument("Failed to insert type: " + std::string(name));
     }
-    void mongo_db::set_properties(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props)
+    void mongo_db::set_properties(std::string_view tp_name, const json::json &is_a, const json::json &static_props, const json::json &dynamic_props)
     {
         bsoncxx::builder::basic::document update_fields; // Fields to set
+        if (!is_a.as_array().empty())
+            update_fields.append(bsoncxx::builder::basic::kvp("is_a", bsoncxx::from_json(is_a.dump())));
         if (!static_props.as_object().empty())
             update_fields.append(bsoncxx::builder::basic::kvp("static_properties", bsoncxx::from_json(static_props.dump())));
         if (!dynamic_props.as_object().empty())

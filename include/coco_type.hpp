@@ -50,6 +50,13 @@ namespace coco
     [[nodiscard]] const json::json &get_data() const noexcept { return data; }
 
     /**
+     * @brief Gets the parent types of the type.
+     *
+     * @return The parent types of the type.
+     */
+    [[nodiscard]] const std::vector<std::reference_wrapper<type>> &get_parents() const noexcept { return is_a; }
+
+    /**
      * @brief Gets the static properties of the type.
      *
      * @return The static properties of the type.
@@ -63,7 +70,7 @@ namespace coco
      */
     [[nodiscard]] const std::map<std::string, std::unique_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
 
-    void set_properties(json::json &&static_props, json::json &&dynamic_props) noexcept;
+    void set_properties(json::json &&parents, json::json &&static_props, json::json &&dynamic_props) noexcept;
 
     /**
      * @brief Gets the instances of the type.
@@ -91,6 +98,7 @@ namespace coco
     coco &cc;                                                            // The CoCo object..
     std::string name;                                                    // The name of the type..
     const json::json data;                                               // The data of the type..
+    std::vector<std::reference_wrapper<type>> is_a;                      // The parent types..
     std::map<std::string, std::unique_ptr<property>> static_properties;  // The static properties..
     std::map<std::string, std::unique_ptr<property>> dynamic_properties; // The dynamic properties..
     std::unordered_set<std::string> instances;                           // The IDs of the instances of the type..

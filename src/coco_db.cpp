@@ -8,6 +8,8 @@ namespace coco
     db_type::db_type(json::json &&tp_data) noexcept
     {
         name = tp_data["name"].get<std::string>();
+        if (tp_data.contains("is_a"))
+            is_a = std::move(tp_data["is_a"]);
         if (tp_data.contains("static_properties"))
             static_props = std::move(tp_data["static_properties"]);
         if (tp_data.contains("dynamic_properties"))
@@ -33,9 +35,11 @@ namespace coco
         LOG_WARN("Retrieving all the types..");
         return std::vector<db_type>();
     }
-    void coco_db::create_type(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props, const json::json &data)
+    void coco_db::create_type(std::string_view tp_name, const json::json &is_a, const json::json &static_props, const json::json &dynamic_props, const json::json &data)
     {
         LOG_WARN(std::string("Creating new type: ") + tp_name.data());
+        if (!is_a.as_array().empty())
+            LOG_WARN(std::string("Is a: ") + is_a.dump());
         if (!static_props.as_object().empty())
             LOG_WARN(std::string("Static properties: ") + static_props.dump());
         if (!dynamic_props.as_object().empty())
@@ -43,9 +47,11 @@ namespace coco
         if (!data.as_object().empty())
             LOG_WARN(std::string("Data: ") + data.dump());
     }
-    void coco_db::set_properties(std::string_view tp_name, const json::json &static_props, const json::json &dynamic_props)
+    void coco_db::set_properties(std::string_view tp_name, const json::json &is_a, const json::json &static_props, const json::json &dynamic_props)
     {
         LOG_WARN(std::string("Setting properties for type ") + tp_name.data());
+        if (!is_a.as_array().empty())
+            LOG_WARN(std::string("Is a: ") + is_a.dump());
         if (!static_props.as_object().empty())
             LOG_WARN(std::string("Static properties: ") + static_props.dump());
         if (!dynamic_props.as_object().empty())

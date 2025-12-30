@@ -50,7 +50,7 @@ namespace coco
             make_type(db_tp.name, db_tp.data.has_value() ? std::move(*db_tp.data) : json::json{});
         // Then set their properties (to handle dependencies)..
         for (auto &db_tp : db_tps)
-            get_type(db_tp.name).set_properties(db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
+            get_type(db_tp.name).set_properties(db_tp.is_a.has_value() ? std::move(*db_tp.is_a) : json::json{}, db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
 
         LOG_DEBUG("Retrieving all items");
         auto db_itms = db.get_items();
@@ -111,12 +111,12 @@ namespace coco
         return *types.at(name.data());
     }
 
-    type &coco::create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data, bool infere) noexcept
+    type &coco::create_type(std::string_view name, json::json &&is_a, json::json &&static_props, json::json &&dynamic_props, json::json &&data, bool infere) noexcept
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
-        db.create_type(name, static_props, dynamic_props, data);
+        db.create_type(name, is_a, static_props, dynamic_props, data);
         auto &tp = make_type(name, std::move(data));
-        tp.set_properties(std::move(static_props), std::move(dynamic_props));
+        tp.set_properties(std::move(is_a), std::move(static_props), std::move(dynamic_props));
         if (infere)
             Run(env, -1);
         return tp;
@@ -222,16 +222,10 @@ namespace coco
     {
         std::lock_guard<std::recursive_mutex> _(mtx);
         db.create_rule(rule_name, rule_content);
-        auto it = rules.emplace(rule_name, std::make_unique<rule>(*this, rule_name, rule_content));
-        if (!it.second)
-            throw std::invalid_argument("rule `" + std::string(rule_name) + "` already exists");
-        else
-        {
-            CREATED_RULE(*it.first->second);
-        }
+        auto &rl = make_rule(rule_name, rule_content);
         if (infere)
             Run(env, -1);
-        return *it.first->second;
+        return rl;
     }
 
     void coco::add_property_type(std::unique_ptr<property_type> pt)
@@ -266,6 +260,15 @@ namespace coco
         for (auto &tp : tps)
             tp.get().add_instance(itm);
         return itm;
+    }
+
+    rule &coco::make_rule(std::string_view name, std::string_view content)
+    {
+        auto rr_ptr = std::make_unique<rule>(*this, name, content);
+        auto &rr = *rr_ptr;
+        if (!rules.emplace(name, std::move(rr_ptr)).second)
+            throw std::invalid_argument("rule `" + std::string(name) + "` already exists");
+        return rr;
     }
 
     json::json coco::to_json() noexcept
@@ -331,14 +334,14 @@ namespace coco
         std::lock_guard<std::recursive_mutex> _(cc.mtx);
         for (auto &db_tp : db_types)
         {
-            cc.db.create_type(db_tp.name, db_tp.static_props.has_value() ? *db_tp.static_props : json::json(), db_tp.dynamic_props.has_value() ? *db_tp.dynamic_props : json::json(), db_tp.data.has_value() ? *db_tp.data : json::json());
+            cc.db.create_type(db_tp.name, db_tp.is_a.has_value() ? *db_tp.is_a : json::json(), db_tp.static_props.has_value() ? *db_tp.static_props : json::json(), db_tp.dynamic_props.has_value() ? *db_tp.dynamic_props : json::json(), db_tp.data.has_value() ? *db_tp.data : json::json());
             cc.make_type(db_tp.name, db_tp.data.has_value() ? std::move(*db_tp.data) : json::json{});
         }
         // Then set their properties (to handle dependencies)..
         for (auto &db_tp : db_types)
         {
-            cc.db.set_properties(db_tp.name, db_tp.static_props.has_value() ? *db_tp.static_props : json::json(), db_tp.dynamic_props.has_value() ? *db_tp.dynamic_props : json::json());
-            cc.get_type(db_tp.name).set_properties(db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
+            cc.db.set_properties(db_tp.name, db_tp.is_a.has_value() ? *db_tp.is_a : json::json(), db_tp.static_props.has_value() ? *db_tp.static_props : json::json(), db_tp.dynamic_props.has_value() ? *db_tp.dynamic_props : json::json());
+            cc.get_type(db_tp.name).set_properties(db_tp.is_a.has_value() ? std::move(*db_tp.is_a) : json::json{}, db_tp.static_props.has_value() ? std::move(*db_tp.static_props) : json::json{}, db_tp.dynamic_props.has_value() ? std::move(*db_tp.dynamic_props) : json::json{});
         }
     }
 

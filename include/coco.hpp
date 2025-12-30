@@ -102,7 +102,7 @@ namespace coco
      * @throws std::invalid_argument if the type does not exist.
      */
     [[nodiscard]] type &get_type(std::string_view name);
-    [[nodiscard]] type &create_type(std::string_view name, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json(), bool infere = true) noexcept;
+    [[nodiscard]] type &create_type(std::string_view name, json::json &&is_a, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json(), bool infere = true) noexcept;
     void delete_type(type &tp, bool infere = true) noexcept;
 
     /**
@@ -229,6 +229,7 @@ namespace coco
 
     type &make_type(std::string_view name, json::json &&data = json::json());
     item &make_item(std::string_view id, std::vector<std::reference_wrapper<type>> &&tps, json::json &&props, std::optional<std::pair<json::json, std::chrono::system_clock::time_point>> &&val = std::nullopt);
+    rule &make_rule(std::string_view name, std::string_view content);
 
     friend void add_type(Environment *env, UDFContext *udfc, UDFValue *out);
     friend void remove_type(Environment *env, UDFContext *udfc, UDFValue *out);

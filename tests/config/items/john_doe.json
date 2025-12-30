@@ -1,6 +1,8 @@
 {
   "properties": {
     "name": "John Doe",
-    "age": 30
+    "age": 30,
+    "gender": "male",
+    "children_count": 2
   }
 }

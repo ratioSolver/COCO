@@ -1,3 +1,6 @@
 {
-  "name": "parent"
+  "name": "parent",
+  "is_a": [
+    "person"
+  ]
 }

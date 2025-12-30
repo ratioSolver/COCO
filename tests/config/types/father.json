@@ -1,0 +1,6 @@
+{
+  "name": "father",
+  "is_a": [
+    "parent"
+  ]
+}

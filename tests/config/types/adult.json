@@ -1,5 +1,8 @@
 {
   "name": "adult",
+  "is_a": [
+    "person"
+  ],
   "dynamic_properties": {
     "is_employed": {
       "type": "bool",

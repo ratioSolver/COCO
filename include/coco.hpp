@@ -102,7 +102,7 @@ namespace coco
      * @throws std::invalid_argument if the type does not exist.
      */
     [[nodiscard]] type &get_type(std::string_view name);
-    [[nodiscard]] type &create_type(std::string_view name, json::json &&is_a, json::json &&static_props, json::json &&dynamic_props, json::json &&data = json::json(), bool infere = true) noexcept;
+    [[nodiscard]] type &create_type(std::string_view name, json::json &&is_a = json::json(json::json_type::array), json::json &&static_props = json::json(), json::json &&dynamic_props = json::json(), json::json &&data = json::json(), bool infere = true) noexcept;
     void delete_type(type &tp, bool infere = true) noexcept;
 
     /**

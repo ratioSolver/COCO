@@ -1,4 +1,7 @@
 {
+  "types": [
+    "person"
+  ],
   "properties": {
     "name": "John Doe",
     "age": 30,

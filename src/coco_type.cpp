@@ -27,7 +27,7 @@ namespace coco
         assert(undef_dt);
     }
 
-    void type::set_properties(json::json &&parents, json::json &&static_props, json::json &&dynamic_props) noexcept
+    void type::set_parents(json::json &&parents) noexcept
     {
         if (!is_a.empty())
         { // Remove existing inheritance rule..
@@ -57,7 +57,10 @@ namespace coco
             rule_content += ')';
             cc.make_rule(rule_name, rule_content);
         }
+    }
 
+    void type::set_properties(json::json &&static_props, json::json &&dynamic_props) noexcept
+    {
         if (!static_properties.empty() || !dynamic_properties.empty())
         { // Remove existing deftemplate..
             auto dt = FindDeftemplate(cc.env, name.c_str());

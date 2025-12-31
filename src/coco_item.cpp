@@ -82,16 +82,16 @@ namespace coco
             for (const auto &[p_name, j_val] : val.first.as_object())
                 if (auto prop = dynamic_props.find(p_name); prop != dynamic_props.end())
                 {
-                    LOG_TRACE("Updating data " + p_name + " for item " + id + " with value " + j_val.dump());
+                    LOG_TRACE("Setting `" + p_name + "` for item " + id + " to value " + j_val.dump());
                     if (prop->second->validate(j_val))
                         prop->second->set_value(fact_modifier, j_val);
                     else
-                        LOG_WARN("Data " + p_name + " for item " + id + " is not valid");
+                        LOG_WARN("`" + p_name + "` for item " + id + " is not valid");
                     if (auto f = v_fs.find(p_name); f != v_fs.end())
                     { // property already exists
                         if (j_val.is_null())
                         { // we retract the old property
-                            LOG_TRACE("Retracting data " + p_name + " for item " + id);
+                            LOG_TRACE("Retracting `" + p_name + "` for item " + id);
                             ReleaseFact(f->second);
                             [[maybe_unused]] auto re_err = Retract(f->second);
                             assert(re_err == RE_NO_ERROR);
@@ -100,7 +100,7 @@ namespace coco
                         }
                         else
                         { // we update the property
-                            LOG_TRACE("Updating data " + p_name + " for item " + id + " with value " + j_val.dump());
+                            LOG_TRACE("Updating `" + p_name + "` for item " + id + " to value " + j_val.dump());
                             FactModifier *property_fact_modifier = CreateFactModifier(cc.env, f->second);
                             prop->second->set_value(property_fact_modifier, j_val);
                             FMPutSlotInteger(property_fact_modifier, "timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(val.second.time_since_epoch()).count());
@@ -117,7 +117,7 @@ namespace coco
                     }
                     else if (!j_val.is_null())
                     { // we create a new property
-                        LOG_TRACE("Creating data " + p_name + " for item " + id + " with value " + j_val.dump());
+                        LOG_TRACE("Creating `" + p_name + "` for item " + id + " with value " + j_val.dump());
                         FactBuilder *value_fact_builder = CreateFactBuilder(cc.env, prop->second->get_deftemplate_name().c_str());
                         FBPutSlotSymbol(value_fact_builder, "item_id", id.c_str());
                         prop->second->set_value(value_fact_builder, j_val);

@@ -70,7 +70,9 @@ namespace coco
      */
     [[nodiscard]] const std::map<std::string, std::unique_ptr<property>> &get_dynamic_properties() const noexcept { return dynamic_properties; }
 
-    void set_properties(json::json &&parents, json::json &&static_props, json::json &&dynamic_props) noexcept;
+    void set_parents(json::json &&parents) noexcept;
+
+    void set_properties(json::json &&static_props, json::json &&dynamic_props) noexcept;
 
     /**
      * @brief Gets the instances of the type.

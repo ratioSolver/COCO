@@ -143,6 +143,14 @@ export class TaxonomyGraph extends Component<HTMLDivElement> implements coco.CoC
   }
 
   data_updated(_: coco.taxonomy.Type): void { }
+  parents_updated(type: coco.taxonomy.Type): void {
+    this.cy!.elements(`edge[id ^= "is_a-${type.get_name()}"]`).remove();
+    const parents = type.get_parents();
+    if (parents)
+      for (const parent of parents)
+        this.cy!.add({ group: 'edges', data: { id: `is_a-${type.get_name()}-${parent.get_name()}`, type: 'is_a', source: type.get_name(), target: parent.get_name() } });
+    this.cy!.layout(this.layout).run();
+  }
   static_properties_updated(type: coco.taxonomy.Type): void {
     this.cy!.elements(`edge[id ^= "sp-${type.get_name()}"]`).remove();
     const static_props = type.get_static_properties();

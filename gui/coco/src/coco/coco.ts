@@ -500,20 +500,23 @@ export namespace coco {
 
       private readonly name: string;
       private data?: Record<string, any>;
+      private is_a?: Type[];
       private static_properties?: Map<string, Property<unknown>>;
       private dynamic_properties?: Map<string, Property<unknown>>;
       readonly _instances: Set<Item> = new Set();
       private readonly listeners = new Set<TypeListener>();
 
-      constructor(name: string, data?: Record<string, any>, static_properties?: Map<string, Property<unknown>>, dynamic_properties?: Map<string, Property<unknown>>) {
+      constructor(name: string, data?: Record<string, any>, is_a?: Type[], static_properties?: Map<string, Property<unknown>>, dynamic_properties?: Map<string, Property<unknown>>) {
         this.name = name;
         this.data = data;
+        this.is_a = is_a;
         this.static_properties = static_properties;
         this.dynamic_properties = dynamic_properties;
       }
 
       get_name(): string { return this.name; }
       get_data(): Record<string, any> | undefined { return this.data; }
+      get_parents(): Type[] | undefined { return this.is_a; }
       get_static_properties(): Map<string, Property<unknown>> | undefined { return this.static_properties; }
       get_dynamic_properties(): Map<string, Property<unknown>> | undefined { return this.dynamic_properties; }
       get_instances(): Set<Item> { return this._instances; }
@@ -521,6 +524,10 @@ export namespace coco {
       _set_data(data?: Record<string, any>): void {
         this.data = data;
         for (const l of this.listeners) l.data_updated(this);
+      }
+      _set_parents(parents?: Type[]): void {
+        this.is_a = parents;
+        for (const l of this.listeners) l.parents_updated(this);
       }
       _set_static_properties(sp?: Map<string, Property<unknown>>): void {
         this.static_properties = sp;
@@ -553,6 +560,7 @@ export namespace coco {
     export interface TypeListener {
 
       data_updated(type: Type): void;
+      parents_updated(type: Type): void;
       static_properties_updated(type: Type): void;
       dynamic_properties_updated(type: Type): void;
     }
@@ -730,6 +738,7 @@ type PropertyMessage = BoolPropertyMessage | IntPropertyMessage | FloatPropertyM
 
 interface TypeMessage {
   data?: Record<string, any>;
+  is_a?: string[];
   static_properties?: Record<string, PropertyMessage>;
   dynamic_properties?: Record<string, PropertyMessage>;
 }

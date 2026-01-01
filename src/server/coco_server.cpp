@@ -159,6 +159,13 @@ namespace coco
              {{"name", {{"type", "string"}}},
               {"content", {{"type", "string"}, {"description", "The content of the rule in CLIPS format."}}}}},
             {"required", std::vector<json::json>{"name", "content"}}};
+        schemas["coco"] = {
+            {"type", "object"},
+            {"description", "The root object representing the entire " COCO_NAME " system."},
+            {"properties",
+             {{"types", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/type"}}}, {"description", "An object containing all the types in the system. Keys are type names, values are type definitions."}}},
+              {"items", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/item"}}}, {"description", "An object containing all the items in the system. Keys are item IDs, values are item definitions."}}},
+              {"rules", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/rule"}}}, {"description", "An object containing all the rules in the system. Keys are rule names, values are rule definitions."}}}}}};
 
         paths["/types"] = {{"get",
                             {{"summary", "Retrieve all the " COCO_NAME " types."},
@@ -863,10 +870,11 @@ namespace coco
                                {"messages", std::vector<json::json>{{"$ref", "#/channels/root/messages/new_data"}}}}}}},
                            {"components",
                             {{"messages",
-                              {{"new_type", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/type"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_type"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the type"}}}}}}}}}, {"description", "Notification for newly created type"}}},
-                               {"new_item", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/item"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_item"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}}}}}}}, {"description", "Notification for newly created item"}}},
-                               {"updated_item", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/item"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"updated_item"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}}}}}}}, {"description", "Notification for updated item"}}},
-                               {"new_data", {{"payload", {{"type", "object"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_data"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}, {"value", {{"type", "object"}, {"description", "The new data value with timestamp"}}}}}}}, {"description", "Notification for new data added to an item"}}}}},
+                              {{"coco", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/coco"}, {{"properties", {{"msg_type", {{"type", "string"}, {"enum", {"coco"}}}}}}, {"required", std::vector<json::json>{"msg_type"}}}}}}}, {"description", "Base COCO message schema"}}},
+                               {"new_type", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/type"}, {{"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_type"}}}}}}, {"required", std::vector<json::json>{"msg_type"}}}}}}}, {"description", "Notification for newly created type"}}},
+                               {"new_item", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/item"}, {{"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_item"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}}}, {"required", std::vector<json::json>{"msg_type", "id"}}}}}}}, {"description", "Notification for newly created item"}}},
+                               {"updated_item", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/item"}, {{"properties", {{"msg_type", {{"type", "string"}, {"enum", {"updated_item"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}}}, {"required", std::vector<json::json>{"msg_type", "id"}}}}}}}, {"description", "Notification for updated item"}}},
+                               {"new_data", {{"payload", {{"type", "object"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_data"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}, {"value", {{"type", "object"}, {"description", "The new data value with timestamp"}}}}}, {"required", std::vector<json::json>{"msg_type", "id", "value"}}}}, {"description", "Notification for new data added to an item"}}}}},
 #ifdef BUILD_AUTH
                              {"securitySchemes", {"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}},
 #endif

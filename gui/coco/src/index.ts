@@ -23,7 +23,6 @@ import {
 
 export { coco } from './coco/coco';
 export * from './coco/components/taxonomy';
-export * from './coco/components/map';
 export * from './coco/components/offcanvas';
 export * from './coco/components/type'
 export * from './coco/components/item'

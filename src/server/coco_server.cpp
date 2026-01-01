@@ -131,20 +131,18 @@ namespace coco
             {"type", "object"},
             {"description", "A " COCO_NAME " type definition that describes the structure and behavior of items."},
             {"properties",
-             {{"name", {{"type", "string"}, {"description", "The unique name identifier for this type."}}},
-              {"is_a", {{"type", "array"}, {"items", {{"type", "string"}}}, {"description", "Array of parent type names that this type inherits from."}}},
+             {{"is_a", {{"type", "array"}, {"items", {{"type", "string"}}}, {"description", "Array of parent type names that this type inherits from."}}},
               {"static_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}, {"description", "Object containing static properties that define the fixed structure of items of this type. Keys are property names, values are property definitions."}}},
               {"dynamic_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}, {"description", "Object containing dynamic properties that can store time-series data for items of this type. Keys are property names, values are property definitions."}}},
-              {"data", {{"type", "object"}, {"description", "Additional metadata or configuration data for this type."}}}}},
-            {"required", std::vector<json::json>{"name"}}};
+              {"data", {{"type", "object"}, {"description", "Additional metadata or configuration data for this type."}}}}}};
         schemas["item"] = {
             {"type", "object"},
             {"description", "A " COCO_NAME " item is an instance of a type, which can have static properties and dynamic data."},
             {"properties",
-             {{"type", {{"type", "string"}, {"description", "The name of the type that this item instantiates."}}},
+             {{"types", {{"type", "array"}, {"items", {{"type", "string"}}}, {"description", "Array of type names that this item is an instance of."}}},
               {"properties", {{"type", "object"}, {"description", "Static data of the item defined by its type."}}},
               {"value", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/data"}}}, {"description", "Dynamic data of the item defined by its type."}}}}},
-            {"required", std::vector<json::json>{"id", "type"}}};
+            {"required", {"types"}}};
         schemas["data"] = {
             {"type", "object"},
             {"description", "A data entry containing dynamic values and associated metadata for an item."},
@@ -156,9 +154,8 @@ namespace coco
             {"type", "object"},
             {"description", "A rule is a CLIPS rule that can be triggered by changes in the system."},
             {"properties",
-             {{"name", {{"type", "string"}}},
-              {"content", {{"type", "string"}, {"description", "The content of the rule in CLIPS format."}}}}},
-            {"required", std::vector<json::json>{"name", "content"}}};
+             {{"content", {{"type", "string"}, {"description", "The content of the rule in CLIPS format."}}}}},
+            {"required", {"content"}}};
         schemas["coco"] = {
             {"type", "object"},
             {"description", "The root object representing the entire " COCO_NAME " system."},
@@ -176,7 +173,7 @@ namespace coco
                              {"responses",
                               {{"200",
                                 {{"description", "Successful response containing an array of all managed types with their complete definitions."},
-                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/type"}}}}}}}}}}}
+                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {"allOf", std::vector<json::json>{{{"$ref", "#/components/schemas/type"}}, {"properties", {{"name", {{"type", "string"}, {"description", "The name of the type."}}}}}}}}}}}}}}}},
 #ifdef BUILD_AUTH
                                ,
                                {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
@@ -187,7 +184,7 @@ namespace coco
                              {"description", "Endpoint to create a new type."},
                              {"requestBody",
                               {{"required", true},
-                               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/type"}}}}}}}}},
+                               {"content", {{"application/json", {{"schema", {{"allOf", std::vector<json::json>{{{"$ref", "#/components/schemas/type"}}, {"properties", {{"name", {{"type", "string"}, {"description", "The name of the type."}}}}}}}}}}}}}}},
 #ifdef BUILD_AUTH
                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
 #endif
@@ -374,7 +371,7 @@ namespace coco
                              {"responses",
                               {{"200",
                                 {{"description", "Successful response with the stored rules."},
-                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/rule"}}}}}}}}}}}
+                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {"allOf", std::vector<json::json>{{{"$ref", "#/components/schemas/rule"}}, {"properties", {{"name", {{"type", "string"}, {"description", "The name of the rule."}}}}}}}}}}}}}}}},
 #ifdef BUILD_AUTH
                                ,
                                {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}}
@@ -385,7 +382,7 @@ namespace coco
                              {"description", "Endpoint to create a new rule."},
                              {"requestBody",
                               {{"required", true},
-                               {"content", {{"application/json", {{"schema", {{"$ref", "#/components/schemas/rule"}}}}}}}}},
+                               {"content", {{"application/json", {{"schema", {{"allOf", std::vector<json::json>{{{"$ref", "#/components/schemas/rule"}}, {"properties", {{"name", {{"type", "string"}, {"description", "The name of the rule."}}}}}}}}}}}}}}},
 #ifdef BUILD_AUTH
                              {"security", std::vector<json::json>{{"bearerAuth", std::vector<json::json>{}}}},
 #endif
@@ -847,12 +844,17 @@ namespace coco
                             {{"root",
                               {{"address", "/coco"},
                                {"messages",
-                                {{"new_type", {{"$ref", "#/components/messages/new_type"}}},
+                                {{"coco", {{"$ref", "#/components/messages/coco"}}},
+                                 {"new_type", {{"$ref", "#/components/messages/new_type"}}},
                                  {"new_item", {{"$ref", "#/components/messages/new_item"}}},
                                  {"updated_item", {{"$ref", "#/components/messages/updated_item"}}},
                                  {"new_data", {{"$ref", "#/components/messages/new_data"}}}}}}}}},
                            {"operations",
-                            {{"new_type",
+                            {{"coco",
+                              {{"action", "receive"},
+                               {"channel", {{"$ref", "#/channels/root"}}},
+                               {"messages", std::vector<json::json>{{"$ref", "#/channels/root/messages/coco"}}}}},
+                             {"new_type",
                               {{"action", "receive"},
                                {"channel", {{"$ref", "#/channels/root"}}},
                                {"messages", std::vector<json::json>{{"$ref", "#/channels/root/messages/new_type"}}}}},

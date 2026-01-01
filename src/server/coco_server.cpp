@@ -60,7 +60,7 @@ namespace coco
         add_route(network::Post, "^/rules$", std::bind(&coco_server::create_rule, this, network::placeholders::request));
 
         add_route(network::Get, "^/openapi$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
-        add_route(network::Get, "^/asyncapi$", std::bind(&coco_server::get_openapi_spec, this, network::placeholders::request));
+        add_route(network::Get, "^/asyncapi$", std::bind(&coco_server::get_asyncapi_spec, this, network::placeholders::request));
 
         add_ws_route("/coco").on_open(std::bind(&coco_server::on_ws_open, this, network::placeholders::request)).on_message(std::bind(&coco_server::on_ws_message, this, std::placeholders::_1, std::placeholders::_2)).on_close(std::bind(&coco_server::on_ws_close, this, network::placeholders::request)).on_error(std::bind(&coco_server::on_ws_error, this, network::placeholders::request, std::placeholders::_2));
 
@@ -132,6 +132,7 @@ namespace coco
             {"description", "A " COCO_NAME " type definition that describes the structure and behavior of items."},
             {"properties",
              {{"name", {{"type", "string"}, {"description", "The unique name identifier for this type."}}},
+              {"is_a", {{"type", "array"}, {"items", {{"type", "string"}}}, {"description", "Array of parent type names that this type inherits from."}}},
               {"static_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}, {"description", "Object containing static properties that define the fixed structure of items of this type. Keys are property names, values are property definitions."}}},
               {"dynamic_properties", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/property"}}}, {"description", "Object containing dynamic properties that can store time-series data for items of this type. Keys are property names, values are property definitions."}}},
               {"data", {{"type", "object"}, {"description", "Additional metadata or configuration data for this type."}}}}},
@@ -140,8 +141,7 @@ namespace coco
             {"type", "object"},
             {"description", "A " COCO_NAME " item is an instance of a type, which can have static properties and dynamic data."},
             {"properties",
-             {{"id", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}, {"description", "The ID for this item."}}},
-              {"type", {{"type", "string"}, {"description", "The name of the type that this item instantiates."}}},
+             {{"type", {{"type", "string"}, {"description", "The name of the type that this item instantiates."}}},
               {"properties", {{"type", "object"}, {"description", "Static data of the item defined by its type."}}},
               {"value", {{"type", "object"}, {"additionalProperties", {{"$ref", "#/components/schemas/data"}}}, {"description", "Dynamic data of the item defined by its type."}}}}},
             {"required", std::vector<json::json>{"id", "type"}}};
@@ -233,7 +233,7 @@ namespace coco
                              {"responses",
                               {{"200",
                                 {{"description", "Successful response containing an array of all managed items with their properties and metadata."},
-                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {{"$ref", "#/components/schemas/item"}}}}}}}}}}},
+                                 {"content", {{"application/json", {{"schema", {{"type", "array"}, {"items", {"allOf", std::vector<json::json>{{{"$ref", "#/components/schemas/item"}}, {"properties", {{"id", {{"type", "string"}, {"pattern", "^[a-fA-F0-9]{24}$"}, {"description", "The ID for this item."}}}}}}}}}}}}}}}},
 #ifdef BUILD_AUTH
                                {"401", {{"$ref", "#/components/responses/UnauthorizedError"}}},
 #endif
@@ -502,6 +502,10 @@ namespace coco
 
         std::string name = body["name"];
 
+        json::json is_a(json::json_type::array);
+        if (body.contains("is_a"))
+            is_a = std::move(body["is_a"]);
+
         json::json static_props;
         if (body.contains("static_properties"))
             static_props = std::move(body["static_properties"]);
@@ -514,7 +518,7 @@ namespace coco
         if (body.contains("data"))
             data = std::move(body["data"]);
 
-        [[maybe_unused]] auto &tp = get_coco().create_type(name, std::move(static_props), std::move(dynamic_props), std::move(data));
+        [[maybe_unused]] auto &tp = get_coco().create_type(name, std::move(is_a), std::move(static_props), std::move(dynamic_props), std::move(data));
         return std::make_unique<network::response>(network::status_code::no_content);
     }
     std::unique_ptr<network::response> coco_server::delete_type(const network::request &req)
@@ -832,13 +836,41 @@ namespace coco
                             {{"title", COCO_NAME " Server API"},
                              {"version", "1.0.0"},
                              {"description", "API for the " COCO_NAME " server."}}},
-                           {"channels", {}},
+                           {"channels",
+                            {{"root",
+                              {{"address", "/coco"},
+                               {"messages",
+                                {{"new_type", {{"$ref", "#/components/messages/new_type"}}},
+                                 {"new_item", {{"$ref", "#/components/messages/new_item"}}},
+                                 {"updated_item", {{"$ref", "#/components/messages/updated_item"}}},
+                                 {"new_data", {{"$ref", "#/components/messages/new_data"}}}}}}}}},
+                           {"operations",
+                            {{"new_type",
+                              {{"action", "receive"},
+                               {"channel", {{"$ref", "#/channels/root"}}},
+                               {"messages", std::vector<json::json>{{"$ref", "#/channels/root/messages/new_type"}}}}},
+                             {"new_item",
+                              {{"action", "receive"},
+                               {"channel", {{"$ref", "#/channels/root"}}},
+                               {"messages", std::vector<json::json>{{"$ref", "#/channels/root/messages/new_item"}}}}},
+                             {"updated_item",
+                              {{"action", "receive"},
+                               {"channel", {{"$ref", "#/channels/root"}}},
+                               {"messages", std::vector<json::json>{{"$ref", "#/channels/root/messages/updated_item"}}}}},
+                             {"new_data",
+                              {{"action", "receive"},
+                               {"channel", {{"$ref", "#/channels/root"}}},
+                               {"messages", std::vector<json::json>{{"$ref", "#/channels/root/messages/new_data"}}}}}}},
                            {"components",
-                            {
+                            {{"messages",
+                              {{"new_type", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/type"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_type"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the type"}}}}}}}}}, {"description", "Notification for newly created type"}}},
+                               {"new_item", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/item"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_item"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}}}}}}}, {"description", "Notification for newly created item"}}},
+                               {"updated_item", {{"payload", {{"allOf", std::vector<json::json>{{"$ref", "#/components/schemas/item"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"updated_item"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}}}}}}}, {"description", "Notification for updated item"}}},
+                               {"new_data", {{"payload", {{"type", "object"}, {"properties", {{"msg_type", {{"type", "string"}, {"enum", {"new_data"}}}}, {"id", {{"type", "string"}, {"description", "The ID of the item"}}}, {"value", {{"type", "object"}, {"description", "The new data value with timestamp"}}}}}}}, {"description", "Notification for new data added to an item"}}}}},
 #ifdef BUILD_AUTH
-                                {"securitySchemes", {"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}},
+                             {"securitySchemes", {"bearerAuth", {{"type", "http"}, {"scheme", "bearer"}}}},
 #endif
-                                {"schemas", schemas}}}};
+                             {"schemas", schemas}}}};
         return std::make_unique<network::json_response>(std::move(spec));
     }
 } // namespace coco

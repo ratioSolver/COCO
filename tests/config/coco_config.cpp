@@ -7,6 +7,10 @@
 #include "coco.hpp"
 #include "coco_item.hpp"
 #include "logging.hpp"
+#ifdef BUILD_SERVER
+#include "coco_server.hpp"
+#include <thread>
+#endif
 
 int main()
 {
@@ -29,6 +33,12 @@ int main()
         coco::set_items(cc, config_root / "items");
     LOG_INFO("Configuration loaded successfully");
 
+#ifdef BUILD_SERVER
+    coco::coco_server srv(cc);
+    auto srv_ft = std::async(std::launch::async, [&srv]
+                             { srv.start(); });
+#endif
+
     LOG_INFO("Testing item manipulation");
     auto &itm = cc.get_items().front().get();
     cc.set_properties(itm, {{"name", "John Doe"}, {"age", 31}, {"is_active", true}});
@@ -41,6 +51,19 @@ int main()
     LOG_DEBUG("Set item value: " + itm.to_json().dump());
     cc.set_value(itm, {{"is_employed", false}});
     LOG_DEBUG("Updated item value: " + itm.to_json().dump());
+
+#ifdef INTERACTIVE_TEST
+    std::string user_input;
+    std::cin >> user_input;
+    if (user_input == "d")
+        db.drop();
+#else
+    db.drop();
+#endif
+
+#ifdef BUILD_SERVER
+    srv.stop();
+#endif
 
     return 0;
 }

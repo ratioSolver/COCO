@@ -113,6 +113,10 @@ export class TaxonomyGraph extends Component<HTMLDivElement> implements coco.CoC
     for (const tp of coco.CoCo.get_instance().get_types())
       this.create_type_node(tp);
     for (const tp of coco.CoCo.get_instance().get_types()) {
+      const parents = tp.get_parents();
+      if (parents)
+        for (const parent of parents)
+          this.cy!.add({ group: 'edges', data: { id: `is_a-${tp.get_name()}-${parent.get_name()}`, type: 'is_a', source: tp.get_name(), target: parent.get_name() } });
       const static_props = tp.get_static_properties();
       if (static_props)
         for (const [name, prop] of static_props)

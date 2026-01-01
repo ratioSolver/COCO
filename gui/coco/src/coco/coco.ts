@@ -171,6 +171,12 @@ export namespace coco {
     }
 
     private refine_type(tp: taxonomy.Type, tpm: TypeMessage) {
+      if (tpm.is_a) {
+        const parents: taxonomy.Type[] = [];
+        for (const parent_name of tpm.is_a)
+          parents.push(this.get_type(parent_name)!);
+        tp._set_parents(parents);
+      }
       if (tpm.static_properties) {
         const static_props = new Map<string, taxonomy.Property<unknown>>();
         for (const [name, prop] of Object.entries(tpm.static_properties))

@@ -10,6 +10,9 @@ setup_sanitizers(fcm_tests)
 
 add_subdirectory(config)
 
+if (BUILD_LLM)
+    add_subdirectory(llm)
+endif()
 if(BUILD_ROS)
     add_subdirectory(ros)
 endif()

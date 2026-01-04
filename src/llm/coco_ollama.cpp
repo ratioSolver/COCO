@@ -13,7 +13,7 @@ namespace coco
         j_prompt["messages"] = std::vector<json::json>{{{"role", "user"}, {"content", message.data()}}};
         j_prompt["stream"] = false;
 
-        auto res = client.post("/api/generate", std::move(j_prompt), {{"Content-Type", "application/json"}});
+        auto res = client.post("/api/chat", std::move(j_prompt), {{"Content-Type", "application/json"}});
         if (!res || res->get_status_code() != network::ok)
         {
             LOG_ERR("Failed to understand..");
@@ -23,7 +23,7 @@ namespace coco
         auto llm_res = static_cast<network::json_response &>(*res).get_body();
         LOG_TRACE("Response:\n"
                   << llm_res);
-        return llm_res["response"].get<std::string>();
+        return llm_res["message"]["content"].get<std::string>();
     }
 
     void coco_ollama::async_understand(item &item, std::string_view message, bool infere) noexcept
@@ -33,7 +33,7 @@ namespace coco
         j_prompt["messages"] = std::vector<json::json>{{{"role", "user"}, {"content", message.data()}}};
         j_prompt["stream"] = true;
 
-        session->post("/api/generate", std::move(j_prompt), [this, &item, infere](const network::response &res)
+        session->post("/api/chat", std::move(j_prompt), [this, &item, infere](const network::response &res)
                       {
                           if (res.get_status_code() != network::ok)
                           {
@@ -48,7 +48,7 @@ namespace coco
                           std::lock_guard<std::recursive_mutex> _(get_mtx());
                           FactBuilder *item_fact_builder = CreateFactBuilder(get_env(), "llm-result");
                           FBPutSlotSymbol(item_fact_builder, "item_id", item.get_id().c_str());
-                          FBPutSlotString(item_fact_builder, "result", llm_res["response"].get<std::string>().c_str());
+                          FBPutSlotString(item_fact_builder, "result", llm_res["message"]["content"].get<std::string>().c_str());
                           [[maybe_unused]] auto item_fact = FBAssert(item_fact_builder);
                           [[maybe_unused]] auto fb_err = FBError(get_env());
                           assert(fb_err == FBE_NO_ERROR);

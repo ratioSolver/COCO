@@ -14,7 +14,11 @@
 #include "coco_mqtt.hpp"
 #endif
 #ifdef BUILD_LLM
-#include "coco_llm.hpp"
+#ifdef LLM_PROVIDER_OLLAMA
+#include "coco_ollama.hpp"
+#elif defined(LLM_PROVIDER_HUGGINGFACE)
+#include "coco_huggingface.hpp"
+#endif
 #endif
 #ifdef BUILD_FCM
 #include "coco_fcm.hpp"
@@ -44,7 +48,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     cc.add_module<coco::coco_mqtt>(cc);
 #endif
 #ifdef BUILD_LLM
-    [[maybe_unused]] coco::coco_llm &llm = cc.add_module<coco::coco_llm>(cc);
+#ifdef LLM_PROVIDER_OLLAMA
+    cc.add_module<coco::coco_ollama>(cc);
+#elif defined(LLM_PROVIDER_HUGGINGFACE)
+    cc.add_module<coco::coco_huggingface>(cc);
+#endif
 #endif
 #ifdef BUILD_FCM
     [[maybe_unused]] auto &fcm = cc.add_module<coco::coco_fcm>(cc);

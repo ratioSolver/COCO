@@ -14,14 +14,19 @@ pub struct CoCo {
     rules: HashMap<String, Rc<Rule>>,
 }
 
+impl Default for CoCo {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CoCo {
     pub fn new() -> Self {
-        let coco = Self {
+        Self {
             property_types: HashMap::new(),
             kinds: HashMap::new(),
             rules: HashMap::new(),
-        };
-        coco
+        }
     }
 
     pub fn get_property_type(&self, name: &str) -> Option<Rc<PropertyType>> {

@@ -1,1 +1,0 @@
-(defrule is_mother (person (item_id ?id) (gender female) (children_count ?count&:(> ?count 0))) => (add_type ?id mother))

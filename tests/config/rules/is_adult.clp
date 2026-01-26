@@ -1,1 +1,0 @@
-(defrule is_adult (person (item_id ?id) (age ?age&:(>= ?age 18))) => (add_type ?id adult))

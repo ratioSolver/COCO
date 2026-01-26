@@ -1,1 +1,0 @@
-(defrule is_father (person (item_id ?id) (gender male) (children_count ?count&:(> ?count 0))) => (add_type ?id father))

@@ -1,7 +1,0 @@
-# Gradle files
-.gradle/
-build/
-local.properties
-
-# VS Code settings
-.vscode/

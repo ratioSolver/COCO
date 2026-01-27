@@ -27,6 +27,46 @@ impl PropertyType for BoolPropertyType {
     }
 }
 
+pub struct IntPropertyType {
+    coco: Weak<CoCo>,
+}
+
+impl IntPropertyType {
+    pub fn new(coco: Weak<CoCo>) -> Self {
+        Self { coco }
+    }
+}
+
+impl PropertyType for IntPropertyType {
+    fn coco(&self) -> &Weak<CoCo> {
+        &self.coco
+    }
+
+    fn name(&self) -> &str {
+        "int"
+    }
+}
+
+pub struct FloatPropertyType {
+    coco: Weak<CoCo>,
+}
+
+impl FloatPropertyType {
+    pub fn new(coco: Weak<CoCo>) -> Self {
+        Self { coco }
+    }
+}
+
+impl PropertyType for FloatPropertyType {
+    fn coco(&self) -> &Weak<CoCo> {
+        &self.coco
+    }
+
+    fn name(&self) -> &str {
+        "float"
+    }
+}
+
 pub trait Property {
     fn kind(&self) -> &Weak<dyn PropertyType>;
     fn name(&self) -> &str;

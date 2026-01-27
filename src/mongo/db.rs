@@ -160,4 +160,9 @@ impl DatabaseTrait for Database {
         collection.insert_one(mongo_rule).await?;
         Ok(())
     }
+
+    async fn drop_db(&self) -> Result<(), Box<dyn Error>> {
+        self.client.database(&self.name).drop().await?;
+        Ok(())
+    }
 }

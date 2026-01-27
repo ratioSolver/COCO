@@ -25,4 +25,6 @@ pub trait Database {
     async fn create_item(&self, item: &DBItem) -> Result<(), Box<dyn Error>>;
     async fn get_rules(&self) -> Result<Vec<DBRule>, Box<dyn Error>>;
     async fn create_rule(&self, rule: &DBRule) -> Result<(), Box<dyn Error>>;
+
+    async fn drop_db(&self) -> Result<(), Box<dyn Error>>;
 }

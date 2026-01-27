@@ -2,12 +2,13 @@ use crate::{
     db::Database,
     item::Item,
     kind::Kind,
-    property::{BoolPropertyType, PropertyType},
+    property::{BoolPropertyType, FloatPropertyType, IntPropertyType, PropertyType},
     rule::Rule,
 };
 use std::{
     cell::RefCell,
     collections::HashMap,
+    error::Error,
     rc::{Rc, Weak},
 };
 
@@ -31,9 +32,9 @@ impl CoCo {
             rules: RefCell::new(HashMap::new()),
         });
 
-        let bool_property_type =
-            Rc::new(BoolPropertyType::new(coco.weak_self.clone())) as Rc<dyn PropertyType>;
-        coco.add_property_type(bool_property_type);
+        coco.add_property_type(Rc::new(BoolPropertyType::new(coco.weak_self.clone())));
+        coco.add_property_type(Rc::new(IntPropertyType::new(coco.weak_self.clone())));
+        coco.add_property_type(Rc::new(FloatPropertyType::new(coco.weak_self.clone())));
 
         for kind in coco.db.get_types().await.unwrap() {
             coco.add_kind(Rc::new(Kind::from_db_kind(coco.weak_self.clone(), kind)));
@@ -78,5 +79,30 @@ impl CoCo {
         self.rules
             .borrow_mut()
             .insert(rule.name().to_string(), rule);
+    }
+
+    pub async fn drop_db(&self) -> Result<(), Box<dyn Error>> {
+        self.db.drop_db().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mongo::db::Database as MongoDB;
+
+    #[tokio::test]
+    async fn test_coco_initialization() {
+        let coco = CoCo::new(Box::new(
+            MongoDB::new("coco_test", "mongodb://localhost:27017")
+                .await
+                .unwrap(),
+        ))
+        .await;
+        assert!(coco.get_property_type("bool").is_some());
+        assert!(coco.get_property_type("int").is_some());
+        assert!(coco.get_property_type("float").is_some());
+
+        coco.drop_db().await.unwrap();
     }
 }

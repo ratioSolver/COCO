@@ -1,39 +1,54 @@
 use std::rc::Weak;
 
-pub struct PropertyType {
+use crate::CoCo;
+
+pub trait PropertyType {
+    fn coco(&self) -> &Weak<CoCo>;
+    fn name(&self) -> &str;
+}
+
+pub struct BoolPropertyType {
+    coco: Weak<CoCo>,
+}
+
+impl BoolPropertyType {
+    pub fn new(coco: Weak<CoCo>) -> Self {
+        Self { coco }
+    }
+}
+
+impl PropertyType for BoolPropertyType {
+    fn coco(&self) -> &Weak<CoCo> {
+        &self.coco
+    }
+
+    fn name(&self) -> &str {
+        "bool"
+    }
+}
+
+pub trait Property {
+    fn kind(&self) -> &Weak<dyn PropertyType>;
+    fn name(&self) -> &str;
+}
+
+pub struct BoolProperty {
+    kind: Weak<dyn PropertyType>,
     name: String,
 }
 
-impl PropertyType {
-    pub fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
+impl BoolProperty {
+    pub fn new(kind: Weak<dyn PropertyType>, name: String) -> Self {
+        Self { kind, name }
     }
 }
 
-pub struct Property {
-    kind: Weak<PropertyType>,
-    name: String,
-}
-
-impl Property {
-    pub fn new(kind: Weak<PropertyType>, name: &str) -> Self {
-        Self {
-            kind,
-            name: name.to_string(),
-        }
-    }
-
-    pub fn kind(&self) -> &Weak<PropertyType> {
+impl Property for BoolProperty {
+    fn kind(&self) -> &Weak<dyn PropertyType> {
         &self.kind
     }
 
-    pub fn name(&self) -> &str {
+    fn name(&self) -> &str {
         &self.name
     }
 }

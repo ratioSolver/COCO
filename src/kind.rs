@@ -1,6 +1,5 @@
+use crate::{CoCo, db::DBKind, item::Item};
 use std::rc::{Rc, Weak};
-
-use crate::{CoCo, item::Item};
 
 pub struct Kind {
     coco: Weak<CoCo>,
@@ -13,6 +12,14 @@ impl Kind {
         Self {
             coco,
             name: name.to_string(),
+            instances: Vec::new(),
+        }
+    }
+
+    pub fn from_db_kind(coco: Weak<CoCo>, db_kind: DBKind) -> Self {
+        Self {
+            coco,
+            name: db_kind.name,
             instances: Vec::new(),
         }
     }

@@ -213,6 +213,7 @@ dependencies = [
 name = "coco-reasoner"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "axum",
  "futures",
  "mongodb",

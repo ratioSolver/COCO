@@ -24,7 +24,7 @@ impl Item {
                         .unwrap()
                 })
                 .collect(),
-            id: db_item.id.unwrap().to_string(),
+            id: db_item.id,
         }
     }
 

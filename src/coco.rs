@@ -13,7 +13,7 @@ use std::{
 
 pub struct CoCo {
     weak_self: Weak<Self>,
-    db: Database,
+    db: Box<dyn Database>,
     property_types: RefCell<HashMap<String, Rc<dyn PropertyType>>>,
     kinds: RefCell<HashMap<String, Rc<Kind>>>,
     items: RefCell<HashMap<String, Rc<Item>>>,
@@ -21,10 +21,7 @@ pub struct CoCo {
 }
 
 impl CoCo {
-    pub async fn new(name: &str) -> Rc<Self> {
-        let db = Database::new(name, "mongodb://localhost:27017")
-            .await
-            .unwrap();
+    pub async fn new(db: Box<dyn Database>) -> Rc<Self> {
         let coco = Rc::new_cyclic(|weak_self| Self {
             weak_self: weak_self.clone(),
             db,

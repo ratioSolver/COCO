@@ -171,7 +171,7 @@ mod tests {
     #[tokio::test]
     async fn test_coco_initialization() {
         let coco = CoCo::new(Box::new(
-            MongoDB::new("coco_test", "mongodb://localhost:27017")
+            MongoDB::new("test_coco_initialization", "mongodb://localhost:27017")
                 .await
                 .unwrap(),
         ))

@@ -1,4 +1,4 @@
-use crate::db::{Class, Database as DatabaseTrait, Object, Rule, Value};
+use crate::db::{Class, Database as DatabaseTrait, DynamicValue, Object, Rule, StaticValue};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
@@ -14,7 +14,8 @@ struct MongoObject {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub classes: HashSet<String>,
-    pub properties: HashMap<String, Value>,
+    pub properties: HashMap<String, StaticValue>,
+    pub values: HashMap<String, DynamicValue>,
 }
 
 pub struct Database {
@@ -100,6 +101,7 @@ impl DatabaseTrait for Database {
                 id: object.id.unwrap().to_hex(),
                 classes: object.classes,
                 properties: object.properties,
+                values: object.values,
             });
         }
         Ok(objects)
@@ -114,6 +116,7 @@ impl DatabaseTrait for Database {
             id: None,
             classes: object.classes.clone(),
             properties: object.properties.clone(),
+            values: object.values.clone(),
         };
         collection.insert_one(mongo_object).await?;
         Ok(())

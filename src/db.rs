@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -44,10 +45,18 @@ pub enum Property {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub enum Value {
+pub enum StaticValue {
     Bool(bool),
     Int(i64),
     Float(f64),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum DynamicValue {
+    Bool(bool, DateTime<Utc>),
+    Int(i64, DateTime<Utc>),
+    Float(f64, DateTime<Utc>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -61,7 +70,8 @@ pub struct Class {
 pub struct Object {
     pub id: String,
     pub classes: HashSet<String>,
-    pub properties: HashMap<String, Value>,
+    pub properties: HashMap<String, StaticValue>,
+    pub values: HashMap<String, DynamicValue>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

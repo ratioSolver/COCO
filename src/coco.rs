@@ -1,7 +1,4 @@
-use crate::{
-    Property,
-    db::{Class, Database, Object, Rule},
-};
+use crate::db::{Class, Database, Object, Property, Rule};
 use rust_rule_engine::{
     Facts, GRLParser, KnowledgeBase, RustRuleEngine,
     rete::{FactValue, FieldDef, FieldType, Template, TemplateRegistry},

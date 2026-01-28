@@ -1,3 +1,4 @@
+use crate::db::{Class, Database as DatabaseTrait, Object, Rule, Value};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
@@ -5,16 +6,15 @@ use mongodb::bson::oid::ObjectId;
 use mongodb::options::IndexOptions;
 use mongodb::{Client, IndexModel};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
-
-use crate::db::{Class, Object, Rule, Database as DatabaseTrait};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MongoObject {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub classes: HashSet<String>,
+    pub properties: HashMap<String, Value>,
 }
 
 pub struct Database {
@@ -99,6 +99,7 @@ impl DatabaseTrait for Database {
             objects.push(Object {
                 id: object.id.unwrap().to_hex(),
                 classes: object.classes,
+                properties: object.properties,
             });
         }
         Ok(objects)
@@ -112,6 +113,7 @@ impl DatabaseTrait for Database {
         let mongo_object = MongoObject {
             id: None,
             classes: object.classes.clone(),
+            properties: object.properties.clone(),
         };
         collection.insert_one(mongo_object).await?;
         Ok(())
@@ -133,10 +135,7 @@ impl DatabaseTrait for Database {
     }
 
     async fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>> {
-        let collection = self
-            .client
-            .database(&self.name)
-            .collection::<Rule>("rules");
+        let collection = self.client.database(&self.name).collection::<Rule>("rules");
         collection.insert_one(rule).await?;
         Ok(())
     }

@@ -50,6 +50,7 @@ impl CoCo {
 
         coco.add_classes(coco.db.get_classes().await.unwrap());
         coco.add_rules(coco.db.get_rules().await.unwrap());
+        coco.add_objects(coco.db.get_objects().await.unwrap());
 
         coco
     }
@@ -121,6 +122,17 @@ impl CoCo {
         }
     }
 
+    fn add_objects(&mut self, db_objects: Vec<Object>) {
+        for object in db_objects {
+            let object_arc = Arc::new(RwLock::new(object));
+            let id = object_arc.read().expect("Failed to lock object").id.clone();
+            self.objects
+                .write()
+                .expect("Failed to lock objects map")
+                .insert(id, object_arc);
+        }
+    }
+
     pub fn get_object(&self, id: &str) -> Option<Arc<RwLock<Object>>> {
         self.objects
             .read()
@@ -145,7 +157,7 @@ impl CoCo {
         self.add_rules(vec![rule]);
     }
 
-    pub(crate) fn add_rules(&mut self, db_rules: Vec<Rule>) {
+    fn add_rules(&mut self, db_rules: Vec<Rule>) {
         for rule in db_rules {
             self.engine
                 .knowledge_base()

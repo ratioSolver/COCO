@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use std::error::Error;
 
-pub struct DBKind {
+pub struct DBClass {
     pub name: String,
 }
 
-pub struct DBItem {
+pub struct DBObject {
     pub id: String,
-    pub kinds: Vec<String>,
+    pub classes: Vec<String>,
 }
 
 pub struct DBRule {
@@ -19,10 +19,10 @@ pub struct DBRule {
 pub trait Database {
     fn name(&self) -> &str;
 
-    async fn get_types(&self) -> Result<Vec<DBKind>, Box<dyn Error>>;
-    async fn create_type(&self, kind: &DBKind) -> Result<(), Box<dyn Error>>;
-    async fn get_items(&self) -> Result<Vec<DBItem>, Box<dyn Error>>;
-    async fn create_item(&self, item: &DBItem) -> Result<(), Box<dyn Error>>;
+    async fn get_classes(&self) -> Result<Vec<DBClass>, Box<dyn Error>>;
+    async fn create_class(&self, kind: &DBClass) -> Result<(), Box<dyn Error>>;
+    async fn get_objects(&self) -> Result<Vec<DBObject>, Box<dyn Error>>;
+    async fn create_object(&self, item: &DBObject) -> Result<(), Box<dyn Error>>;
     async fn get_rules(&self) -> Result<Vec<DBRule>, Box<dyn Error>>;
     async fn create_rule(&self, rule: &DBRule) -> Result<(), Box<dyn Error>>;
 

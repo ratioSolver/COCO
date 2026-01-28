@@ -7,18 +7,18 @@ use mongodb::{Client, IndexModel};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
-use crate::db::{DBItem, DBKind, DBRule, Database as DatabaseTrait};
+use crate::db::{DBClass, DBObject, DBRule, Database as DatabaseTrait};
 
 #[derive(Serialize, Deserialize, Debug)]
-struct MongoKind {
+struct MongoClass {
     pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct MongoItem {
+struct MongoObject {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
-    pub kinds: Vec<String>,
+    pub classes: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,12 +38,12 @@ impl Database {
         let db = client.database(name);
         let collection_names = db.list_collection_names().await?;
         if collection_names.is_empty() {
-            let types_collection = db.collection::<mongodb::bson::Document>("types");
+            let classes_collection = db.collection::<mongodb::bson::Document>("classes");
             let index = IndexModel::builder()
                 .keys(doc! { "name": 1 })
                 .options(IndexOptions::builder().unique(true).build())
                 .build();
-            types_collection.create_index(index).await?;
+            classes_collection.create_index(index).await?;
 
             let rules_collection = db.collection::<mongodb::bson::Document>("rules");
             let index = IndexModel::builder()
@@ -52,12 +52,12 @@ impl Database {
                 .build();
             rules_collection.create_index(index).await?;
 
-            let item_data_collection = db.collection::<mongodb::bson::Document>("item_data");
+            let object_data_collection = db.collection::<mongodb::bson::Document>("object_data");
             let index = IndexModel::builder()
-                .keys(doc! { "item_id": 1, "timestamp": 1 })
+                .keys(doc! { "object_id": 1, "timestamp": 1 })
                 .options(IndexOptions::builder().unique(true).build())
                 .build();
-            item_data_collection.create_index(index).await?;
+            object_data_collection.create_index(index).await?;
         }
         Ok(Self {
             name: name.to_string(),
@@ -72,61 +72,61 @@ impl DatabaseTrait for Database {
         &self.name
     }
 
-    async fn get_types(&self) -> Result<Vec<DBKind>, Box<dyn Error>> {
+    async fn get_classes(&self) -> Result<Vec<DBClass>, Box<dyn Error>> {
         let mut cursor = self
             .client
             .database(&self.name)
-            .collection::<MongoKind>("types")
+            .collection::<MongoClass>("classes")
             .find(doc! {})
             .await?;
 
-        let mut kinds = Vec::new();
+        let mut classes = Vec::new();
         while let Some(kind) = cursor.try_next().await? {
-            kinds.push(DBKind { name: kind.name });
+            classes.push(DBClass { name: kind.name });
         }
-        Ok(kinds)
+        Ok(classes)
     }
 
-    async fn create_type(&self, kind: &DBKind) -> Result<(), Box<dyn Error>> {
+    async fn create_class(&self, kind: &DBClass) -> Result<(), Box<dyn Error>> {
         let collection = self
             .client
             .database(&self.name)
-            .collection::<MongoKind>("types");
-        let mongo_kind = MongoKind {
+            .collection::<MongoClass>("classes");
+        let mongo_kind = MongoClass {
             name: kind.name.clone(),
         };
         collection.insert_one(mongo_kind).await?;
         Ok(())
     }
 
-    async fn get_items(&self) -> Result<Vec<DBItem>, Box<dyn Error>> {
+    async fn get_objects(&self) -> Result<Vec<DBObject>, Box<dyn Error>> {
         let mut cursor = self
             .client
             .database(&self.name)
-            .collection::<MongoItem>("items")
+            .collection::<MongoObject>("objects")
             .find(doc! {})
             .await?;
 
-        let mut items = Vec::new();
-        while let Some(item) = cursor.try_next().await? {
-            items.push(DBItem {
-                id: item.id.unwrap().to_hex(),
-                kinds: item.kinds,
+        let mut objects = Vec::new();
+        while let Some(object) = cursor.try_next().await? {
+            objects.push(DBObject {
+                id: object.id.unwrap().to_hex(),
+                classes: object.classes,
             });
         }
-        Ok(items)
+        Ok(objects)
     }
 
-    async fn create_item(&self, item: &DBItem) -> Result<(), Box<dyn Error>> {
+    async fn create_object(&self, object: &DBObject) -> Result<(), Box<dyn Error>> {
         let collection = self
             .client
             .database(&self.name)
-            .collection::<MongoItem>("items");
-        let mongo_item = MongoItem {
+            .collection::<MongoObject>("objects");
+        let mongo_object = MongoObject {
             id: None,
-            kinds: item.kinds.clone(),
+            classes: object.classes.clone(),
         };
-        collection.insert_one(mongo_item).await?;
+        collection.insert_one(mongo_object).await?;
         Ok(())
     }
 

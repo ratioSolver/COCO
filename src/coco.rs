@@ -1,6 +1,6 @@
 use crate::db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue};
 use rust_rule_engine::{
-    Facts, GRLParser, KnowledgeBase, RustRuleEngine,
+    Facts, GRLParser, KnowledgeBase, RustRuleEngine, Value,
     rete::{FactValue, FieldDef, FieldType, Template, TemplateRegistry},
 };
 use std::{
@@ -83,6 +83,12 @@ impl CoCo {
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
             let mut template = Template::new(class.name.clone());
+            template.add_field(FieldDef {
+                name: "id".to_string(),
+                field_type: FieldType::String,
+                default_value: None,
+                required: true,
+            });
             for (_, prop) in class
                 .static_properties
                 .iter()
@@ -179,14 +185,42 @@ impl CoCo {
         self.add_objects(vec![object]);
     }
 
-    fn add_objects(&mut self, db_objects: Vec<Object>) {
-        for object in db_objects {
+    fn add_objects(&mut self, objects: Vec<Object>) {
+        for object in objects {
             let object_arc = Arc::new(RwLock::new(object));
             let id = object_arc.read().expect("Failed to lock object").id.clone();
             self.objects
                 .write()
                 .expect("Failed to lock objects map")
-                .insert(id, object_arc);
+                .insert(id, object_arc.clone());
+            for class_name in object_arc
+                .read()
+                .expect("Failed to lock object")
+                .classes
+                .iter()
+                .flatten()
+            {
+                let class = self
+                    .classes
+                    .get(class_name)
+                    .expect("Class not found for object");
+            }
+        }
+    }
+
+    fn to_static_value(static_value: &StaticValue) -> Value {
+        match static_value {
+            StaticValue::Bool(b) => Value::Boolean(*b),
+            StaticValue::Int(i) => Value::Integer(*i),
+            StaticValue::Float(f) => Value::Number(*f),
+        }
+    }
+
+    fn to_dynamic_value(dynamic_value: &DynamicValue) -> (Value, i64) {
+        match dynamic_value {
+            DynamicValue::Bool(b, timestamp) => (Value::Boolean(*b), timestamp.timestamp_millis()),
+            DynamicValue::Int(i, timestamp) => (Value::Integer(*i), timestamp.timestamp_millis()),
+            DynamicValue::Float(f, timestamp) => (Value::Number(*f), timestamp.timestamp_millis()),
         }
     }
 

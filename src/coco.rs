@@ -11,9 +11,9 @@ use std::{
 
 pub struct CoCo {
     db: Box<dyn Database + Send + Sync>,
-    classes: HashMap<String, Arc<Class>>,
-    objects: Arc<RwLock<HashMap<String, Arc<Object>>>>,
-    rules: HashMap<String, Arc<Rule>>,
+    classes: HashMap<String, Class>,
+    objects: HashMap<String, Object>,
+    rules: HashMap<String, Rule>,
     template_registry: TemplateRegistry,
     facts: Facts,
     engine: RustRuleEngine,
@@ -22,22 +22,26 @@ pub struct CoCo {
 impl CoCo {
     pub async fn new(db: Box<dyn Database + Send + Sync>) -> Self {
         let name = &db.name().to_string();
-        let objects = Arc::new(RwLock::new(HashMap::new()));
         let mut coco = Self {
             db,
             classes: HashMap::new(),
-            objects: objects.clone(),
+            objects: HashMap::new(),
             rules: HashMap::new(),
             template_registry: TemplateRegistry::new(),
             facts: Facts::new(),
             engine: RustRuleEngine::new(KnowledgeBase::new(name)),
         };
 
-        coco.engine
-            .register_function("add_class", move |args, facts| {
-                objects.read().unwrap().get(&args[0].as_string().unwrap());
-                Ok(rust_rule_engine::Value::Null)
-            });
+        coco.engine.register_function("add_class", move |args, _| {
+            // objects
+            //     .read()
+            //     .unwrap()
+            //     .get(&args[0].as_string().unwrap())
+            //     .expect("Object not found")
+            //     .classes
+            //     .insert(args[1].as_string().unwrap());
+            Ok(rust_rule_engine::Value::Null)
+        });
 
         coco.add_classes(coco.db.get_classes().await.unwrap());
         coco.add_rules(coco.db.get_rules().await.unwrap());
@@ -45,8 +49,8 @@ impl CoCo {
         coco
     }
 
-    pub fn get_class(&self, name: &str) -> Option<Arc<Class>> {
-        self.classes.get(name).cloned()
+    pub fn get_class(&self, name: &str) -> Option<&Class> {
+        self.classes.get(name)
     }
 
     pub async fn create_class(
@@ -67,9 +71,8 @@ impl CoCo {
         self.add_classes(vec![class]);
     }
 
-    fn add_classes(&mut self, db_classes: Vec<Class>) {
-        for db_class in db_classes {
-            let class = Arc::new(db_class);
+    fn add_classes(&mut self, classes: Vec<Class>) {
+        for class in classes {
             let mut template = Template::new(class.name.clone());
             for (_, prop) in class.static_properties.iter() {
                 let field_def = match prop {
@@ -109,16 +112,16 @@ impl CoCo {
                 template.add_field(field_def);
             }
             self.template_registry.register(template);
-            self.classes.insert(class.name.to_string(), class.into());
+            self.classes.insert(class.name.to_string(), class);
         }
     }
 
-    pub fn get_object(&self, id: &str) -> Option<Arc<Object>> {
-        self.objects.read().unwrap().get(id).cloned()
+    pub fn get_object(&self, id: &str) -> Option<&Object> {
+        self.objects.get(id)
     }
 
-    pub fn get_rule(&self, name: &str) -> Option<Arc<Rule>> {
-        self.rules.get(name).cloned()
+    pub fn get_rule(&self, name: &str) -> Option<&Rule> {
+        self.rules.get(name)
     }
 
     pub async fn create_rule(&mut self, name: &str, content: &str) {
@@ -134,15 +137,14 @@ impl CoCo {
     }
 
     pub(crate) fn add_rules(&mut self, db_rules: Vec<Rule>) {
-        for db_rule in db_rules {
+        for rule in db_rules {
             self.engine
                 .knowledge_base()
                 .add_rule(
-                    GRLParser::parse_rule(db_rule.content.as_str()).expect("Failed to parse rule"),
+                    GRLParser::parse_rule(rule.content.as_str()).expect("Failed to parse rule"),
                 )
                 .expect("Failed to add rule to knowledge base");
-            let rule = Arc::new(db_rule);
-            self.rules.insert(rule.name.to_string(), rule.clone());
+            self.rules.insert(rule.name.to_string(), rule);
         }
     }
 

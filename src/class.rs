@@ -16,13 +16,15 @@ impl Class {
         }
     }
 
-    pub fn from_db_class(coco: Weak<CoCo>, db_class: DBClass) -> Self {
+    pub(super) fn from_db_class(coco: Weak<CoCo>, db_class: &DBClass) -> Self {
         Self {
             coco,
-            name: db_class.name,
+            name: db_class.name.clone(),
             instances: Vec::new(),
         }
     }
+
+    pub(super) fn refine_from_db_class(&mut self, db_class: DBClass) {}
 
     pub fn coco(&self) -> &Weak<CoCo> {
         &self.coco

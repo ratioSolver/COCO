@@ -1,11 +1,11 @@
 use crate::{
     class::Class,
-    db::{DBRule, Database},
+    db::{DBClass, DBRule, Database},
     object::Object,
     property::{BoolPropertyType, FloatPropertyType, IntPropertyType, PropertyType},
     rule::Rule,
 };
-use rust_rule_engine::{KnowledgeBase, RustRuleEngine};
+use rust_rule_engine::{Facts, GRLParser, KnowledgeBase, RustRuleEngine};
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -20,50 +20,30 @@ pub struct CoCo {
     classes: RefCell<HashMap<String, Rc<Class>>>,
     objects: RefCell<HashMap<String, Rc<Object>>>,
     rules: RefCell<HashMap<String, Rc<Rule>>>,
-    kb: KnowledgeBase,
+    facts: Facts,
     engine: RustRuleEngine,
 }
 
 impl CoCo {
     pub async fn new(db: Box<dyn Database>) -> Rc<Self> {
         let name = &db.name().to_string();
-        let coco = Rc::new_cyclic(|weak_self| {
-            let kb = KnowledgeBase::new(name);
-            Self {
-                weak_self: weak_self.clone(),
-                db,
-                property_types: RefCell::new(HashMap::new()),
-                classes: RefCell::new(HashMap::new()),
-                objects: RefCell::new(HashMap::new()),
-                rules: RefCell::new(HashMap::new()),
-                kb: kb.clone(),
-                engine: RustRuleEngine::new(kb),
-            }
+        let coco = Rc::new_cyclic(|weak_self| Self {
+            weak_self: weak_self.clone(),
+            db,
+            property_types: RefCell::new(HashMap::new()),
+            classes: RefCell::new(HashMap::new()),
+            objects: RefCell::new(HashMap::new()),
+            rules: RefCell::new(HashMap::new()),
+            facts: Facts::new(),
+            engine: RustRuleEngine::new(KnowledgeBase::new(name)),
         });
 
         coco.add_property_type(Rc::new(BoolPropertyType::new(coco.weak_self.clone())));
         coco.add_property_type(Rc::new(IntPropertyType::new(coco.weak_self.clone())));
         coco.add_property_type(Rc::new(FloatPropertyType::new(coco.weak_self.clone())));
 
-        coco.add_classes(
-            coco.db
-                .get_classes()
-                .await
-                .unwrap()
-                .into_iter()
-                .map(|db_class| Rc::new(Class::from_db_class(coco.weak_self.clone(), db_class)))
-                .collect(),
-        );
-
-        coco.add_rules(
-            coco.db
-                .get_rules()
-                .await
-                .unwrap()
-                .into_iter()
-                .map(|db_rule| Rc::new(Rule::from_db_rule(db_rule)))
-                .collect(),
-        );
+        coco.add_classes(coco.db.get_classes().await.unwrap());
+        coco.add_rules(coco.db.get_rules().await.unwrap());
 
         coco
     }
@@ -82,11 +62,12 @@ impl CoCo {
         self.classes.borrow().get(name).cloned()
     }
 
-    fn add_classes(&self, classes: Vec<Rc<Class>>) {
-        for class in classes {
+    fn add_classes(&self, db_classes: Vec<DBClass>) {
+        for db_class in &db_classes {
+            let class = Rc::new(Class::from_db_class(self.weak_self.clone(), db_class));
             self.classes
                 .borrow_mut()
-                .insert(class.name().to_string(), class);
+                .insert(class.name().to_string(), class.into());
         }
     }
 
@@ -98,38 +79,30 @@ impl CoCo {
         self.rules.borrow().get(name).cloned()
     }
 
-    pub async fn create_rule(&self, name: &str, content: &str) -> Rc<Rule> {
+    pub async fn create_rule(&self, name: &str, content: &str) {
         let rule = DBRule {
             name: name.to_string(),
             content: content.to_string(),
         };
-        match self.db.create_rule(&rule).await {
-            Ok(_) => (),
-            Err(e) => {
-                panic!("Failed to create rule in database: {}", e);
-            }
-        }
-        let rule = Rc::new(Rule::from_db_rule(rule));
-        self.add_rules(vec![rule.clone()]);
-        rule
+        self.db
+            .create_rule(&rule)
+            .await
+            .expect("Failed to create rule in database");
+        self.add_rules(vec![rule]);
     }
 
-    fn add_rules(&self, rules: Vec<Rc<Rule>>) {
-        let rules_grl: String = rules
-            .iter()
-            .map(|r| r.content().to_string())
-            .collect::<Vec<String>>()
-            .join("\n");
-        match self.kb.add_rules_from_grl(rules_grl.as_str()) {
-            Ok(_) => (),
-            Err(e) => {
-                panic!("Failed to add rule to knowledge base: {}", e);
-            }
-        }
-        for rule in rules {
+    pub(crate) fn add_rules(&self, db_rules: Vec<DBRule>) {
+        for db_rule in db_rules {
+            self.engine
+                .knowledge_base()
+                .add_rule(
+                    GRLParser::parse_rule(db_rule.content.as_str()).expect("Failed to parse rule"),
+                )
+                .expect("Failed to add rule to knowledge base");
+            let rule = Rc::new(Rule::from_db_rule(db_rule));
             self.rules
                 .borrow_mut()
-                .insert(rule.name().to_string(), rule);
+                .insert(rule.name().to_string(), rule.clone());
         }
     }
 

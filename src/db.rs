@@ -22,7 +22,7 @@ pub trait Database {
     async fn get_classes(&self) -> Result<Vec<DBClass>, Box<dyn Error>>;
     async fn create_class(&self, kind: &DBClass) -> Result<(), Box<dyn Error>>;
     async fn get_objects(&self) -> Result<Vec<DBObject>, Box<dyn Error>>;
-    async fn create_object(&self, item: &DBObject) -> Result<(), Box<dyn Error>>;
+    async fn create_object(&self, object: &DBObject) -> Result<(), Box<dyn Error>>;
     async fn get_rules(&self) -> Result<Vec<DBRule>, Box<dyn Error>>;
     async fn create_rule(&self, rule: &DBRule) -> Result<(), Box<dyn Error>>;
 

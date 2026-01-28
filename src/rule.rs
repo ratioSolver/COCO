@@ -13,7 +13,7 @@ impl Rule {
         }
     }
 
-    pub fn from_db_rule(db_rule: DBRule) -> Self {
+    pub(super) fn from_db_rule(db_rule: DBRule) -> Self {
         Self {
             name: db_rule.name,
             content: db_rule.content,

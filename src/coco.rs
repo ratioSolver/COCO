@@ -65,6 +65,11 @@ impl CoCo {
             let class = Rc::new(Class::from_db_class(self.weak_self.clone(), db_class));
             self.classes.insert(class.name().to_string(), class.into());
         }
+        for db_class in db_classes {
+            Rc::get_mut(self.classes.get_mut(&db_class.name).unwrap())
+                .unwrap()
+                .refine_from_db_class(db_class);
+        }
     }
 
     pub fn get_object(&self, id: &str) -> Option<Rc<Object>> {

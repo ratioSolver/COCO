@@ -1,8 +1,13 @@
 use async_trait::async_trait;
-use std::error::Error;
+use std::{collections::HashMap, error::Error};
+
+pub struct DBPropertyType {
+    pub name: String,
+}
 
 pub struct DBClass {
     pub name: String,
+    pub static_properties: HashMap<String, DBPropertyType>,
 }
 
 pub struct DBObject {

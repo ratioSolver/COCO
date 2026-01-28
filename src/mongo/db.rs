@@ -1,10 +1,11 @@
 use async_trait::async_trait;
 use futures::TryStreamExt;
-use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
+use mongodb::bson::{Document, doc};
 use mongodb::options::IndexOptions;
 use mongodb::{Client, IndexModel};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::error::Error;
 
 use crate::db::{DBClass, DBObject, DBRule, Database as DatabaseTrait};
@@ -12,6 +13,25 @@ use crate::db::{DBClass, DBObject, DBRule, Database as DatabaseTrait};
 #[derive(Serialize, Deserialize, Debug)]
 struct MongoClass {
     pub name: String,
+    pub static_properties: HashMap<String, Document>,
+    pub dynamic_properties: HashMap<String, Document>,
+}
+
+impl MongoClass {
+    fn from_db_class(db_class: &DBClass) -> Self {
+        Self {
+            name: db_class.name.clone(),
+            static_properties: HashMap::new(),
+            dynamic_properties: HashMap::new(),
+        }
+    }
+
+    fn to_db_class(&self) -> DBClass {
+        DBClass {
+            name: self.name.clone(),
+            static_properties: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -81,21 +101,20 @@ impl DatabaseTrait for Database {
             .await?;
 
         let mut classes = Vec::new();
-        while let Some(kind) = cursor.try_next().await? {
-            classes.push(DBClass { name: kind.name });
+        while let Some(class) = cursor.try_next().await? {
+            classes.push(class.to_db_class());
         }
         Ok(classes)
     }
 
-    async fn create_class(&self, kind: &DBClass) -> Result<(), Box<dyn Error>> {
+    async fn create_class(&self, class: &DBClass) -> Result<(), Box<dyn Error>> {
         let collection = self
             .client
             .database(&self.name)
             .collection::<MongoClass>("classes");
-        let mongo_kind = MongoClass {
-            name: kind.name.clone(),
-        };
-        collection.insert_one(mongo_kind).await?;
+        collection
+            .insert_one(MongoClass::from_db_class(class))
+            .await?;
         Ok(())
     }
 

@@ -62,8 +62,9 @@ pub enum DynamicValue {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Class {
     pub name: String,
-    pub static_properties: HashMap<String, Property>,
-    pub dynamic_properties: HashMap<String, Property>,
+    pub parents: Option<HashSet<String>>,
+    pub static_properties: Option<HashMap<String, Property>>,
+    pub dynamic_properties: Option<HashMap<String, Property>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

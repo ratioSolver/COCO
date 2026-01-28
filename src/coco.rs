@@ -4,7 +4,7 @@ use rust_rule_engine::{
     rete::{FactValue, FieldDef, FieldType, Template, TemplateRegistry},
 };
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     error::Error,
     sync::{Arc, RwLock},
 };
@@ -62,11 +62,13 @@ impl CoCo {
     pub async fn create_class(
         &mut self,
         name: &str,
-        static_properties: HashMap<String, Property>,
-        dynamic_properties: HashMap<String, Property>,
+        parents: Option<HashSet<String>>,
+        static_properties: Option<HashMap<String, Property>>,
+        dynamic_properties: Option<HashMap<String, Property>>,
     ) {
         let class = Class {
             name: name.to_string(),
+            parents,
             static_properties,
             dynamic_properties,
         };
@@ -80,7 +82,7 @@ impl CoCo {
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
             let mut template = Template::new(class.name.clone());
-            for (_, prop) in class.static_properties.iter() {
+            for (_, prop) in class.static_properties.iter().flatten() {
                 let field_def = match prop {
                     Property::Bool {
                         name,
@@ -201,8 +203,7 @@ mod tests {
         ))
         .await;
 
-        coco.create_class("TestClass", HashMap::new(), HashMap::new())
-            .await;
+        coco.create_class("TestClass", None, None, None).await;
 
         let class = coco.get_class("TestClass");
         assert!(class.is_some());
@@ -245,15 +246,29 @@ mod tests {
             },
         );
 
-        coco.create_class("Sensor", static_props, dynamic_props)
+        coco.create_class("Sensor", None, Some(static_props), Some(dynamic_props))
             .await;
 
         let class = coco.get_class("Sensor");
         assert!(class.is_some());
         let class = class.unwrap();
         assert_eq!(class.name, "Sensor");
-        assert!(class.static_properties.contains_key("is_active"));
-        assert!(class.dynamic_properties.contains_key("temperature"));
+        assert!(class.static_properties.is_some());
+        assert!(class.dynamic_properties.is_some());
+        assert!(
+            class
+                .static_properties
+                .as_ref()
+                .unwrap()
+                .contains_key("is_active")
+        );
+        assert!(
+            class
+                .dynamic_properties
+                .as_ref()
+                .unwrap()
+                .contains_key("temperature")
+        );
 
         coco.drop_db().await.unwrap();
     }

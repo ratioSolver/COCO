@@ -1,7 +1,7 @@
 use crate::{CoCo, Property, db::DBClass, object::Object};
 use std::{
     collections::HashMap,
-    rc::{Rc, Weak},
+    sync::{Arc, Weak},
 };
 
 pub struct Class {
@@ -9,7 +9,7 @@ pub struct Class {
     name: String,
     static_properties: HashMap<String, Property>,
     dynamic_properties: HashMap<String, Property>,
-    instances: Vec<Rc<Object>>,
+    instances: Vec<Arc<Object>>,
 }
 
 impl Class {
@@ -29,5 +29,13 @@ impl Class {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn static_properties(&self) -> &HashMap<String, Property> {
+        &self.static_properties
+    }
+
+    pub fn dynamic_properties(&self) -> &HashMap<String, Property> {
+        &self.dynamic_properties
     }
 }

@@ -1,5 +1,5 @@
 use crate::{CoCo, class::Class, db::DBObject};
-use std::rc::{Rc, Weak};
+use std::sync::{Arc, Weak};
 
 pub struct Object {
     classes: Vec<Weak<Class>>,
@@ -17,7 +17,7 @@ impl Object {
                         .upgrade()
                         .unwrap()
                         .get_class(&class_name)
-                        .map(|k| Rc::downgrade(&k))
+                        .map(|k| Arc::downgrade(&k))
                         .unwrap()
                 })
                 .collect(),

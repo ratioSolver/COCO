@@ -1,38 +1,51 @@
 use crate::{
+    Property,
     class::Class,
     db::{DBClass, DBRule, Database},
     object::Object,
     rule::Rule,
 };
-use rust_rule_engine::{Facts, GRLParser, KnowledgeBase, RustRuleEngine};
+use rust_rule_engine::{
+    Facts, GRLParser, KnowledgeBase, RustRuleEngine,
+    rete::{FactValue, FieldDef, FieldType, Template, TemplateRegistry},
+};
 use std::{
     collections::HashMap,
     error::Error,
-    rc::{Rc, Weak},
+    sync::{Arc, RwLock, Weak},
 };
 
 pub struct CoCo {
     weak_self: Weak<Self>,
-    db: Box<dyn Database>,
-    classes: HashMap<String, Rc<Class>>,
-    objects: HashMap<String, Rc<Object>>,
-    rules: HashMap<String, Rc<Rule>>,
+    db: Box<dyn Database + Send + Sync>,
+    classes: HashMap<String, Arc<Class>>,
+    objects: Arc<RwLock<HashMap<String, Arc<Object>>>>,
+    rules: HashMap<String, Arc<Rule>>,
+    template_registry: TemplateRegistry,
     facts: Facts,
     engine: RustRuleEngine,
 }
 
 impl CoCo {
-    pub async fn new(db: Box<dyn Database>) -> Self {
+    pub async fn new(db: Box<dyn Database + Send + Sync>) -> Self {
         let name = &db.name().to_string();
+        let objects = Arc::new(RwLock::new(HashMap::new()));
         let mut coco = Self {
             weak_self: Weak::new(),
             db,
             classes: HashMap::new(),
-            objects: HashMap::new(),
+            objects: objects.clone(),
             rules: HashMap::new(),
+            template_registry: TemplateRegistry::new(),
             facts: Facts::new(),
             engine: RustRuleEngine::new(KnowledgeBase::new(name)),
         };
+
+        coco.engine
+            .register_function("add_class", move |args, facts| {
+                objects.read().unwrap().get(&args[0].as_string().unwrap());
+                Ok(rust_rule_engine::Value::Null)
+            });
 
         coco.add_classes(coco.db.get_classes().await.unwrap());
         coco.add_rules(coco.db.get_rules().await.unwrap());
@@ -40,22 +53,79 @@ impl CoCo {
         coco
     }
 
-    pub fn get_class(&self, name: &str) -> Option<Rc<Class>> {
+    pub fn get_class(&self, name: &str) -> Option<Arc<Class>> {
         self.classes.get(name).cloned()
+    }
+
+    pub async fn create_class(
+        &mut self,
+        name: &str,
+        static_properties: HashMap<String, Property>,
+        dynamic_properties: HashMap<String, Property>,
+    ) {
+        let class = DBClass {
+            name: name.to_string(),
+            static_properties,
+            dynamic_properties,
+        };
+        self.db
+            .create_class(&class)
+            .await
+            .expect("Failed to create class in database");
+        self.add_classes(vec![class]);
     }
 
     fn add_classes(&mut self, db_classes: Vec<DBClass>) {
         for db_class in db_classes {
-            let class = Rc::new(Class::new(self.weak_self.clone(), db_class));
+            let class = Arc::new(Class::new(self.weak_self.clone(), db_class));
+            let mut template = Template::new(class.name());
+            for (_, prop) in class.static_properties().iter() {
+                let field_def = match prop {
+                    Property::Bool {
+                        name,
+                        required,
+                        default,
+                    } => FieldDef {
+                        name: name.clone(),
+                        field_type: FieldType::Boolean,
+                        default_value: default.map(|v| FactValue::Boolean(v)),
+                        required: required.unwrap_or(false),
+                    },
+                    Property::Int {
+                        name,
+                        required,
+                        default,
+                        ..
+                    } => FieldDef {
+                        name: name.clone(),
+                        field_type: FieldType::Integer,
+                        default_value: default.map(|v| FactValue::Integer(v)),
+                        required: required.unwrap_or(false),
+                    },
+                    Property::Float {
+                        name,
+                        required,
+                        default,
+                        ..
+                    } => FieldDef {
+                        name: name.clone(),
+                        field_type: FieldType::Float,
+                        default_value: default.map(|v| FactValue::Float(v)),
+                        required: required.unwrap_or(false),
+                    },
+                };
+                template.add_field(field_def);
+            }
+            self.template_registry.register(template);
             self.classes.insert(class.name().to_string(), class.into());
         }
     }
 
-    pub fn get_object(&self, id: &str) -> Option<Rc<Object>> {
-        self.objects.get(id).cloned()
+    pub fn get_object(&self, id: &str) -> Option<Arc<Object>> {
+        self.objects.read().unwrap().get(id).cloned()
     }
 
-    pub fn get_rule(&self, name: &str) -> Option<Rc<Rule>> {
+    pub fn get_rule(&self, name: &str) -> Option<Arc<Rule>> {
         self.rules.get(name).cloned()
     }
 
@@ -79,7 +149,7 @@ impl CoCo {
                     GRLParser::parse_rule(db_rule.content.as_str()).expect("Failed to parse rule"),
                 )
                 .expect("Failed to add rule to knowledge base");
-            let rule = Rc::new(Rule::new(db_rule));
+            let rule = Arc::new(Rule::new(db_rule));
             self.rules.insert(rule.name().to_string(), rule.clone());
         }
     }

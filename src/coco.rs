@@ -1,9 +1,6 @@
 use crate::{
     Property,
-    class::Class,
-    db::{DBClass, DBRule, Database},
-    object::Object,
-    rule::Rule,
+    db::{Class, Database, Object, Rule},
 };
 use rust_rule_engine::{
     Facts, GRLParser, KnowledgeBase, RustRuleEngine,
@@ -12,11 +9,10 @@ use rust_rule_engine::{
 use std::{
     collections::HashMap,
     error::Error,
-    sync::{Arc, RwLock, Weak},
+    sync::{Arc, RwLock},
 };
 
 pub struct CoCo {
-    weak_self: Weak<Self>,
     db: Box<dyn Database + Send + Sync>,
     classes: HashMap<String, Arc<Class>>,
     objects: Arc<RwLock<HashMap<String, Arc<Object>>>>,
@@ -31,7 +27,6 @@ impl CoCo {
         let name = &db.name().to_string();
         let objects = Arc::new(RwLock::new(HashMap::new()));
         let mut coco = Self {
-            weak_self: Weak::new(),
             db,
             classes: HashMap::new(),
             objects: objects.clone(),
@@ -63,7 +58,7 @@ impl CoCo {
         static_properties: HashMap<String, Property>,
         dynamic_properties: HashMap<String, Property>,
     ) {
-        let class = DBClass {
+        let class = Class {
             name: name.to_string(),
             static_properties,
             dynamic_properties,
@@ -75,11 +70,11 @@ impl CoCo {
         self.add_classes(vec![class]);
     }
 
-    fn add_classes(&mut self, db_classes: Vec<DBClass>) {
+    fn add_classes(&mut self, db_classes: Vec<Class>) {
         for db_class in db_classes {
-            let class = Arc::new(Class::new(self.weak_self.clone(), db_class));
-            let mut template = Template::new(class.name());
-            for (_, prop) in class.static_properties().iter() {
+            let class = Arc::new(db_class);
+            let mut template = Template::new(class.name.clone());
+            for (_, prop) in class.static_properties.iter() {
                 let field_def = match prop {
                     Property::Bool {
                         name,
@@ -117,7 +112,7 @@ impl CoCo {
                 template.add_field(field_def);
             }
             self.template_registry.register(template);
-            self.classes.insert(class.name().to_string(), class.into());
+            self.classes.insert(class.name.to_string(), class.into());
         }
     }
 
@@ -130,7 +125,7 @@ impl CoCo {
     }
 
     pub async fn create_rule(&mut self, name: &str, content: &str) {
-        let rule = DBRule {
+        let rule = Rule {
             name: name.to_string(),
             content: content.to_string(),
         };
@@ -141,7 +136,7 @@ impl CoCo {
         self.add_rules(vec![rule]);
     }
 
-    pub(crate) fn add_rules(&mut self, db_rules: Vec<DBRule>) {
+    pub(crate) fn add_rules(&mut self, db_rules: Vec<Rule>) {
         for db_rule in db_rules {
             self.engine
                 .knowledge_base()
@@ -149,8 +144,8 @@ impl CoCo {
                     GRLParser::parse_rule(db_rule.content.as_str()).expect("Failed to parse rule"),
                 )
                 .expect("Failed to add rule to knowledge base");
-            let rule = Arc::new(Rule::new(db_rule));
-            self.rules.insert(rule.name().to_string(), rule.clone());
+            let rule = Arc::new(db_rule);
+            self.rules.insert(rule.name.to_string(), rule.clone());
         }
     }
 

@@ -5,15 +5,16 @@ use mongodb::bson::oid::ObjectId;
 use mongodb::options::IndexOptions;
 use mongodb::{Client, IndexModel};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::error::Error;
 
-use crate::db::{DBClass, DBObject, DBRule, Database as DatabaseTrait};
+use crate::db::{Class, Object, Rule, Database as DatabaseTrait};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MongoObject {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
-    pub classes: Vec<String>,
+    pub classes: HashSet<String>,
 }
 
 pub struct Database {
@@ -61,11 +62,11 @@ impl DatabaseTrait for Database {
         &self.name
     }
 
-    async fn get_classes(&self) -> Result<Vec<DBClass>, Box<dyn Error>> {
+    async fn get_classes(&self) -> Result<Vec<Class>, Box<dyn Error>> {
         let mut cursor = self
             .client
             .database(&self.name)
-            .collection::<DBClass>("classes")
+            .collection::<Class>("classes")
             .find(doc! {})
             .await?;
 
@@ -76,16 +77,16 @@ impl DatabaseTrait for Database {
         Ok(classes)
     }
 
-    async fn create_class(&self, class: &DBClass) -> Result<(), Box<dyn Error>> {
+    async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
         let collection = self
             .client
             .database(&self.name)
-            .collection::<DBClass>("classes");
+            .collection::<Class>("classes");
         collection.insert_one(class).await?;
         Ok(())
     }
 
-    async fn get_objects(&self) -> Result<Vec<DBObject>, Box<dyn Error>> {
+    async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>> {
         let mut cursor = self
             .client
             .database(&self.name)
@@ -95,7 +96,7 @@ impl DatabaseTrait for Database {
 
         let mut objects = Vec::new();
         while let Some(object) = cursor.try_next().await? {
-            objects.push(DBObject {
+            objects.push(Object {
                 id: object.id.unwrap().to_hex(),
                 classes: object.classes,
             });
@@ -103,7 +104,7 @@ impl DatabaseTrait for Database {
         Ok(objects)
     }
 
-    async fn create_object(&self, object: &DBObject) -> Result<(), Box<dyn Error>> {
+    async fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>> {
         let collection = self
             .client
             .database(&self.name)
@@ -116,11 +117,11 @@ impl DatabaseTrait for Database {
         Ok(())
     }
 
-    async fn get_rules(&self) -> Result<Vec<DBRule>, Box<dyn Error>> {
+    async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>> {
         let mut cursor = self
             .client
             .database(&self.name)
-            .collection::<DBRule>("rules")
+            .collection::<Rule>("rules")
             .find(doc! {})
             .await?;
 
@@ -131,11 +132,11 @@ impl DatabaseTrait for Database {
         Ok(rules)
     }
 
-    async fn create_rule(&self, rule: &DBRule) -> Result<(), Box<dyn Error>> {
+    async fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>> {
         let collection = self
             .client
             .database(&self.name)
-            .collection::<DBRule>("rules");
+            .collection::<Rule>("rules");
         collection.insert_one(rule).await?;
         Ok(())
     }

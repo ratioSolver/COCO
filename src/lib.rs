@@ -11,5 +11,4 @@ pub use coco::CoCo;
 pub use mongo::db::Database;
 pub use object::Object;
 pub use property::Property;
-pub use property::PropertyType;
 pub use rule::Rule;

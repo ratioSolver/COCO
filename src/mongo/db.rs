@@ -1,50 +1,19 @@
 use async_trait::async_trait;
 use futures::TryStreamExt;
+use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
-use mongodb::bson::{Document, doc};
 use mongodb::options::IndexOptions;
 use mongodb::{Client, IndexModel};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::error::Error;
 
 use crate::db::{DBClass, DBObject, DBRule, Database as DatabaseTrait};
-
-#[derive(Serialize, Deserialize, Debug)]
-struct MongoClass {
-    pub name: String,
-    pub static_properties: HashMap<String, Document>,
-    pub dynamic_properties: HashMap<String, Document>,
-}
-
-impl MongoClass {
-    fn from_db_class(db_class: &DBClass) -> Self {
-        Self {
-            name: db_class.name.clone(),
-            static_properties: HashMap::new(),
-            dynamic_properties: HashMap::new(),
-        }
-    }
-
-    fn to_db_class(&self) -> DBClass {
-        DBClass {
-            name: self.name.clone(),
-            static_properties: HashMap::new(),
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MongoObject {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub classes: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct MongoRule {
-    pub name: String,
-    pub content: String,
 }
 
 pub struct Database {
@@ -96,13 +65,13 @@ impl DatabaseTrait for Database {
         let mut cursor = self
             .client
             .database(&self.name)
-            .collection::<MongoClass>("classes")
+            .collection::<DBClass>("classes")
             .find(doc! {})
             .await?;
 
         let mut classes = Vec::new();
         while let Some(class) = cursor.try_next().await? {
-            classes.push(class.to_db_class());
+            classes.push(class);
         }
         Ok(classes)
     }
@@ -111,10 +80,8 @@ impl DatabaseTrait for Database {
         let collection = self
             .client
             .database(&self.name)
-            .collection::<MongoClass>("classes");
-        collection
-            .insert_one(MongoClass::from_db_class(class))
-            .await?;
+            .collection::<DBClass>("classes");
+        collection.insert_one(class).await?;
         Ok(())
     }
 
@@ -153,16 +120,13 @@ impl DatabaseTrait for Database {
         let mut cursor = self
             .client
             .database(&self.name)
-            .collection::<MongoRule>("rules")
+            .collection::<DBRule>("rules")
             .find(doc! {})
             .await?;
 
         let mut rules = Vec::new();
         while let Some(rule) = cursor.try_next().await? {
-            rules.push(DBRule {
-                name: rule.name,
-                content: rule.content,
-            });
+            rules.push(rule);
         }
         Ok(rules)
     }
@@ -171,12 +135,8 @@ impl DatabaseTrait for Database {
         let collection = self
             .client
             .database(&self.name)
-            .collection::<MongoRule>("rules");
-        let mongo_rule = MongoRule {
-            name: rule.name.clone(),
-            content: rule.content.clone(),
-        };
-        collection.insert_one(mongo_rule).await?;
+            .collection::<DBRule>("rules");
+        collection.insert_one(rule).await?;
         Ok(())
     }
 

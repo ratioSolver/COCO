@@ -1,20 +1,23 @@
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, error::Error};
 
-pub struct DBPropertyType {
-    pub name: String,
-}
+use crate::Property;
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DBClass {
     pub name: String,
-    pub static_properties: HashMap<String, DBPropertyType>,
+    pub static_properties: HashMap<String, Property>,
+    pub dynamic_properties: HashMap<String, Property>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DBObject {
     pub id: String,
     pub classes: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DBRule {
     pub name: String,
     pub content: String,

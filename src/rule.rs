@@ -6,14 +6,7 @@ pub struct Rule {
 }
 
 impl Rule {
-    pub fn new(name: &str, content: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            content: content.to_string(),
-        }
-    }
-
-    pub(super) fn from_db_rule(db_rule: DBRule) -> Self {
+    pub(super) fn new(db_rule: DBRule) -> Self {
         Self {
             name: db_rule.name,
             content: db_rule.content,

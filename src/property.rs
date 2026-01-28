@@ -1,94 +1,32 @@
-use std::rc::Weak;
+use serde::{Deserialize, Serialize};
 
-use crate::CoCo;
-
-pub trait PropertyType {
-    fn coco(&self) -> &Weak<CoCo>;
-    fn name(&self) -> &str;
-}
-
-pub struct BoolPropertyType {
-    coco: Weak<CoCo>,
-}
-
-impl BoolPropertyType {
-    pub fn new(coco: Weak<CoCo>) -> Self {
-        Self { coco }
-    }
-}
-
-impl PropertyType for BoolPropertyType {
-    fn coco(&self) -> &Weak<CoCo> {
-        &self.coco
-    }
-
-    fn name(&self) -> &str {
-        "bool"
-    }
-}
-
-pub struct IntPropertyType {
-    coco: Weak<CoCo>,
-}
-
-impl IntPropertyType {
-    pub fn new(coco: Weak<CoCo>) -> Self {
-        Self { coco }
-    }
-}
-
-impl PropertyType for IntPropertyType {
-    fn coco(&self) -> &Weak<CoCo> {
-        &self.coco
-    }
-
-    fn name(&self) -> &str {
-        "int"
-    }
-}
-
-pub struct FloatPropertyType {
-    coco: Weak<CoCo>,
-}
-
-impl FloatPropertyType {
-    pub fn new(coco: Weak<CoCo>) -> Self {
-        Self { coco }
-    }
-}
-
-impl PropertyType for FloatPropertyType {
-    fn coco(&self) -> &Weak<CoCo> {
-        &self.coco
-    }
-
-    fn name(&self) -> &str {
-        "float"
-    }
-}
-
-pub trait Property {
-    fn kind(&self) -> &Weak<dyn PropertyType>;
-    fn name(&self) -> &str;
-}
-
-pub struct BoolProperty {
-    kind: Weak<dyn PropertyType>,
-    name: String,
-}
-
-impl BoolProperty {
-    pub fn new(kind: Weak<dyn PropertyType>, name: String) -> Self {
-        Self { kind, name }
-    }
-}
-
-impl Property for BoolProperty {
-    fn kind(&self) -> &Weak<dyn PropertyType> {
-        &self.kind
-    }
-
-    fn name(&self) -> &str {
-        &self.name
-    }
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+pub enum Property {
+    #[serde(rename = "bool")]
+    Bool {
+        name: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<bool>,
+    },
+    #[serde(rename = "int")]
+    Int {
+        name: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        min: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        max: Option<i64>,
+    },
+    #[serde(rename = "float")]
+    Float {
+        name: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        min: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        max: Option<f64>,
+    },
 }

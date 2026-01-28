@@ -7,11 +7,7 @@ pub struct Object {
 }
 
 impl Object {
-    pub fn new(class: Vec<Weak<Class>>, id: String) -> Self {
-        Self { classes: class, id }
-    }
-
-    pub fn from_db_object(class: Weak<CoCo>, db_object: DBObject) -> Self {
+    pub fn new(class: Weak<CoCo>, db_object: DBObject) -> Self {
         Self {
             classes: db_object
                 .classes

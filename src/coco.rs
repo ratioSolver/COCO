@@ -166,6 +166,7 @@ impl CoCo {
 mod tests {
     use super::*;
     use crate::mongo::db::Database as MongoDB;
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_coco_initialization() {
@@ -175,6 +176,72 @@ mod tests {
                 .unwrap(),
         ))
         .await;
+
+        coco.drop_db().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_create_class() {
+        let mut coco = CoCo::new(Box::new(
+            MongoDB::new("coco_test_create_class", "mongodb://localhost:27017")
+                .await
+                .unwrap(),
+        ))
+        .await;
+
+        coco.create_class("TestClass", HashMap::new(), HashMap::new())
+            .await;
+
+        let class = coco.get_class("TestClass");
+        assert!(class.is_some());
+        assert_eq!(class.unwrap().name, "TestClass");
+
+        coco.drop_db().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_create_class_with_properties() {
+        let mut coco = CoCo::new(Box::new(
+            MongoDB::new(
+                "coco_test_create_class_with_properties",
+                "mongodb://localhost:27017",
+            )
+            .await
+            .unwrap(),
+        ))
+        .await;
+
+        let mut static_props = HashMap::new();
+        static_props.insert(
+            "is_active".to_string(),
+            Property::Bool {
+                name: "is_active".to_string(),
+                required: Some(true),
+                default: Some(false),
+            },
+        );
+
+        let mut dynamic_props = HashMap::new();
+        dynamic_props.insert(
+            "temperature".to_string(),
+            Property::Float {
+                name: "temperature".to_string(),
+                required: Some(true),
+                default: None,
+                min: Some(-50.0),
+                max: Some(150.0),
+            },
+        );
+
+        coco.create_class("Sensor", static_props, dynamic_props)
+            .await;
+
+        let class = coco.get_class("Sensor");
+        assert!(class.is_some());
+        let class = class.unwrap();
+        assert_eq!(class.name, "Sensor");
+        assert!(class.static_properties.contains_key("is_active"));
+        assert!(class.dynamic_properties.contains_key("temperature"));
 
         coco.drop_db().await.unwrap();
     }

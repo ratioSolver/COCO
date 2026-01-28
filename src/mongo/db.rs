@@ -13,9 +13,9 @@ use std::error::Error;
 struct MongoObject {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
-    pub classes: HashSet<String>,
-    pub properties: HashMap<String, StaticValue>,
-    pub values: HashMap<String, DynamicValue>,
+    pub classes: Option<HashSet<String>>,
+    pub properties: Option<HashMap<String, StaticValue>>,
+    pub values: Option<HashMap<String, DynamicValue>>,
 }
 
 pub struct Database {

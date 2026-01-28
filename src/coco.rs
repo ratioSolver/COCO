@@ -1,4 +1,4 @@
-use crate::db::{Class, Database, Object, Property, Rule};
+use crate::db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue};
 use rust_rule_engine::{
     Facts, GRLParser, KnowledgeBase, RustRuleEngine,
     rete::{FactValue, FieldDef, FieldType, Template, TemplateRegistry},
@@ -44,6 +44,7 @@ impl CoCo {
                 .write()
                 .expect("Failed to lock object")
                 .classes
+                .get_or_insert_with(HashSet::new)
                 .insert(class_name);
             Ok(rust_rule_engine::Value::Null)
         });
@@ -82,46 +83,100 @@ impl CoCo {
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
             let mut template = Template::new(class.name.clone());
-            for (_, prop) in class.static_properties.iter().flatten() {
-                let field_def = match prop {
-                    Property::Bool {
-                        name,
-                        required,
-                        default,
-                    } => FieldDef {
-                        name: name.clone(),
-                        field_type: FieldType::Boolean,
-                        default_value: default.map(|v| FactValue::Boolean(v)),
-                        required: required.unwrap_or(false),
-                    },
-                    Property::Int {
-                        name,
-                        required,
-                        default,
-                        ..
-                    } => FieldDef {
-                        name: name.clone(),
-                        field_type: FieldType::Integer,
-                        default_value: default.map(|v| FactValue::Integer(v)),
-                        required: required.unwrap_or(false),
-                    },
-                    Property::Float {
-                        name,
-                        required,
-                        default,
-                        ..
-                    } => FieldDef {
-                        name: name.clone(),
-                        field_type: FieldType::Float,
-                        default_value: default.map(|v| FactValue::Float(v)),
-                        required: required.unwrap_or(false),
-                    },
-                };
-                template.add_field(field_def);
+            for (_, prop) in class
+                .static_properties
+                .iter()
+                .chain(class.dynamic_properties.iter())
+                .flatten()
+            {
+                template.add_field(Self::to_field_def(prop));
+            }
+            for (_, prop) in class.dynamic_properties.iter().flatten() {
+                template.add_field(Self::to_timestamp_field_def(prop));
             }
             self.template_registry.register(template);
             self.classes.insert(class.name.to_string(), class);
         }
+    }
+
+    fn to_field_def(prop: &Property) -> FieldDef {
+        match prop {
+            Property::Bool {
+                name,
+                required,
+                default,
+            } => FieldDef {
+                name: name.clone(),
+                field_type: FieldType::Boolean,
+                default_value: default.map(|v| FactValue::Boolean(v)),
+                required: required.unwrap_or(false),
+            },
+            Property::Int {
+                name,
+                required,
+                default,
+                ..
+            } => FieldDef {
+                name: name.clone(),
+                field_type: FieldType::Integer,
+                default_value: default.map(|v| FactValue::Integer(v)),
+                required: required.unwrap_or(false),
+            },
+            Property::Float {
+                name,
+                required,
+                default,
+                ..
+            } => FieldDef {
+                name: name.clone(),
+                field_type: FieldType::Float,
+                default_value: default.map(|v| FactValue::Float(v)),
+                required: required.unwrap_or(false),
+            },
+        }
+    }
+
+    fn to_timestamp_field_def(prop: &Property) -> FieldDef {
+        match prop {
+            Property::Bool { name, .. } => FieldDef {
+                name: name.clone() + "_timestamp",
+                field_type: FieldType::Integer,
+                default_value: None,
+                required: true,
+            },
+            Property::Int { name, .. } => FieldDef {
+                name: name.clone() + "_timestamp",
+                field_type: FieldType::Integer,
+                default_value: None,
+                required: true,
+            },
+            Property::Float { name, .. } => FieldDef {
+                name: name.clone() + "_timestamp",
+                field_type: FieldType::Integer,
+                default_value: None,
+                required: true,
+            },
+        }
+    }
+
+    pub async fn create_object(
+        &mut self,
+        id: &str,
+        classes: Option<HashSet<String>>,
+        properties: Option<HashMap<String, StaticValue>>,
+        values: Option<HashMap<String, DynamicValue>>,
+    ) {
+        let object = Object {
+            id: id.to_string(),
+            classes,
+            properties,
+            values,
+        };
+        self.db
+            .create_object(&object)
+            .await
+            .expect("Failed to create object in database");
+        self.add_objects(vec![object]);
     }
 
     fn add_objects(&mut self, db_objects: Vec<Object>) {

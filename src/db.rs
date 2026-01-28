@@ -70,9 +70,9 @@ pub struct Class {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Object {
     pub id: String,
-    pub classes: HashSet<String>,
-    pub properties: HashMap<String, StaticValue>,
-    pub values: HashMap<String, DynamicValue>,
+    pub classes: Option<HashSet<String>>,
+    pub properties: Option<HashMap<String, StaticValue>>,
+    pub values: Option<HashMap<String, DynamicValue>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

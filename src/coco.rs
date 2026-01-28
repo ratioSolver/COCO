@@ -7,7 +7,6 @@ use crate::{
 };
 use rust_rule_engine::{Facts, GRLParser, KnowledgeBase, RustRuleEngine};
 use std::{
-    cell::RefCell,
     collections::HashMap,
     error::Error,
     rc::{Rc, Weak},
@@ -16,27 +15,27 @@ use std::{
 pub struct CoCo {
     weak_self: Weak<Self>,
     db: Box<dyn Database>,
-    property_types: RefCell<HashMap<String, Rc<dyn PropertyType>>>,
-    classes: RefCell<HashMap<String, Rc<Class>>>,
-    objects: RefCell<HashMap<String, Rc<Object>>>,
-    rules: RefCell<HashMap<String, Rc<Rule>>>,
+    property_types: HashMap<String, Rc<dyn PropertyType>>,
+    classes: HashMap<String, Rc<Class>>,
+    objects: HashMap<String, Rc<Object>>,
+    rules: HashMap<String, Rc<Rule>>,
     facts: Facts,
     engine: RustRuleEngine,
 }
 
 impl CoCo {
-    pub async fn new(db: Box<dyn Database>) -> Rc<Self> {
+    pub async fn new(db: Box<dyn Database>) -> Self {
         let name = &db.name().to_string();
-        let coco = Rc::new_cyclic(|weak_self| Self {
-            weak_self: weak_self.clone(),
+        let mut coco = Self {
+            weak_self: Weak::new(),
             db,
-            property_types: RefCell::new(HashMap::new()),
-            classes: RefCell::new(HashMap::new()),
-            objects: RefCell::new(HashMap::new()),
-            rules: RefCell::new(HashMap::new()),
+            property_types: HashMap::new(),
+            classes: HashMap::new(),
+            objects: HashMap::new(),
+            rules: HashMap::new(),
             facts: Facts::new(),
             engine: RustRuleEngine::new(KnowledgeBase::new(name)),
-        });
+        };
 
         coco.add_property_type(Rc::new(BoolPropertyType::new(coco.weak_self.clone())));
         coco.add_property_type(Rc::new(IntPropertyType::new(coco.weak_self.clone())));
@@ -49,37 +48,34 @@ impl CoCo {
     }
 
     pub fn get_property_type(&self, name: &str) -> Option<Rc<dyn PropertyType>> {
-        self.property_types.borrow().get(name).cloned()
+        self.property_types.get(name).cloned()
     }
 
-    pub fn add_property_type(&self, property_type: Rc<dyn PropertyType>) {
+    pub fn add_property_type(&mut self, property_type: Rc<dyn PropertyType>) {
         self.property_types
-            .borrow_mut()
             .insert(property_type.name().to_string(), property_type);
     }
 
     pub fn get_class(&self, name: &str) -> Option<Rc<Class>> {
-        self.classes.borrow().get(name).cloned()
+        self.classes.get(name).cloned()
     }
 
-    fn add_classes(&self, db_classes: Vec<DBClass>) {
+    fn add_classes(&mut self, db_classes: Vec<DBClass>) {
         for db_class in &db_classes {
             let class = Rc::new(Class::from_db_class(self.weak_self.clone(), db_class));
-            self.classes
-                .borrow_mut()
-                .insert(class.name().to_string(), class.into());
+            self.classes.insert(class.name().to_string(), class.into());
         }
     }
 
     pub fn get_object(&self, id: &str) -> Option<Rc<Object>> {
-        self.objects.borrow().get(id).cloned()
+        self.objects.get(id).cloned()
     }
 
     pub fn get_rule(&self, name: &str) -> Option<Rc<Rule>> {
-        self.rules.borrow().get(name).cloned()
+        self.rules.get(name).cloned()
     }
 
-    pub async fn create_rule(&self, name: &str, content: &str) {
+    pub async fn create_rule(&mut self, name: &str, content: &str) {
         let rule = DBRule {
             name: name.to_string(),
             content: content.to_string(),
@@ -91,7 +87,7 @@ impl CoCo {
         self.add_rules(vec![rule]);
     }
 
-    pub(crate) fn add_rules(&self, db_rules: Vec<DBRule>) {
+    pub(crate) fn add_rules(&mut self, db_rules: Vec<DBRule>) {
         for db_rule in db_rules {
             self.engine
                 .knowledge_base()
@@ -100,9 +96,7 @@ impl CoCo {
                 )
                 .expect("Failed to add rule to knowledge base");
             let rule = Rc::new(Rule::from_db_rule(db_rule));
-            self.rules
-                .borrow_mut()
-                .insert(rule.name().to_string(), rule.clone());
+            self.rules.insert(rule.name().to_string(), rule.clone());
         }
     }
 

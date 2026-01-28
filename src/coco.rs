@@ -12,7 +12,7 @@ use std::{
 pub struct CoCo {
     db: Box<dyn Database + Send + Sync>,
     classes: HashMap<String, Class>,
-    objects: HashMap<String, Object>,
+    objects: Arc<RwLock<HashMap<String, Arc<RwLock<Object>>>>>,
     rules: HashMap<String, Rule>,
     template_registry: TemplateRegistry,
     facts: Facts,
@@ -22,10 +22,11 @@ pub struct CoCo {
 impl CoCo {
     pub async fn new(db: Box<dyn Database + Send + Sync>) -> Self {
         let name = &db.name().to_string();
+        let objects = Arc::new(RwLock::new(HashMap::new()));
         let mut coco = Self {
             db,
             classes: HashMap::new(),
-            objects: HashMap::new(),
+            objects: objects.clone(),
             rules: HashMap::new(),
             template_registry: TemplateRegistry::new(),
             facts: Facts::new(),
@@ -33,13 +34,17 @@ impl CoCo {
         };
 
         coco.engine.register_function("add_class", move |args, _| {
-            // objects
-            //     .read()
-            //     .unwrap()
-            //     .get(&args[0].as_string().unwrap())
-            //     .expect("Object not found")
-            //     .classes
-            //     .insert(args[1].as_string().unwrap());
+            let object_id = &args[0].to_string();
+            let class_name = args[1].to_string();
+            objects
+                .read()
+                .expect("Failed to lock objects map")
+                .get(object_id)
+                .expect("Object not found")
+                .write()
+                .expect("Failed to lock object")
+                .classes
+                .insert(class_name);
             Ok(rust_rule_engine::Value::Null)
         });
 
@@ -116,8 +121,12 @@ impl CoCo {
         }
     }
 
-    pub fn get_object(&self, id: &str) -> Option<&Object> {
-        self.objects.get(id)
+    pub fn get_object(&self, id: &str) -> Option<Arc<RwLock<Object>>> {
+        self.objects
+            .read()
+            .expect("Failed to lock objects map")
+            .get(id)
+            .cloned()
     }
 
     pub fn get_rule(&self, name: &str) -> Option<&Rule> {

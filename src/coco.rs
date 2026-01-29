@@ -208,19 +208,102 @@ impl CoCo {
         }
     }
 
-    fn to_static_value(static_value: &StaticValue) -> Value {
-        match static_value {
-            StaticValue::Bool(b) => Value::Boolean(*b),
-            StaticValue::Int(i) => Value::Integer(*i),
-            StaticValue::Float(f) => Value::Number(*f),
+    fn to_static_value(property: &Property, value: &StaticValue) -> Result<Value, Box<dyn Error>> {
+        match (property, value) {
+            (Property::Bool { .. }, StaticValue::Bool(b)) => Ok(Value::Boolean(*b)),
+            (Property::Int { min, max, .. }, StaticValue::Int(i)) => {
+                if let Some(min_val) = min {
+                    if *i < *min_val as i64 {
+                        return Err(format!(
+                            "Integer value {} is less than minimum {}",
+                            i, min_val
+                        )
+                        .into());
+                    }
+                }
+                if let Some(max_val) = max {
+                    if *i > *max_val as i64 {
+                        return Err(format!(
+                            "Integer value {} is greater than maximum {}",
+                            i, max_val
+                        )
+                        .into());
+                    }
+                }
+                Ok(Value::Integer(*i))
+            }
+            (Property::Float { min, max, .. }, StaticValue::Float(f)) => {
+                if let Some(min_val) = min {
+                    if *f < *min_val {
+                        return Err(
+                            format!("Float value {} is less than minimum {}", f, min_val).into(),
+                        );
+                    }
+                }
+                if let Some(max_val) = max {
+                    if *f > *max_val {
+                        return Err(format!(
+                            "Float value {} is greater than maximum {}",
+                            f, max_val
+                        )
+                        .into());
+                    }
+                }
+                Ok(Value::Number(*f))
+            }
+            _ => Err("Type mismatch between property and static value".into()),
         }
     }
 
-    fn to_dynamic_value(dynamic_value: &DynamicValue) -> (Value, i64) {
-        match dynamic_value {
-            DynamicValue::Bool(b, timestamp) => (Value::Boolean(*b), timestamp.timestamp_millis()),
-            DynamicValue::Int(i, timestamp) => (Value::Integer(*i), timestamp.timestamp_millis()),
-            DynamicValue::Float(f, timestamp) => (Value::Number(*f), timestamp.timestamp_millis()),
+    fn to_dynamic_value(
+        property: &Property,
+        dynamic_value: &DynamicValue,
+    ) -> Result<(Value, Value), Box<dyn Error>> {
+        match (property, dynamic_value) {
+            (Property::Bool { .. }, DynamicValue::Bool(b, timestamp)) => {
+                Ok((Value::Boolean(*b), Value::Integer(timestamp.timestamp())))
+            }
+            (Property::Int { min, max, .. }, DynamicValue::Int(i, timestamp)) => {
+                if let Some(min_val) = min {
+                    if *i < *min_val as i64 {
+                        return Err(format!(
+                            "Integer value {} is less than minimum {}",
+                            i, min_val
+                        )
+                        .into());
+                    }
+                }
+                if let Some(max_val) = max {
+                    if *i > *max_val as i64 {
+                        return Err(format!(
+                            "Integer value {} is greater than maximum {}",
+                            i, max_val
+                        )
+                        .into());
+                    }
+                }
+                Ok((Value::Integer(*i), Value::Integer(timestamp.timestamp())))
+            }
+            (Property::Float { min, max, .. }, DynamicValue::Float(f, timestamp)) => {
+                if let Some(min_val) = min {
+                    if *f < *min_val {
+                        return Err(
+                            format!("Float value {} is less than minimum {}", f, min_val).into(),
+                        );
+                    }
+                }
+                if let Some(max_val) = max {
+                    if *f > *max_val {
+                        return Err(format!(
+                            "Float value {} is greater than maximum {}",
+                            f, max_val
+                        )
+                        .into());
+                    }
+                }
+                Ok((Value::Number(*f), Value::Integer(timestamp.timestamp())))
+            }
+            _ => Err("Type mismatch between property and dynamic value".into()),
         }
     }
 

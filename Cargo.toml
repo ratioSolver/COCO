@@ -14,10 +14,10 @@ name = "coco"
 [dependencies]
 axum = { version = "0.8.8", features = ["ws"] }
 tower-http = { version = "0.5", features = ["fs"] }
-tokio = { version = "1.0", features = ["full"] }
-rust-rule-engine = { version = "1.18.26" }
-serde = "1.0.188"
+tokio = { version = "1.49", features = ["full"] }
+rust-rule-engine = { version = "1.18.27" }
+serde = "1.0.228"
 mongodb = { version = "3.5.0" }
-futures = "0.3.28"
+futures = "0.3.31"
 async-trait = "0.1.89"
 chrono = "0.4.43"

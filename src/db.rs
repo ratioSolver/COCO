@@ -86,7 +86,7 @@ pub trait Database {
     fn name(&self) -> &str;
 
     async fn get_classes(&self) -> Result<Vec<Class>, Box<dyn Error>>;
-    async fn create_class(&self, kind: &Class) -> Result<(), Box<dyn Error>>;
+    async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>>;
     async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>>;
     async fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>>;
     async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>>;

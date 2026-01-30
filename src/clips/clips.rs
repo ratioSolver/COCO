@@ -12,6 +12,7 @@ pub struct Environment {
 
 #[repr(C)]
 #[derive(Debug)]
+#[allow(dead_code)]
 enum BuildError {
     NoError,
     CouldNotBuildError,
@@ -20,6 +21,7 @@ enum BuildError {
 }
 
 #[link(name = "clips")]
+#[allow(dead_code)]
 unsafe extern "C" {
     unsafe fn CreateEnvironment() -> *mut Environment;
     unsafe fn DestroyEnvironment(env: *mut Environment);

@@ -1,4 +1,7 @@
-use crate::db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue};
+use crate::{
+    db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue},
+    kb,
+};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
@@ -7,16 +10,21 @@ use std::{
 
 pub struct CoCo {
     db: Box<dyn Database + Send + Sync>,
+    kb: Box<dyn crate::kb::KnowledgeBase>,
     classes: HashMap<String, Class>,
     objects: Arc<RwLock<HashMap<String, Arc<RwLock<Object>>>>>,
     rules: HashMap<String, Rule>,
 }
 
 impl CoCo {
-    pub async fn new(db: Box<dyn Database + Send + Sync>) -> Self {
+    pub async fn new(
+        db: Box<dyn Database + Send + Sync>,
+        kb: Box<dyn crate::kb::KnowledgeBase>,
+    ) -> Self {
         let objects = Arc::new(RwLock::new(HashMap::new()));
         let mut coco = Self {
             db,
+            kb,
             classes: HashMap::new(),
             objects: objects.clone(),
             rules: HashMap::new(),
@@ -140,16 +148,20 @@ impl CoCo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::clips::clips::KnowledgeBase as CLIPS;
     use crate::mongo::db::Database as MongoDB;
     use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_coco_initialization() {
-        let coco = CoCo::new(Box::new(
-            MongoDB::new("test_coco_initialization", "mongodb://localhost:27017")
-                .await
-                .unwrap(),
-        ))
+        let coco = CoCo::new(
+            Box::new(
+                MongoDB::new("test_coco_initialization", "mongodb://localhost:27017")
+                    .await
+                    .unwrap(),
+            ),
+            Box::new(CLIPS::new()),
+        )
         .await;
 
         coco.drop_db().await.unwrap();
@@ -157,11 +169,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_class() {
-        let mut coco = CoCo::new(Box::new(
-            MongoDB::new("coco_test_create_class", "mongodb://localhost:27017")
-                .await
-                .unwrap(),
-        ))
+        let mut coco = CoCo::new(
+            Box::new(
+                MongoDB::new("coco_test_create_class", "mongodb://localhost:27017")
+                    .await
+                    .unwrap(),
+            ),
+            Box::new(CLIPS::new()),
+        )
         .await;
 
         coco.create_class("TestClass", None, None, None).await;
@@ -175,14 +190,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_class_with_properties() {
-        let mut coco = CoCo::new(Box::new(
-            MongoDB::new(
-                "coco_test_create_class_with_properties",
-                "mongodb://localhost:27017",
-            )
-            .await
-            .unwrap(),
-        ))
+        let mut coco = CoCo::new(
+            Box::new(
+                MongoDB::new(
+                    "coco_test_create_class_with_properties",
+                    "mongodb://localhost:27017",
+                )
+                .await
+                .unwrap(),
+            ),
+            Box::new(CLIPS::new()),
+        )
         .await;
 
         let mut static_props = HashMap::new();

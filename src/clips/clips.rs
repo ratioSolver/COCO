@@ -1,7 +1,8 @@
 use crate::db::{Class, Object};
 use crate::kb::KnowledgeBase as KnowledgeBaseTrait;
+use std::collections::HashMap;
 use std::error::Error;
-use std::ffi::c_long;
+use std::ffi::{c_char, c_double, c_long, c_longlong};
 use std::marker::{PhantomData, PhantomPinned};
 
 #[repr(C)]
@@ -12,6 +13,12 @@ struct Environment {
 
 #[repr(C)]
 struct FactBuilder {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct FactModifier {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
@@ -44,29 +51,106 @@ enum FactBuilderError {
     RuleNetworkError,
 }
 
+#[repr(C)]
+#[derive(Debug)]
+#[allow(dead_code)]
+enum FactModifierError {
+    NoError,
+    NullPointerError,
+    RetractedError,
+    ImpliedDeftemplateError,
+    CouldNotModifyError,
+    RuleNetworkError,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+#[allow(dead_code)]
+enum PutSlotError {
+    NoError,
+    NullPointerError,
+    InvalidTargetError,
+    SlotNotFoundError,
+    TypeError,
+    RangeError,
+    AllowedValuesError,
+    CardinalityError,
+    AllowedClassesError,
+}
+
 #[link(name = "clips")]
 #[allow(dead_code)]
 unsafe extern "C" {
     unsafe fn CreateEnvironment() -> *mut Environment;
     unsafe fn DestroyEnvironment(env: *mut Environment);
-    unsafe fn Build(env: *mut Environment, construct: *const i8) -> BuildError;
-    unsafe fn CreateFactBuilder(env: *mut Environment, templateName: *const i8)
-    -> *mut FactBuilder;
+    unsafe fn Build(env: *mut Environment, construct: *const c_char) -> BuildError;
+    unsafe fn CreateFactBuilder(
+        env: *mut Environment,
+        template_name: *const c_char,
+    ) -> *mut FactBuilder;
     unsafe fn FBAssert(fb: *mut FactBuilder) -> *mut Fact;
     unsafe fn FBDispose(fb: *mut FactBuilder);
     unsafe fn FBError(fb: *mut FactBuilder) -> FactBuilderError;
-    unsafe fn Run(env: *mut Environment, runLimit: c_long) -> c_long;
+    unsafe fn CreateFactModifier(env: *mut Environment, fact: *mut Fact) -> *mut FactModifier;
+    unsafe fn FMModify(fm: *mut FactModifier) -> *mut Fact;
+    unsafe fn FMDispose(fm: *mut FactModifier);
+    unsafe fn FMError(fm: *mut FactModifier) -> FactModifierError;
+    unsafe fn FBPutSlotInteger(
+        fb: *mut FactBuilder,
+        slot_name: *const c_char,
+        value: c_longlong,
+    ) -> PutSlotError;
+    unsafe fn FBPutSlotFloat(
+        fb: *mut FactBuilder,
+        slot_name: *const c_char,
+        value: c_double,
+    ) -> PutSlotError;
+    unsafe fn FBPutSlotSymbol(
+        fb: *mut FactBuilder,
+        slot_name: *const c_char,
+        value: *const c_char,
+    ) -> PutSlotError;
+    unsafe fn FBPutSlotString(
+        fb: *mut FactBuilder,
+        slot_name: *const c_char,
+        value: *const c_char,
+    ) -> PutSlotError;
+    unsafe fn FMPutSlotInteger(
+        fm: *mut FactModifier,
+        slot_name: *const c_char,
+        value: c_longlong,
+    ) -> PutSlotError;
+    unsafe fn FMPutSlotFloat(
+        fm: *mut FactModifier,
+        slot_name: *const c_char,
+        value: c_double,
+    ) -> PutSlotError;
+    unsafe fn FMPutSlotSymbol(
+        fm: *mut FactModifier,
+        slot_name: *const c_char,
+        value: *const c_char,
+    ) -> PutSlotError;
+    unsafe fn FMPutSlotString(
+        fm: *mut FactModifier,
+        slot_name: *const c_char,
+        value: *const c_char,
+    ) -> PutSlotError;
+    unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
 
 pub struct KnowledgeBase {
     env: *mut Environment,
+    instances: HashMap<String, HashMap<String, *mut Fact>>,
 }
 
 impl KnowledgeBase {
     pub fn new() -> Self {
         unsafe {
             let env = CreateEnvironment();
-            KnowledgeBase { env }
+            KnowledgeBase {
+                env,
+                instances: HashMap::new(),
+            }
         }
     }
 }
@@ -82,9 +166,8 @@ impl Drop for KnowledgeBase {
 impl KnowledgeBaseTrait for KnowledgeBase {
     fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
         let deftemplate = format!("(deftemplate {} (slot id (type SYMBOL)))", class.name);
-        let c_str = std::ffi::CString::new(deftemplate)?;
         unsafe {
-            let result = Build(self.env, c_str.as_ptr());
+            let result = Build(self.env, std::ffi::CString::new(deftemplate)?.as_ptr());
             match result {
                 BuildError::NoError => Ok(()),
                 _ => Err(format!("Build error: {:?}", result).into()),
@@ -92,16 +175,25 @@ impl KnowledgeBaseTrait for KnowledgeBase {
         }
     }
 
-    fn create_object(&self, class: &Class, object: &Object) -> Result<(), Box<dyn Error>> {
-        let template_name = std::ffi::CString::new(class.name.clone())?;
-        let c_str = std::ffi::CString::new(template_name)?;
+    fn create_object(&mut self, class: &Class, object: &Object) -> Result<(), Box<dyn Error>> {
         unsafe {
-            let fb = CreateFactBuilder(self.env, c_str.as_ptr());
+            let fb = CreateFactBuilder(
+                self.env,
+                std::ffi::CString::new(class.name.clone())?.as_ptr(),
+            );
             if fb.is_null() {
                 return Err("Failed to create FactBuilder".into());
             }
-            // Here you would add code to set the slots of the fact using the FactBuilder.
+            FBPutSlotSymbol(
+                fb,
+                std::ffi::CString::new("id")?.as_ptr(),
+                std::ffi::CString::new(object.id.clone())?.as_ptr(),
+            );
             let fact = FBAssert(fb);
+            self.instances
+                .entry(class.name.clone())
+                .or_insert_with(HashMap::new)
+                .insert(object.id.clone(), fact);
             let error = FBError(fb);
             FBDispose(fb);
             match error {

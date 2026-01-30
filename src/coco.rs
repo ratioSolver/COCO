@@ -1,8 +1,4 @@
 use crate::db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue};
-use rust_rule_engine::{
-    Facts, GRLParser, KnowledgeBase, RustRuleEngine, Value,
-    rete::{FactValue, FieldDef, FieldType, Template, TemplateRegistry},
-};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
@@ -14,40 +10,17 @@ pub struct CoCo {
     classes: HashMap<String, Class>,
     objects: Arc<RwLock<HashMap<String, Arc<RwLock<Object>>>>>,
     rules: HashMap<String, Rule>,
-    template_registry: TemplateRegistry,
-    facts: Facts,
-    engine: RustRuleEngine,
 }
 
 impl CoCo {
     pub async fn new(db: Box<dyn Database + Send + Sync>) -> Self {
-        let name = &db.name().to_string();
         let objects = Arc::new(RwLock::new(HashMap::new()));
         let mut coco = Self {
             db,
             classes: HashMap::new(),
             objects: objects.clone(),
             rules: HashMap::new(),
-            template_registry: TemplateRegistry::new(),
-            facts: Facts::new(),
-            engine: RustRuleEngine::new(KnowledgeBase::new(name)),
         };
-
-        coco.engine.register_function("add_class", move |args, _| {
-            let object_id = &args[0].to_string();
-            let class_name = args[1].to_string();
-            objects
-                .read()
-                .expect("Failed to lock objects map")
-                .get(object_id)
-                .expect("Object not found")
-                .write()
-                .expect("Failed to lock object")
-                .classes
-                .get_or_insert_with(HashSet::new)
-                .insert(class_name);
-            Ok(rust_rule_engine::Value::Null)
-        });
 
         coco.add_classes(coco.db.get_classes().await.unwrap());
         coco.add_rules(coco.db.get_rules().await.unwrap());
@@ -82,86 +55,7 @@ impl CoCo {
 
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
-            let mut template = Template::new(class.name.clone());
-            template.add_field(FieldDef {
-                name: "id".to_string(),
-                field_type: FieldType::String,
-                default_value: None,
-                required: true,
-            });
-            for (_, prop) in class
-                .static_properties
-                .iter()
-                .chain(class.dynamic_properties.iter())
-                .flatten()
-            {
-                template.add_field(Self::to_field_def(prop));
-            }
-            for (_, prop) in class.dynamic_properties.iter().flatten() {
-                template.add_field(Self::to_timestamp_field_def(prop));
-            }
-            self.template_registry.register(template);
             self.classes.insert(class.name.to_string(), class);
-        }
-    }
-
-    fn to_field_def(prop: &Property) -> FieldDef {
-        match prop {
-            Property::Bool {
-                name,
-                required,
-                default,
-            } => FieldDef {
-                name: name.clone(),
-                field_type: FieldType::Boolean,
-                default_value: default.map(|v| FactValue::Boolean(v)),
-                required: required.unwrap_or(false),
-            },
-            Property::Int {
-                name,
-                required,
-                default,
-                ..
-            } => FieldDef {
-                name: name.clone(),
-                field_type: FieldType::Integer,
-                default_value: default.map(|v| FactValue::Integer(v)),
-                required: required.unwrap_or(false),
-            },
-            Property::Float {
-                name,
-                required,
-                default,
-                ..
-            } => FieldDef {
-                name: name.clone(),
-                field_type: FieldType::Float,
-                default_value: default.map(|v| FactValue::Float(v)),
-                required: required.unwrap_or(false),
-            },
-        }
-    }
-
-    fn to_timestamp_field_def(prop: &Property) -> FieldDef {
-        match prop {
-            Property::Bool { name, .. } => FieldDef {
-                name: name.clone() + "_timestamp",
-                field_type: FieldType::Integer,
-                default_value: None,
-                required: true,
-            },
-            Property::Int { name, .. } => FieldDef {
-                name: name.clone() + "_timestamp",
-                field_type: FieldType::Integer,
-                default_value: None,
-                required: true,
-            },
-            Property::Float { name, .. } => FieldDef {
-                name: name.clone() + "_timestamp",
-                field_type: FieldType::Integer,
-                default_value: None,
-                required: true,
-            },
         }
     }
 
@@ -208,75 +102,6 @@ impl CoCo {
         }
     }
 
-    fn to_static_value(property: &Property, value: &StaticValue) -> Result<Value, Box<dyn Error>> {
-        match (property, value) {
-            (Property::Bool { .. }, StaticValue::Bool(b)) => Ok(Value::Boolean(*b)),
-            (Property::Int { min, max, .. }, StaticValue::Int(i)) => {
-                Self::validate_int(*i, *min, *max)?;
-                Ok(Value::Integer(*i))
-            }
-            (Property::Float { min, max, .. }, StaticValue::Float(f)) => {
-                Self::validate_float(*f, *min, *max)?;
-                Ok(Value::Number(*f))
-            }
-            _ => Err("Type mismatch between property and static value".into()),
-        }
-    }
-
-    fn to_dynamic_value(
-        property: &Property,
-        dynamic_value: &DynamicValue,
-    ) -> Result<(Value, Value), Box<dyn Error>> {
-        match (property, dynamic_value) {
-            (Property::Bool { .. }, DynamicValue::Bool(b, timestamp)) => {
-                Ok((Value::Boolean(*b), Value::Integer(timestamp.timestamp())))
-            }
-            (Property::Int { min, max, .. }, DynamicValue::Int(i, timestamp)) => {
-                Self::validate_int(*i, *min, *max)?;
-                Ok((Value::Integer(*i), Value::Integer(timestamp.timestamp())))
-            }
-            (Property::Float { min, max, .. }, DynamicValue::Float(f, timestamp)) => {
-                Self::validate_float(*f, *min, *max)?;
-                Ok((Value::Number(*f), Value::Integer(timestamp.timestamp())))
-            }
-            _ => Err("Type mismatch between property and dynamic value".into()),
-        }
-    }
-
-    fn validate_int(val: i64, min: Option<i64>, max: Option<i64>) -> Result<(), Box<dyn Error>> {
-        if let Some(min_val) = min {
-            if val < min_val {
-                return Err(
-                    format!("Integer value {} is less than minimum {}", val, min_val).into(),
-                );
-            }
-        }
-        if let Some(max_val) = max {
-            if val > max_val {
-                return Err(
-                    format!("Integer value {} is greater than maximum {}", val, max_val).into(),
-                );
-            }
-        }
-        Ok(())
-    }
-
-    fn validate_float(val: f64, min: Option<f64>, max: Option<f64>) -> Result<(), Box<dyn Error>> {
-        if let Some(min_val) = min {
-            if val < min_val {
-                return Err(format!("Float value {} is less than minimum {}", val, min_val).into());
-            }
-        }
-        if let Some(max_val) = max {
-            if val > max_val {
-                return Err(
-                    format!("Float value {} is greater than maximum {}", val, max_val).into(),
-                );
-            }
-        }
-        Ok(())
-    }
-
     pub fn get_object(&self, id: &str) -> Option<Arc<RwLock<Object>>> {
         self.objects
             .read()
@@ -303,12 +128,6 @@ impl CoCo {
 
     fn add_rules(&mut self, db_rules: Vec<Rule>) {
         for rule in db_rules {
-            self.engine
-                .knowledge_base()
-                .add_rule(
-                    GRLParser::parse_rule(rule.content.as_str()).expect("Failed to parse rule"),
-                )
-                .expect("Failed to add rule to knowledge base");
             self.rules.insert(rule.name.to_string(), rule);
         }
     }

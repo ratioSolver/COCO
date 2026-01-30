@@ -1,7 +1,4 @@
-use crate::{
-    db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue},
-    kb,
-};
+use crate::db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
@@ -63,6 +60,9 @@ impl CoCo {
 
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
+            self.kb
+                .create_class(&class)
+                .expect("Failed to create class in knowledge base");
             self.classes.insert(class.name.to_string(), class);
         }
     }
@@ -106,6 +106,9 @@ impl CoCo {
                     .classes
                     .get(class_name)
                     .expect("Class not found for object");
+                self.kb
+                    .create_object(class, &object_arc.read().expect("Failed to lock object"))
+                    .expect("Failed to create object in knowledge base");
             }
         }
     }

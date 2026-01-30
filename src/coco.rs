@@ -212,43 +212,11 @@ impl CoCo {
         match (property, value) {
             (Property::Bool { .. }, StaticValue::Bool(b)) => Ok(Value::Boolean(*b)),
             (Property::Int { min, max, .. }, StaticValue::Int(i)) => {
-                if let Some(min_val) = min {
-                    if *i < *min_val as i64 {
-                        return Err(format!(
-                            "Integer value {} is less than minimum {}",
-                            i, min_val
-                        )
-                        .into());
-                    }
-                }
-                if let Some(max_val) = max {
-                    if *i > *max_val as i64 {
-                        return Err(format!(
-                            "Integer value {} is greater than maximum {}",
-                            i, max_val
-                        )
-                        .into());
-                    }
-                }
+                Self::validate_int(*i, *min, *max)?;
                 Ok(Value::Integer(*i))
             }
             (Property::Float { min, max, .. }, StaticValue::Float(f)) => {
-                if let Some(min_val) = min {
-                    if *f < *min_val {
-                        return Err(
-                            format!("Float value {} is less than minimum {}", f, min_val).into(),
-                        );
-                    }
-                }
-                if let Some(max_val) = max {
-                    if *f > *max_val {
-                        return Err(format!(
-                            "Float value {} is greater than maximum {}",
-                            f, max_val
-                        )
-                        .into());
-                    }
-                }
+                Self::validate_float(*f, *min, *max)?;
                 Ok(Value::Number(*f))
             }
             _ => Err("Type mismatch between property and static value".into()),
@@ -264,47 +232,49 @@ impl CoCo {
                 Ok((Value::Boolean(*b), Value::Integer(timestamp.timestamp())))
             }
             (Property::Int { min, max, .. }, DynamicValue::Int(i, timestamp)) => {
-                if let Some(min_val) = min {
-                    if *i < *min_val as i64 {
-                        return Err(format!(
-                            "Integer value {} is less than minimum {}",
-                            i, min_val
-                        )
-                        .into());
-                    }
-                }
-                if let Some(max_val) = max {
-                    if *i > *max_val as i64 {
-                        return Err(format!(
-                            "Integer value {} is greater than maximum {}",
-                            i, max_val
-                        )
-                        .into());
-                    }
-                }
+                Self::validate_int(*i, *min, *max)?;
                 Ok((Value::Integer(*i), Value::Integer(timestamp.timestamp())))
             }
             (Property::Float { min, max, .. }, DynamicValue::Float(f, timestamp)) => {
-                if let Some(min_val) = min {
-                    if *f < *min_val {
-                        return Err(
-                            format!("Float value {} is less than minimum {}", f, min_val).into(),
-                        );
-                    }
-                }
-                if let Some(max_val) = max {
-                    if *f > *max_val {
-                        return Err(format!(
-                            "Float value {} is greater than maximum {}",
-                            f, max_val
-                        )
-                        .into());
-                    }
-                }
+                Self::validate_float(*f, *min, *max)?;
                 Ok((Value::Number(*f), Value::Integer(timestamp.timestamp())))
             }
             _ => Err("Type mismatch between property and dynamic value".into()),
         }
+    }
+
+    fn validate_int(val: i64, min: Option<i64>, max: Option<i64>) -> Result<(), Box<dyn Error>> {
+        if let Some(min_val) = min {
+            if val < min_val {
+                return Err(
+                    format!("Integer value {} is less than minimum {}", val, min_val).into(),
+                );
+            }
+        }
+        if let Some(max_val) = max {
+            if val > max_val {
+                return Err(
+                    format!("Integer value {} is greater than maximum {}", val, max_val).into(),
+                );
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_float(val: f64, min: Option<f64>, max: Option<f64>) -> Result<(), Box<dyn Error>> {
+        if let Some(min_val) = min {
+            if val < min_val {
+                return Err(format!("Float value {} is less than minimum {}", val, min_val).into());
+            }
+        }
+        if let Some(max_val) = max {
+            if val > max_val {
+                return Err(
+                    format!("Float value {} is greater than maximum {}", val, max_val).into(),
+                );
+            }
+        }
+        Ok(())
     }
 
     pub fn get_object(&self, id: &str) -> Option<Arc<RwLock<Object>>> {

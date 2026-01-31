@@ -1,5 +1,4 @@
-use crate::db::{Class, Object};
-use crate::kb::KnowledgeBase as KnowledgeBaseTrait;
+use crate::{Class, KnowledgeBase as KnowledgeBaseTrait, Object};
 use std::collections::HashMap;
 use std::error::Error;
 use std::ffi::{c_char, c_double, c_long, c_longlong};

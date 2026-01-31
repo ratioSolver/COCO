@@ -1,7 +1,4 @@
-use crate::{
-    db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue},
-    kb::KnowledgeBase,
-};
+use crate::{Class, Database, DynamicValue, KnowledgeBase, Object, Property, Rule, StaticValue};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,

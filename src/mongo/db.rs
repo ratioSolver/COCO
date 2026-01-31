@@ -1,4 +1,4 @@
-use crate::db::{Class, Database as DatabaseTrait, DynamicValue, Object, Rule, StaticValue};
+use crate::{Class, Database as DatabaseTrait, DynamicValue, Object, Rule, StaticValue};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::bson::doc;

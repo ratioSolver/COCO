@@ -5,12 +5,7 @@ fn main() {
             println!("cargo:rustc-link-search=native={}", lib_dir);
         }
         Err(_) => {
-            let common_paths = [
-                "/usr/lib",
-                "/usr/lib64",
-                "/usr/local/lib",
-                "/usr/lib/x86_64-linux-gnu",
-            ];
+            let common_paths = ["/usr/lib", "/usr/lib64", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu"];
             for path in common_paths {
                 if std::path::Path::new(path).exists() {
                     println!("cargo:rustc-link-search=native={}", path);

@@ -14,18 +14,9 @@ pub struct CoCo {
 }
 
 impl CoCo {
-    pub async fn new(
-        db: Box<dyn Database + Send + Sync>,
-        kb: Box<dyn crate::kb::KnowledgeBase>,
-    ) -> Self {
+    pub async fn new(db: Box<dyn Database + Send + Sync>, kb: Box<dyn crate::kb::KnowledgeBase>) -> Self {
         let objects = Arc::new(RwLock::new(HashMap::new()));
-        let mut coco = Self {
-            db,
-            kb,
-            classes: HashMap::new(),
-            objects: objects.clone(),
-            rules: HashMap::new(),
-        };
+        let mut coco = Self { db, kb, classes: HashMap::new(), objects: objects.clone(), rules: HashMap::new() };
 
         coco.add_classes(coco.db.get_classes().await.unwrap());
         coco.add_rules(coco.db.get_rules().await.unwrap());
@@ -38,52 +29,22 @@ impl CoCo {
         self.classes.get(name)
     }
 
-    pub async fn create_class(
-        &mut self,
-        name: &str,
-        parents: Option<HashSet<String>>,
-        static_properties: Option<HashMap<String, Property>>,
-        dynamic_properties: Option<HashMap<String, Property>>,
-    ) {
-        let class = Class {
-            name: name.to_string(),
-            parents,
-            static_properties,
-            dynamic_properties,
-        };
-        self.db
-            .create_class(&class)
-            .await
-            .expect("Failed to create class in database");
+    pub async fn create_class(&mut self, name: &str, parents: Option<HashSet<String>>, static_properties: Option<HashMap<String, Property>>, dynamic_properties: Option<HashMap<String, Property>>) {
+        let class = Class { name: name.to_string(), parents, static_properties, dynamic_properties };
+        self.db.create_class(&class).await.expect("Failed to create class in database");
         self.add_classes(vec![class]);
     }
 
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
-            self.kb
-                .create_class(&class)
-                .expect("Failed to create class in knowledge base");
+            self.kb.create_class(&class).expect("Failed to create class in knowledge base");
             self.classes.insert(class.name.to_string(), class);
         }
     }
 
-    pub async fn create_object(
-        &mut self,
-        id: &str,
-        classes: Option<HashSet<String>>,
-        properties: Option<HashMap<String, StaticValue>>,
-        values: Option<HashMap<String, DynamicValue>>,
-    ) {
-        let object = Object {
-            id: id.to_string(),
-            classes,
-            properties,
-            values,
-        };
-        self.db
-            .create_object(&object)
-            .await
-            .expect("Failed to create object in database");
+    pub async fn create_object(&mut self, id: &str, classes: Option<HashSet<String>>, properties: Option<HashMap<String, StaticValue>>, values: Option<HashMap<String, DynamicValue>>) {
+        let object = Object { id: id.to_string(), classes, properties, values };
+        self.db.create_object(&object).await.expect("Failed to create object in database");
         self.add_objects(vec![object]);
     }
 
@@ -91,34 +52,16 @@ impl CoCo {
         for object in objects {
             let object_arc = Arc::new(RwLock::new(object));
             let id = object_arc.read().expect("Failed to lock object").id.clone();
-            self.objects
-                .write()
-                .expect("Failed to lock objects map")
-                .insert(id, object_arc.clone());
-            for class_name in object_arc
-                .read()
-                .expect("Failed to lock object")
-                .classes
-                .iter()
-                .flatten()
-            {
-                let class = self
-                    .classes
-                    .get(class_name)
-                    .expect("Class not found for object");
-                self.kb
-                    .create_object(class, &object_arc.read().expect("Failed to lock object"))
-                    .expect("Failed to create object in knowledge base");
+            self.objects.write().expect("Failed to lock objects map").insert(id, object_arc.clone());
+            for class_name in object_arc.read().expect("Failed to lock object").classes.iter().flatten() {
+                let class = self.classes.get(class_name).expect("Class not found for object");
+                self.kb.create_object(class, &object_arc.read().expect("Failed to lock object")).expect("Failed to create object in knowledge base");
             }
         }
     }
 
     pub fn get_object(&self, id: &str) -> Option<Arc<RwLock<Object>>> {
-        self.objects
-            .read()
-            .expect("Failed to lock objects map")
-            .get(id)
-            .cloned()
+        self.objects.read().expect("Failed to lock objects map").get(id).cloned()
     }
 
     pub fn get_rule(&self, name: &str) -> Option<&Rule> {
@@ -126,14 +69,8 @@ impl CoCo {
     }
 
     pub async fn create_rule(&mut self, name: &str, content: &str) {
-        let rule = Rule {
-            name: name.to_string(),
-            content: content.to_string(),
-        };
-        self.db
-            .create_rule(&rule)
-            .await
-            .expect("Failed to create rule in database");
+        let rule = Rule { name: name.to_string(), content: content.to_string() };
+        self.db.create_rule(&rule).await.expect("Failed to create rule in database");
         self.add_rules(vec![rule]);
     }
 
@@ -157,30 +94,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_coco_initialization() {
-        let coco = CoCo::new(
-            Box::new(
-                MongoDB::new("test_coco_initialization", "mongodb://localhost:27017")
-                    .await
-                    .unwrap(),
-            ),
-            Box::new(CLIPS::new()),
-        )
-        .await;
+        let coco = CoCo::new(Box::new(MongoDB::new("test_coco_initialization", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPS::new())).await;
 
         coco.drop_db().await.unwrap();
     }
 
     #[tokio::test]
     async fn test_create_class() {
-        let mut coco = CoCo::new(
-            Box::new(
-                MongoDB::new("coco_test_create_class", "mongodb://localhost:27017")
-                    .await
-                    .unwrap(),
-            ),
-            Box::new(CLIPS::new()),
-        )
-        .await;
+        let mut coco = CoCo::new(Box::new(MongoDB::new("coco_test_create_class", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPS::new())).await;
 
         coco.create_class("TestClass", None, None, None).await;
 
@@ -193,28 +114,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_class_with_properties() {
-        let mut coco = CoCo::new(
-            Box::new(
-                MongoDB::new(
-                    "coco_test_create_class_with_properties",
-                    "mongodb://localhost:27017",
-                )
-                .await
-                .unwrap(),
-            ),
-            Box::new(CLIPS::new()),
-        )
-        .await;
+        let mut coco = CoCo::new(Box::new(MongoDB::new("coco_test_create_class_with_properties", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPS::new())).await;
 
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "is_active".to_string(),
-            Property::Bool {
-                name: "is_active".to_string(),
-                required: Some(true),
-                default: Some(false),
-            },
-        );
+        static_props.insert("is_active".to_string(), Property::Bool { name: "is_active".to_string(), required: Some(true), default: Some(false) });
 
         let mut dynamic_props = HashMap::new();
         dynamic_props.insert(
@@ -228,8 +131,7 @@ mod tests {
             },
         );
 
-        coco.create_class("Sensor", None, Some(static_props), Some(dynamic_props))
-            .await;
+        coco.create_class("Sensor", None, Some(static_props), Some(dynamic_props)).await;
 
         let class = coco.get_class("Sensor");
         assert!(class.is_some());
@@ -237,20 +139,8 @@ mod tests {
         assert_eq!(class.name, "Sensor");
         assert!(class.static_properties.is_some());
         assert!(class.dynamic_properties.is_some());
-        assert!(
-            class
-                .static_properties
-                .as_ref()
-                .unwrap()
-                .contains_key("is_active")
-        );
-        assert!(
-            class
-                .dynamic_properties
-                .as_ref()
-                .unwrap()
-                .contains_key("temperature")
-        );
+        assert!(class.static_properties.as_ref().unwrap().contains_key("is_active"));
+        assert!(class.dynamic_properties.as_ref().unwrap().contains_key("temperature"));
 
         coco.drop_db().await.unwrap();
     }

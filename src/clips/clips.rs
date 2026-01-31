@@ -84,10 +84,7 @@ unsafe extern "C" {
     unsafe fn CreateEnvironment() -> *mut Environment;
     unsafe fn DestroyEnvironment(env: *mut Environment);
     unsafe fn Build(env: *mut Environment, construct: *const c_char) -> BuildError;
-    unsafe fn CreateFactBuilder(
-        env: *mut Environment,
-        template_name: *const c_char,
-    ) -> *mut FactBuilder;
+    unsafe fn CreateFactBuilder(env: *mut Environment, template_name: *const c_char) -> *mut FactBuilder;
     unsafe fn FBAssert(fb: *mut FactBuilder) -> *mut Fact;
     unsafe fn FBDispose(fb: *mut FactBuilder);
     unsafe fn FBError(fb: *mut FactBuilder) -> FactBuilderError;
@@ -95,46 +92,14 @@ unsafe extern "C" {
     unsafe fn FMModify(fm: *mut FactModifier) -> *mut Fact;
     unsafe fn FMDispose(fm: *mut FactModifier);
     unsafe fn FMError(fm: *mut FactModifier) -> FactModifierError;
-    unsafe fn FBPutSlotInteger(
-        fb: *mut FactBuilder,
-        slot_name: *const c_char,
-        value: c_longlong,
-    ) -> PutSlotError;
-    unsafe fn FBPutSlotFloat(
-        fb: *mut FactBuilder,
-        slot_name: *const c_char,
-        value: c_double,
-    ) -> PutSlotError;
-    unsafe fn FBPutSlotSymbol(
-        fb: *mut FactBuilder,
-        slot_name: *const c_char,
-        value: *const c_char,
-    ) -> PutSlotError;
-    unsafe fn FBPutSlotString(
-        fb: *mut FactBuilder,
-        slot_name: *const c_char,
-        value: *const c_char,
-    ) -> PutSlotError;
-    unsafe fn FMPutSlotInteger(
-        fm: *mut FactModifier,
-        slot_name: *const c_char,
-        value: c_longlong,
-    ) -> PutSlotError;
-    unsafe fn FMPutSlotFloat(
-        fm: *mut FactModifier,
-        slot_name: *const c_char,
-        value: c_double,
-    ) -> PutSlotError;
-    unsafe fn FMPutSlotSymbol(
-        fm: *mut FactModifier,
-        slot_name: *const c_char,
-        value: *const c_char,
-    ) -> PutSlotError;
-    unsafe fn FMPutSlotString(
-        fm: *mut FactModifier,
-        slot_name: *const c_char,
-        value: *const c_char,
-    ) -> PutSlotError;
+    unsafe fn FBPutSlotInteger(fb: *mut FactBuilder, slot_name: *const c_char, value: c_longlong) -> PutSlotError;
+    unsafe fn FBPutSlotFloat(fb: *mut FactBuilder, slot_name: *const c_char, value: c_double) -> PutSlotError;
+    unsafe fn FBPutSlotSymbol(fb: *mut FactBuilder, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
+    unsafe fn FBPutSlotString(fb: *mut FactBuilder, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
+    unsafe fn FMPutSlotInteger(fm: *mut FactModifier, slot_name: *const c_char, value: c_longlong) -> PutSlotError;
+    unsafe fn FMPutSlotFloat(fm: *mut FactModifier, slot_name: *const c_char, value: c_double) -> PutSlotError;
+    unsafe fn FMPutSlotSymbol(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
+    unsafe fn FMPutSlotString(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
 
@@ -147,10 +112,7 @@ impl KnowledgeBase {
     pub fn new() -> Self {
         unsafe {
             let env = CreateEnvironment();
-            KnowledgeBase {
-                env,
-                instances: HashMap::new(),
-            }
+            KnowledgeBase { env, instances: HashMap::new() }
         }
     }
 }
@@ -177,29 +139,30 @@ impl KnowledgeBaseTrait for KnowledgeBase {
 
     fn create_object(&mut self, class: &Class, object: &Object) -> Result<(), Box<dyn Error>> {
         unsafe {
-            let fb = CreateFactBuilder(
-                self.env,
-                std::ffi::CString::new(class.name.clone())?.as_ptr(),
-            );
+            let fb = CreateFactBuilder(self.env, std::ffi::CString::new(class.name.clone())?.as_ptr());
             if fb.is_null() {
                 return Err("Failed to create FactBuilder".into());
             }
-            FBPutSlotSymbol(
-                fb,
-                std::ffi::CString::new("id")?.as_ptr(),
-                std::ffi::CString::new(object.id.clone())?.as_ptr(),
-            );
-            let fact = FBAssert(fb);
-            self.instances
-                .entry(class.name.clone())
-                .or_insert_with(HashMap::new)
-                .insert(object.id.clone(), fact);
-            let error = FBError(fb);
-            FBDispose(fb);
-            match error {
-                FactBuilderError::NoError => Ok(()),
-                _ => Err(format!("Fact build error: {:?}", error).into()),
+
+            match FBPutSlotSymbol(fb, std::ffi::CString::new("id")?.as_ptr(), std::ffi::CString::new(object.id.clone())?.as_ptr()) {
+                PutSlotError::NoError => {}
+                err => {
+                    FBDispose(fb);
+                    return Err(format!("PutSlot error: {:?}", err).into());
+                }
             }
+
+            let fact = FBAssert(fb);
+            if fact.is_null() {
+                let error = FBError(fb);
+                FBDispose(fb);
+                return Err(format!("Assertion failed: {:?}", error).into());
+            }
+
+            self.instances.entry(class.name.clone()).or_insert_with(HashMap::new).insert(object.id.clone(), fact);
+
+            FBDispose(fb);
+            Ok(())
         }
     }
 }
@@ -225,5 +188,22 @@ mod tests {
         };
         let result = kb.create_class(&class);
         assert!(result.is_ok(), "Failed to create class: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_create_object() {
+        let mut kb = KnowledgeBase::new();
+        let class = Class {
+            name: "TestClass".to_string(),
+            parents: None,
+            static_properties: None,
+            dynamic_properties: None,
+        };
+        let res_class = kb.create_class(&class);
+        assert!(res_class.is_ok(), "Failed to create class: {:?}", res_class.err());
+
+        let object = Object { id: "obj1".to_string(), classes: None, properties: None, values: None };
+        let result = kb.create_object(&class, &object);
+        assert!(result.is_ok(), "Failed to create object: {:?}", result.err());
     }
 }

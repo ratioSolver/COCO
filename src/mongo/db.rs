@@ -30,30 +30,18 @@ impl Database {
         let collection_names = db.list_collection_names().await?;
         if collection_names.is_empty() {
             let classes_collection = db.collection::<mongodb::bson::Document>("classes");
-            let index = IndexModel::builder()
-                .keys(doc! { "name": 1 })
-                .options(IndexOptions::builder().unique(true).build())
-                .build();
+            let index = IndexModel::builder().keys(doc! { "name": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             classes_collection.create_index(index).await?;
 
             let rules_collection = db.collection::<mongodb::bson::Document>("rules");
-            let index = IndexModel::builder()
-                .keys(doc! { "name": 1 })
-                .options(IndexOptions::builder().unique(true).build())
-                .build();
+            let index = IndexModel::builder().keys(doc! { "name": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             rules_collection.create_index(index).await?;
 
             let object_data_collection = db.collection::<mongodb::bson::Document>("object_data");
-            let index = IndexModel::builder()
-                .keys(doc! { "object_id": 1, "timestamp": 1 })
-                .options(IndexOptions::builder().unique(true).build())
-                .build();
+            let index = IndexModel::builder().keys(doc! { "object_id": 1, "timestamp": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             object_data_collection.create_index(index).await?;
         }
-        Ok(Self {
-            name: name.to_string(),
-            client,
-        })
+        Ok(Self { name: name.to_string(), client })
     }
 }
 
@@ -64,12 +52,7 @@ impl DatabaseTrait for Database {
     }
 
     async fn get_classes(&self) -> Result<Vec<Class>, Box<dyn Error>> {
-        let mut cursor = self
-            .client
-            .database(&self.name)
-            .collection::<Class>("classes")
-            .find(doc! {})
-            .await?;
+        let mut cursor = self.client.database(&self.name).collection::<Class>("classes").find(doc! {}).await?;
 
         let mut classes = Vec::new();
         while let Some(class) = cursor.try_next().await? {
@@ -79,21 +62,13 @@ impl DatabaseTrait for Database {
     }
 
     async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
-        let collection = self
-            .client
-            .database(&self.name)
-            .collection::<Class>("classes");
+        let collection = self.client.database(&self.name).collection::<Class>("classes");
         collection.insert_one(class).await?;
         Ok(())
     }
 
     async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>> {
-        let mut cursor = self
-            .client
-            .database(&self.name)
-            .collection::<MongoObject>("objects")
-            .find(doc! {})
-            .await?;
+        let mut cursor = self.client.database(&self.name).collection::<MongoObject>("objects").find(doc! {}).await?;
 
         let mut objects = Vec::new();
         while let Some(object) = cursor.try_next().await? {
@@ -108,10 +83,7 @@ impl DatabaseTrait for Database {
     }
 
     async fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>> {
-        let collection = self
-            .client
-            .database(&self.name)
-            .collection::<MongoObject>("objects");
+        let collection = self.client.database(&self.name).collection::<MongoObject>("objects");
         let mongo_object = MongoObject {
             id: None,
             classes: object.classes.clone(),
@@ -123,12 +95,7 @@ impl DatabaseTrait for Database {
     }
 
     async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>> {
-        let mut cursor = self
-            .client
-            .database(&self.name)
-            .collection::<Rule>("rules")
-            .find(doc! {})
-            .await?;
+        let mut cursor = self.client.database(&self.name).collection::<Rule>("rules").find(doc! {}).await?;
 
         let mut rules = Vec::new();
         while let Some(rule) = cursor.try_next().await? {

@@ -1,4 +1,7 @@
-use crate::db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue};
+use crate::{
+    db::{Class, Database, DynamicValue, Object, Property, Rule, StaticValue},
+    kb::KnowledgeBase,
+};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
@@ -7,14 +10,14 @@ use std::{
 
 pub struct CoCo {
     db: Box<dyn Database + Send + Sync>,
-    kb: Box<dyn crate::kb::KnowledgeBase>,
+    kb: Box<dyn KnowledgeBase>,
     classes: HashMap<String, Class>,
     objects: Arc<RwLock<HashMap<String, Arc<RwLock<Object>>>>>,
     rules: HashMap<String, Rule>,
 }
 
 impl CoCo {
-    pub async fn new(db: Box<dyn Database + Send + Sync>, kb: Box<dyn crate::kb::KnowledgeBase>) -> Self {
+    pub async fn new(db: Box<dyn Database + Send + Sync>, kb: Box<dyn KnowledgeBase>) -> Self {
         let objects = Arc::new(RwLock::new(HashMap::new()));
         let mut coco = Self { db, kb, classes: HashMap::new(), objects: objects.clone(), rules: HashMap::new() };
 

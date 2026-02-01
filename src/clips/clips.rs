@@ -106,6 +106,7 @@ pub struct KnowledgeBase {
     env: *mut Environment,
     instances: HashMap<String, HashMap<String, *mut Fact>>,
 }
+unsafe impl Send for KnowledgeBase {}
 
 impl KnowledgeBase {
     pub fn new() -> Self {

@@ -7,18 +7,22 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
+use coco::{CLIPSKnowledgeBase, CoCo, MongoDatabase};
 use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
 use tower_http::services::{ServeDir, ServeFile};
 
 struct AppState {
     tx: Sender<String>,
+    coco: CoCo,
 }
 
 #[tokio::main]
 async fn main() {
     let (tx, _rx) = tokio::sync::broadcast::channel(100);
-    let app_state = Arc::new(AppState { tx });
+    let coco = CoCo::new(Box::new(MongoDatabase::new("coco_server", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPSKnowledgeBase::new())).await;
+
+    let app_state = Arc::new(AppState { tx, coco });
 
     let app = Router::new();
     let app = app.route("/ws", get(ws_handler));
@@ -29,8 +33,8 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn types_handler() -> impl IntoResponse {
-    // Implement the handler logic here
+async fn types_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    axum::Json(state.coco.get_classes().await)
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {

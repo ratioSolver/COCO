@@ -2,25 +2,36 @@ use crate::{Class, Database, DynamicValue, KnowledgeBase, Object, Property, Rule
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
+    sync::Mutex,
 };
 
 pub struct CoCo {
     db: Box<dyn Database + Send + Sync>,
-    kb: Box<dyn KnowledgeBase>,
+    kb: Mutex<Box<dyn KnowledgeBase + Send>>,
     classes: HashMap<String, Class>,
     objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
 }
 
 impl CoCo {
-    pub async fn new(db: Box<dyn Database + Send + Sync>, kb: Box<dyn KnowledgeBase>) -> Self {
-        let mut coco = Self { db, kb, classes: HashMap::new(), objects: HashMap::new(), rules: HashMap::new() };
+    pub async fn new(db: Box<dyn Database + Send + Sync>, kb: Box<dyn KnowledgeBase + Send>) -> Self {
+        let mut coco = Self {
+            db,
+            kb: Mutex::new(kb),
+            classes: HashMap::new(),
+            objects: HashMap::new(),
+            rules: HashMap::new(),
+        };
 
         coco.add_classes(coco.db.get_classes().await.unwrap());
         coco.add_rules(coco.db.get_rules().await.unwrap());
         coco.add_objects(coco.db.get_objects().await.unwrap());
 
         coco
+    }
+
+    pub async fn get_classes(&self) -> Vec<Class> {
+        self.db.get_classes().await.unwrap()
     }
 
     pub fn get_class(&self, name: &str) -> Option<&Class> {
@@ -35,7 +46,7 @@ impl CoCo {
 
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
-            self.kb.create_class(&class).expect("Failed to create class in knowledge base");
+            self.kb.lock().unwrap().create_class(&class).expect("Failed to create class in knowledge base");
             self.classes.insert(class.name.clone(), class);
         }
     }
@@ -50,7 +61,7 @@ impl CoCo {
         for object in objects {
             for class_name in object.classes.iter().flatten() {
                 let class = self.classes.get(class_name).expect("Class not found for object");
-                self.kb.create_object(&class, &object).expect("Failed to create object in knowledge base");
+                self.kb.lock().unwrap().create_object(&class, &object).expect("Failed to create object in knowledge base");
             }
             self.objects.insert(object.id.clone(), object);
         }

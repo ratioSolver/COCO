@@ -61,7 +61,7 @@ impl CoCo {
         for object in objects {
             for class_name in object.classes.iter().flatten() {
                 let class = self.classes.get(class_name).expect("Class not found for object");
-                self.kb.lock().unwrap().create_object(&class, &object).expect("Failed to create object in knowledge base");
+                self.kb.lock().unwrap().create_object(class, &object).expect("Failed to create object in knowledge base");
             }
             self.objects.insert(object.id.clone(), object);
         }

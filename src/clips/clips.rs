@@ -108,6 +108,12 @@ pub struct KnowledgeBase {
 }
 unsafe impl Send for KnowledgeBase {}
 
+impl Default for KnowledgeBase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KnowledgeBase {
     pub fn new() -> Self {
         unsafe {
@@ -159,7 +165,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
                 return Err(format!("Assertion failed: {:?}", error).into());
             }
 
-            self.instances.entry(class.name.clone()).or_insert_with(HashMap::new).insert(object.id.clone(), fact);
+            self.instances.entry(class.name.clone()).or_default().insert(object.id.clone(), fact);
 
             FBDispose(fb);
             Ok(())

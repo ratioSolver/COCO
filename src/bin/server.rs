@@ -1,9 +1,10 @@
 use axum::{
     Router,
     extract::{
-        State, WebSocketUpgrade,
+        Path, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
+    http::StatusCode,
     response::IntoResponse,
     routing::get,
 };
@@ -27,6 +28,7 @@ async fn main() {
     let app = Router::new();
     let app = app.route("/ws", get(ws_handler));
     let app = app.route("/classes", get(get_classes));
+    let app = app.route("/classes/:name", get(get_class)); // Added new route
     let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -36,6 +38,14 @@ async fn main() {
 async fn get_classes(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let classes: Vec<_> = state.coco.get_classes().into_iter().cloned().collect();
     axum::Json(classes)
+}
+
+async fn get_class(Path(name): Path<String>, State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    match state.coco.get_class(&name) {
+        // We clone the single class to safely return it
+        Some(class) => axum::Json(class.clone()).into_response(),
+        None => (StatusCode::NOT_FOUND, "Class not found").into_response(),
+    }
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {

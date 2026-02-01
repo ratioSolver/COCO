@@ -2,14 +2,13 @@ use crate::{Class, Database, DynamicValue, KnowledgeBase, Object, Property, Rule
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
-    sync::{Arc, RwLock},
 };
 
 pub struct CoCo {
     db: Box<dyn Database + Send + Sync>,
     kb: Box<dyn KnowledgeBase>,
     classes: HashMap<String, Class>,
-    objects: HashMap<String, Arc<RwLock<Object>>>,
+    objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
 }
 
@@ -37,7 +36,7 @@ impl CoCo {
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
             self.kb.create_class(&class).expect("Failed to create class in knowledge base");
-            self.classes.insert(class.name.to_string(), class);
+            self.classes.insert(class.name.clone(), class);
         }
     }
 
@@ -49,18 +48,16 @@ impl CoCo {
 
     fn add_objects(&mut self, objects: Vec<Object>) {
         for object in objects {
-            let object_arc = Arc::new(RwLock::new(object));
-            let id = object_arc.read().expect("Failed to lock object").id.clone();
-            self.objects.insert(id, object_arc.clone());
-            for class_name in object_arc.read().expect("Failed to lock object").classes.iter().flatten() {
+            for class_name in object.classes.iter().flatten() {
                 let class = self.classes.get(class_name).expect("Class not found for object");
-                self.kb.create_object(class, &object_arc.read().expect("Failed to lock object")).expect("Failed to create object in knowledge base");
+                self.kb.create_object(&class, &object).expect("Failed to create object in knowledge base");
             }
+            self.objects.insert(object.id.clone(), object);
         }
     }
 
-    pub fn get_object(&self, id: &str) -> Option<Arc<RwLock<Object>>> {
-        self.objects.get(id).cloned()
+    pub fn get_object(&self, id: &str) -> Option<&Object> {
+        self.objects.get(id)
     }
 
     pub fn get_rule(&self, name: &str) -> Option<&Rule> {
@@ -75,7 +72,7 @@ impl CoCo {
 
     fn add_rules(&mut self, db_rules: Vec<Rule>) {
         for rule in db_rules {
-            self.rules.insert(rule.name.to_string(), rule);
+            self.rules.insert(rule.name.clone(), rule);
         }
     }
 

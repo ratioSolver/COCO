@@ -34,7 +34,8 @@ async fn main() {
 }
 
 async fn get_classes(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    axum::Json(state.coco.get_classes().await)
+    let classes: Vec<_> = state.coco.get_classes().into_iter().cloned().collect();
+    axum::Json(classes)
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {

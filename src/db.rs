@@ -6,7 +6,7 @@ use std::{
     error::Error,
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum Property {
     #[serde(rename = "bool")]
@@ -43,7 +43,7 @@ pub enum Property {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum StaticValue {
     Bool(bool),
@@ -51,7 +51,7 @@ pub enum StaticValue {
     Float(f64),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum DynamicValue {
     Bool(bool, DateTime<Utc>),
@@ -59,7 +59,7 @@ pub enum DynamicValue {
     Float(f64, DateTime<Utc>),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Class {
     pub name: String,
     pub parents: Option<HashSet<String>>,
@@ -67,7 +67,7 @@ pub struct Class {
     pub dynamic_properties: Option<HashMap<String, Property>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Object {
     pub id: String,
     pub classes: Option<HashSet<String>>,
@@ -75,7 +75,7 @@ pub struct Object {
     pub values: Option<HashMap<String, DynamicValue>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Rule {
     pub name: String,
     pub content: String,

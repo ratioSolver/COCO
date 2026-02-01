@@ -30,8 +30,8 @@ impl CoCo {
         coco
     }
 
-    pub async fn get_classes(&self) -> Vec<Class> {
-        self.db.get_classes().await.unwrap()
+    pub fn get_classes(&self) -> Vec<&Class> {
+        self.classes.values().collect()
     }
 
     pub fn get_class(&self, name: &str) -> Option<&Class> {

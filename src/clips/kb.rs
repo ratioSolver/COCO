@@ -32,49 +32,49 @@ struct Fact {
 #[derive(Debug)]
 #[allow(dead_code)]
 enum BuildError {
-    NoError,
-    CouldNotBuildError,
-    ConstructNotFoundError,
-    ParsingError,
+    None,
+    CouldNotBuild,
+    ConstructNotFound,
+    Parsing,
 }
 
 #[repr(C)]
 #[derive(Debug)]
 #[allow(dead_code)]
 enum FactBuilderError {
-    NoError,
-    NullPointerError,
-    DeftemplateNotFoundError,
-    ImpliedDeftemplateError,
-    CouldNotAssertError,
-    RuleNetworkError,
+    None,
+    NullPointer,
+    DeftemplateNotFound,
+    ImpliedDeftemplate,
+    CouldNotAssert,
+    RuleNetwork,
 }
 
 #[repr(C)]
 #[derive(Debug)]
 #[allow(dead_code)]
 enum FactModifierError {
-    NoError,
-    NullPointerError,
-    RetractedError,
-    ImpliedDeftemplateError,
-    CouldNotModifyError,
-    RuleNetworkError,
+    None,
+    NullPointer,
+    Retracted,
+    ImpliedDeftemplate,
+    CouldNotModify,
+    RuleNetwork,
 }
 
 #[repr(C)]
 #[derive(Debug)]
 #[allow(dead_code)]
 enum PutSlotError {
-    NoError,
-    NullPointerError,
-    InvalidTargetError,
-    SlotNotFoundError,
-    TypeError,
-    RangeError,
-    AllowedValuesError,
-    CardinalityError,
-    AllowedClassesError,
+    None,
+    NullPointer,
+    InvalidTarget,
+    SlotNotFound,
+    Type,
+    Range,
+    AllowedValues,
+    Cardinality,
+    AllowedClasses,
 }
 
 #[link(name = "clips")]
@@ -137,7 +137,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
         unsafe {
             let result = Build(self.env, std::ffi::CString::new(deftemplate)?.as_ptr());
             match result {
-                BuildError::NoError => Ok(()),
+                BuildError::None => Ok(()),
                 _ => Err(format!("Build error: {:?}", result).into()),
             }
         }
@@ -151,7 +151,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             }
 
             match FBPutSlotSymbol(fb, std::ffi::CString::new("id")?.as_ptr(), std::ffi::CString::new(object.id.clone())?.as_ptr()) {
-                PutSlotError::NoError => {}
+                PutSlotError::None => {}
                 err => {
                     FBDispose(fb);
                     return Err(format!("PutSlot error: {:?}", err).into());

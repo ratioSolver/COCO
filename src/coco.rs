@@ -95,7 +95,7 @@ impl CoCo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clips::clips::KnowledgeBase as CLIPS;
+    use crate::clips::kb::KnowledgeBase as CLIPS;
     use crate::mongo::db::Database as MongoDB;
     use std::collections::HashMap;
 

@@ -4,7 +4,7 @@ mod db;
 mod kb;
 mod mongo;
 
-pub use clips::clips::KnowledgeBase as CLIPSKnowledgeBase;
+pub use clips::kb::KnowledgeBase as CLIPSKnowledgeBase;
 pub use coco::CoCo;
 pub use db::*;
 pub use kb::*;

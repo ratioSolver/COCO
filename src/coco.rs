@@ -9,14 +9,13 @@ pub struct CoCo {
     db: Box<dyn Database + Send + Sync>,
     kb: Box<dyn KnowledgeBase>,
     classes: HashMap<String, Class>,
-    objects: Arc<RwLock<HashMap<String, Arc<RwLock<Object>>>>>,
+    objects: HashMap<String, Arc<RwLock<Object>>>,
     rules: HashMap<String, Rule>,
 }
 
 impl CoCo {
     pub async fn new(db: Box<dyn Database + Send + Sync>, kb: Box<dyn KnowledgeBase>) -> Self {
-        let objects = Arc::new(RwLock::new(HashMap::new()));
-        let mut coco = Self { db, kb, classes: HashMap::new(), objects: objects.clone(), rules: HashMap::new() };
+        let mut coco = Self { db, kb, classes: HashMap::new(), objects: HashMap::new(), rules: HashMap::new() };
 
         coco.add_classes(coco.db.get_classes().await.unwrap());
         coco.add_rules(coco.db.get_rules().await.unwrap());
@@ -52,7 +51,7 @@ impl CoCo {
         for object in objects {
             let object_arc = Arc::new(RwLock::new(object));
             let id = object_arc.read().expect("Failed to lock object").id.clone();
-            self.objects.write().expect("Failed to lock objects map").insert(id, object_arc.clone());
+            self.objects.insert(id, object_arc.clone());
             for class_name in object_arc.read().expect("Failed to lock object").classes.iter().flatten() {
                 let class = self.classes.get(class_name).expect("Class not found for object");
                 self.kb.create_object(class, &object_arc.read().expect("Failed to lock object")).expect("Failed to create object in knowledge base");
@@ -61,7 +60,7 @@ impl CoCo {
     }
 
     pub fn get_object(&self, id: &str) -> Option<Arc<RwLock<Object>>> {
-        self.objects.read().expect("Failed to lock objects map").get(id).cloned()
+        self.objects.get(id).cloned()
     }
 
     pub fn get_rule(&self, name: &str) -> Option<&Rule> {

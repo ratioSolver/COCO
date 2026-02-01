@@ -26,14 +26,14 @@ async fn main() {
 
     let app = Router::new();
     let app = app.route("/ws", get(ws_handler));
-    let app = app.route("/types", get(types_handler));
+    let app = app.route("/classes", get(get_classes));
     let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn types_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+async fn get_classes(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     axum::Json(state.coco.get_classes().await)
 }
 

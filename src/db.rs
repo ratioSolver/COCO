@@ -11,17 +11,15 @@ use std::{
 pub enum Property {
     #[serde(rename = "bool")]
     Bool {
-        name: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        required: Option<bool>,
+        nullable: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<bool>,
     },
     #[serde(rename = "int")]
     Int {
-        name: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        required: Option<bool>,
+        nullable: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<i64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -31,9 +29,8 @@ pub enum Property {
     },
     #[serde(rename = "float")]
     Float {
-        name: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        required: Option<bool>,
+        nullable: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<f64>,
         #[serde(skip_serializing_if = "Option::is_none")]

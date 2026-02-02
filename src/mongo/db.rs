@@ -1,5 +1,6 @@
-use crate::{Class, Database as DatabaseTrait, DynamicValue, Object, Rule, StaticValue};
+use crate::{Class, Database as DatabaseTrait, Object, Rule, Value};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
@@ -14,8 +15,8 @@ struct MongoObject {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub classes: Option<HashSet<String>>,
-    pub properties: Option<HashMap<String, StaticValue>>,
-    pub values: Option<HashMap<String, DynamicValue>>,
+    pub properties: Option<HashMap<String, Value>>,
+    pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }
 
 pub struct Database {

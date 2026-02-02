@@ -42,18 +42,10 @@ pub enum Property {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(untagged)]
-pub enum StaticValue {
+pub enum Value {
     Bool(bool),
     Int(i64),
     Float(f64),
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-pub enum DynamicValue {
-    Bool(bool, DateTime<Utc>),
-    Int(i64, DateTime<Utc>),
-    Float(f64, DateTime<Utc>),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -68,8 +60,8 @@ pub struct Class {
 pub struct Object {
     pub id: String,
     pub classes: Option<HashSet<String>>,
-    pub properties: Option<HashMap<String, StaticValue>>,
-    pub values: Option<HashMap<String, DynamicValue>>,
+    pub properties: Option<HashMap<String, Value>>,
+    pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

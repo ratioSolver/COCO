@@ -1,4 +1,6 @@
-use crate::{Class, KnowledgeBase as KnowledgeBaseTrait, Object, Property};
+use chrono::{DateTime, Utc};
+
+use crate::{Class, KnowledgeBase as KnowledgeBaseTrait, Object, Property, Value};
 use std::collections::HashMap;
 use std::error::Error;
 use std::ffi::{c_char, c_double, c_long, c_longlong, c_ushort};
@@ -279,6 +281,10 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             FBDispose(fb);
             Ok(())
         }
+    }
+
+    fn add_data(&mut self, class: &Class, object: &Object, values: Vec<(&str, &Value)>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+        Ok(())
     }
 }
 

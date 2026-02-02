@@ -1,4 +1,6 @@
-use crate::{Class, Database, DynamicValue, KnowledgeBase, Object, Property, Rule, StaticValue};
+use chrono::{DateTime, Utc};
+
+use crate::{Class, Database, KnowledgeBase, Object, Property, Rule, Value};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
@@ -51,7 +53,7 @@ impl CoCo {
         }
     }
 
-    pub async fn create_object(&mut self, id: &str, classes: Option<HashSet<String>>, properties: Option<HashMap<String, StaticValue>>, values: Option<HashMap<String, DynamicValue>>) {
+    pub async fn create_object(&mut self, id: &str, classes: Option<HashSet<String>>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) {
         let object = Object { id: id.to_string(), classes, properties, values };
         self.db.create_object(&object).await.expect("Failed to create object in database");
         self.add_objects(vec![object]);

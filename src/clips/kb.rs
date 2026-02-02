@@ -272,7 +272,12 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             if let Some(props) = class.static_properties.as_ref() {
                 for (prop_name, prop) in props {
                     if let Some(value) = object.properties.as_ref().and_then(|props| props.get(prop_name)) {
-                        if let Err(e) = set_property(fb, prop, prop_name, value) {
+                        if let Err(e) = set_property(fb, prop, prop_name, value, None) {
+                            FBDispose(fb);
+                            return Err(e);
+                        }
+                    } else {
+                        if let Err(e) = set_property(fb, prop, prop_name, &Value::Null, None) {
                             FBDispose(fb);
                             return Err(e);
                         }
@@ -282,8 +287,13 @@ impl KnowledgeBaseTrait for KnowledgeBase {
 
             if let Some(props) = class.dynamic_properties.as_ref() {
                 for (prop_name, prop) in props {
-                    if let Some(value) = object.values.as_ref().and_then(|vals| vals.get(prop_name)).map(|(v, _)| v) {
-                        if let Err(e) = set_property(fb, prop, prop_name, value) {
+                    if let Some((value, time)) = object.values.as_ref().and_then(|vals| vals.get(prop_name)) {
+                        if let Err(e) = set_property(fb, prop, prop_name, value, Some(time)) {
+                            FBDispose(fb);
+                            return Err(e);
+                        }
+                    } else {
+                        if let Err(e) = set_property(fb, prop, prop_name, &Value::Null, None) {
                             FBDispose(fb);
                             return Err(e);
                         }
@@ -305,7 +315,40 @@ impl KnowledgeBaseTrait for KnowledgeBase {
         }
     }
 
-    fn add_data(&mut self, class: &Class, object: &mut Object, values: Vec<(&str, &Value)>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+    fn set_properties(&mut self, class: &Class, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+        unsafe {
+            let fact = self.instances.get(&class.name).and_then(|objs| objs.get(&object.id)).ok_or("Object not found in knowledge base")?;
+            let fm = CreateFactModifier(self.env, *fact);
+            if fm.is_null() {
+                return Err("Failed to create FactModifier".into());
+            }
+
+            if let Some(props) = class.static_properties.as_ref() {
+                for (prop_name, value) in values.iter() {
+                    if let Some(prop) = props.get(prop_name) {
+                        if let Err(e) = update_property(fm, prop, prop_name, value, None) {
+                            FMDispose(fm);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+
+            let modified_fact = FMModify(fm);
+            if modified_fact.is_null() {
+                let error = FMError(fm);
+                FMDispose(fm);
+                return Err(format!("Modification failed: {:?}", error).into());
+            }
+
+            self.instances.get_mut(&class.name).and_then(|objs| objs.get_mut(&object.id)).map(|f| *f = modified_fact);
+
+            FMDispose(fm);
+            Ok(())
+        }
+    }
+
+    fn add_data(&mut self, class: &Class, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
         unsafe {
             let fact = self.instances.get(&class.name).and_then(|objs| objs.get(&object.id)).ok_or("Object not found in knowledge base")?;
             let fm = CreateFactModifier(self.env, *fact);
@@ -314,9 +357,9 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             }
 
             if let Some(props) = class.dynamic_properties.as_ref() {
-                for (prop_name, prop) in props {
-                    if let Some((value, time)) = object.values.as_ref().and_then(|vals| vals.get(prop_name)) {
-                        if let Err(e) = update_property(fm, prop, prop_name, value, time) {
+                for (prop_name, value) in values.iter() {
+                    if let Some(prop) = props.get(prop_name) {
+                        if let Err(e) = update_property(fm, prop, prop_name, value, Some(date_time)) {
                             FMDispose(fm);
                             return Err(e);
                         }
@@ -324,6 +367,16 @@ impl KnowledgeBaseTrait for KnowledgeBase {
                 }
             }
 
+            let modified_fact = FMModify(fm);
+            if modified_fact.is_null() {
+                let error = FMError(fm);
+                FMDispose(fm);
+                return Err(format!("Modification failed: {:?}", error).into());
+            }
+
+            self.instances.get_mut(&class.name).and_then(|objs| objs.get_mut(&object.id)).map(|f| *f = modified_fact);
+
+            FMDispose(fm);
             Ok(())
         }
     }
@@ -390,7 +443,7 @@ fn prop_slot(name: &str, property: &Property) -> String {
     }
 }
 
-fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, value: &Value) -> Result<(), Box<dyn Error>> {
+fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, value: &Value, _time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
     unsafe {
         match property {
             Property::Bool { nullable, .. } => match value {
@@ -461,7 +514,7 @@ fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, 
     }
 }
 
-fn update_property(fm: *mut FactModifier, property: &Property, property_name: &str, value: &Value, _date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+fn update_property(fm: *mut FactModifier, property: &Property, property_name: &str, value: &Value, _time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
     unsafe {
         match property {
             Property::Bool { nullable, .. } => match value {
@@ -534,8 +587,6 @@ fn update_property(fm: *mut FactModifier, property: &Property, property_name: &s
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
     use super::*;
 
     #[test]

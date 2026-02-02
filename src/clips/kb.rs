@@ -187,7 +187,6 @@ unsafe extern "C" {
     unsafe fn FMPutSlotSymbol(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn FMPutSlotString(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn AddUDF(env: *mut Environment, name: *const c_char, return_types: *const c_char, min_args: c_ushort, max_args: c_ushort, arg_types: *const c_char, function_ptr: UserDefinedFunction, r_name: *const c_char, context: *mut c_void) -> AddUDFError;
-    unsafe fn UDFNthArgument(udfc: *mut UDFContext, argument_position: std::ffi::c_uint, expected_type: std::ffi::c_uint, return_value: *mut UDFValue);
     unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
 

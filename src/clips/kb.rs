@@ -534,6 +534,8 @@ fn update_property(fm: *mut FactModifier, property: &Property, property_name: &s
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::*;
 
     #[test]
@@ -575,11 +577,11 @@ mod tests {
     #[test]
     fn test_create_class_with_properties() {
         let kb = KnowledgeBase::new();
-        let mut static_props = HashMap::new();
+        let mut static_props = BTreeMap::new();
         static_props.insert("is_valid".to_string(), Property::Bool { nullable: Some(false), default: Some(true) });
         static_props.insert("score".to_string(), Property::Int { nullable: Some(true), default: Some(10), min: Some(0), max: Some(100) });
 
-        let mut dynamic_props = HashMap::new();
+        let mut dynamic_props = BTreeMap::new();
         dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(36.6), min: Some(30.0), max: Some(45.0) });
 
         let class = Class {

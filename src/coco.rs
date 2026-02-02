@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{Class, Database, KnowledgeBase, Object, Property, Rule, Value};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     error::Error,
     sync::Mutex,
 };
@@ -40,7 +40,7 @@ impl CoCo {
         self.classes.get(name)
     }
 
-    pub async fn create_class(&mut self, name: &str, parents: Option<HashSet<String>>, static_properties: Option<HashMap<String, Property>>, dynamic_properties: Option<HashMap<String, Property>>) {
+    pub async fn create_class(&mut self, name: &str, parents: Option<HashSet<String>>, static_properties: Option<BTreeMap<String, Property>>, dynamic_properties: Option<BTreeMap<String, Property>>) {
         let class = Class { name: name.to_string(), parents, static_properties, dynamic_properties };
         self.db.create_class(&class).await.expect("Failed to create class in database");
         self.add_classes(vec![class]);
@@ -99,7 +99,6 @@ mod tests {
     use super::*;
     use crate::clips::kb::KnowledgeBase as CLIPS;
     use crate::mongo::db::Database as MongoDB;
-    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_coco_initialization() {
@@ -125,10 +124,10 @@ mod tests {
     async fn test_create_class_with_properties() {
         let mut coco = CoCo::new(Box::new(MongoDB::new("coco_test_create_class_with_properties", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPS::new())).await;
 
-        let mut static_props = HashMap::new();
+        let mut static_props = BTreeMap::new();
         static_props.insert("is_active".to_string(), Property::Bool { nullable: Some(false), default: Some(false) });
 
-        let mut dynamic_props = HashMap::new();
+        let mut dynamic_props = BTreeMap::new();
         dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: None, min: Some(-50.0), max: Some(150.0) });
 
         coco.create_class("Sensor", None, Some(static_props), Some(dynamic_props)).await;

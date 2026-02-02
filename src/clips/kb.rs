@@ -1,8 +1,9 @@
 use crate::{Class, KnowledgeBase as KnowledgeBaseTrait, Object, Property};
 use std::collections::HashMap;
 use std::error::Error;
-use std::ffi::{c_char, c_double, c_long, c_longlong};
+use std::ffi::{c_char, c_double, c_long, c_longlong, c_ushort};
 use std::marker::{PhantomData, PhantomPinned};
+use std::os::raw::c_void;
 
 #[repr(C)]
 struct Environment {
@@ -27,6 +28,83 @@ struct Fact {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
+
+#[repr(C)]
+struct TypeHeader {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct CLIPSLexeme {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct CLIPSFloat {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct CLIPSInteger {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct CLIPSVoid {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct Multifield {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct Instance {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct CLIPSExternalAddress {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
+struct UDFContext {
+    context: *mut c_void,
+}
+
+#[repr(C)]
+union UDFValueUnion {
+    value: *mut c_void,
+    header: *mut TypeHeader,
+    lexeme_value: *mut CLIPSLexeme,
+    float_value: *mut CLIPSFloat,
+    integer_value: *mut CLIPSInteger,
+    void_value: *mut CLIPSVoid,
+    multifield_value: *mut Multifield,
+    fact_value: *mut Fact,
+    instance_value: *mut Instance,
+    external_address_value: *mut CLIPSExternalAddress,
+}
+
+#[repr(C)]
+struct UDFValue {
+    value: UDFValueUnion,
+    begin: usize,
+    range: usize,
+}
+
+#[allow(dead_code)]
+type UserDefinedFunction = unsafe extern "C" fn(env: *mut Environment, udfc: *mut UDFContext, out: *mut UDFValue);
 
 #[repr(C)]
 #[derive(Debug)]
@@ -77,6 +155,17 @@ enum PutSlotError {
     AllowedClasses,
 }
 
+#[repr(C)]
+#[derive(Debug)]
+#[allow(dead_code)]
+enum AddUDFError {
+    None,
+    MinExceedsMax,
+    FunctionNameInUse,
+    InvalidArgumentType,
+    InvalidReturnType,
+}
+
 #[link(name = "clips")]
 #[allow(dead_code)]
 unsafe extern "C" {
@@ -99,6 +188,7 @@ unsafe extern "C" {
     unsafe fn FMPutSlotFloat(fm: *mut FactModifier, slot_name: *const c_char, value: c_double) -> PutSlotError;
     unsafe fn FMPutSlotSymbol(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn FMPutSlotString(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
+    unsafe fn AddUDF(env: *mut Environment, name: *const c_char, return_types: *const c_char, min_args: c_ushort, max_args: c_ushort, arg_types: *const c_char, function_ptr: UserDefinedFunction, r_name: *const c_char, context: *mut c_void) -> AddUDFError;
     unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
 
@@ -119,6 +209,16 @@ impl KnowledgeBase {
         unsafe {
             let env = CreateEnvironment();
             KnowledgeBase { env, instances: HashMap::new() }
+        }
+    }
+
+    fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
+        unsafe {
+            let result = AddUDF(self.env, std::ffi::CString::new(name)?.as_ptr(), std::ffi::CString::new(return_types)?.as_ptr(), min_args, max_args, std::ffi::CString::new(arg_types)?.as_ptr(), function_ptr, std::ffi::CString::new(r_name)?.as_ptr(), self.env as *mut c_void);
+            match result {
+                AddUDFError::None => Ok(()),
+                _ => Err(format!("AddUDF error: {:?}", result).into()),
+            }
         }
     }
 }
@@ -304,5 +404,18 @@ mod tests {
 
         let result = kb.create_class(&class);
         assert!(result.is_ok(), "Failed to create class with properties: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_add_udf() {
+        let kb = KnowledgeBase::new();
+
+        unsafe extern "C" fn test_udf(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
+            // Function logic placeholder
+        }
+
+        let result = kb.add_udf("test_function", "v", 0, 0, "", test_udf, "test_udf");
+
+        assert!(result.is_ok(), "Failed to add UDF: {:?}", result.err());
     }
 }

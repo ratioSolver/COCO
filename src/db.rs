@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     error::Error,
 };
 
@@ -53,8 +53,8 @@ pub enum Value {
 pub struct Class {
     pub name: String,
     pub parents: Option<HashSet<String>>,
-    pub static_properties: Option<BTreeMap<String, Property>>,
-    pub dynamic_properties: Option<BTreeMap<String, Property>>,
+    pub static_properties: Option<HashMap<String, Property>>,
+    pub dynamic_properties: Option<HashMap<String, Property>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

@@ -221,148 +221,6 @@ impl KnowledgeBase {
             }
         }
     }
-
-    fn set_property(&self, fb: *mut FactBuilder, property: &Property, property_name: &str, value: &Value) -> Result<(), Box<dyn Error>> {
-        unsafe {
-            match property {
-                Property::Bool { nullable, .. } => match value {
-                    Value::Null => {
-                        if let Some(true) = nullable {
-                            match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => Ok(()),
-                                err => Err(format!("PutSlot error: {:?}", err).into()),
-                            }
-                        } else {
-                            Err("Cannot assign null to non-nullable property".into())
-                        }
-                    }
-                    Value::Bool(b) => {
-                        let symbol = if *b { "TRUE" } else { "FALSE" };
-                        match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new(symbol)?.as_ptr()) {
-                            PutSlotError::None => Ok(()),
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    }
-                    _ => Err("Property type and value type mismatch".into()),
-                },
-                Property::Int { nullable, min, max, .. } => match value {
-                    Value::Null => {
-                        if let Some(true) = nullable {
-                            match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => Ok(()),
-                                err => Err(format!("PutSlot error: {:?}", err).into()),
-                            }
-                        } else {
-                            Err("Cannot assign null to non-nullable property".into())
-                        }
-                    }
-                    Value::Int(i) => {
-                        if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
-                            return Err("Value out of range".into());
-                        }
-                        match FBPutSlotInteger(fb, CString::new(property_name)?.as_ptr(), *i) {
-                            PutSlotError::None => Ok(()),
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    }
-                    _ => Err("Property type and value type mismatch".into()),
-                },
-                Property::Float { nullable, min, max, .. } => match value {
-                    Value::Null => {
-                        if let Some(true) = nullable {
-                            match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => Ok(()),
-                                err => Err(format!("PutSlot error: {:?}", err).into()),
-                            }
-                        } else {
-                            Err("Cannot assign null to non-nullable property".into())
-                        }
-                    }
-                    Value::Float(f) => {
-                        if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
-                            return Err("Value out of range".into());
-                        }
-                        match FBPutSlotFloat(fb, CString::new(property_name)?.as_ptr(), *f) {
-                            PutSlotError::None => Ok(()),
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    }
-                    _ => Err("Property type and value type mismatch".into()),
-                },
-            }
-        }
-    }
-
-    fn update_property(&self, fm: *mut FactModifier, property: &Property, property_name: &str, value: &Value, _date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
-        unsafe {
-            match property {
-                Property::Bool { nullable, .. } => match value {
-                    Value::Null => {
-                        if let Some(true) = nullable {
-                            match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => Ok(()),
-                                err => Err(format!("PutSlot error: {:?}", err).into()),
-                            }
-                        } else {
-                            Err("Cannot assign null to non-nullable property".into())
-                        }
-                    }
-                    Value::Bool(b) => {
-                        let symbol = if *b { "TRUE" } else { "FALSE" };
-                        match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new(symbol)?.as_ptr()) {
-                            PutSlotError::None => Ok(()),
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    }
-                    _ => Err("Property type and value type mismatch".into()),
-                },
-                Property::Int { nullable, min, max, .. } => match value {
-                    Value::Null => {
-                        if let Some(true) = nullable {
-                            match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => Ok(()),
-                                err => Err(format!("PutSlot error: {:?}", err).into()),
-                            }
-                        } else {
-                            Err("Cannot assign null to non-nullable property".into())
-                        }
-                    }
-                    Value::Int(i) => {
-                        if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
-                            return Err("Value out of range".into());
-                        }
-                        match FMPutSlotInteger(fm, CString::new(property_name)?.as_ptr(), *i) {
-                            PutSlotError::None => Ok(()),
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    }
-                    _ => Err("Property type and value type mismatch".into()),
-                },
-                Property::Float { nullable, min, max, .. } => match value {
-                    Value::Null => {
-                        if let Some(true) = nullable {
-                            match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => Ok(()),
-                                err => Err(format!("PutSlot error: {:?}", err).into()),
-                            }
-                        } else {
-                            Err("Cannot assign null to non-nullable property".into())
-                        }
-                    }
-                    Value::Float(f) => {
-                        if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
-                            return Err("Value out of range".into());
-                        }
-                        match FMPutSlotFloat(fm, CString::new(property_name)?.as_ptr(), *f) {
-                            PutSlotError::None => Ok(()),
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    }
-                    _ => Err("Property type and value type mismatch".into()),
-                },
-            }
-        }
-    }
 }
 
 impl Drop for KnowledgeBase {
@@ -414,7 +272,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             if let Some(props) = class.static_properties.as_ref() {
                 for (prop_name, prop) in props {
                     if let Some(value) = object.properties.as_ref().and_then(|props| props.get(prop_name)) {
-                        if let Err(e) = self.set_property(fb, prop, prop_name, value) {
+                        if let Err(e) = set_property(fb, prop, prop_name, value) {
                             FBDispose(fb);
                             return Err(e);
                         }
@@ -425,7 +283,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             if let Some(props) = class.dynamic_properties.as_ref() {
                 for (prop_name, prop) in props {
                     if let Some(value) = object.values.as_ref().and_then(|vals| vals.get(prop_name)).map(|(v, _)| v) {
-                        if let Err(e) = self.set_property(fb, prop, prop_name, value) {
+                        if let Err(e) = set_property(fb, prop, prop_name, value) {
                             FBDispose(fb);
                             return Err(e);
                         }
@@ -458,7 +316,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             if let Some(props) = class.dynamic_properties.as_ref() {
                 for (prop_name, prop) in props {
                     if let Some((value, time)) = object.values.as_ref().and_then(|vals| vals.get(prop_name)) {
-                        if let Err(e) = self.update_property(fm, prop, prop_name, value, time) {
+                        if let Err(e) = update_property(fm, prop, prop_name, value, time) {
                             FMDispose(fm);
                             return Err(e);
                         }
@@ -528,6 +386,148 @@ fn prop_slot(name: &str, property: &Property) -> String {
             }
             def.push(')');
             def
+        }
+    }
+}
+
+fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, value: &Value) -> Result<(), Box<dyn Error>> {
+    unsafe {
+        match property {
+            Property::Bool { nullable, .. } => match value {
+                Value::Null => {
+                    if let Some(true) = nullable {
+                        match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                            PutSlotError::None => Ok(()),
+                            err => Err(format!("PutSlot error: {:?}", err).into()),
+                        }
+                    } else {
+                        Err("Cannot assign null to non-nullable property".into())
+                    }
+                }
+                Value::Bool(b) => {
+                    let symbol = if *b { "TRUE" } else { "FALSE" };
+                    match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new(symbol)?.as_ptr()) {
+                        PutSlotError::None => Ok(()),
+                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                    }
+                }
+                _ => Err("Property type and value type mismatch".into()),
+            },
+            Property::Int { nullable, min, max, .. } => match value {
+                Value::Null => {
+                    if let Some(true) = nullable {
+                        match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                            PutSlotError::None => Ok(()),
+                            err => Err(format!("PutSlot error: {:?}", err).into()),
+                        }
+                    } else {
+                        Err("Cannot assign null to non-nullable property".into())
+                    }
+                }
+                Value::Int(i) => {
+                    if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
+                        return Err("Value out of range".into());
+                    }
+                    match FBPutSlotInteger(fb, CString::new(property_name)?.as_ptr(), *i) {
+                        PutSlotError::None => Ok(()),
+                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                    }
+                }
+                _ => Err("Property type and value type mismatch".into()),
+            },
+            Property::Float { nullable, min, max, .. } => match value {
+                Value::Null => {
+                    if let Some(true) = nullable {
+                        match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                            PutSlotError::None => Ok(()),
+                            err => Err(format!("PutSlot error: {:?}", err).into()),
+                        }
+                    } else {
+                        Err("Cannot assign null to non-nullable property".into())
+                    }
+                }
+                Value::Float(f) => {
+                    if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
+                        return Err("Value out of range".into());
+                    }
+                    match FBPutSlotFloat(fb, CString::new(property_name)?.as_ptr(), *f) {
+                        PutSlotError::None => Ok(()),
+                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                    }
+                }
+                _ => Err("Property type and value type mismatch".into()),
+            },
+        }
+    }
+}
+
+fn update_property(fm: *mut FactModifier, property: &Property, property_name: &str, value: &Value, _date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+    unsafe {
+        match property {
+            Property::Bool { nullable, .. } => match value {
+                Value::Null => {
+                    if let Some(true) = nullable {
+                        match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                            PutSlotError::None => Ok(()),
+                            err => Err(format!("PutSlot error: {:?}", err).into()),
+                        }
+                    } else {
+                        Err("Cannot assign null to non-nullable property".into())
+                    }
+                }
+                Value::Bool(b) => {
+                    let symbol = if *b { "TRUE" } else { "FALSE" };
+                    match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new(symbol)?.as_ptr()) {
+                        PutSlotError::None => Ok(()),
+                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                    }
+                }
+                _ => Err("Property type and value type mismatch".into()),
+            },
+            Property::Int { nullable, min, max, .. } => match value {
+                Value::Null => {
+                    if let Some(true) = nullable {
+                        match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                            PutSlotError::None => Ok(()),
+                            err => Err(format!("PutSlot error: {:?}", err).into()),
+                        }
+                    } else {
+                        Err("Cannot assign null to non-nullable property".into())
+                    }
+                }
+                Value::Int(i) => {
+                    if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
+                        return Err("Value out of range".into());
+                    }
+                    match FMPutSlotInteger(fm, CString::new(property_name)?.as_ptr(), *i) {
+                        PutSlotError::None => Ok(()),
+                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                    }
+                }
+                _ => Err("Property type and value type mismatch".into()),
+            },
+            Property::Float { nullable, min, max, .. } => match value {
+                Value::Null => {
+                    if let Some(true) = nullable {
+                        match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                            PutSlotError::None => Ok(()),
+                            err => Err(format!("PutSlot error: {:?}", err).into()),
+                        }
+                    } else {
+                        Err("Cannot assign null to non-nullable property".into())
+                    }
+                }
+                Value::Float(f) => {
+                    if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
+                        return Err("Value out of range".into());
+                    }
+                    match FMPutSlotFloat(fm, CString::new(property_name)?.as_ptr(), *f) {
+                        PutSlotError::None => Ok(()),
+                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                    }
+                }
+                _ => Err("Property type and value type mismatch".into()),
+            },
         }
     }
 }

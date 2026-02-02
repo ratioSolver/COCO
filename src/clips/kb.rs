@@ -6,7 +6,7 @@ use std::marker::{PhantomData, PhantomPinned};
 use std::os::raw::c_void;
 
 #[repr(C)]
-struct Environment {
+pub struct Environment {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
@@ -76,12 +76,12 @@ struct CLIPSExternalAddress {
 }
 
 #[repr(C)]
-struct UDFContext {
+pub struct UDFContext {
     context: *mut c_void,
 }
 
 #[repr(C)]
-union UDFValueUnion {
+pub union UDFValueUnion {
     value: *mut c_void,
     header: *mut TypeHeader,
     lexeme_value: *mut CLIPSLexeme,
@@ -95,7 +95,7 @@ union UDFValueUnion {
 }
 
 #[repr(C)]
-struct UDFValue {
+pub struct UDFValue {
     value: UDFValueUnion,
     begin: usize,
     range: usize,
@@ -210,7 +210,7 @@ impl KnowledgeBase {
         }
     }
 
-    fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
+    pub fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
         unsafe {
             let result = AddUDF(self.env, std::ffi::CString::new(name)?.as_ptr(), std::ffi::CString::new(return_types)?.as_ptr(), min_args, max_args, std::ffi::CString::new(arg_types)?.as_ptr(), function_ptr, std::ffi::CString::new(r_name)?.as_ptr(), self as *const _ as *mut c_void);
             match result {

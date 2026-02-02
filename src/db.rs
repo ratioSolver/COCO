@@ -43,6 +43,7 @@ pub enum Property {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Value {
+    Null,
     Bool(bool),
     Int(i64),
     Float(f64),

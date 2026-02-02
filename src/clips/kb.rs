@@ -206,10 +206,7 @@ impl Default for KnowledgeBase {
 
 impl KnowledgeBase {
     pub fn new() -> Self {
-        unsafe {
-            let env = CreateEnvironment();
-            KnowledgeBase { env, instances: HashMap::new() }
-        }
+        unsafe { KnowledgeBase { env: CreateEnvironment(), instances: HashMap::new() } }
     }
 
     pub fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
@@ -242,6 +239,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
         if let Some(dynamic_props) = &class.dynamic_properties {
             for (name, prop) in dynamic_props {
                 slots.push_str(&format!(" {}", prop_slot(name, prop)));
+                slots.push_str(&format!(" (slot {}_time (type INTEGER))", name));
             }
         }
         let deftemplate = format!("(deftemplate {} {} (slot id (type SYMBOL)))", class.name, slots);
@@ -443,24 +441,42 @@ fn prop_slot(name: &str, property: &Property) -> String {
     }
 }
 
-fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, value: &Value, _time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
+fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
     unsafe {
         match property {
             Property::Bool { nullable, .. } => match value {
                 Value::Null => {
                     if let Some(true) = nullable {
                         match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => Ok(()),
+                            PutSlotError::None => {
+                                if let Some(t) = time {
+                                    match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                        PutSlotError::None => Ok(()),
+                                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                                    }
+                                } else {
+                                    Ok(())
+                                }
+                            }
                             err => Err(format!("PutSlot error: {:?}", err).into()),
                         }
                     } else {
-                        Err("Cannot assign null to non-nullable property".into())
+                        return Err("Cannot assign null to non-nullable property".into());
                     }
                 }
                 Value::Bool(b) => {
                     let symbol = if *b { "TRUE" } else { "FALSE" };
                     match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new(symbol)?.as_ptr()) {
-                        PutSlotError::None => Ok(()),
+                        PutSlotError::None => {
+                            if let Some(t) = time {
+                                match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                    PutSlotError::None => Ok(()),
+                                    err => Err(format!("PutSlot error: {:?}", err).into()),
+                                }
+                            } else {
+                                Ok(())
+                            }
+                        }
                         err => Err(format!("PutSlot error: {:?}", err).into()),
                     }
                 }
@@ -470,7 +486,16 @@ fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, 
                 Value::Null => {
                     if let Some(true) = nullable {
                         match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => Ok(()),
+                            PutSlotError::None => {
+                                if let Some(t) = time {
+                                    match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                        PutSlotError::None => Ok(()),
+                                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                                    }
+                                } else {
+                                    Ok(())
+                                }
+                            }
                             err => Err(format!("PutSlot error: {:?}", err).into()),
                         }
                     } else {
@@ -482,7 +507,16 @@ fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, 
                         return Err("Value out of range".into());
                     }
                     match FBPutSlotInteger(fb, CString::new(property_name)?.as_ptr(), *i) {
-                        PutSlotError::None => Ok(()),
+                        PutSlotError::None => {
+                            if let Some(t) = time {
+                                match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                    PutSlotError::None => Ok(()),
+                                    err => Err(format!("PutSlot error: {:?}", err).into()),
+                                }
+                            } else {
+                                Ok(())
+                            }
+                        }
                         err => Err(format!("PutSlot error: {:?}", err).into()),
                     }
                 }
@@ -492,7 +526,16 @@ fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, 
                 Value::Null => {
                     if let Some(true) = nullable {
                         match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => Ok(()),
+                            PutSlotError::None => {
+                                if let Some(t) = time {
+                                    match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                        PutSlotError::None => Ok(()),
+                                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                                    }
+                                } else {
+                                    Ok(())
+                                }
+                            }
                             err => Err(format!("PutSlot error: {:?}", err).into()),
                         }
                     } else {
@@ -504,7 +547,16 @@ fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, 
                         return Err("Value out of range".into());
                     }
                     match FBPutSlotFloat(fb, CString::new(property_name)?.as_ptr(), *f) {
-                        PutSlotError::None => Ok(()),
+                        PutSlotError::None => {
+                            if let Some(t) = time {
+                                match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                    PutSlotError::None => Ok(()),
+                                    err => Err(format!("PutSlot error: {:?}", err).into()),
+                                }
+                            } else {
+                                Ok(())
+                            }
+                        }
                         err => Err(format!("PutSlot error: {:?}", err).into()),
                     }
                 }
@@ -514,14 +566,23 @@ fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, 
     }
 }
 
-fn update_property(fm: *mut FactModifier, property: &Property, property_name: &str, value: &Value, _time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
+fn update_property(fm: *mut FactModifier, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
     unsafe {
         match property {
             Property::Bool { nullable, .. } => match value {
                 Value::Null => {
                     if let Some(true) = nullable {
                         match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => Ok(()),
+                            PutSlotError::None => {
+                                if let Some(t) = time {
+                                    match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                        PutSlotError::None => Ok(()),
+                                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                                    }
+                                } else {
+                                    Ok(())
+                                }
+                            }
                             err => Err(format!("PutSlot error: {:?}", err).into()),
                         }
                     } else {
@@ -531,7 +592,16 @@ fn update_property(fm: *mut FactModifier, property: &Property, property_name: &s
                 Value::Bool(b) => {
                     let symbol = if *b { "TRUE" } else { "FALSE" };
                     match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new(symbol)?.as_ptr()) {
-                        PutSlotError::None => Ok(()),
+                        PutSlotError::None => {
+                            if let Some(t) = time {
+                                match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                    PutSlotError::None => Ok(()),
+                                    err => Err(format!("PutSlot error: {:?}", err).into()),
+                                }
+                            } else {
+                                Ok(())
+                            }
+                        }
                         err => Err(format!("PutSlot error: {:?}", err).into()),
                     }
                 }
@@ -541,7 +611,16 @@ fn update_property(fm: *mut FactModifier, property: &Property, property_name: &s
                 Value::Null => {
                     if let Some(true) = nullable {
                         match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => Ok(()),
+                            PutSlotError::None => {
+                                if let Some(t) = time {
+                                    match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                        PutSlotError::None => Ok(()),
+                                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                                    }
+                                } else {
+                                    Ok(())
+                                }
+                            }
                             err => Err(format!("PutSlot error: {:?}", err).into()),
                         }
                     } else {
@@ -553,7 +632,16 @@ fn update_property(fm: *mut FactModifier, property: &Property, property_name: &s
                         return Err("Value out of range".into());
                     }
                     match FMPutSlotInteger(fm, CString::new(property_name)?.as_ptr(), *i) {
-                        PutSlotError::None => Ok(()),
+                        PutSlotError::None => {
+                            if let Some(t) = time {
+                                match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                    PutSlotError::None => Ok(()),
+                                    err => Err(format!("PutSlot error: {:?}", err).into()),
+                                }
+                            } else {
+                                Ok(())
+                            }
+                        }
                         err => Err(format!("PutSlot error: {:?}", err).into()),
                     }
                 }
@@ -563,7 +651,16 @@ fn update_property(fm: *mut FactModifier, property: &Property, property_name: &s
                 Value::Null => {
                     if let Some(true) = nullable {
                         match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => Ok(()),
+                            PutSlotError::None => {
+                                if let Some(t) = time {
+                                    match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                        PutSlotError::None => Ok(()),
+                                        err => Err(format!("PutSlot error: {:?}", err).into()),
+                                    }
+                                } else {
+                                    Ok(())
+                                }
+                            }
                             err => Err(format!("PutSlot error: {:?}", err).into()),
                         }
                     } else {
@@ -575,7 +672,16 @@ fn update_property(fm: *mut FactModifier, property: &Property, property_name: &s
                         return Err("Value out of range".into());
                     }
                     match FMPutSlotFloat(fm, CString::new(property_name)?.as_ptr(), *f) {
-                        PutSlotError::None => Ok(()),
+                        PutSlotError::None => {
+                            if let Some(t) = time {
+                                match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
+                                    PutSlotError::None => Ok(()),
+                                    err => Err(format!("PutSlot error: {:?}", err).into()),
+                                }
+                            } else {
+                                Ok(())
+                            }
+                        }
                         err => Err(format!("PutSlot error: {:?}", err).into()),
                     }
                 }

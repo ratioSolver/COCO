@@ -30,33 +30,31 @@ struct Fact {
 }
 
 #[repr(C)]
-struct TypeHeader {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+pub struct TypeHeader {
+    pub type_code: c_ushort,
 }
 
 #[repr(C)]
-struct CLIPSLexeme {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+pub struct CLIPSLexeme {
+    pub header: TypeHeader,
+    pub _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
 #[repr(C)]
-struct CLIPSFloat {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+pub struct CLIPSFloat {
+    pub header: TypeHeader,
+    pub contents: c_double,
 }
 
 #[repr(C)]
-struct CLIPSInteger {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+pub struct CLIPSInteger {
+    pub header: TypeHeader,
+    pub contents: c_longlong,
 }
 
 #[repr(C)]
-struct CLIPSVoid {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+pub struct CLIPSVoid {
+    pub header: TypeHeader,
 }
 
 #[repr(C)]
@@ -189,6 +187,7 @@ unsafe extern "C" {
     unsafe fn FMPutSlotSymbol(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn FMPutSlotString(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn AddUDF(env: *mut Environment, name: *const c_char, return_types: *const c_char, min_args: c_ushort, max_args: c_ushort, arg_types: *const c_char, function_ptr: UserDefinedFunction, r_name: *const c_char, context: *mut c_void) -> AddUDFError;
+    unsafe fn UDFNthArgument(udfc: *mut UDFContext, argument_position: std::ffi::c_uint, expected_type: std::ffi::c_uint, return_value: *mut UDFValue);
     unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
 
@@ -214,7 +213,7 @@ impl KnowledgeBase {
 
     fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
         unsafe {
-            let result = AddUDF(self.env, std::ffi::CString::new(name)?.as_ptr(), std::ffi::CString::new(return_types)?.as_ptr(), min_args, max_args, std::ffi::CString::new(arg_types)?.as_ptr(), function_ptr, std::ffi::CString::new(r_name)?.as_ptr(), self.env as *mut c_void);
+            let result = AddUDF(self.env, std::ffi::CString::new(name)?.as_ptr(), std::ffi::CString::new(return_types)?.as_ptr(), min_args, max_args, std::ffi::CString::new(arg_types)?.as_ptr(), function_ptr, std::ffi::CString::new(r_name)?.as_ptr(), self as *const _ as *mut c_void);
             match result {
                 AddUDFError::None => Ok(()),
                 _ => Err(format!("AddUDF error: {:?}", result).into()),

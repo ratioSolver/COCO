@@ -7,16 +7,16 @@ use std::{
     sync::Mutex,
 };
 
-pub struct CoCo {
-    db: Box<dyn Database + Send + Sync>,
-    kb: Mutex<Box<dyn KnowledgeBase + Send>>,
+pub struct CoCo<DB: Database + Send + Sync, KB: KnowledgeBase + Send> {
+    db: DB,
+    kb: Mutex<KB>,
     classes: HashMap<String, Class>,
     objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
 }
 
-impl CoCo {
-    pub async fn new(db: Box<dyn Database + Send + Sync>, kb: Box<dyn KnowledgeBase + Send>) -> Self {
+impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
+    pub async fn new(db: DB, kb: KB) -> Self {
         let mut coco = Self {
             db,
             kb: Mutex::new(kb),
@@ -102,14 +102,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_coco_initialization() {
-        let coco = CoCo::new(Box::new(MongoDB::new("test_coco_initialization", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPS::new())).await;
+        let coco = CoCo::new(MongoDB::new("test_coco_initialization", "mongodb://localhost:27017").await.unwrap(), CLIPS::new()).await;
 
         coco.drop_db().await.unwrap();
     }
 
     #[tokio::test]
     async fn test_create_class() {
-        let mut coco = CoCo::new(Box::new(MongoDB::new("coco_test_create_class", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPS::new())).await;
+        let mut coco = CoCo::new(MongoDB::new("coco_test_create_class", "mongodb://localhost:27017").await.unwrap(), CLIPS::new()).await;
 
         coco.create_class("TestClass", None, None, None).await;
 
@@ -122,7 +122,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_class_with_properties() {
-        let mut coco = CoCo::new(Box::new(MongoDB::new("coco_test_create_class_with_properties", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPS::new())).await;
+        let mut coco = CoCo::new(MongoDB::new("coco_test_create_class_with_properties", "mongodb://localhost:27017").await.unwrap(), CLIPS::new()).await;
 
         let mut static_props = HashMap::new();
         static_props.insert("is_active".to_string(), Property::Bool { nullable: Some(false), default: Some(false) });

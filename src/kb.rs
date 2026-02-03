@@ -11,4 +11,8 @@ pub trait KnowledgeBase {
     fn create_object(&mut self, class: &Class, object: &Object) -> Result<(), Box<dyn Error>>;
     fn set_properties(&mut self, class: &Class, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>>;
     fn add_data(&mut self, class: &Class, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>>;
+
+    fn set_data_callback<F>(&mut self, callback: F)
+    where
+        F: Fn(&Class, &Object, &HashMap<String, Value>, &DateTime<Utc>) + 'static;
 }

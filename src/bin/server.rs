@@ -15,13 +15,13 @@ use tower_http::services::{ServeDir, ServeFile};
 
 struct AppState {
     tx: Sender<String>,
-    coco: CoCo,
+    coco: CoCo<coco::MongoDatabase, coco::CLIPSKnowledgeBase>,
 }
 
 #[tokio::main]
 async fn main() {
     let (tx, _rx) = tokio::sync::broadcast::channel(100);
-    let coco = CoCo::new(Box::new(MongoDatabase::new("coco_server", "mongodb://localhost:27017").await.unwrap()), Box::new(CLIPSKnowledgeBase::new())).await;
+    let coco = CoCo::new(MongoDatabase::new("coco_server", "mongodb://localhost:27017").await.unwrap(), CLIPSKnowledgeBase::new()).await;
 
     let app_state = Arc::new(AppState { tx, coco });
 

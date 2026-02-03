@@ -194,7 +194,8 @@ unsafe extern "C" {
 
 pub struct KnowledgeBase {
     env: *mut Environment,
-    instances: HashMap<String, HashMap<String, *mut Fact>>,
+    data_callback: Box<dyn Fn(&Class, &Object, &HashMap<String, Value>, &DateTime<Utc>)>,
+    instances: HashMap<String, HashMap<String, *mut Fact>>,              // class -> object -> fact
     facts: HashMap<String, HashMap<String, HashMap<String, *mut Fact>>>, // class -> object -> property -> fact
 }
 unsafe impl Send for KnowledgeBase {}
@@ -207,7 +208,14 @@ impl Default for KnowledgeBase {
 
 impl KnowledgeBase {
     pub fn new() -> Self {
-        unsafe { KnowledgeBase { env: CreateEnvironment(), instances: HashMap::new(), facts: HashMap::new() } }
+        unsafe {
+            KnowledgeBase {
+                env: CreateEnvironment(),
+                data_callback: Box::new(|_, _, _, _| {}),
+                instances: HashMap::new(),
+                facts: HashMap::new(),
+            }
+        }
     }
 
     pub fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
@@ -526,6 +534,13 @@ impl KnowledgeBaseTrait for KnowledgeBase {
         }
 
         Ok(())
+    }
+
+    fn set_data_callback<F>(&mut self, callback: F)
+    where
+        F: Fn(&Class, &Object, &HashMap<String, Value>, &DateTime<Utc>) + 'static,
+    {
+        self.data_callback = Box::new(callback);
     }
 }
 

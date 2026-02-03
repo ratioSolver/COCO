@@ -195,6 +195,7 @@ unsafe extern "C" {
 pub struct KnowledgeBase {
     env: *mut Environment,
     instances: HashMap<String, HashMap<String, *mut Fact>>,
+    facts: HashMap<String, HashMap<String, HashMap<String, *mut Fact>>>, // class -> object -> property -> fact
 }
 unsafe impl Send for KnowledgeBase {}
 
@@ -206,7 +207,7 @@ impl Default for KnowledgeBase {
 
 impl KnowledgeBase {
     pub fn new() -> Self {
-        unsafe { KnowledgeBase { env: CreateEnvironment(), instances: HashMap::new() } }
+        unsafe { KnowledgeBase { env: CreateEnvironment(), instances: HashMap::new(), facts: HashMap::new() } }
     }
 
     pub fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
@@ -216,6 +217,202 @@ impl KnowledgeBase {
                 AddUDFError::None => Ok(()),
                 _ => Err(format!("AddUDF error: {:?}", result).into()),
             }
+        }
+    }
+
+    fn set_prop(&mut self, object: &Object, class: &Class, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
+        unsafe {
+            let fb = CreateFactBuilder(self.env, CString::new(format!("{}::{}", class.name, property_name))?.as_ptr());
+            if fb.is_null() {
+                return Err("Failed to create FactBuilder".into());
+            }
+            let handle_err = |msg: &str| {
+                FBDispose(fb);
+                Err::<(), Box<dyn Error>>(msg.to_string().into())
+            };
+            match FBPutSlotSymbol(fb, format!("id").as_ptr() as *const c_char, CString::new(object.id.clone())?.as_ptr()) {
+                PutSlotError::None => {}
+                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+            }
+            match property {
+                Property::Bool { nullable, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Bool(b) => {
+                        let symbol = if *b { "TRUE" } else { "FALSE" };
+                        match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new(symbol)?.as_ptr()) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::Int { nullable, min, max, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Int(i) => {
+                        if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
+                            return handle_err("Value out of range");
+                        }
+                        match FBPutSlotInteger(fb, CString::new("value")?.as_ptr(), *i) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::Float { nullable, min, max, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Float(f) => {
+                        if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
+                            return handle_err("Value out of range");
+                        }
+                        match FBPutSlotFloat(fb, CString::new("value")?.as_ptr(), *f) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+            }
+            if let Some(t) = time {
+                match FBPutSlotInteger(fb, CString::new(format!("time"))?.as_ptr(), t.timestamp()) {
+                    PutSlotError::None => {}
+                    err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                }
+            }
+
+            let fact = FBAssert(fb);
+            if fact.is_null() {
+                return handle_err(&format!("Assertion failed: {:?}", FBError(fb)));
+            }
+            self.facts.entry(class.name.clone()).or_default().entry(object.id.clone()).or_default().insert(property_name.to_string(), fact);
+
+            FBDispose(fb);
+            Ok(())
+        }
+    }
+
+    fn update_prop(&mut self, object: &Object, class: &Class, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
+        unsafe {
+            let fm = CreateFactModifier(self.env, *self.facts.get(&class.name).and_then(|objs| objs.get(&object.id)).and_then(|props| props.get(property_name)).ok_or("Property fact not found in knowledge base")?);
+            if fm.is_null() {
+                return Err("Failed to create FactBuilder".into());
+            }
+            let handle_err = |msg: &str| {
+                FMDispose(fm);
+                Err::<(), Box<dyn Error>>(msg.to_string().into())
+            };
+            match FMPutSlotSymbol(fm, format!("id").as_ptr() as *const c_char, CString::new(object.id.clone())?.as_ptr()) {
+                PutSlotError::None => {}
+                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+            }
+            match property {
+                Property::Bool { nullable, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Bool(b) => {
+                        let symbol = if *b { "TRUE" } else { "FALSE" };
+                        match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(symbol)?.as_ptr()) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::Int { nullable, min, max, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Int(i) => {
+                        if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
+                            return handle_err("Value out of range");
+                        }
+                        match FMPutSlotInteger(fm, CString::new("value")?.as_ptr(), *i) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::Float { nullable, min, max, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Float(f) => {
+                        if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
+                            return handle_err("Value out of range");
+                        }
+                        match FMPutSlotFloat(fm, CString::new("value")?.as_ptr(), *f) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+            }
+            if let Some(t) = time {
+                match FMPutSlotInteger(fm, CString::new(format!("time"))?.as_ptr(), t.timestamp()) {
+                    PutSlotError::None => {}
+                    err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                }
+            }
+
+            let modified_fact = FMModify(fm);
+            if modified_fact.is_null() {
+                return handle_err(&format!("Modification failed: {:?}", FMError(fm)));
+            }
+            self.facts.get_mut(&class.name).and_then(|objs| objs.get_mut(&object.id)).and_then(|props| props.get_mut(property_name)).map(|f| *f = modified_fact);
+
+            FMDispose(fm);
+            Ok(())
         }
     }
 }
@@ -230,25 +427,28 @@ impl Drop for KnowledgeBase {
 
 impl KnowledgeBaseTrait for KnowledgeBase {
     fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
-        let mut slots = String::new();
-        if let Some(static_props) = &class.static_properties {
-            for (name, prop) in static_props {
-                slots.push_str(&format!(" {}", prop_slot(name, prop)));
-            }
-        }
-        if let Some(dynamic_props) = &class.dynamic_properties {
-            for (name, prop) in dynamic_props {
-                slots.push_str(&format!(" {}", prop_slot(name, prop)));
-                slots.push_str(&format!(" (slot {}_time (type INTEGER))", name));
-            }
-        }
-        let deftemplate = format!("(deftemplate {} {} (slot id (type SYMBOL)))", class.name, slots);
         unsafe {
-            let result = Build(self.env, CString::new(deftemplate)?.as_ptr());
-            match result {
-                BuildError::None => Ok(()),
-                _ => Err(format!("Build error: {:?}", result).into()),
+            match Build(self.env, CString::new(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name))?.as_ptr()) {
+                BuildError::None => {}
+                err => return Err(format!("Build error: {:?}", err).into()),
             }
+            if let Some(static_props) = &class.static_properties {
+                for (name, prop) in static_props {
+                    match Build(self.env, CString::new(prop_deftemplate(class, name, prop, true))?.as_ptr()) {
+                        BuildError::None => {}
+                        err => return Err(format!("Build error: {:?}", err).into()),
+                    }
+                }
+            }
+            if let Some(dynamic_props) = &class.dynamic_properties {
+                for (name, prop) in dynamic_props {
+                    match Build(self.env, CString::new(prop_deftemplate(class, name, prop, false))?.as_ptr()) {
+                        BuildError::None => {}
+                        err => return Err(format!("Build error: {:?}", err).into()),
+                    }
+                }
+            }
+            Ok(())
         }
     }
 
@@ -267,38 +467,6 @@ impl KnowledgeBaseTrait for KnowledgeBase {
                 }
             }
 
-            if let Some(props) = class.static_properties.as_ref() {
-                for (prop_name, prop) in props {
-                    if let Some(value) = object.properties.as_ref().and_then(|props| props.get(prop_name)) {
-                        if let Err(e) = set_property(fb, prop, prop_name, value, None) {
-                            FBDispose(fb);
-                            return Err(e);
-                        }
-                    } else {
-                        if let Err(e) = set_property(fb, prop, prop_name, &Value::Null, None) {
-                            FBDispose(fb);
-                            return Err(e);
-                        }
-                    }
-                }
-            }
-
-            if let Some(props) = class.dynamic_properties.as_ref() {
-                for (prop_name, prop) in props {
-                    if let Some((value, time)) = object.values.as_ref().and_then(|vals| vals.get(prop_name)) {
-                        if let Err(e) = set_property(fb, prop, prop_name, value, Some(time)) {
-                            FBDispose(fb);
-                            return Err(e);
-                        }
-                    } else {
-                        if let Err(e) = set_property(fb, prop, prop_name, &Value::Null, None) {
-                            FBDispose(fb);
-                            return Err(e);
-                        }
-                    }
-                }
-            }
-
             let fact = FBAssert(fb);
             if fact.is_null() {
                 let error = FBError(fb);
@@ -309,384 +477,121 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             self.instances.entry(class.name.clone()).or_default().insert(object.id.clone(), fact);
 
             FBDispose(fb);
+
+            if let Some(props) = class.static_properties.as_ref() {
+                for (prop_name, prop) in props {
+                    if let Some(value) = object.properties.as_ref().and_then(|props| props.get(prop_name)) {
+                        self.set_prop(object, class, prop, prop_name, value, None)?;
+                    } else {
+                        self.set_prop(object, class, prop, prop_name, &Value::Null, None)?;
+                    }
+                }
+            }
+
+            if let Some(props) = class.dynamic_properties.as_ref() {
+                for (prop_name, prop) in props {
+                    if let Some((value, time)) = object.values.as_ref().and_then(|vals| vals.get(prop_name)) {
+                        self.set_prop(object, class, prop, prop_name, value, Some(time))?;
+                    } else {
+                        self.set_prop(object, class, prop, prop_name, &Value::Null, None)?;
+                    }
+                }
+            }
+
             Ok(())
         }
     }
 
     fn set_properties(&mut self, class: &Class, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
-        unsafe {
-            let fact = self.instances.get(&class.name).and_then(|objs| objs.get(&object.id)).ok_or("Object not found in knowledge base")?;
-            let fm = CreateFactModifier(self.env, *fact);
-            if fm.is_null() {
-                return Err("Failed to create FactModifier".into());
-            }
-
-            if let Some(props) = class.static_properties.as_ref() {
-                for (prop_name, value) in values.iter() {
-                    if let Some(prop) = props.get(prop_name) {
-                        if let Err(e) = update_property(fm, prop, prop_name, value, None) {
-                            FMDispose(fm);
-                            return Err(e);
-                        }
+        if let Some(props) = class.static_properties.as_ref() {
+            for (prop_name, value) in values.iter() {
+                if let Some(prop) = props.get(prop_name) {
+                    if let Err(e) = self.update_prop(object, class, prop, prop_name, value, None) {
+                        return Err(e);
                     }
                 }
             }
-
-            let modified_fact = FMModify(fm);
-            if modified_fact.is_null() {
-                let error = FMError(fm);
-                FMDispose(fm);
-                return Err(format!("Modification failed: {:?}", error).into());
-            }
-
-            self.instances.get_mut(&class.name).and_then(|objs| objs.get_mut(&object.id)).map(|f| *f = modified_fact);
-
-            FMDispose(fm);
-            Ok(())
         }
+
+        Ok(())
     }
 
     fn add_data(&mut self, class: &Class, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
-        unsafe {
-            let fact = self.instances.get(&class.name).and_then(|objs| objs.get(&object.id)).ok_or("Object not found in knowledge base")?;
-            let fm = CreateFactModifier(self.env, *fact);
-            if fm.is_null() {
-                return Err("Failed to create FactModifier".into());
-            }
-
-            if let Some(props) = class.dynamic_properties.as_ref() {
-                for (prop_name, value) in values.iter() {
-                    if let Some(prop) = props.get(prop_name) {
-                        if let Err(e) = update_property(fm, prop, prop_name, value, Some(date_time)) {
-                            FMDispose(fm);
-                            return Err(e);
-                        }
-                    }
+        if let Some(props) = class.dynamic_properties.as_ref() {
+            for (prop_name, value) in values.iter() {
+                if let Some(prop) = props.get(prop_name) {
+                    self.update_prop(object, class, prop, prop_name, value, Some(date_time))?;
                 }
             }
-
-            let modified_fact = FMModify(fm);
-            if modified_fact.is_null() {
-                let error = FMError(fm);
-                FMDispose(fm);
-                return Err(format!("Modification failed: {:?}", error).into());
-            }
-
-            self.instances.get_mut(&class.name).and_then(|objs| objs.get_mut(&object.id)).map(|f| *f = modified_fact);
-
-            FMDispose(fm);
-            Ok(())
         }
+
+        Ok(())
     }
 }
 
-fn prop_slot(name: &str, property: &Property) -> String {
+fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: bool) -> String {
+    let mut def = format!("(deftemplate {}::{} (slot id (type SYMBOL)", class.name, name);
     match property {
         Property::Bool { nullable, default } => {
-            let mut def = format!("(slot {} (type SYMBOL) (allowed-symbols TRUE FALSE", name);
+            def.push_str(" (slot value (type SYMBOL) (allowed-symbols TRUE FALSE");
             if let Some(true) = nullable {
                 def.push_str(" nil");
             }
             def.push(')');
             if let Some(def_val) = default {
                 def.push_str(&format!(" (default {})", if *def_val { "TRUE" } else { "FALSE" }));
+            } else if let Some(true) = nullable {
+                def.push_str(" (default nil)");
+            }
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER)))");
             }
             def.push(')');
             def
         }
         Property::Int { nullable, default, min, max } => {
-            let mut def = format!("(slot {} (type INTEGER", name);
+            def.push_str(" (slot value (type INTEGER)");
             if let Some(true) = nullable {
                 def.push_str(" SYMBOL) (allowed-symbols nil");
             }
             def.push(')');
             if let Some(def_val) = default {
                 def.push_str(&format!(" (default {})", def_val));
+            } else if let Some(true) = nullable {
+                def.push_str(" (default nil)");
             }
             if (min.is_some() || max.is_some()) && !nullable.unwrap_or(false) {
                 let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
                 let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER)))");
+            }
             def.push(')');
             def
         }
         Property::Float { nullable, default, min, max } => {
-            let mut def = format!("(slot {} (type FLOAT", name);
+            def.push_str(" (slot value (type FLOAT");
             if let Some(true) = nullable {
                 def.push_str(" SYMBOL) (allowed-symbols nil");
             }
             def.push(')');
             if let Some(def_val) = default {
                 def.push_str(&format!(" (default {})", def_val));
+            } else if let Some(true) = nullable {
+                def.push_str(" (default nil)");
             }
             if (min.is_some() || max.is_some()) && !nullable.unwrap_or(false) {
-                let min_str = min
-                    .map(|v| {
-                        let s = v.to_string();
-                        if s.contains('.') { s } else { format!("{}.0", s) }
-                    })
-                    .unwrap_or("?VARIABLE".to_string());
-                let max_str = max
-                    .map(|v| {
-                        let s = v.to_string();
-                        if s.contains('.') { s } else { format!("{}.0", s) }
-                    })
-                    .unwrap_or("?VARIABLE".to_string());
+                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
+                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
+            }
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER)))");
             }
             def.push(')');
             def
-        }
-    }
-}
-
-fn set_property(fb: *mut FactBuilder, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
-    unsafe {
-        match property {
-            Property::Bool { nullable, .. } => match value {
-                Value::Null => {
-                    if let Some(true) = nullable {
-                        match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => {
-                                if let Some(t) = time {
-                                    match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                        PutSlotError::None => Ok(()),
-                                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                                    }
-                                } else {
-                                    Ok(())
-                                }
-                            }
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    } else {
-                        return Err("Cannot assign null to non-nullable property".into());
-                    }
-                }
-                Value::Bool(b) => {
-                    let symbol = if *b { "TRUE" } else { "FALSE" };
-                    match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new(symbol)?.as_ptr()) {
-                        PutSlotError::None => {
-                            if let Some(t) = time {
-                                match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                    PutSlotError::None => Ok(()),
-                                    err => Err(format!("PutSlot error: {:?}", err).into()),
-                                }
-                            } else {
-                                Ok(())
-                            }
-                        }
-                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                    }
-                }
-                _ => Err("Property type and value type mismatch".into()),
-            },
-            Property::Int { nullable, min, max, .. } => match value {
-                Value::Null => {
-                    if let Some(true) = nullable {
-                        match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => {
-                                if let Some(t) = time {
-                                    match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                        PutSlotError::None => Ok(()),
-                                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                                    }
-                                } else {
-                                    Ok(())
-                                }
-                            }
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    } else {
-                        Err("Cannot assign null to non-nullable property".into())
-                    }
-                }
-                Value::Int(i) => {
-                    if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
-                        return Err("Value out of range".into());
-                    }
-                    match FBPutSlotInteger(fb, CString::new(property_name)?.as_ptr(), *i) {
-                        PutSlotError::None => {
-                            if let Some(t) = time {
-                                match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                    PutSlotError::None => Ok(()),
-                                    err => Err(format!("PutSlot error: {:?}", err).into()),
-                                }
-                            } else {
-                                Ok(())
-                            }
-                        }
-                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                    }
-                }
-                _ => Err("Property type and value type mismatch".into()),
-            },
-            Property::Float { nullable, min, max, .. } => match value {
-                Value::Null => {
-                    if let Some(true) = nullable {
-                        match FBPutSlotSymbol(fb, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => {
-                                if let Some(t) = time {
-                                    match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                        PutSlotError::None => Ok(()),
-                                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                                    }
-                                } else {
-                                    Ok(())
-                                }
-                            }
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    } else {
-                        Err("Cannot assign null to non-nullable property".into())
-                    }
-                }
-                Value::Float(f) => {
-                    if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
-                        return Err("Value out of range".into());
-                    }
-                    match FBPutSlotFloat(fb, CString::new(property_name)?.as_ptr(), *f) {
-                        PutSlotError::None => {
-                            if let Some(t) = time {
-                                match FBPutSlotInteger(fb, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                    PutSlotError::None => Ok(()),
-                                    err => Err(format!("PutSlot error: {:?}", err).into()),
-                                }
-                            } else {
-                                Ok(())
-                            }
-                        }
-                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                    }
-                }
-                _ => Err("Property type and value type mismatch".into()),
-            },
-        }
-    }
-}
-
-fn update_property(fm: *mut FactModifier, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
-    unsafe {
-        match property {
-            Property::Bool { nullable, .. } => match value {
-                Value::Null => {
-                    if let Some(true) = nullable {
-                        match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => {
-                                if let Some(t) = time {
-                                    match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                        PutSlotError::None => Ok(()),
-                                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                                    }
-                                } else {
-                                    Ok(())
-                                }
-                            }
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    } else {
-                        Err("Cannot assign null to non-nullable property".into())
-                    }
-                }
-                Value::Bool(b) => {
-                    let symbol = if *b { "TRUE" } else { "FALSE" };
-                    match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new(symbol)?.as_ptr()) {
-                        PutSlotError::None => {
-                            if let Some(t) = time {
-                                match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                    PutSlotError::None => Ok(()),
-                                    err => Err(format!("PutSlot error: {:?}", err).into()),
-                                }
-                            } else {
-                                Ok(())
-                            }
-                        }
-                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                    }
-                }
-                _ => Err("Property type and value type mismatch".into()),
-            },
-            Property::Int { nullable, min, max, .. } => match value {
-                Value::Null => {
-                    if let Some(true) = nullable {
-                        match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => {
-                                if let Some(t) = time {
-                                    match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                        PutSlotError::None => Ok(()),
-                                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                                    }
-                                } else {
-                                    Ok(())
-                                }
-                            }
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    } else {
-                        Err("Cannot assign null to non-nullable property".into())
-                    }
-                }
-                Value::Int(i) => {
-                    if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
-                        return Err("Value out of range".into());
-                    }
-                    match FMPutSlotInteger(fm, CString::new(property_name)?.as_ptr(), *i) {
-                        PutSlotError::None => {
-                            if let Some(t) = time {
-                                match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                    PutSlotError::None => Ok(()),
-                                    err => Err(format!("PutSlot error: {:?}", err).into()),
-                                }
-                            } else {
-                                Ok(())
-                            }
-                        }
-                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                    }
-                }
-                _ => Err("Property type and value type mismatch".into()),
-            },
-            Property::Float { nullable, min, max, .. } => match value {
-                Value::Null => {
-                    if let Some(true) = nullable {
-                        match FMPutSlotSymbol(fm, CString::new(property_name)?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                            PutSlotError::None => {
-                                if let Some(t) = time {
-                                    match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                        PutSlotError::None => Ok(()),
-                                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                                    }
-                                } else {
-                                    Ok(())
-                                }
-                            }
-                            err => Err(format!("PutSlot error: {:?}", err).into()),
-                        }
-                    } else {
-                        Err("Cannot assign null to non-nullable property".into())
-                    }
-                }
-                Value::Float(f) => {
-                    if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
-                        return Err("Value out of range".into());
-                    }
-                    match FMPutSlotFloat(fm, CString::new(property_name)?.as_ptr(), *f) {
-                        PutSlotError::None => {
-                            if let Some(t) = time {
-                                match FMPutSlotInteger(fm, CString::new(format!("{}_time", property_name))?.as_ptr(), t.timestamp()) {
-                                    PutSlotError::None => Ok(()),
-                                    err => Err(format!("PutSlot error: {:?}", err).into()),
-                                }
-                            } else {
-                                Ok(())
-                            }
-                        }
-                        err => Err(format!("PutSlot error: {:?}", err).into()),
-                    }
-                }
-                _ => Err("Property type and value type mismatch".into()),
-            },
         }
     }
 }

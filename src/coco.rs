@@ -91,7 +91,7 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
 
     pub async fn set_values(&self, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let date_time: DateTime<Utc> = Utc::now();
-        self.db.add_data(&object, &values, &date_time).await?;
+        self.db.set_values(&object, &values, &date_time).await?;
         let class_guard = self.classes.read().unwrap();
         for class_name in object.classes.iter().flatten() {
             let class = class_guard.get(class_name).expect("Class not found for object");

@@ -83,7 +83,18 @@ impl DatabaseTrait for Database {
         Ok(objects)
     }
 
-    async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+    async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+        let collection = self.client.database(&self.name).collection::<MongoObject>("objects");
+        let mut update_doc = doc! {};
+        for (prop, value) in properties {
+            update_doc.insert(format!("properties.{}", prop), bson::to_bson(value)?);
+        }
+
+        collection.update_one(doc! { "_id": ObjectId::parse_str(&object.id)? }, doc! { "$set": update_doc }).await?;
+        Ok(())
+    }
+
+    async fn set_values(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
         let collection = self.client.database(&self.name).collection::<mongodb::bson::Document>("object_data");
         let doc = doc! {
             "object_id": &object.id,

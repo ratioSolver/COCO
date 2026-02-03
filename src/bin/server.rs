@@ -8,7 +8,7 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use coco::{CLIPSKnowledgeBase, CoCo, MongoDatabase};
+use coco::{CLIPSKnowledgeBase, Class, CoCo, MongoDatabase, Object};
 use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
 use tower_http::services::{ServeDir, ServeFile};
@@ -27,8 +27,10 @@ async fn main() {
 
     let app = Router::new();
     let app = app.route("/ws", get(ws_handler));
-    let app = app.route("/classes", get(get_classes));
-    let app = app.route("/classes/:name", get(get_class)); // Added new route
+    let app = app.route("/classes", get(get_classes).post(create_class));
+    let app = app.route("/classes/:name", get(get_class));
+    let app = app.route("/objects", get(get_objects).post(create_object));
+    let app = app.route("/objects/:id", get(get_object));
     let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -45,6 +47,27 @@ async fn get_class(Path(name): Path<String>, State(state): State<Arc<AppState>>)
         Some(class) => axum::Json(class).into_response(),
         None => (StatusCode::NOT_FOUND, "Class not found").into_response(),
     }
+}
+
+async fn create_class(State(state): State<Arc<AppState>>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
+    state.coco.create_class(&class.name, class.parents, class.static_properties, class.dynamic_properties).await;
+    StatusCode::CREATED
+}
+
+async fn get_objects(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    axum::Json(state.coco.get_objects())
+}
+
+async fn get_object(Path(id): Path<String>, State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    match state.coco.get_object(&id) {
+        Some(object) => axum::Json(object).into_response(),
+        None => (StatusCode::NOT_FOUND, "Object not found").into_response(),
+    }
+}
+
+async fn create_object(State(state): State<Arc<AppState>>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
+    state.coco.create_object(object.classes, object.properties, object.values).await;
+    StatusCode::CREATED
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {

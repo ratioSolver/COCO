@@ -20,3 +20,4 @@ mongodb = { version = "3.5.0" }
 futures = "0.3.31"
 async-trait = "0.1.89"
 chrono = { version = "0.4.43", features = ["serde"] }
+utoipa = { version = "5.4.0", features = ["chrono"] }

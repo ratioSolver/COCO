@@ -12,6 +12,7 @@ use coco::{CLIPSKnowledgeBase, Class, CoCo, MongoDatabase, Object};
 use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
 use tower_http::services::{ServeDir, ServeFile};
+use utoipa::OpenApi;
 
 struct AppState {
     tx: Sender<String>,
@@ -31,16 +32,35 @@ async fn main() {
     let app = app.route("/classes/:name", get(get_class));
     let app = app.route("/objects", get(get_objects).post(create_object));
     let app = app.route("/objects/:id", get(get_object));
+    let app = app.route("/openapi.json", get(openapi));
     let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
+#[utoipa::path(
+        get,
+        path = "/classes",
+        responses(
+            (status = 200, description = "List of classes", body = [Class])
+        )
+    )]
 async fn get_classes(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     axum::Json(state.coco.get_classes())
 }
 
+#[utoipa::path(
+        get,
+        path = "/classes/{name}",
+        params(
+            ("name", description = "Name of the class to retrieve")
+        ),
+        responses(
+            (status = 200, description = "The requested class", body = Class),
+            (status = 404, description = "Class not found")
+        )
+    )]
 async fn get_class(Path(name): Path<String>, State(state): State<Arc<AppState>>) -> impl IntoResponse {
     match state.coco.get_class(&name) {
         // We clone the single class to safely return it
@@ -49,15 +69,41 @@ async fn get_class(Path(name): Path<String>, State(state): State<Arc<AppState>>)
     }
 }
 
+#[utoipa::path(
+        post,
+        path = "/classes",
+        request_body = Class,
+        responses(
+            (status = 201, description = "Class created successfully"),
+        )
+    )]
 async fn create_class(State(state): State<Arc<AppState>>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
     state.coco.create_class(&class.name, class.parents, class.static_properties, class.dynamic_properties).await;
     StatusCode::CREATED
 }
 
+#[utoipa::path(
+        get,
+        path = "/objects",
+        responses(
+            (status = 200, description = "List of objects", body = [Object])
+        )
+    )]
 async fn get_objects(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     axum::Json(state.coco.get_objects())
 }
 
+#[utoipa::path(
+        get,
+        path = "/objects/{id}",
+        params(
+            ("id", description = "ID of the object to retrieve")
+        ),
+        responses(
+            (status = 200, description = "The requested object", body = Object),
+            (status = 404, description = "Object not found")
+        )
+    )]
 async fn get_object(Path(id): Path<String>, State(state): State<Arc<AppState>>) -> impl IntoResponse {
     match state.coco.get_object(&id) {
         Some(object) => axum::Json(object).into_response(),
@@ -65,13 +111,39 @@ async fn get_object(Path(id): Path<String>, State(state): State<Arc<AppState>>) 
     }
 }
 
+#[utoipa::path(
+        post,
+        path = "/objects",
+        request_body = Object,
+        responses(
+            (status = 201, description = "Object created successfully"),
+        )
+    )]
 async fn create_object(State(state): State<Arc<AppState>>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
     state.coco.create_object(object.classes, object.properties, object.values).await;
     StatusCode::CREATED
 }
 
+#[utoipa::path(
+        get,
+        path = "/ws",
+        responses(
+            (status = 101, description = "WebSocket connection established"),
+        )
+    )]
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
+}
+
+#[utoipa::path(
+        get,
+        path = "/openapi.json",
+        responses(
+            (status = 200, description = "OpenAPI specification in JSON format", body = String)
+        )
+    )]
+async fn openapi() -> impl IntoResponse {
+    axum::Json(ApiDoc::openapi().to_pretty_json().unwrap())
 }
 
 async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
@@ -82,3 +154,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
         }
     }
 }
+
+#[derive(OpenApi)]
+#[openapi(paths(get_classes, get_class, create_class, get_objects, get_object, create_object, ws_handler, openapi))]
+struct ApiDoc;

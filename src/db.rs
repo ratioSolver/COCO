@@ -1,12 +1,13 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
 };
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 #[serde(tag = "type")]
 pub enum Property {
     #[serde(rename = "bool")]
@@ -49,7 +50,7 @@ pub enum Value {
     Float(f64),
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
 pub struct Class {
     pub name: String,
     pub parents: Option<HashSet<String>>,
@@ -57,7 +58,7 @@ pub struct Class {
     pub dynamic_properties: Option<HashMap<String, Property>>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
 pub struct Object {
     pub id: String,
     pub classes: Option<HashSet<String>>,
@@ -65,7 +66,7 @@ pub struct Object {
     pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
 pub struct Rule {
     pub name: String,
     pub content: String,

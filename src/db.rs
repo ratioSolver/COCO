@@ -6,7 +6,7 @@ use std::{
     error::Error,
 };
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[serde(tag = "type")]
 pub enum Property {
     #[serde(rename = "bool")]
@@ -40,7 +40,7 @@ pub enum Property {
     },
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
     Null,
@@ -77,10 +77,13 @@ pub trait Database {
 
     async fn get_classes(&self) -> Result<Vec<Class>, Box<dyn Error>>;
     async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>>;
+
     async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>>;
     async fn create_object(&self, object: &Object) -> Result<String, Box<dyn Error>>;
     async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>>;
+    async fn get_values(&self, object: &Object, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>>;
     async fn set_values(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>>;
+
     async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>>;
     async fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>>;
 

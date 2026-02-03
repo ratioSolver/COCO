@@ -238,7 +238,7 @@ impl KnowledgeBase {
                 FBDispose(fb);
                 Err::<(), Box<dyn Error>>(msg.to_string().into())
             };
-            match FBPutSlotSymbol(fb, format!("id").as_ptr() as *const c_char, CString::new(object.id.clone())?.as_ptr()) {
+            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.clone())?.as_ptr()) {
                 PutSlotError::None => {}
                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
             }
@@ -336,7 +336,7 @@ impl KnowledgeBase {
                 FMDispose(fm);
                 Err::<(), Box<dyn Error>>(msg.to_string().into())
             };
-            match FMPutSlotSymbol(fm, format!("id").as_ptr() as *const c_char, CString::new(object.id.clone())?.as_ptr()) {
+            match FMPutSlotSymbol(fm, CString::new("id")?.as_ptr(), CString::new(object.id.clone())?.as_ptr()) {
                 PutSlotError::None => {}
                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
             }
@@ -488,20 +488,42 @@ impl KnowledgeBaseTrait for KnowledgeBase {
 
             if let Some(props) = class.static_properties.as_ref() {
                 for (prop_name, prop) in props {
-                    if let Some(value) = object.properties.as_ref().and_then(|props| props.get(prop_name)) {
-                        self.set_prop(object, class, prop, prop_name, value, None)?;
+                    let value = object.properties.as_ref().and_then(|props| props.get(prop_name));
+                    if let Some(v) = value {
+                        self.set_prop(object, class, prop, prop_name, v, None)?;
                     } else {
-                        self.set_prop(object, class, prop, prop_name, &Value::Null, None)?;
+                        let default_val = match prop {
+                            Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
+                            Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
+                            Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
+                            _ => None,
+                        };
+                        if let Some(v) = default_val {
+                            self.set_prop(object, class, prop, prop_name, &v, None)?;
+                        } else {
+                            self.set_prop(object, class, prop, prop_name, &Value::Null, None)?;
+                        }
                     }
                 }
             }
 
             if let Some(props) = class.dynamic_properties.as_ref() {
                 for (prop_name, prop) in props {
-                    if let Some((value, time)) = object.values.as_ref().and_then(|vals| vals.get(prop_name)) {
-                        self.set_prop(object, class, prop, prop_name, value, Some(time))?;
+                    let value_time = object.values.as_ref().and_then(|vals| vals.get(prop_name));
+                    if let Some((v, t)) = value_time {
+                        self.set_prop(object, class, prop, prop_name, v, Some(t))?;
                     } else {
-                        self.set_prop(object, class, prop, prop_name, &Value::Null, None)?;
+                        let default_val = match prop {
+                            Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
+                            Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
+                            Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
+                            _ => None,
+                        };
+                        if let Some(v) = default_val {
+                            self.set_prop(object, class, prop, prop_name, &v, None)?;
+                        } else {
+                            self.set_prop(object, class, prop, prop_name, &Value::Null, None)?;
+                        }
                     }
                 }
             }
@@ -644,45 +666,11 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_create_and_destroy_env() {
-        let kb = KnowledgeBase::new();
-        assert!(!kb.env.is_null());
+    fn create_test_kb() -> KnowledgeBase {
+        KnowledgeBase::new()
     }
 
-    #[test]
-    fn test_create_class() {
-        let kb = KnowledgeBase::new();
-        let class = Class {
-            name: "TestClass".to_string(),
-            parents: None,
-            static_properties: None,
-            dynamic_properties: None,
-        };
-        let result = kb.create_class(&class);
-        assert!(result.is_ok(), "Failed to create class: {:?}", result.err());
-    }
-
-    #[test]
-    fn test_create_object() {
-        let mut kb = KnowledgeBase::new();
-        let class = Class {
-            name: "TestClass".to_string(),
-            parents: None,
-            static_properties: None,
-            dynamic_properties: None,
-        };
-        let res_class = kb.create_class(&class);
-        assert!(res_class.is_ok(), "Failed to create class: {:?}", res_class.err());
-
-        let object = Object { id: "obj1".to_string(), classes: None, properties: None, values: None };
-        let result = kb.create_object(&class, &object);
-        assert!(result.is_ok(), "Failed to create object: {:?}", result.err());
-    }
-
-    #[test]
-    fn test_create_class_with_properties() {
-        let kb = KnowledgeBase::new();
+    fn create_test_class(kb: &KnowledgeBase) -> Class {
         let mut static_props = HashMap::new();
         static_props.insert("is_valid".to_string(), Property::Bool { nullable: Some(false), default: Some(true) });
         static_props.insert("score".to_string(), Property::Int { nullable: Some(true), default: Some(10), min: Some(0), max: Some(100) });
@@ -697,13 +685,104 @@ mod tests {
             dynamic_properties: Some(dynamic_props),
         };
 
-        let result = kb.create_class(&class);
-        assert!(result.is_ok(), "Failed to create class with properties: {:?}", result.err());
+        kb.create_class(&class).expect("Failed to create class");
+        class
     }
 
     #[test]
-    fn test_add_udf() {
-        let kb = KnowledgeBase::new();
+    fn test_lifecycle() {
+        let kb = create_test_kb();
+        assert!(!kb.env.is_null());
+    }
+
+    #[test]
+    fn test_class_management() {
+        let kb = create_test_kb();
+
+        // Simple class
+        let simple_class = Class {
+            name: "SimpleClass".to_string(),
+            parents: None,
+            static_properties: None,
+            dynamic_properties: None,
+        };
+        assert!(kb.create_class(&simple_class).is_ok());
+
+        // Complex class with properties
+        create_test_class(&kb);
+    }
+
+    #[test]
+    fn test_object_management() {
+        let mut kb = create_test_kb();
+        let class = create_test_class(&kb);
+
+        let object = Object { id: "obj1".to_string(), classes: None, properties: None, values: None };
+
+        assert!(kb.create_object(&class, &object).is_ok());
+    }
+
+    #[test]
+    fn test_properties_management() {
+        let mut kb = create_test_kb();
+        let class = create_test_class(&kb);
+        let object = Object { id: "obj1".to_string(), classes: None, properties: None, values: None };
+        kb.create_object(&class, &object).unwrap();
+
+        // Test set_properties (static)
+        let mut props = HashMap::new();
+        props.insert("is_valid".to_string(), Value::Bool(false));
+        props.insert("score".to_string(), Value::Int(50));
+
+        let result = kb.set_properties(&class, &object, &props);
+        assert!(result.is_ok(), "Failed to set properties: {:?}", result.err());
+
+        // Test invalid property value (out of range)
+        let mut invalid_props = HashMap::new();
+        invalid_props.insert("score".to_string(), Value::Int(150));
+        let result = kb.set_properties(&class, &object, &invalid_props);
+        assert!(result.is_err(), "Should have failed due to out of range value");
+    }
+
+    #[test]
+    fn test_data_stream_management() {
+        let mut kb = create_test_kb();
+        let class = create_test_class(&kb);
+        let object = Object { id: "obj1".to_string(), classes: None, properties: None, values: None };
+        kb.create_object(&class, &object).unwrap();
+
+        // Test add_data (dynamic)
+        let mut values = HashMap::new();
+        values.insert("temperature".to_string(), Value::Float(37.5));
+
+        let now = Utc::now();
+        let result = kb.add_data(&class, &object, &values, &now);
+        assert!(result.is_ok(), "Failed to add data: {:?}", result.err());
+
+        // Test invalid data (wrong type)
+        let mut invalid_values = HashMap::new();
+        invalid_values.insert("temperature".to_string(), Value::Bool(true));
+
+        let result = kb.add_data(&class, &object, &invalid_values, &now);
+        assert!(result.is_err(), "Should have failed due to type mismatch");
+    }
+
+    #[test]
+    fn test_rules_and_execution() {
+        let mut kb = create_test_kb();
+
+        let rule = crate::Rule {
+            name: "TestRule".to_string(),
+            content: "(defrule test_rule => (printout t \"Hello World\" crlf))".to_string(),
+        };
+
+        assert!(kb.create_rule(&rule).is_ok());
+        assert!(kb.run().is_ok());
+    }
+
+    #[test]
+    fn test_udf_integration() {
+        let kb = create_test_kb();
 
         unsafe extern "C" fn test_udf(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
             // Function logic placeholder

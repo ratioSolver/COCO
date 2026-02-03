@@ -36,14 +36,13 @@ async fn main() {
 }
 
 async fn get_classes(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let classes: Vec<_> = state.coco.get_classes().into_iter().cloned().collect();
-    axum::Json(classes)
+    axum::Json(state.coco.get_classes())
 }
 
 async fn get_class(Path(name): Path<String>, State(state): State<Arc<AppState>>) -> impl IntoResponse {
     match state.coco.get_class(&name) {
         // We clone the single class to safely return it
-        Some(class) => axum::Json(class.clone()).into_response(),
+        Some(class) => axum::Json(class).into_response(),
         None => (StatusCode::NOT_FOUND, "Class not found").into_response(),
     }
 }

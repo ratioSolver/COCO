@@ -41,12 +41,12 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         coco
     }
 
-    pub fn get_classes(&self) -> Vec<&Class> {
-        self.classes.values().collect()
+    pub fn get_classes(&self) -> Vec<Class> {
+        self.classes.values().cloned().collect()
     }
 
-    pub fn get_class(&self, name: &str) -> Option<&Class> {
-        self.classes.get(name)
+    pub fn get_class(&self, name: &str) -> Option<Class> {
+        self.classes.get(name).cloned()
     }
 
     pub async fn create_class(&mut self, name: &str, parents: Option<HashSet<String>>, static_properties: Option<HashMap<String, Property>>, dynamic_properties: Option<HashMap<String, Property>>) {

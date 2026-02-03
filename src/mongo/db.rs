@@ -2,8 +2,8 @@ use crate::{Class, Database as DatabaseTrait, Object, Rule, Value};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
-use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
+use mongodb::bson::{self, doc};
 use mongodb::options::IndexOptions;
 use mongodb::{Client, IndexModel};
 use serde::{Deserialize, Serialize};
@@ -81,6 +81,17 @@ impl DatabaseTrait for Database {
             });
         }
         Ok(objects)
+    }
+
+    async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+        let collection = self.client.database(&self.name).collection::<mongodb::bson::Document>("object_data");
+        let doc = doc! {
+            "object_id": &object.id,
+            "values": bson::to_bson(values)?,
+            "timestamp": bson::DateTime::from_millis(date_time.timestamp_millis()),
+        };
+        collection.insert_one(doc).await?;
+        Ok(())
     }
 
     async fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>> {

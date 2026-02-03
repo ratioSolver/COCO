@@ -536,6 +536,15 @@ impl KnowledgeBaseTrait for KnowledgeBase {
         Ok(())
     }
 
+    fn create_rule(&self, rule: &crate::Rule) -> Result<(), Box<dyn Error>> {
+        unsafe {
+            match Build(self.env, CString::new(rule.content.clone())?.as_ptr()) {
+                BuildError::None => Ok(()),
+                err => Err(format!("Build error: {:?}", err).into()),
+            }
+        }
+    }
+
     fn set_data_callback<F>(&mut self, callback: F)
     where
         F: FnMut(&str, HashMap<String, Value>, DateTime<Utc>) + 'static,

@@ -551,6 +551,13 @@ impl KnowledgeBaseTrait for KnowledgeBase {
     {
         self.data_callback = Box::new(callback);
     }
+
+    fn run(&mut self) -> Result<(), Box<dyn Error>> {
+        unsafe {
+            let result = Run(self.env, -1);
+            if result < 0 { Err(format!("Run error: {}", result).into()) } else { Ok(()) }
+        }
+    }
 }
 
 fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: bool) -> String {

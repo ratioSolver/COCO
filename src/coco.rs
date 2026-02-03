@@ -38,6 +38,8 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         coco.add_rules(coco.db.get_rules().await.unwrap());
         coco.add_objects(coco.db.get_objects().await.unwrap());
 
+        coco.kb.lock().unwrap().run().expect("Failed to run knowledge base");
+
         coco
     }
 
@@ -62,6 +64,14 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         }
     }
 
+    pub fn get_objects(&self) -> Vec<Object> {
+        self.objects.read().unwrap().values().cloned().collect()
+    }
+
+    pub fn get_object(&self, id: &str) -> Option<Object> {
+        self.objects.read().unwrap().get(id).cloned()
+    }
+
     pub async fn create_object(&self, classes: Option<HashSet<String>>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) {
         let mut object = Object { id: String::new(), classes, properties, values };
         object.id = self.db.create_object(&object).await.expect("Failed to create object in database");
@@ -69,9 +79,9 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
     }
 
     fn add_objects(&self, objects: Vec<Object>) {
+        let class_guard = self.classes.read().unwrap();
         for object in objects {
             for class_name in object.classes.iter().flatten() {
-                let class_guard = self.classes.read().unwrap();
                 let class = class_guard.get(class_name).expect("Class not found for object");
                 self.kb.lock().unwrap().create_object(&class, &object).expect("Failed to create object in knowledge base");
             }
@@ -79,8 +89,15 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         }
     }
 
-    pub fn get_object(&self, id: &str) -> Option<Object> {
-        self.objects.read().unwrap().get(id).cloned()
+    pub async fn set_values(&self, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+        let date_time: DateTime<Utc> = Utc::now();
+        self.db.add_data(&object, &values, &date_time).await?;
+        let class_guard = self.classes.read().unwrap();
+        for class_name in object.classes.iter().flatten() {
+            let class = class_guard.get(class_name).expect("Class not found for object");
+            self.kb.lock().unwrap().add_data(&class, &object, &values, &date_time)?;
+        }
+        Ok(())
     }
 
     pub fn get_rule(&self, name: &str) -> Option<Rule> {

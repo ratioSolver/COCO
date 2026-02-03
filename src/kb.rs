@@ -16,4 +16,5 @@ pub trait KnowledgeBase {
     fn set_data_callback<F>(&mut self, callback: F)
     where
         F: FnMut(&str, HashMap<String, Value>, DateTime<Utc>) + 'static;
+    fn run(&mut self) -> Result<(), Box<dyn Error>>;
 }

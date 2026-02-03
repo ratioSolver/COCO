@@ -62,9 +62,9 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         }
     }
 
-    pub async fn create_object(&mut self, id: &str, classes: Option<HashSet<String>>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) {
-        let object = Object { id: id.to_string(), classes, properties, values };
-        self.db.create_object(&object).await.expect("Failed to create object in database");
+    pub async fn create_object(&mut self, classes: Option<HashSet<String>>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) {
+        let mut object = Object { id: String::new(), classes, properties, values };
+        object.id = self.db.create_object(&object).await.expect("Failed to create object in database");
         self.add_objects(vec![object]);
     }
 

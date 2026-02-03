@@ -78,7 +78,7 @@ pub trait Database {
     async fn get_classes(&self) -> Result<Vec<Class>, Box<dyn Error>>;
     async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>>;
     async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>>;
-    async fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>>;
+    async fn create_object(&self, object: &Object) -> Result<String, Box<dyn Error>>;
     async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>>;
     async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>>;
     async fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>>;

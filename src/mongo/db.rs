@@ -94,7 +94,7 @@ impl DatabaseTrait for Database {
         Ok(())
     }
 
-    async fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>> {
+    async fn create_object(&self, object: &Object) -> Result<String, Box<dyn Error>> {
         let collection = self.client.database(&self.name).collection::<MongoObject>("objects");
         let mongo_object = MongoObject {
             id: None,
@@ -102,8 +102,8 @@ impl DatabaseTrait for Database {
             properties: object.properties.clone(),
             values: object.values.clone(),
         };
-        collection.insert_one(mongo_object).await?;
-        Ok(())
+        let result = collection.insert_one(mongo_object).await?;
+        Ok(result.inserted_id.as_object_id().unwrap().to_hex())
     }
 
     async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>> {

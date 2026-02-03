@@ -95,13 +95,20 @@ impl DatabaseTrait for Database {
     }
 
     async fn set_values(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
-        let collection = self.client.database(&self.name).collection::<mongodb::bson::Document>("object_data");
+        let objects_collection = self.client.database(&self.name).collection::<MongoObject>("objects");
+        let mut update_doc = doc! {};
+        for (prop, value) in values {
+            update_doc.insert(format!("values.{}", prop), bson::to_bson(&(value.clone(), date_time.clone()))?);
+        }
+        objects_collection.update_one(doc! { "_id": ObjectId::parse_str(&object.id)? }, doc! { "$set": update_doc }).await?;
+
+        let data_collection = self.client.database(&self.name).collection::<mongodb::bson::Document>("object_data");
         let doc = doc! {
             "object_id": &object.id,
             "values": bson::to_bson(values)?,
             "timestamp": bson::DateTime::from_millis(date_time.timestamp_millis()),
         };
-        collection.insert_one(doc).await?;
+        data_collection.insert_one(doc).await?;
         Ok(())
     }
 

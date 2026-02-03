@@ -222,7 +222,7 @@ impl KnowledgeBase {
 
     fn set_prop(&mut self, object: &Object, class: &Class, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
         unsafe {
-            let fb = CreateFactBuilder(self.env, CString::new(format!("{}::{}", class.name, property_name))?.as_ptr());
+            let fb = CreateFactBuilder(self.env, CString::new(format!("{}_{}", class.name, property_name))?.as_ptr());
             if fb.is_null() {
                 return Err("Failed to create FactBuilder".into());
             }
@@ -530,7 +530,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
 }
 
 fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: bool) -> String {
-    let mut def = format!("(deftemplate {}::{} (slot id (type SYMBOL)", class.name, name);
+    let mut def = format!("(deftemplate {}_{} (slot id (type SYMBOL))", class.name, name);
     match property {
         Property::Bool { nullable, default } => {
             def.push_str(" (slot value (type SYMBOL) (allowed-symbols TRUE FALSE");
@@ -543,14 +543,15 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             } else if let Some(true) = nullable {
                 def.push_str(" (default nil)");
             }
+            def.push(')');
             if !is_static {
-                def.push_str(" (slot time (type INTEGER)))");
+                def.push_str(" (slot time (type INTEGER))");
             }
             def.push(')');
             def
         }
         Property::Int { nullable, default, min, max } => {
-            def.push_str(" (slot value (type INTEGER)");
+            def.push_str(" (slot value (type INTEGER");
             if let Some(true) = nullable {
                 def.push_str(" SYMBOL) (allowed-symbols nil");
             }
@@ -565,8 +566,9 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
+            def.push(')');
             if !is_static {
-                def.push_str(" (slot time (type INTEGER)))");
+                def.push_str(" (slot time (type INTEGER))");
             }
             def.push(')');
             def
@@ -583,12 +585,23 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 def.push_str(" (default nil)");
             }
             if (min.is_some() || max.is_some()) && !nullable.unwrap_or(false) {
-                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
-                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
+                let min_str = min
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .unwrap_or("?VARIABLE".to_string());
+                let max_str = max
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .unwrap_or("?VARIABLE".to_string());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
+            def.push(')');
             if !is_static {
-                def.push_str(" (slot time (type INTEGER)))");
+                def.push_str(" (slot time (type INTEGER))");
             }
             def.push(')');
             def

@@ -4,14 +4,14 @@ use crate::{Class, Database, KnowledgeBase, Object, Property, Rule, Value};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
-    sync::Mutex,
+    sync::{Arc, Mutex, RwLock},
 };
 
 pub struct CoCo<DB: Database + Send + Sync, KB: KnowledgeBase + Send> {
     db: DB,
     kb: Mutex<KB>,
     classes: HashMap<String, Class>,
-    objects: HashMap<String, Object>,
+    objects: Arc<RwLock<HashMap<String, Object>>>,
     rules: HashMap<String, Rule>,
 }
 
@@ -21,9 +21,18 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
             db,
             kb: Mutex::new(kb),
             classes: HashMap::new(),
-            objects: HashMap::new(),
+            objects: Arc::new(RwLock::new(HashMap::new())),
             rules: HashMap::new(),
         };
+
+        let objects = coco.objects.clone();
+        coco.kb.lock().unwrap().set_data_callback(move |object_id: &str, properties: HashMap<String, Value>, timestamp: DateTime<Utc>| {
+            let mut map = objects.write().expect("Failed to lock objects for writing");
+            let object = map.get_mut(object_id).expect("Object not found in callback");
+            for (prop, value) in properties {
+                object.values.get_or_insert_with(HashMap::new).insert(prop, (value, timestamp));
+            }
+        });
 
         coco.add_classes(coco.db.get_classes().await.unwrap());
         coco.add_rules(coco.db.get_rules().await.unwrap());
@@ -65,12 +74,12 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
                 let class = self.classes.get(class_name).expect("Class not found for object");
                 self.kb.lock().unwrap().create_object(class, &object).expect("Failed to create object in knowledge base");
             }
-            self.objects.insert(object.id.clone(), object);
+            self.objects.write().expect("Failed to lock objects for writing").insert(object.id.clone(), object);
         }
     }
 
-    pub fn get_object(&self, id: &str) -> Option<&Object> {
-        self.objects.get(id)
+    pub fn get_object(&self, id: &str) -> Option<Object> {
+        self.objects.read().unwrap().get(id).cloned()
     }
 
     pub fn get_rule(&self, name: &str) -> Option<&Rule> {

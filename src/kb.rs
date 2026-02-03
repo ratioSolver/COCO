@@ -14,5 +14,5 @@ pub trait KnowledgeBase {
 
     fn set_data_callback<F>(&mut self, callback: F)
     where
-        F: Fn(&Class, &Object, &HashMap<String, Value>, &DateTime<Utc>) + 'static;
+        F: FnMut(&str, HashMap<String, Value>, DateTime<Utc>) + 'static;
 }

@@ -29,10 +29,10 @@ async fn main() {
     let app = Router::new();
     let app = app.route("/ws", get(ws_handler));
     let app = app.route("/classes", get(get_classes).post(create_class));
-    let app = app.route("/classes/:name", get(get_class));
+    let app = app.route("/classes/{name}", get(get_class));
     let app = app.route("/objects", get(get_objects).post(create_object));
-    let app = app.route("/objects/:id", get(get_object));
-    let app = app.route("/openapi.json", get(openapi));
+    let app = app.route("/objects/{id}", get(get_object));
+    let app = app.route("/openapi", get(openapi));
     let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -54,7 +54,7 @@ async fn get_classes(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         get,
         path = "/classes/{name}",
         params(
-            ("name", description = "Name of the class to retrieve")
+            ("name" = String, Path, description = "Name of the class to retrieve")
         ),
         responses(
             (status = 200, description = "The requested class", body = Class),
@@ -97,7 +97,7 @@ async fn get_objects(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         get,
         path = "/objects/{id}",
         params(
-            ("id", description = "ID of the object to retrieve")
+            ("id" = String, Path, description = "ID of the object to retrieve")
         ),
         responses(
             (status = 200, description = "The requested object", body = Object),
@@ -137,13 +137,13 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) ->
 
 #[utoipa::path(
         get,
-        path = "/openapi.json",
+        path = "/openapi",
         responses(
             (status = 200, description = "OpenAPI specification in JSON format", body = String)
         )
     )]
 async fn openapi() -> impl IntoResponse {
-    axum::Json(ApiDoc::openapi().to_pretty_json().unwrap())
+    axum::Json(ApiDoc::openapi())
 }
 
 async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {

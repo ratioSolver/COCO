@@ -1,0 +1,43 @@
+{
+  "name": "@ratiosolver/coco",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A frontend library for facilitating interaction with the CoCo (Combined deduCtiOn and abduCtiOn) cognitive architecture",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ratioSolver/COCO.git"
+  },
+  "keywords": [
+    "reasoner",
+    "api",
+    "abduction",
+    "deduction"
+  ],
+  "author": "ratioSolver",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ratioSolver/COCO/issues"
+  },
+  "homepage": "https://github.com/ratioSolver/COCO#readme",
+  "files": [
+    "/dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "vite playground"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
+    "jsdom": "^27.4.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.3.1"
+  },
+  "peerDependencies": {
+    "@ratiosolver/flick": "^0.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

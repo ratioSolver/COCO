@@ -33,7 +33,7 @@ async fn main() {
     let app = app.route("/objects", get(get_objects).post(create_object));
     let app = app.route("/objects/{id}", get(get_object));
     let app = app.route("/openapi", get(openapi));
-    let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
+    let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/app/dist/assets")).fallback_service(ServeDir::new("gui/app/dist").not_found_service(ServeFile::new("gui/app/dist/index.html")));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

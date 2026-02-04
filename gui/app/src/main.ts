@@ -1,14 +1,9 @@
-import { App, Button, flick, Navbar, NavbarItem, NavbarList, OffcanvasBrand } from '@ratiosolver/flick';
+import { App, flick, Navbar, NavbarItem, NavbarList, OffcanvasBrand } from '@ratiosolver/flick';
 import { h } from 'snabbdom';
+import { CoCo } from 'coco';
 
-// 1. Define your state
-let count = 0;
-
-// 2. Define actions that update state and trigger a redraw
-function increment() {
-  count++;
-  flick.redraw();
-}
+const coco = new CoCo();
+coco.connect();
 
 // 3. Mount the application
 flick.mount(() => {
@@ -22,9 +17,7 @@ flick.mount(() => {
   );
 
   const content = h('div.container.mt-5.text-center', [
-    h('h1', 'Welcome to Flick'),
-    h('p.lead', `Current count is: ${count}`),
-    Button('Increment', increment)
+    h('h1', 'Welcome to Flick')
   ]);
 
   // The App component typically wraps the layout

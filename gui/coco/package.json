@@ -25,14 +25,13 @@
     "/dist"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "vite playground"
+    "build": "tsc"
   },
   "devDependencies": {
     "@types/bootstrap": "^5.2.10",
     "jsdom": "^27.4.0",
     "typescript": "^5.8.3",
-    "vite": "^7.3.1"
+    "@fortawesome/fontawesome-free": "^7.1.0"
   },
   "peerDependencies": {
     "snabbdom": "^3.6.3",

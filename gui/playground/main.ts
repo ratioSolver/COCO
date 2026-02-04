@@ -1,9 +1,17 @@
 import { App, flick, Navbar, OffcanvasBrand } from '@ratiosolver/flick';
 import { h } from 'snabbdom';
-import { coco, Offcanvas } from 'coco';
+import { coco } from '../src/coco';
+import { Offcanvas } from '../src/components/offcanvas';
 
 const cc = new coco.CoCo();
-cc.connect();
+cc.add_listener({
+  initialized: () => flick.redraw(),
+  added_class: (_cls) => flick.redraw(),
+  added_object: (_obj) => flick.redraw(),
+  connection_error: (error) => console.error('CoCo connection error', error),
+  connected: () => { },
+  disconnected: () => { },
+});
 
 flick.mount(() => {
   const content = h('div', [
@@ -31,3 +39,5 @@ flick.mount(() => {
 
   return App(Navbar(OffcanvasBrand('CoCo')), content);
 });
+
+cc.connect();

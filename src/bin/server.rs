@@ -9,13 +9,14 @@ use axum::{
     routing::get,
 };
 use coco::{CLIPSKnowledgeBase, Class, CoCo, MongoDatabase, Object};
+use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
 use tower_http::services::{ServeDir, ServeFile};
 use utoipa::OpenApi;
 
 struct AppState {
-    tx: Sender<String>,
+    tx: Sender<Value>,
     coco: CoCo<coco::MongoDatabase, coco::CLIPSKnowledgeBase>,
 }
 
@@ -33,7 +34,7 @@ async fn main() {
     let app = app.route("/objects", get(get_objects).post(create_object));
     let app = app.route("/objects/{id}", get(get_object));
     let app = app.route("/openapi", get(openapi));
-    let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/app/dist/assets")).fallback_service(ServeDir::new("gui/app/dist").not_found_service(ServeFile::new("gui/app/dist/index.html")));
+    let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -171,11 +172,28 @@ async fn openapi() -> impl IntoResponse {
 }
 
 async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
+    let classes_map: std::collections::HashMap<String, serde_json::Value> = state
+        .coco
+        .get_classes()
+        .into_iter()
+        .map(|c| {
+            let name = c.name.clone();
+            let mut v = serde_json::to_value(c).unwrap();
+            if let Some(obj) = v.as_object_mut() {
+                obj.remove("name");
+            }
+            (name, v)
+        })
+        .collect();
+    let init_msg = serde_json::json!({
+        "msg_type": "coco",
+        "classes": classes_map
+    });
+    socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.unwrap();
+
     let mut rx = state.tx.subscribe();
     while let Ok(msg) = rx.recv().await {
-        if socket.send(Message::Text(msg.into())).await.is_err() {
-            break;
-        }
+        socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.unwrap();
     }
 }
 

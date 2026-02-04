@@ -1,6 +1,6 @@
 {
   "name": "@ratiosolver/coco",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "A frontend library for facilitating interaction with the CoCo (Combined deduCtiOn and abduCtiOn) cognitive architecture",
   "main": "dist/index.js",
@@ -25,17 +25,20 @@
     "/dist"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "vite playground"
   },
   "devDependencies": {
     "@types/bootstrap": "^5.2.10",
+    "@fortawesome/fontawesome-free": "^7.1.0",
     "jsdom": "^27.4.0",
     "typescript": "^5.8.3",
-    "@fortawesome/fontawesome-free": "^7.1.0"
+    "vite": "^7.3.1"
   },
   "peerDependencies": {
-    "snabbdom": "^3.6.3",
-    "@ratiosolver/flick": "^0.2.2"
+    "@ratiosolver/flick": "^0.2.2",
+    "bootstrap": "^5.3.8",
+    "snabbdom": "^3.6.3"
   },
   "publishConfig": {
     "access": "public"

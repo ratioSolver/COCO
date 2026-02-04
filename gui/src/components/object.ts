@@ -5,7 +5,9 @@ import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
 export function ObjectsList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_objects().values().map(obj => ListGroupItem(object_to_string(obj), () => {
     flick.ctx.current_page = Object(obj);
-  }))));
+    flick.ctx.page_title = `Object: ${obj.get_id()}`;
+    flick.redraw();
+  }, flick.ctx.page_title === `Object: ${obj.get_id()}`))));
 }
 
 export function Object(obj: coco.CoCoObject): VNode {

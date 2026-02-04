@@ -39,6 +39,15 @@ export namespace coco {
       this.socket.onmessage = (event) => {
         const msg: ServerMessage = JSON.parse(event.data);
         switch (msg.msg_type) {
+          case 'coco': {
+            for (const [name, _cls] of Object.entries(msg.classes))
+              this.classes.set(name, new CoCoClass(name));
+            if (msg.objects)
+              for (const [id, _obj] of Object.entries(msg.objects))
+                this.objects.set(id, new CoCoObject(id));
+            for (const listener of this.listeners) listener.initialized();
+            break;
+          }
           case 'class_added': {
             const cls = new CoCoClass(msg.name);
             this.classes.set(cls.get_name(), cls);
@@ -95,15 +104,21 @@ export namespace coco {
     disconnected(): void;
     connection_error(error: Event): void;
 
+    initialized(): void;
     added_class(cls: CoCoClass): void;
     added_object(obj: CoCoObject): void;
   }
 
-  type ClassMessage = { name: string };
+  type PartialClassMessage = {};
+  type ClassMessage = ({ name: string } & PartialClassMessage);
 
-  type ObjectMessage = { id: string; properties?: Record<string, unknown> };
+  type PartialObjectMessage = { properties?: Record<string, unknown> };
+  type ObjectMessage = ({ id: string } & PartialObjectMessage);
+
+  type CoCoMessage = { classes: Record<string, PartialClassMessage>, objects?: Record<string, PartialObjectMessage> };
 
   type ServerMessage =
+    | ({ msg_type: 'coco' } & CoCoMessage)
     | ({ msg_type: 'class_added' } & ClassMessage)
     | ({ msg_type: 'object_added' } & ObjectMessage);
 }

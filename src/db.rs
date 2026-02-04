@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
 };
+use utoipa::ToSchema;
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 #[serde(tag = "type")]
@@ -61,7 +61,7 @@ pub struct Class {
 #[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
 pub struct Object {
     pub id: String,
-    pub classes: Option<HashSet<String>>,
+    pub classes: HashSet<String>,
     pub properties: Option<HashMap<String, Value>>,
     pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }

@@ -14,8 +14,7 @@ use std::error::Error;
 struct MongoObject {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub classes: Option<HashSet<String>>,
+    pub classes: HashSet<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -221,7 +220,7 @@ mod tests {
 
         let object = Object {
             id: "".to_string(),
-            classes: Some(HashSet::from(["Person".to_string()])),
+            classes: HashSet::from(["Person".to_string()]),
             properties: Some(HashMap::from([("age".to_string(), Value::Int(30))])),
             values: None,
         };
@@ -257,9 +256,9 @@ mod tests {
             }
         };
 
-        let object = Object { id: "".to_string(), classes: None, properties: None, values: None };
+        let object = Object { id: "".to_string(), classes: HashSet::new(), properties: None, values: None };
         let id = db.create_object(&object).await?;
-        let object_with_id = Object { id: id.clone(), ..object };
+        let object_with_id = Object { id, ..object };
 
         let now = Utc::now();
         let values = HashMap::from([("temperature".to_string(), Value::Float(36.6))]);

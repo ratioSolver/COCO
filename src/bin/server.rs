@@ -42,6 +42,9 @@ async fn main() {
 #[utoipa::path(
         get,
         path = "/classes",
+        tag = "Classes",
+        summary = "List all classes",
+        description = "Retrieve a list of all available classes in the knowledge base.",
         responses(
             (status = 200, description = "List of classes", body = [Class])
         )
@@ -53,6 +56,9 @@ async fn get_classes(State(state): State<Arc<AppState>>) -> impl IntoResponse {
 #[utoipa::path(
         get,
         path = "/classes/{name}",
+        tag = "Classes",
+        summary = "Get a class",
+        description = "Retrieve details for a specific class by its name.",
         params(
             ("name" = String, Path, description = "Name of the class to retrieve")
         ),
@@ -72,6 +78,9 @@ async fn get_class(Path(name): Path<String>, State(state): State<Arc<AppState>>)
 #[utoipa::path(
         post,
         path = "/classes",
+        tag = "Classes",
+        summary = "Create a class",
+        description = "Create a new class in the knowledge base.",
         request_body = Class,
         responses(
             (status = 201, description = "Class created successfully"),
@@ -85,6 +94,9 @@ async fn create_class(State(state): State<Arc<AppState>>, axum::Json(class): axu
 #[utoipa::path(
         get,
         path = "/objects",
+        tag = "Objects",
+        summary = "List all objects",
+        description = "Retrieve a list of all available objects in the knowledge base.",
         responses(
             (status = 200, description = "List of objects", body = [Object])
         )
@@ -96,6 +108,9 @@ async fn get_objects(State(state): State<Arc<AppState>>) -> impl IntoResponse {
 #[utoipa::path(
         get,
         path = "/objects/{id}",
+        tag = "Objects",
+        summary = "Get an object",
+        description = "Retrieve details for a specific object by its ID.",
         params(
             ("id" = String, Path, description = "ID of the object to retrieve")
         ),
@@ -114,6 +129,9 @@ async fn get_object(Path(id): Path<String>, State(state): State<Arc<AppState>>) 
 #[utoipa::path(
         post,
         path = "/objects",
+        tag = "Objects",
+        summary = "Create an object",
+        description = "Create a new object in the knowledge base.",
         request_body = Object,
         responses(
             (status = 201, description = "Object created successfully"),
@@ -127,6 +145,9 @@ async fn create_object(State(state): State<Arc<AppState>>, axum::Json(object): a
 #[utoipa::path(
         get,
         path = "/ws",
+        tag = "System",
+        summary = "WebSocket connection",
+        description = "Establish a WebSocket connection for real-time updates.",
         responses(
             (status = 101, description = "WebSocket connection established"),
         )
@@ -138,6 +159,9 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) ->
 #[utoipa::path(
         get,
         path = "/openapi",
+        tag = "System",
+        summary = "Get OpenAPI spec",
+        description = "Retrieve the OpenAPI specification for this API.",
         responses(
             (status = 200, description = "OpenAPI specification in JSON format", body = String)
         )
@@ -156,5 +180,12 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
 }
 
 #[derive(OpenApi)]
-#[openapi(paths(get_classes, get_class, create_class, get_objects, get_object, create_object, ws_handler, openapi))]
+#[openapi(
+    paths(get_classes, get_class, create_class, get_objects, get_object, create_object, ws_handler, openapi),
+    tags(
+        (name = "Classes", description = "Operations related to knowledge base classes"),
+        (name = "Objects", description = "Operations related to knowledge base objects"),
+        (name = "System", description = "System and utility endpoints")
+    )
+)]
 struct ApiDoc;

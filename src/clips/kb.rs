@@ -664,6 +664,8 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
 
     fn create_test_kb() -> KnowledgeBase {
@@ -717,7 +719,7 @@ mod tests {
         let mut kb = create_test_kb();
         let class = create_test_class(&kb);
 
-        let object = Object { id: "obj1".to_string(), classes: None, properties: None, values: None };
+        let object = Object { id: "obj1".to_string(), classes: HashSet::new(), properties: None, values: None };
 
         assert!(kb.create_object(&class, &object).is_ok());
     }
@@ -726,7 +728,7 @@ mod tests {
     fn test_properties_management() {
         let mut kb = create_test_kb();
         let class = create_test_class(&kb);
-        let object = Object { id: "obj1".to_string(), classes: None, properties: None, values: None };
+        let object = Object { id: "obj1".to_string(), classes: HashSet::new(), properties: None, values: None };
         kb.create_object(&class, &object).unwrap();
 
         // Test set_properties (static)
@@ -748,7 +750,7 @@ mod tests {
     fn test_data_stream_management() {
         let mut kb = create_test_kb();
         let class = create_test_class(&kb);
-        let object = Object { id: "obj1".to_string(), classes: None, properties: None, values: None };
+        let object = Object { id: "obj1".to_string(), classes: HashSet::new(), properties: None, values: None };
         kb.create_object(&class, &object).unwrap();
 
         // Test add_data (dynamic)

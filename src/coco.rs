@@ -72,7 +72,7 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         self.objects.read().unwrap().get(id).cloned()
     }
 
-    pub async fn create_object(&self, classes: Option<HashSet<String>>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) {
+    pub async fn create_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) {
         let mut object = Object { id: String::new(), classes, properties, values };
         object.id = self.db.create_object(&object).await.expect("Failed to create object in database");
         self.add_objects(vec![object]);
@@ -81,7 +81,7 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
     fn add_objects(&self, objects: Vec<Object>) {
         let class_guard = self.classes.read().unwrap();
         for object in objects {
-            for class_name in object.classes.iter().flatten() {
+            for class_name in &object.classes {
                 let class = class_guard.get(class_name).expect("Class not found for object");
                 self.kb.lock().unwrap().create_object(&class, &object).expect("Failed to create object in knowledge base");
             }
@@ -93,7 +93,7 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         let date_time: DateTime<Utc> = Utc::now();
         self.db.set_values(&object, &values, &date_time).await?;
         let class_guard = self.classes.read().unwrap();
-        for class_name in object.classes.iter().flatten() {
+        for class_name in &object.classes {
             let class = class_guard.get(class_name).expect("Class not found for object");
             self.kb.lock().unwrap().add_data(&class, &object, &values, &date_time)?;
         }

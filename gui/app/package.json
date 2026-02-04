@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
-    "@ratiosolver/flick": "^0.2.1",
+    "@ratiosolver/flick": "^0.2.2",
     "bootstrap": "^5.3.8",
     "coco": "file:../coco",
     "snabbdom": "^3.6.3"

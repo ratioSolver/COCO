@@ -1,10 +1,10 @@
 import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
-import { ListGroup, ListGroupItem } from "@ratiosolver/flick";
+import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
 
 export function ClassesList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_classes().values().map(cls => ListGroupItem(cls.get_name(), () => {
-    console.log('Clicked on type', cls.get_name());
+    flick.ctx.current_page = Class(cls);
   }))));
 }
 

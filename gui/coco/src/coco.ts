@@ -6,6 +6,7 @@ export class CoCo {
 
   private readonly options: CoCoOptions;
   private readonly types: Map<string, Type> = new Map();
+  private readonly objects: Map<string, Object> = new Map();
   private socket: WebSocket | null = null;
   private readonly listeners: Set<CoCoListener> = new Set();
 
@@ -34,10 +35,16 @@ export class CoCo {
       console.error('CoCo connection error', error);
       for (const listener of this.listeners) listener.connection_error(error);
     };
+    this.socket.onmessage = (event) => {
+      console.trace('CoCo message received', event.data);
+    }
   }
 
   get_types(): Map<string, Type> { return this.types; }
   get_type(name: string): Type { return this.types.get(name)!; }
+
+  get_objects(): Map<string, Object> { return this.objects; }
+  get_object(id: string): Object { return this.objects.get(id)!; }
 
   add_listener(listener: CoCoListener) { this.listeners.add(listener); }
   remove_listener(listener: CoCoListener) { this.listeners.delete(listener); }
@@ -52,6 +59,19 @@ export class Type {
   }
 
   get_name(): string { return this.name; }
+}
+
+export class Object {
+
+  private readonly id: string;
+  private readonly properties?: Record<string, unknown>;
+
+  constructor(id: string) {
+    this.id = id;
+  }
+
+  get_id(): string { return this.id; }
+  get_properties(): Record<string, unknown> | undefined { return this.properties; }
 }
 
 export interface CoCoListener {

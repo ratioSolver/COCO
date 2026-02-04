@@ -1,23 +1,20 @@
-import { App, flick, Navbar, NavbarItem, NavbarList, OffcanvasBrand } from '@ratiosolver/flick';
+import { App, flick, Navbar, OffcanvasBrand } from '@ratiosolver/flick';
 import { h } from 'snabbdom';
-import { CoCo } from 'coco';
+import { coco } from 'coco';
 
-const coco = new CoCo();
-coco.connect();
+const cc = new coco.CoCo();
+cc.connect();
 
 // 3. Mount the application
 flick.mount(() => {
   // The main render function returns the entire app view
 
   const navbar = Navbar(
-    OffcanvasBrand('Counter App'),
-    NavbarList([
-      NavbarItem('Home', () => console.log('Navigating to Home'), true)
-    ])
+    OffcanvasBrand('Counter App')
   );
 
   const content = h('div.container.mt-5.text-center', [
-    h('h1', 'Welcome to Flick')
+    h('h1', 'Welcome to CoCo'),
   ]);
 
   // The App component typically wraps the layout

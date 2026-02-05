@@ -1,12 +1,10 @@
-mod clips;
+mod adapters;
 mod coco;
 mod db;
 mod kb;
-mod mongo;
 
-pub use clips::kb::KnowledgeBase as CLIPSKnowledgeBase;
+pub use adapters::clips::CLIPSKnowledgeBase;
+pub use adapters::mongo::MongoDBDataStore;
 pub use coco::CoCo;
-pub use coco::Notifier;
-pub use db::*;
-pub use kb::*;
-pub use mongo::db::Database as MongoDatabase;
+pub use db::DataStore;
+pub use kb::KnowledgeBase;

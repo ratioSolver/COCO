@@ -1,6 +1,9 @@
-use crate::KnowledgeBase;
+use tokio::sync::broadcast;
+
+use crate::{KnowledgeBase, coco::CoCoEvent};
 use std::{
-    ffi::{c_char, c_double, c_long, c_longlong, c_ushort},
+    collections::HashMap,
+    ffi::{CString, c_char, c_double, c_long, c_longlong, c_ushort},
     marker::{PhantomData, PhantomPinned},
     os::raw::c_void,
 };
@@ -190,8 +193,48 @@ unsafe extern "C" {
     unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
 
-pub struct CLIPSKnowledgeBase {}
+pub struct CLIPSKnowledgeBase {
+    env: *mut Environment,
+    instances: HashMap<String, HashMap<String, *mut Fact>>,              // class -> object -> fact
+    facts: HashMap<String, HashMap<String, HashMap<String, *mut Fact>>>, // class -> object -> property -> fact
+}
+
+impl Default for CLIPSKnowledgeBase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+unsafe impl Send for CLIPSKnowledgeBase {}
+unsafe impl Sync for CLIPSKnowledgeBase {}
+
+impl CLIPSKnowledgeBase {
+    pub fn new() -> Self {
+        unsafe { CLIPSKnowledgeBase { env: CreateEnvironment(), instances: HashMap::new(), facts: HashMap::new() } }
+    }
+}
 
 impl KnowledgeBase for CLIPSKnowledgeBase {
+    fn register_callback(&mut self, sender: broadcast::Sender<CoCoEvent>) {
+        let boxed_sender = Box::new(sender);
+        let context_ptr = Box::into_raw(boxed_sender) as *mut std::ffi::c_void;
+        unsafe {
+            AddUDF(self.env, CString::new("add-values").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_values, CString::new("add-values").unwrap().as_ptr(), context_ptr);
+            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_class, CString::new("add-class").unwrap().as_ptr(), context_ptr);
+        }
+    }
     fn add_class(&mut self, class_name: &str) {}
+}
+
+unsafe extern "C" fn add_values(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
+    unsafe {
+        let sender = &*((*_udfc).context as *mut broadcast::Sender<CoCoEvent>);
+        let _ = sender.send(CoCoEvent::AddedValues("object".to_string(), "property".to_string(), vec!["value1".to_string(), "value2".to_string()]));
+    }
+}
+
+unsafe extern "C" fn add_class(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
+    unsafe {
+        let sender = &*((*_udfc).context as *mut broadcast::Sender<CoCoEvent>);
+        let _ = sender.send(CoCoEvent::ClassCreated("NewClass".to_string()));
+    }
 }

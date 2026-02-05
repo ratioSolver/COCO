@@ -65,12 +65,12 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
     }
 
     fn add_classes(&self, classes: Vec<Class>) {
+        let mut kb_guard = self.kb.lock().unwrap();
         for class in classes {
-            self.kb.lock().unwrap().create_class(&class).expect("Failed to create class in knowledge base");
+            let cls = kb_guard.create_class(class).expect("Failed to create class in knowledge base");
             if let Some(notifier) = &self.notifier {
-                notifier.class_created(&class);
+                notifier.class_created(cls);
             }
-            self.classes.write().unwrap().insert(class.name.clone(), class);
         }
     }
 

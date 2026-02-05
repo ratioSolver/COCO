@@ -193,6 +193,7 @@ unsafe extern "C" {
 }
 
 pub struct KnowledgeBase {
+    classes: HashMap<String, Class>,
     env: *mut Environment,
     data_callback: Box<dyn FnMut(&str, HashMap<String, Value>, DateTime<Utc>)>,
     instances: HashMap<String, HashMap<String, *mut Fact>>,              // class -> object -> fact
@@ -210,6 +211,7 @@ impl KnowledgeBase {
     pub fn new() -> Self {
         unsafe {
             KnowledgeBase {
+                classes: HashMap::new(),
                 env: CreateEnvironment(),
                 data_callback: Box::new(|_, _, _| {}),
                 instances: HashMap::new(),
@@ -434,7 +436,7 @@ impl Drop for KnowledgeBase {
 }
 
 impl KnowledgeBaseTrait for KnowledgeBase {
-    fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
+    fn create_class(&mut self, class: Class) -> Result<&Class, Box<dyn Error>> {
         unsafe {
             match Build(self.env, CString::new(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name))?.as_ptr()) {
                 BuildError::None => {}
@@ -442,7 +444,7 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             }
             if let Some(static_props) = &class.static_properties {
                 for (name, prop) in static_props {
-                    match Build(self.env, CString::new(prop_deftemplate(class, name, prop, true))?.as_ptr()) {
+                    match Build(self.env, CString::new(prop_deftemplate(&class, name, prop, true))?.as_ptr()) {
                         BuildError::None => {}
                         err => return Err(format!("Build error: {:?}", err).into()),
                     }
@@ -450,13 +452,13 @@ impl KnowledgeBaseTrait for KnowledgeBase {
             }
             if let Some(dynamic_props) = &class.dynamic_properties {
                 for (name, prop) in dynamic_props {
-                    match Build(self.env, CString::new(prop_deftemplate(class, name, prop, false))?.as_ptr()) {
+                    match Build(self.env, CString::new(prop_deftemplate(&class, name, prop, false))?.as_ptr()) {
                         BuildError::None => {}
                         err => return Err(format!("Build error: {:?}", err).into()),
                     }
                 }
             }
-            Ok(())
+            Ok(self.classes.entry(class.name.clone()).or_insert(class))
         }
     }
 
@@ -672,7 +674,7 @@ mod tests {
         KnowledgeBase::new()
     }
 
-    fn create_test_class(kb: &KnowledgeBase) -> Class {
+    fn create_test_class(kb: &mut KnowledgeBase) -> Class {
         let mut static_props = HashMap::new();
         static_props.insert("is_valid".to_string(), Property::Bool { nullable: Some(false), default: Some(true) });
         static_props.insert("score".to_string(), Property::Int { nullable: Some(true), default: Some(10), min: Some(0), max: Some(100) });
@@ -687,8 +689,7 @@ mod tests {
             dynamic_properties: Some(dynamic_props),
         };
 
-        kb.create_class(&class).expect("Failed to create class");
-        class
+        kb.create_class(class).unwrap().clone()
     }
 
     #[test]
@@ -699,7 +700,7 @@ mod tests {
 
     #[test]
     fn test_class_management() {
-        let kb = create_test_kb();
+        let mut kb = create_test_kb();
 
         // Simple class
         let simple_class = Class {
@@ -708,16 +709,16 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        assert!(kb.create_class(&simple_class).is_ok());
+        assert!(kb.create_class(simple_class).is_ok());
 
         // Complex class with properties
-        create_test_class(&kb);
+        create_test_class(&mut kb);
     }
 
     #[test]
     fn test_object_management() {
         let mut kb = create_test_kb();
-        let class = create_test_class(&kb);
+        let class = create_test_class(&mut kb);
 
         let object = Object { id: "obj1".to_string(), classes: HashSet::new(), properties: None, values: None };
 
@@ -727,7 +728,7 @@ mod tests {
     #[test]
     fn test_properties_management() {
         let mut kb = create_test_kb();
-        let class = create_test_class(&kb);
+        let class = create_test_class(&mut kb);
         let object = Object { id: "obj1".to_string(), classes: HashSet::new(), properties: None, values: None };
         kb.create_object(&class, &object).unwrap();
 
@@ -749,7 +750,7 @@ mod tests {
     #[test]
     fn test_data_stream_management() {
         let mut kb = create_test_kb();
-        let class = create_test_class(&kb);
+        let class = create_test_class(&mut kb);
         let object = Object { id: "obj1".to_string(), classes: HashSet::new(), properties: None, values: None };
         kb.create_object(&class, &object).unwrap();
 

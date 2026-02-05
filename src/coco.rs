@@ -7,22 +7,29 @@ use std::{
     sync::{Arc, Mutex, RwLock},
 };
 
+pub trait Notifier: Send + Sync {
+    fn class_created(&self, class: &Class);
+    fn object_created(&self, object: &Object);
+}
+
 pub struct CoCo<DB: Database + Send + Sync, KB: KnowledgeBase + Send> {
     db: DB,
     kb: Mutex<KB>,
     classes: RwLock<HashMap<String, Class>>,
     objects: Arc<RwLock<HashMap<String, Object>>>,
     rules: RwLock<HashMap<String, Rule>>,
+    notifier: Option<Arc<dyn Notifier>>,
 }
 
 impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
-    pub async fn new(db: DB, kb: KB) -> Self {
+    pub async fn new(db: DB, kb: KB, notifier: Option<Arc<dyn Notifier>>) -> Self {
         let coco = Self {
             db,
             kb: Mutex::new(kb),
             classes: RwLock::new(HashMap::new()),
             objects: Arc::new(RwLock::new(HashMap::new())),
             rules: RwLock::new(HashMap::new()),
+            notifier,
         };
 
         let objects = coco.objects.clone();
@@ -60,6 +67,9 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
     fn add_classes(&self, classes: Vec<Class>) {
         for class in classes {
             self.kb.lock().unwrap().create_class(&class).expect("Failed to create class in knowledge base");
+            if let Some(notifier) = &self.notifier {
+                notifier.class_created(&class);
+            }
             self.classes.write().unwrap().insert(class.name.clone(), class);
         }
     }
@@ -84,6 +94,9 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
             for class_name in &object.classes {
                 let class = class_guard.get(class_name).expect("Class not found for object");
                 self.kb.lock().unwrap().create_object(&class, &object).expect("Failed to create object in knowledge base");
+            }
+            if let Some(notifier) = &self.notifier {
+                notifier.object_created(&object);
             }
             self.objects.write().expect("Failed to lock objects for writing").insert(object.id.clone(), object);
         }
@@ -130,14 +143,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_coco_initialization() {
-        let coco = CoCo::new(MongoDB::new("test_coco_initialization", "mongodb://localhost:27017").await.unwrap(), CLIPS::new()).await;
+        let coco = CoCo::new(MongoDB::new("test_coco_initialization", "mongodb://localhost:27017").await.unwrap(), CLIPS::new(), None).await;
 
         coco.drop_db().await.unwrap();
     }
 
     #[tokio::test]
     async fn test_create_class() {
-        let coco = CoCo::new(MongoDB::new("coco_test_create_class", "mongodb://localhost:27017").await.unwrap(), CLIPS::new()).await;
+        let coco = CoCo::new(MongoDB::new("coco_test_create_class", "mongodb://localhost:27017").await.unwrap(), CLIPS::new(), None).await;
 
         coco.create_class("TestClass", None, None, None).await;
 
@@ -150,7 +163,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_class_with_properties() {
-        let coco = CoCo::new(MongoDB::new("coco_test_create_class_with_properties", "mongodb://localhost:27017").await.unwrap(), CLIPS::new()).await;
+        let coco = CoCo::new(MongoDB::new("coco_test_create_class_with_properties", "mongodb://localhost:27017").await.unwrap(), CLIPS::new(), None).await;
 
         let mut static_props = HashMap::new();
         static_props.insert("is_active".to_string(), Property::Bool { nullable: Some(false), default: Some(false) });

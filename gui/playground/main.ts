@@ -3,11 +3,11 @@ import { h } from 'snabbdom';
 import { coco } from '../src/coco';
 import { Offcanvas } from '../src/components/offcanvas';
 
-const cc = new coco.CoCo();
+const cc = new coco.CoCo({ url: 'ws://localhost:3000/ws' });
 cc.add_listener({
   initialized: () => flick.redraw(),
-  added_class: (_cls) => flick.redraw(),
-  added_object: (_obj) => flick.redraw(),
+  created_class: (_cls) => flick.redraw(),
+  created_object: (_obj) => flick.redraw(),
   connection_error: (error) => console.error('CoCo connection error', error),
   connected: () => { },
   disconnected: () => { },

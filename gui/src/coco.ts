@@ -13,7 +13,7 @@ export namespace coco {
 
     constructor(options: CoCoOptions = {}) {
       this.options = {
-        url: 'ws://localhost:3000/ws',
+        url: 'ws://' + window.location.host + '/ws',
         ...options
       };
     }
@@ -37,6 +37,7 @@ export namespace coco {
         for (const listener of this.listeners) listener.connection_error(error);
       };
       this.socket.onmessage = (event) => {
+        console.trace('CoCo message received:', event.data);        
         const msg: ServerMessage = JSON.parse(event.data);
         switch (msg.msg_type) {
           case 'coco': {
@@ -48,16 +49,16 @@ export namespace coco {
             for (const listener of this.listeners) listener.initialized();
             break;
           }
-          case 'class_added': {
+          case 'class_created': {
             const cls = new CoCoClass(msg.name);
             this.classes.set(cls.get_name(), cls);
-            for (const listener of this.listeners) listener.added_class(cls);
+            for (const listener of this.listeners) listener.created_class(cls);
             break;
           }
-          case 'object_added': {
+          case 'object_created': {
             const obj = new CoCoObject(msg.id);
             this.objects.set(obj.get_id(), obj);
-            for (const listener of this.listeners) listener.added_object(obj);
+            for (const listener of this.listeners) listener.created_object(obj);
             break;
           }
         }
@@ -105,8 +106,8 @@ export namespace coco {
     connection_error(error: Event): void;
 
     initialized(): void;
-    added_class(cls: CoCoClass): void;
-    added_object(obj: CoCoObject): void;
+    created_class(cls: CoCoClass): void;
+    created_object(obj: CoCoObject): void;
   }
 
   type PartialClassMessage = {};
@@ -119,6 +120,6 @@ export namespace coco {
 
   type ServerMessage =
     | ({ msg_type: 'coco' } & CoCoMessage)
-    | ({ msg_type: 'class_added' } & ClassMessage)
-    | ({ msg_type: 'object_added' } & ObjectMessage);
+    | ({ msg_type: 'class_created' } & ClassMessage)
+    | ({ msg_type: 'object_created' } & ObjectMessage);
 }

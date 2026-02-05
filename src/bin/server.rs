@@ -8,24 +8,55 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use coco::{CLIPSKnowledgeBase, Class, CoCo, MongoDatabase, Object};
+use coco::{CLIPSKnowledgeBase, Class, CoCo, MongoDatabase, Notifier, Object};
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
 use tower_http::services::{ServeDir, ServeFile};
 use utoipa::OpenApi;
 
-struct AppState {
+struct ServerNotifier {
     tx: Sender<Value>,
+}
+
+impl ServerNotifier {
+    fn new(tx: Sender<Value>) -> Self {
+        Self { tx }
+    }
+}
+
+struct AppState {
+    notifier: Arc<ServerNotifier>,
     coco: CoCo<coco::MongoDatabase, coco::CLIPSKnowledgeBase>,
+}
+
+impl Notifier for ServerNotifier {
+    fn class_created(&self, class: &Class) {
+        println!("Notifier: class created: {}", class.name);
+        let mut msg = serde_json::to_value(class).unwrap();
+        msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::Value::String("class_created".to_string()));
+        let _ = self.tx.send(msg);
+    }
+
+    fn object_created(&self, object: &Object) {
+        println!("Notifier: object created: {}", object.id);
+        let mut msg = serde_json::to_value(object).unwrap();
+        msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::Value::String("object_created".to_string()));
+        let _ = self.tx.send(msg);
+    }
 }
 
 #[tokio::main]
 async fn main() {
     let (tx, _rx) = tokio::sync::broadcast::channel(100);
-    let coco = CoCo::new(MongoDatabase::new("coco_server", "mongodb://localhost:27017").await.unwrap(), CLIPSKnowledgeBase::new()).await;
-
-    let app_state = Arc::new(AppState { tx, coco });
+    println!("Starting COCO server...");
+    println!("Connecting to MongoDB at mongodb://localhost:27017, database: coco_server");
+    let db = MongoDatabase::new("coco_server", "mongodb://localhost:27017").await.unwrap();
+    println!("Initializing knowledge base...");
+    let kb = CLIPSKnowledgeBase::new();
+    let notifier = Arc::new(ServerNotifier::new(tx));
+    let coco = CoCo::new(db, kb, Some(notifier.clone())).await;
+    let app_state = Arc::new(AppState { notifier, coco });
 
     let app = Router::new();
     let app = app.route("/ws", get(ws_handler));
@@ -36,6 +67,7 @@ async fn main() {
     let app = app.route("/openapi", get(openapi));
     let app = app.with_state(app_state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
+    println!("Server running on http://0.0.0.0:3000");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
@@ -179,9 +211,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
         .map(|c| {
             let name = c.name.clone();
             let mut v = serde_json::to_value(c).unwrap();
-            if let Some(obj) = v.as_object_mut() {
-                obj.remove("name");
-            }
+            v.as_object_mut().unwrap().remove("name");
             (name, v)
         })
         .collect();
@@ -191,8 +221,9 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
     });
     socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.unwrap();
 
-    let mut rx = state.tx.subscribe();
+    let mut rx = state.notifier.tx.subscribe();
     while let Ok(msg) = rx.recv().await {
+        println!("Sending WebSocket message: {:?}", msg);
         socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.unwrap();
     }
 }

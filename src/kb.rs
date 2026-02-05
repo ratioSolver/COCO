@@ -5,6 +5,6 @@ use crate::coco::CoCoEvent;
 
 #[async_trait]
 pub trait KnowledgeBase: Send + Sync {
-    fn register_callback(&mut self, sender: broadcast::Sender<CoCoEvent>);
+    fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent>;
     fn add_class(&mut self, class_name: &str);
 }

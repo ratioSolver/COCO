@@ -194,34 +194,33 @@ unsafe extern "C" {
 }
 
 pub struct CLIPSKnowledgeBase {
+    sender: broadcast::Sender<CoCoEvent>,
     env: *mut Environment,
     instances: HashMap<String, HashMap<String, *mut Fact>>,              // class -> object -> fact
     facts: HashMap<String, HashMap<String, HashMap<String, *mut Fact>>>, // class -> object -> property -> fact
 }
 
-impl Default for CLIPSKnowledgeBase {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 unsafe impl Send for CLIPSKnowledgeBase {}
 unsafe impl Sync for CLIPSKnowledgeBase {}
 
 impl CLIPSKnowledgeBase {
-    pub fn new() -> Self {
-        unsafe { CLIPSKnowledgeBase { env: CreateEnvironment(), instances: HashMap::new(), facts: HashMap::new() } }
+    pub fn new(sender: broadcast::Sender<CoCoEvent>) -> Self {
+        unsafe {
+            let kb = CLIPSKnowledgeBase { sender, env: CreateEnvironment(), instances: HashMap::new(), facts: HashMap::new() };
+            let boxed_sender = Box::new(kb.sender.clone());
+            let context_ptr = Box::into_raw(boxed_sender) as *mut std::ffi::c_void;
+            AddUDF(kb.env, CString::new("add-values").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_values, CString::new("add-values").unwrap().as_ptr(), context_ptr);
+            AddUDF(kb.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_class, CString::new("add-class").unwrap().as_ptr(), context_ptr);
+            kb
+        }
     }
 }
 
 impl KnowledgeBase for CLIPSKnowledgeBase {
-    fn register_callback(&mut self, sender: broadcast::Sender<CoCoEvent>) {
-        let boxed_sender = Box::new(sender);
-        let context_ptr = Box::into_raw(boxed_sender) as *mut std::ffi::c_void;
-        unsafe {
-            AddUDF(self.env, CString::new("add-values").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_values, CString::new("add-values").unwrap().as_ptr(), context_ptr);
-            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_class, CString::new("add-class").unwrap().as_ptr(), context_ptr);
-        }
+    fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
+        self.sender.clone()
     }
+
     fn add_class(&mut self, class_name: &str) {}
 }
 

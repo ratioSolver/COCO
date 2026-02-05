@@ -33,10 +33,10 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         };
 
         let objects = coco.objects.clone();
-        coco.kb.lock().unwrap().set_data_callback(move |object_id: &str, properties: HashMap<String, Value>, timestamp: DateTime<Utc>| {
+        coco.kb.lock().unwrap().set_data_callback(move |object_id: &str, values: HashMap<String, Value>, timestamp: DateTime<Utc>| {
             let mut map = objects.write().expect("Failed to lock objects for writing");
             let object = map.get_mut(object_id).expect("Object not found in callback");
-            for (prop, value) in properties {
+            for (prop, value) in values {
                 object.values.get_or_insert_with(HashMap::new).insert(prop, (value, timestamp));
             }
         });
@@ -102,7 +102,7 @@ impl<DB: Database + Send + Sync, KB: KnowledgeBase + Send> CoCo<DB, KB> {
         }
     }
 
-    pub async fn set_values(&self, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+    pub async fn set_values(&self, object: &mut Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let date_time: DateTime<Utc> = Utc::now();
         self.db.set_values(&object, &values, &date_time).await?;
         let class_guard = self.classes.read().unwrap();

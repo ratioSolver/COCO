@@ -166,3 +166,147 @@ impl DataStore for MongoDBDataStore {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Property;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    async fn get_test_store() -> MongoDBDataStore {
+        let start = SystemTime::now();
+        let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
+        let db_name = format!("coco_test_{}", since_the_epoch.as_nanos());
+        let uri = std::env::var("MONGODB_URI").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
+        MongoDBDataStore::new(&db_name, &uri).await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_classes() {
+        let store = get_test_store().await;
+
+        let mut static_props = HashMap::new();
+        static_props.insert("name".to_string(), Property::String { nullable: Some(false), default: Some("default property".to_string()) });
+        let class = Class {
+            name: "TestClass".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+
+        store.create_class(&class).await.unwrap();
+
+        let classes = store.get_classes().await.unwrap();
+        assert_eq!(classes.len(), 1);
+        assert_eq!(classes[0].name, "TestClass");
+
+        store.drop_db().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_rules() {
+        let store = get_test_store().await;
+
+        let rule = Rule {
+            name: "test_rule".to_string(),
+            content: "(defrule test_rule => (printout t \"hello\" crlf))".to_string(),
+        };
+
+        store.create_rule(&rule).await.unwrap();
+
+        let rules = store.get_rules().await.unwrap();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].name, "test_rule");
+        assert_eq!(rules[0].content, rule.content);
+
+        store.drop_db().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_objects_and_properties() {
+        let store = get_test_store().await;
+
+        let mut classes = HashSet::new();
+        classes.insert("TestClass".to_string());
+
+        let mut properties = HashMap::new();
+        properties.insert("prop1".to_string(), Value::String("value1".to_string()));
+
+        let object = Object {
+            id: "".to_string(), // will be ignored and generated
+            classes: classes.clone(),
+            properties: Some(properties.clone()),
+            values: None,
+        };
+
+        let id = store.create_object(&object).await.unwrap();
+        assert!(!id.is_empty());
+
+        let objects = store.get_objects().await.unwrap();
+        assert_eq!(objects.len(), 1);
+        assert_eq!(objects[0].id, id);
+        assert_eq!(objects[0].classes, classes);
+
+        // Verify properties
+        let retrieved_props = objects[0].properties.as_ref().unwrap();
+        assert_eq!(retrieved_props.get("prop1"), Some(&Value::String("value1".to_string())));
+
+        // Update properties
+        let mut new_props = HashMap::new();
+        new_props.insert("prop2".to_string(), Value::Int(42));
+
+        // Use the object with the correct ID
+        let mut object_with_id = object.clone();
+        object_with_id.id = id.clone();
+
+        store.set_properties(&object_with_id, &new_props).await.unwrap();
+
+        let objects_updated = store.get_objects().await.unwrap();
+        let updated_props = objects_updated[0].properties.as_ref().unwrap();
+
+        assert_eq!(updated_props.get("prop1"), Some(&Value::String("value1".to_string())));
+        assert_eq!(updated_props.get("prop2"), Some(&Value::Int(42)));
+
+        store.drop_db().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_values_timeseries() {
+        let store = get_test_store().await;
+
+        let mut classes = HashSet::new();
+        classes.insert("Sensor".to_string());
+
+        let object = Object { id: "".to_string(), classes, properties: None, values: None };
+
+        let id = store.create_object(&object).await.unwrap();
+        let mut object_with_id = object.clone();
+        object_with_id.id = id.clone();
+
+        let now = Utc::now();
+        let mut values = HashMap::new();
+        values.insert("temp".to_string(), Value::Float(25.5));
+
+        store.set_values(&object_with_id, &values, &now).await.unwrap();
+
+        // Retrieve values
+        let retrieved_values = store.get_values(&object_with_id, &(now - chrono::Duration::seconds(1)), &(now + chrono::Duration::seconds(1))).await.unwrap();
+
+        assert!(retrieved_values.contains_key("temp"));
+        let temp_values = retrieved_values.get("temp").unwrap();
+        assert_eq!(temp_values.len(), 1);
+
+        // Time precision check needs lenience - checking value is simpler
+        assert_eq!(temp_values[0].0, Value::Float(25.5));
+
+        // Check latest value in object document
+        let objects = store.get_objects().await.unwrap();
+        let obj_values = objects[0].values.as_ref().unwrap();
+
+        assert!(obj_values.contains_key("temp"));
+        let (val, _) = &obj_values["temp"];
+        assert_eq!(*val, Value::Float(25.5));
+
+        store.drop_db().await.unwrap();
+    }
+}

@@ -242,7 +242,7 @@ impl CLIPSKnowledgeBase {
             }
             let handle_err = |msg: &str| {
                 FBDispose(fb);
-                Err::<(), Box<dyn Error>>(msg.to_string().into())
+                Err(msg.to_string().into())
             };
             match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.clone())?.as_ptr()) {
                 PutSlotError::None => {}
@@ -340,7 +340,7 @@ impl CLIPSKnowledgeBase {
             }
             let handle_err = |msg: &str| {
                 FMDispose(fm);
-                Err::<(), Box<dyn Error>>(msg.to_string().into())
+                Err(msg.to_string().into())
             };
             match FMPutSlotSymbol(fm, CString::new("id")?.as_ptr(), CString::new(object.id.clone())?.as_ptr()) {
                 PutSlotError::None => {}

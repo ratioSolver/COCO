@@ -143,3 +143,229 @@ impl CoCo {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Class, CoCoEvent, DataStore, KnowledgeBase, Object, Property, Rule, Value};
+    use async_trait::async_trait;
+    use chrono::{DateTime, Utc};
+    use std::collections::{HashMap, HashSet};
+    use std::error::Error;
+    use std::sync::{Arc, Mutex};
+    use tokio::sync::broadcast;
+
+    struct MockDataStore {
+        classes: Arc<Mutex<HashMap<String, Class>>>,
+        objects: Arc<Mutex<HashMap<String, Object>>>,
+        rules: Arc<Mutex<HashMap<String, Rule>>>,
+    }
+
+    impl MockDataStore {
+        fn new() -> Self {
+            Self {
+                classes: Arc::new(Mutex::new(HashMap::new())),
+                objects: Arc::new(Mutex::new(HashMap::new())),
+                rules: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl DataStore for MockDataStore {
+        fn name(&self) -> &str {
+            "mock"
+        }
+
+        async fn get_classes(&self) -> Result<Vec<Class>, Box<dyn Error>> {
+            Ok(self.classes.lock().unwrap().values().cloned().collect())
+        }
+
+        async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
+            self.classes.lock().unwrap().insert(class.name.clone(), class.clone());
+            Ok(())
+        }
+
+        async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>> {
+            Ok(self.objects.lock().unwrap().values().cloned().collect())
+        }
+
+        async fn create_object(&self, object: &Object) -> Result<String, Box<dyn Error>> {
+            let id = if object.id.is_empty() { "mock_id".to_string() } else { object.id.clone() };
+            let mut obj = object.clone();
+            obj.id = id.clone();
+            self.objects.lock().unwrap().insert(id.clone(), obj);
+            Ok(id)
+        }
+
+        async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+            let mut objects = self.objects.lock().unwrap();
+            if let Some(obj) = objects.get_mut(&object.id) {
+                obj.properties = Some(properties.clone());
+            }
+            Ok(())
+        }
+
+        async fn get_values(&self, _object: &Object, _from: &DateTime<Utc>, _to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>> {
+            Ok(HashMap::new())
+        }
+
+        async fn set_values(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+            let mut objects = self.objects.lock().unwrap();
+            if let Some(obj) = objects.get_mut(&object.id) {
+                obj.values = Some(values.iter().map(|(k, v)| (k.clone(), (v.clone(), *date_time))).collect());
+            }
+            Ok(())
+        }
+
+        async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>> {
+            Ok(self.rules.lock().unwrap().values().cloned().collect())
+        }
+
+        async fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>> {
+            self.rules.lock().unwrap().insert(rule.name.clone(), rule.clone());
+            Ok(())
+        }
+
+        async fn drop_db(&self) -> Result<(), Box<dyn Error>> {
+            Ok(())
+        }
+    }
+
+    struct MockKnowledgeBase {
+        sender: broadcast::Sender<CoCoEvent>,
+    }
+
+    impl MockKnowledgeBase {
+        fn new() -> Self {
+            let (sender, _) = broadcast::channel(100);
+            Self { sender }
+        }
+    }
+
+    impl KnowledgeBase for MockKnowledgeBase {
+        fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
+            self.sender.clone()
+        }
+        fn create_class(&self, _class: &Class) -> Result<(), Box<dyn Error>> {
+            Ok(())
+        }
+        fn create_object(&self, _class: &Class, _object: &Object) -> Result<(), Box<dyn Error>> {
+            Ok(())
+        }
+        fn set_properties(&self, _class: &Class, _object: &Object, _values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+            Ok(())
+        }
+        fn add_data(&self, _class: &Class, _object: &Object, _values: &HashMap<String, Value>, _date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+            Ok(())
+        }
+        fn create_rule(&self, _rule: &Rule) -> Result<(), Box<dyn Error>> {
+            Ok(())
+        }
+    }
+
+    async fn setup_coco() -> CoCo {
+        let db = Arc::new(MockDataStore::new());
+        let kb = Arc::new(Mutex::new(MockKnowledgeBase::new()));
+        CoCo::new(db, kb).await
+    }
+
+    #[tokio::test]
+    async fn test_new() {
+        let coco = setup_coco().await;
+        assert!(coco.get_classes().is_empty());
+        assert!(coco.get_objects().is_empty());
+        assert!(coco.get_rules().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_create_and_get_class() {
+        let coco = setup_coco().await;
+        let mut static_props = HashMap::new();
+        static_props.insert("name".to_string(), Property::String { nullable: Some(false), default: Some("default".to_string()) });
+
+        coco.create_new_class("TestClass", None, Some(static_props), None).await.expect("Failed to create class");
+
+        let classes = coco.get_classes();
+        assert_eq!(classes.len(), 1);
+        assert_eq!(classes[0].name, "TestClass");
+
+        let retrieved_class = coco.get_class("TestClass");
+        assert!(retrieved_class.is_some());
+        assert_eq!(retrieved_class.unwrap().name, "TestClass");
+    }
+
+    #[tokio::test]
+    async fn test_create_and_get_object() {
+        let coco = setup_coco().await;
+
+        // Need a class first
+        coco.create_new_class("TestClass", None, None, None).await.expect("Failed to create class");
+
+        let mut classes = HashSet::new();
+        classes.insert("TestClass".to_string());
+
+        let mut properties = HashMap::new();
+        properties.insert("prop1".to_string(), Value::String("val1".to_string()));
+
+        coco.create_new_object(classes, Some(properties), None).await.expect("Failed to create object");
+
+        let objects = coco.get_objects();
+        assert_eq!(objects.len(), 1);
+        assert_eq!(objects[0].id, "mock_id");
+
+        let retrieved_object = coco.get_object("mock_id");
+        assert!(retrieved_object.is_some());
+        assert_eq!(retrieved_object.unwrap().id, "mock_id");
+    }
+
+    #[tokio::test]
+    async fn test_set_values() {
+        let coco = setup_coco().await;
+
+        coco.create_new_class("Sensor", None, None, None).await.expect("Failed to create class");
+
+        let mut classes = HashSet::new();
+        classes.insert("Sensor".to_string());
+
+        coco.create_new_object(classes, None, None).await.expect("Failed to create object");
+        let mut object = coco.get_object("mock_id").expect("Object not found");
+
+        let mut values = HashMap::new();
+        values.insert("temp".to_string(), Value::Float(20.5));
+
+        coco.set_values(&mut object, &values).await.expect("Failed to set values");
+    }
+
+    #[tokio::test]
+    async fn test_create_and_get_rule() {
+        let coco = setup_coco().await;
+
+        coco.create_new_rule("test_rule", "(defrule ...)").await.expect("Failed to create rule");
+
+        let rules = coco.get_rules();
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].name, "test_rule");
+        assert_eq!(rules[0].content, "(defrule ...)");
+
+        let retrieved_rule = coco.get_rule("test_rule");
+        assert!(retrieved_rule.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_events() {
+        let coco = setup_coco().await;
+        let mut receiver = coco.get_event_sender().subscribe();
+
+        coco.create_new_class("EventClass", None, None, None).await.expect("Failed to create class");
+
+        if let Ok(event) = receiver.recv().await {
+            match event {
+                CoCoEvent::ClassCreated(c) => assert_eq!(c.name, "EventClass"),
+                _ => panic!("Wrong event type"),
+            }
+        } else {
+            panic!("Failed to receive event");
+        }
+    }
+}

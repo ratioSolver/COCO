@@ -19,6 +19,7 @@ async fn main() {
     let db = Arc::new(MongoDBDataStore::new("coco_server", "mongodb://localhost:27017").await.unwrap());
     let (tx, _rx) = broadcast::channel(100);
     let kb = Arc::new(Mutex::new(CLIPSKnowledgeBase::new(tx)));
+    kb.lock().unwrap().init();
     let coco = Arc::new(CoCo::new(db, kb).await);
 
     let app = Router::new();

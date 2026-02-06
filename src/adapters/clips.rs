@@ -208,19 +208,22 @@ unsafe impl Sync for CLIPSKnowledgeBase {}
 impl CLIPSKnowledgeBase {
     pub fn new(sender: broadcast::Sender<CoCoEvent>) -> Self {
         unsafe {
-            let kb = CLIPSKnowledgeBase {
+            CLIPSKnowledgeBase {
                 sender,
                 env: CreateEnvironment(),
                 instances: RwLock::new(HashMap::new()),
                 facts: RwLock::new(HashMap::new()),
-            };
-            let boxed_sender = Box::new(kb.sender.clone());
-            let context_ptr = Box::into_raw(boxed_sender) as *mut std::ffi::c_void;
-            AddUDF(kb.env, CString::new("add-values").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_values, CString::new("add-values").unwrap().as_ptr(), context_ptr);
-            AddUDF(kb.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_class, CString::new("add-class").unwrap().as_ptr(), context_ptr);
-            kb
+            }
         }
     }
+
+    pub fn init(&self) {
+        unsafe {
+            AddUDF(self.env, CString::new("add-values").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_values, CString::new("add-values").unwrap().as_ptr(), self as *const _ as *mut c_void);
+            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_class, CString::new("add-class").unwrap().as_ptr(), self as *const _ as *mut c_void);
+        }
+    }
+
     pub fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
         unsafe {
             let result = AddUDF(self.env, CString::new(name)?.as_ptr(), CString::new(return_types)?.as_ptr(), min_args, max_args, CString::new(arg_types)?.as_ptr(), function_ptr, CString::new(r_name)?.as_ptr(), self as *const _ as *mut c_void);
@@ -649,14 +652,16 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
 
 unsafe extern "C" fn add_values(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
     unsafe {
-        let sender = &*((*_udfc).context as *mut broadcast::Sender<CoCoEvent>);
+        let kb = &*((*_udfc).context as *mut CLIPSKnowledgeBase);
+        let sender = &kb.sender;
         let _ = sender.send(CoCoEvent::AddedValues("Object1".to_string(), [("property1".to_string(), (Value::Bool(true), chrono::Utc::now()))].iter().cloned().collect()));
     }
 }
 
 unsafe extern "C" fn add_class(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
     unsafe {
-        let sender = &*((*_udfc).context as *mut broadcast::Sender<CoCoEvent>);
+        let kb = &*((*_udfc).context as *mut CLIPSKnowledgeBase);
+        let sender = &kb.sender;
         let _ = sender.send(CoCoEvent::ClassCreated(Class {
             name: "TestClass".to_string(),
             parents: None,

@@ -351,6 +351,69 @@ impl CLIPSKnowledgeBase {
                     }
                     _ => return handle_err("Property type and value type mismatch"),
                 },
+                Property::String { nullable, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::String(s) => match FBPutSlotString(fb, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
+                        PutSlotError::None => {}
+                        err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                    },
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::Symbol { nullable, allowed_values, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Symbol(s) => {
+                        if let Some(allowed) = allowed_values {
+                            if !allowed.contains(s) {
+                                return handle_err("Value not in allowed values");
+                            }
+                        }
+                        match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::Object { nullable, class, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Object(o) => {
+                        if !self.instances.read().unwrap().get(class).map_or(false, |objs| objs.contains_key(o)) {
+                            return handle_err("Object of specified class not found");
+                        }
+                        match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new(o.clone())?.as_ptr()) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
             }
             if let Some(t) = time {
                 match FBPutSlotInteger(fb, CString::new(format!("time"))?.as_ptr(), t.timestamp()) {
@@ -443,6 +506,69 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Value out of range");
                         }
                         match FMPutSlotFloat(fm, CString::new("value")?.as_ptr(), *f) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::String { nullable, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::String(s) => match FMPutSlotString(fm, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
+                        PutSlotError::None => {}
+                        err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                    },
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::Symbol { nullable, allowed_values, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Symbol(s) => {
+                        if let Some(allowed) = allowed_values {
+                            if !allowed.contains(s) {
+                                return handle_err("Value not in allowed values");
+                            }
+                        }
+                        match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::Object { nullable, class, .. } => match value {
+                    Value::Null => {
+                        if let Some(true) = nullable {
+                            match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::Object(o) => {
+                        if !self.instances.read().unwrap().get(class).map_or(false, |objs| objs.contains_key(o)) {
+                            return handle_err("Object of specified class not found");
+                        }
+                        match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(o.clone())?.as_ptr()) {
                             PutSlotError::None => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
@@ -677,6 +803,65 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                     })
                     .unwrap_or("?VARIABLE".to_string());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::String { nullable, default } => {
+            def.push_str(" (slot value (type STRING");
+            if let Some(true) = nullable {
+                def.push_str(" SYMBOL) (allowed-symbols nil");
+            }
+            def.push(')');
+            if let Some(def_val) = default {
+                def.push_str(&format!(" (default \"{}\")", def_val));
+            } else if let Some(true) = nullable {
+                def.push_str(" (default nil)");
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::Symbol { nullable, default, allowed_values } => {
+            def.push_str(" (slot value (type SYMBOL)");
+            if let Some(allowed) = allowed_values {
+                def.push_str(" (allowed-symbols");
+                if let Some(true) = nullable {
+                    def.push_str(" nil");
+                }
+                for v in allowed {
+                    def.push_str(&format!(" {}", v));
+                }
+                def.push(')');
+            } else if let Some(true) = nullable {
+                def.push_str(" (allowed-symbols nil)");
+            }
+
+            if let Some(def_val) = default {
+                def.push_str(&format!(" (default {})", def_val));
+            } else if let Some(true) = nullable {
+                def.push_str(" (default nil)");
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::Object { nullable, default, .. } => {
+            def.push_str(" (slot value (type SYMBOL)");
+            if let Some(def_val) = default {
+                def.push_str(&format!(" (default {})", def_val));
+            } else if let Some(true) = nullable {
+                def.push_str(" (default nil)");
             }
             def.push(')');
             if !is_static {

@@ -46,6 +46,27 @@ pub enum Property {
         #[serde(skip_serializing_if = "Option::is_none")]
         max: Option<f64>,
     },
+    String {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<String>,
+    },
+    Symbol {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        allowed_values: Option<HashSet<String>>,
+    },
+    Object {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<String>,
+        class: String,
+    },
 }
 
 impl Display for Property {
@@ -60,6 +81,15 @@ impl Display for Property {
             Property::Float { nullable, default, min, max } => {
                 write!(f, "float(nullable: {:?}, default: {:?}, min: {:?}, max: {:?})", nullable, default, min, max)
             }
+            Property::String { nullable, default } => {
+                write!(f, "string(nullable: {:?}, default: {:?})", nullable, default)
+            }
+            Property::Symbol { nullable, default, allowed_values } => {
+                write!(f, "symbol(nullable: {:?}, default: {:?}, allowed_values: {:?})", nullable, default, allowed_values)
+            }
+            Property::Object { nullable, default, class } => {
+                write!(f, "object(nullable: {:?}, default: {:?}, class: {:?})", nullable, default, class)
+            }
         }
     }
 }
@@ -71,6 +101,9 @@ pub enum Value {
     Bool(bool),
     Int(i64),
     Float(f64),
+    String(String),
+    Symbol(String),
+    Object(String),
 }
 
 impl Display for Value {
@@ -80,6 +113,9 @@ impl Display for Value {
             Value::Bool(b) => write!(f, "{}", b),
             Value::Int(i) => write!(f, "{}", i),
             Value::Float(fl) => write!(f, "{}", fl),
+            Value::String(s) => write!(f, "\"{}\"", s),
+            Value::Symbol(s) => write!(f, "'{}'", s),
+            Value::Object(o) => write!(f, "object_id: {}", o),
         }
     }
 }

@@ -128,7 +128,8 @@ impl Display for Rule {
 pub enum CoCoEvent {
     ClassCreated(Class),
     ObjectCreated(Object),
-    AddedValues(String, HashMap<String, (Value, DateTime<Utc>)>),
+    AddedClass(String, String),                                   // (object_id, class_name)
+    AddedValues(String, HashMap<String, (Value, DateTime<Utc>)>), // (object_id, values)
 }
 
 impl Display for CoCoEvent {
@@ -136,6 +137,7 @@ impl Display for CoCoEvent {
         match self {
             CoCoEvent::ClassCreated(class) => write!(f, "ClassCreated: {}", class),
             CoCoEvent::ObjectCreated(object) => write!(f, "ObjectCreated: {}", object),
+            CoCoEvent::AddedClass(object_id, class_name) => write!(f, "AddedClass: {} to {}", class_name, object_id),
             CoCoEvent::AddedValues(object_id, values) => write!(f, "AddedValues to {}: {:?}", object_id, values),
         }
     }

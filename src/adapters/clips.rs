@@ -36,13 +36,14 @@ struct Fact {
 
 #[repr(C)]
 pub struct TypeHeader {
-    pub type_code: c_ushort,
+    pub type_code: CLIPSTypeCode,
 }
 
 #[repr(C)]
+#[repr(C)]
 pub struct CLIPSLexeme {
     pub header: TypeHeader,
-    pub _marker: PhantomData<(*mut u8, PhantomPinned)>,
+    pub contents: *const c_char,
 }
 
 #[repr(C)]
@@ -63,9 +64,10 @@ pub struct CLIPSVoid {
 }
 
 #[repr(C)]
-struct Multifield {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+pub struct Multifield {
+    pub header: TypeHeader,
+    pub length: usize,
+    pub contents: *mut UDFValue,
 }
 
 #[repr(C)]
@@ -104,6 +106,39 @@ pub struct UDFValue {
     value: UDFValueUnion,
     begin: usize,
     range: usize,
+}
+
+#[repr(u16)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CLIPSTypeCode {
+    Float,
+    Integer,
+    Symbol,
+    String,
+    Multifield,
+    ExternalAddress,
+    FactAddress,
+    InstanceAddress,
+    InstanceName,
+    Void,
+}
+
+#[repr(C)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
+pub enum CLIPSType {
+    FloatBit = 1 << 0,
+    IntegerBit = 1 << 1,
+    SymbolBit = 1 << 2,
+    StringBit = 1 << 3,
+    MultifieldBit = 1 << 4,
+    ExternalAddressBit = 1 << 5,
+    FactAddressBit = 1 << 6,
+    InstanceAddressBit = 1 << 7,
+    InstanceNameBit = 1 << 8,
+    VoidBit = 1 << 9,
+    BooleanBit = 1 << 10,
 }
 
 #[allow(dead_code)]
@@ -192,6 +227,9 @@ unsafe extern "C" {
     unsafe fn FMPutSlotSymbol(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn FMPutSlotString(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn AddUDF(env: *mut Environment, name: *const c_char, return_types: *const c_char, min_args: c_ushort, max_args: c_ushort, arg_types: *const c_char, function_ptr: UserDefinedFunction, r_name: *const c_char, context: *mut c_void) -> AddUDFError;
+    unsafe fn UDFFirstArgument(udfc: *mut UDFContext, expected_type: CLIPSType, out: *mut UDFValue) -> bool;
+    unsafe fn UDFHasNextArgument(udfc: *mut UDFContext) -> bool;
+    unsafe fn UDFNextArgument(udfc: *mut UDFContext, expected_type: CLIPSType, out: *mut UDFValue) -> bool;
     unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
 
@@ -219,8 +257,8 @@ impl CLIPSKnowledgeBase {
 
     pub fn init(&self) {
         unsafe {
-            AddUDF(self.env, CString::new("add-values").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_values, CString::new("add-values").unwrap().as_ptr(), self as *const _ as *mut c_void);
-            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 0, 0, CString::new("").unwrap().as_ptr(), add_class, CString::new("add-class").unwrap().as_ptr(), self as *const _ as *mut c_void);
+            AddUDF(self.env, CString::new("add-values").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), add_values, CString::new("add-values").unwrap().as_ptr(), self as *const _ as *mut c_void);
+            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), add_class, CString::new("add-class").unwrap().as_ptr(), self as *const _ as *mut c_void);
         }
     }
 
@@ -650,23 +688,97 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
     }
 }
 
-unsafe extern "C" fn add_values(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
+unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _out: *mut UDFValue) {
     unsafe {
-        let kb = &*((*_udfc).context as *mut CLIPSKnowledgeBase);
+        let kb = &*((*udfc).context as *mut CLIPSKnowledgeBase);
+        let mut object_id = std::mem::MaybeUninit::<UDFValue>::uninit();
+        if !UDFFirstArgument(udfc, CLIPSType::SymbolBit, object_id.as_mut_ptr()) {
+            return;
+        }
+        let object_id = object_id.assume_init();
+        assert!(object_id.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
+        let object_id = std::ffi::CStr::from_ptr((*object_id.value.lexeme_value).contents).to_str().unwrap();
+
+        let mut pars = std::mem::MaybeUninit::<UDFValue>::uninit();
+        if !UDFNextArgument(udfc, CLIPSType::MultifieldBit, pars.as_mut_ptr()) {
+            return;
+        }
+        let pars = pars.assume_init();
+        let mut vars = std::mem::MaybeUninit::<UDFValue>::uninit();
+        if !UDFNextArgument(udfc, CLIPSType::MultifieldBit, vars.as_mut_ptr()) {
+            return;
+        }
+        let vars = vars.assume_init();
+
+        let time = if UDFHasNextArgument(udfc) {
+            let mut time_val = std::mem::MaybeUninit::<UDFValue>::uninit();
+            if !UDFNextArgument(udfc, CLIPSType::IntegerBit, time_val.as_mut_ptr()) {
+                return;
+            }
+            let time_val = time_val.assume_init();
+            DateTime::<Utc>::from_timestamp(time_val.value.integer_value as i64, 0).unwrap()
+        } else {
+            Utc::now()
+        };
+
+        assert!((*pars.value.multifield_value).length == (*vars.value.multifield_value).length);
+        let length = (*pars.value.multifield_value).length;
+        let pars_contents = (*pars.value.multifield_value).contents;
+        let vars_contents = (*vars.value.multifield_value).contents;
+
+        let mut values = HashMap::new();
+        for i in 0..length {
+            let par = &*pars_contents.add(i);
+            assert!(par.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
+            let par_name = std::ffi::CStr::from_ptr((*par.value.lexeme_value).contents).to_str().unwrap();
+            let val = &*vars_contents.add(i);
+            match par.value.header.as_ref().unwrap().type_code {
+                CLIPSTypeCode::Symbol => {
+                    let val_str = std::ffi::CStr::from_ptr((*val.value.lexeme_value).contents).to_str().unwrap();
+                    match val_str {
+                        "TRUE" => {
+                            values.insert(par_name.to_string(), (Value::Bool(true), time));
+                        }
+                        "FALSE" => {
+                            values.insert(par_name.to_string(), (Value::Bool(false), time));
+                        }
+                        "nil" => {
+                            values.insert(par_name.to_string(), (Value::Null, time));
+                        }
+                        _ => {}
+                    }
+                }
+                CLIPSTypeCode::Integer => {}
+                CLIPSTypeCode::Float => {}
+                _ => {}
+            }
+        }
+
         let sender = &kb.sender;
-        let _ = sender.send(CoCoEvent::AddedValues("Object1".to_string(), [("property1".to_string(), (Value::Bool(true), chrono::Utc::now()))].iter().cloned().collect()));
+        let _ = sender.send(CoCoEvent::AddedValues(object_id.to_string(), values));
     }
 }
 
-unsafe extern "C" fn add_class(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
+unsafe extern "C" fn add_class(_env: *mut Environment, udfc: *mut UDFContext, _out: *mut UDFValue) {
     unsafe {
-        let kb = &*((*_udfc).context as *mut CLIPSKnowledgeBase);
+        let kb = &*((*udfc).context as *mut CLIPSKnowledgeBase);
+        let mut object_id = std::mem::MaybeUninit::<UDFValue>::uninit();
+        if !UDFFirstArgument(udfc, CLIPSType::SymbolBit, object_id.as_mut_ptr()) {
+            return;
+        }
+        let object_id = object_id.assume_init();
+        assert!(object_id.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
+        let object_id = std::ffi::CStr::from_ptr((*object_id.value.lexeme_value).contents).to_str().unwrap();
+
+        let mut class_name = std::mem::MaybeUninit::<UDFValue>::uninit();
+        if !UDFNextArgument(udfc, CLIPSType::SymbolBit, class_name.as_mut_ptr()) {
+            return;
+        }
+        let class_name = class_name.assume_init();
+        assert!(class_name.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
+        let class_name = std::ffi::CStr::from_ptr((*class_name.value.lexeme_value).contents).to_str().unwrap();
+
         let sender = &kb.sender;
-        let _ = sender.send(CoCoEvent::ClassCreated(Class {
-            name: "TestClass".to_string(),
-            parents: None,
-            static_properties: None,
-            dynamic_properties: None,
-        }));
+        let _ = sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
     }
 }

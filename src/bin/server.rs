@@ -226,6 +226,14 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                 update_msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::json!("object_created"));
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
+            CoCoEvent::AddedClass(object_id, class_name) => {
+                let update_msg = serde_json::json!({
+                    "msg_type": "added_class",
+                    "object_id": object_id,
+                    "class_name": class_name
+                });
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
+            }
             CoCoEvent::AddedValues(object_id, values) => {
                 let update_msg = serde_json::json!({
                     "msg_type": "added_values",

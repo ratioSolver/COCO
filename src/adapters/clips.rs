@@ -748,8 +748,12 @@ unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _
                         _ => {}
                     }
                 }
-                CLIPSTypeCode::Integer => {}
-                CLIPSTypeCode::Float => {}
+                CLIPSTypeCode::Integer => {
+                    values.insert(par_name.to_string(), (Value::Int((*val.value.integer_value).contents), time));
+                }
+                CLIPSTypeCode::Float => {
+                    values.insert(par_name.to_string(), (Value::Float((*val.value.float_value).contents), time));
+                }
                 _ => {}
             }
         }

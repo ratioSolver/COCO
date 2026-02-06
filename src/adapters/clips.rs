@@ -40,7 +40,6 @@ pub struct TypeHeader {
 }
 
 #[repr(C)]
-#[repr(C)]
 pub struct CLIPSLexeme {
     pub header: TypeHeader,
     pub contents: *const c_char,
@@ -84,7 +83,12 @@ struct CLIPSExternalAddress {
 
 #[repr(C)]
 pub struct UDFContext {
-    context: *mut c_void,
+    pub environment: *mut Environment,
+    pub context: *mut c_void,
+    pub the_function: *mut c_void,
+    pub last_position: u32,
+    pub last_arg: *mut c_void,
+    pub return_value: *mut UDFValue,
 }
 
 #[repr(C)]
@@ -228,7 +232,6 @@ unsafe extern "C" {
     unsafe fn FMPutSlotString(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn AddUDF(env: *mut Environment, name: *const c_char, return_types: *const c_char, min_args: c_ushort, max_args: c_ushort, arg_types: *const c_char, function_ptr: UserDefinedFunction, r_name: *const c_char, context: *mut c_void) -> AddUDFError;
     unsafe fn UDFFirstArgument(udfc: *mut UDFContext, expected_type: CLIPSType, out: *mut UDFValue) -> bool;
-    unsafe fn UDFHasNextArgument(udfc: *mut UDFContext) -> bool;
     unsafe fn UDFNextArgument(udfc: *mut UDFContext, expected_type: CLIPSType, out: *mut UDFValue) -> bool;
     unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
@@ -893,13 +896,13 @@ unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _
         }
         let vars = vars.assume_init();
 
-        let time = if UDFHasNextArgument(udfc) {
+        let time = if !(*udfc).last_arg.is_null() {
             let mut time_val = std::mem::MaybeUninit::<UDFValue>::uninit();
             if !UDFNextArgument(udfc, CLIPSType::IntegerBit, time_val.as_mut_ptr()) {
                 return;
             }
             let time_val = time_val.assume_init();
-            DateTime::<Utc>::from_timestamp(time_val.value.integer_value as i64, 0).unwrap()
+            DateTime::<Utc>::from_timestamp((*time_val.value.integer_value).contents, 0).unwrap()
         } else {
             Utc::now()
         };
@@ -928,7 +931,9 @@ unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _
                         "nil" => {
                             values.insert(par_name.to_string(), (Value::Null, time));
                         }
-                        _ => {}
+                        s => {
+                            values.insert(par_name.to_string(), (Value::Symbol(s.to_string()), time));
+                        }
                     }
                 }
                 CLIPSTypeCode::Integer => {
@@ -936,6 +941,10 @@ unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _
                 }
                 CLIPSTypeCode::Float => {
                     values.insert(par_name.to_string(), (Value::Float((*val.value.float_value).contents), time));
+                }
+                CLIPSTypeCode::String => {
+                    let val_str = std::ffi::CStr::from_ptr((*val.value.lexeme_value).contents).to_str().unwrap();
+                    values.insert(par_name.to_string(), (Value::String(val_str.to_string()), time));
                 }
                 _ => {}
             }

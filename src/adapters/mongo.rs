@@ -78,7 +78,7 @@ impl DataStore for MongoDBDataStore {
         let mut objects = Vec::new();
         while let Some(object) = cursor.try_next().await? {
             objects.push(Object {
-                id: object.id.unwrap().to_hex(),
+                id: object.id.map(|oid| oid.to_hex()),
                 classes: object.classes,
                 properties: object.properties,
                 values: object.values,
@@ -94,13 +94,13 @@ impl DataStore for MongoDBDataStore {
             update_doc.insert(format!("properties.{}", prop), bson::to_bson(value)?);
         }
 
-        collection.update_one(doc! { "_id": ObjectId::parse_str(&object.id)? }, doc! { "$set": update_doc }).await?;
+        collection.update_one(doc! { "_id": ObjectId::parse_str(object.id.as_ref().unwrap())? }, doc! { "$set": update_doc }).await?;
         Ok(())
     }
 
     async fn get_values(&self, object: &Object, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>> {
         let data_collection = self.client.database(&self.name).collection::<Document>("object_data");
-        let mut cursor = data_collection.find(doc! { "object_id": &object.id, "timestamp": { "$gte": bson::DateTime::from_millis(from.timestamp_millis()), "$lte": bson::DateTime::from_millis(to.timestamp_millis()) } }).await?;
+        let mut cursor = data_collection.find(doc! { "object_id": object.id.as_ref().unwrap(), "timestamp": { "$gte": bson::DateTime::from_millis(from.timestamp_millis()), "$lte": bson::DateTime::from_millis(to.timestamp_millis()) } }).await?;
 
         let mut values_map: HashMap<String, Vec<(Value, DateTime<Utc>)>> = HashMap::new();
         while let Some(doc) = cursor.try_next().await? {
@@ -121,11 +121,11 @@ impl DataStore for MongoDBDataStore {
         for (prop, value) in values {
             update_doc.insert(format!("values.{}", prop), bson::to_bson(&(value.clone(), *date_time))?);
         }
-        objects_collection.update_one(doc! { "_id": ObjectId::parse_str(&object.id)? }, doc! { "$set": update_doc }).await?;
+        objects_collection.update_one(doc! { "_id": ObjectId::parse_str(object.id.as_ref().unwrap())? }, doc! { "$set": update_doc }).await?;
 
         let data_collection = self.client.database(&self.name).collection::<Document>("object_data");
         let doc = doc! {
-            "object_id": &object.id,
+            "object_id": object.id.as_ref().unwrap(),
             "values": bson::to_bson(values)?,
             "timestamp": bson::DateTime::from_millis(date_time.timestamp_millis()),
         };
@@ -233,7 +233,7 @@ mod tests {
         properties.insert("prop1".to_string(), Value::String("value1".to_string()));
 
         let object = Object {
-            id: "".to_string(), // will be ignored and generated
+            id: None, // will be ignored and generated
             classes: classes.clone(),
             properties: Some(properties.clone()),
             values: None,
@@ -244,7 +244,7 @@ mod tests {
 
         let objects = store.get_objects().await.unwrap();
         assert_eq!(objects.len(), 1);
-        assert_eq!(objects[0].id, id);
+        assert_eq!(objects[0].id.as_deref().unwrap(), id);
         assert_eq!(objects[0].classes, classes);
 
         // Verify properties
@@ -257,7 +257,7 @@ mod tests {
 
         // Use the object with the correct ID
         let mut object_with_id = object.clone();
-        object_with_id.id = id.clone();
+        object_with_id.id = Some(id.clone());
 
         store.set_properties(&object_with_id, &new_props).await.unwrap();
 
@@ -277,11 +277,11 @@ mod tests {
         let mut classes = HashSet::new();
         classes.insert("Sensor".to_string());
 
-        let object = Object { id: "".to_string(), classes, properties: None, values: None };
+        let object = Object { id: None, classes, properties: None, values: None };
 
         let id = store.create_object(&object).await.unwrap();
         let mut object_with_id = object.clone();
-        object_with_id.id = id.clone();
+        object_with_id.id = Some(id.clone());
 
         let now = Utc::now();
         let mut values = HashMap::new();

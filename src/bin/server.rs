@@ -188,7 +188,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
         .get_objects()
         .into_iter()
         .map(|o| {
-            let id = o.id.clone();
+            let id = o.id.as_ref().unwrap().clone();
             let mut v = serde_json::to_value(o).unwrap();
             v.as_object_mut().unwrap().remove("id");
             (id, v)

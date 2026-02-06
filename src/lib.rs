@@ -136,7 +136,7 @@ impl Display for Class {
 
 #[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
 pub struct Object {
-    pub id: String,
+    pub id: Option<String>,
     pub classes: HashSet<String>,
     pub properties: Option<HashMap<String, Value>>,
     pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
@@ -144,7 +144,7 @@ pub struct Object {
 
 impl Display for Object {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "object {} classes: {:?} properties: {:?} values: {:?}", self.id, self.classes, self.properties, self.values)
+        write!(f, "object {} classes: {:?} properties: {:?} values: {:?}", self.id.as_deref().unwrap_or(""), self.classes, self.properties, self.values)
     }
 }
 

@@ -78,12 +78,12 @@ impl CoCo {
     }
 
     pub async fn create_new_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) -> Result<(), Box<dyn Error>> {
-        self.create_object(Object { id: String::new(), classes, properties, values }).await
+        self.create_object(Object { id: None, classes, properties, values }).await
     }
 
     pub async fn create_object(&self, object: Object) -> Result<(), Box<dyn Error>> {
         let id = self.db.create_object(&object).await?;
-        let object = Object { id, ..object };
+        let object = Object { id: Some(id), ..object };
         self.add_objects(vec![object])?;
         Ok(())
     }
@@ -95,7 +95,7 @@ impl CoCo {
                 let class = class_guard.get(class_name).expect("Class not found for object");
                 self.kb.lock().unwrap().create_object(class, &object).expect("Failed to create object in knowledge base");
             }
-            self.objects.write().expect("Failed to lock objects for writing").insert(object.id.clone(), object.clone());
+            self.objects.write().expect("Failed to lock objects for writing").insert(object.id.clone().unwrap(), object.clone());
             self.sender.send(CoCoEvent::ObjectCreated(object)).expect("Failed to send ObjectCreated event");
         }
         Ok(())
@@ -191,18 +191,16 @@ mod tests {
         }
 
         async fn create_object(&self, object: &Object) -> Result<String, Box<dyn Error>> {
-            let id = if object.id.is_empty() { "mock_id".to_string() } else { object.id.clone() };
+            let id = if let Some(ref obj_id) = object.id { obj_id.clone() } else { "mock_id".to_string() };
             let mut obj = object.clone();
-            obj.id = id.clone();
+            obj.id = Some(id.clone());
             self.objects.lock().unwrap().insert(id.clone(), obj);
             Ok(id)
         }
 
         async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
             let mut objects = self.objects.lock().unwrap();
-            if let Some(obj) = objects.get_mut(&object.id) {
-                obj.properties = Some(properties.clone());
-            }
+            objects.get_mut(object.id.as_ref().unwrap()).unwrap().properties = Some(properties.clone());
             Ok(())
         }
 
@@ -212,9 +210,7 @@ mod tests {
 
         async fn set_values(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
             let mut objects = self.objects.lock().unwrap();
-            if let Some(obj) = objects.get_mut(&object.id) {
-                obj.values = Some(values.iter().map(|(k, v)| (k.clone(), (v.clone(), *date_time))).collect());
-            }
+            objects.get_mut(object.id.as_ref().unwrap()).unwrap().values = Some(values.iter().map(|(k, v)| (k.clone(), (v.clone(), *date_time))).collect());
             Ok(())
         }
 
@@ -312,11 +308,11 @@ mod tests {
 
         let objects = coco.get_objects();
         assert_eq!(objects.len(), 1);
-        assert_eq!(objects[0].id, "mock_id");
+        assert_eq!(objects[0].id.as_deref().unwrap(), "mock_id");
 
         let retrieved_object = coco.get_object("mock_id");
         assert!(retrieved_object.is_some());
-        assert_eq!(retrieved_object.unwrap().id, "mock_id");
+        assert_eq!(retrieved_object.unwrap().id.as_deref().unwrap(), "mock_id");
     }
 
     #[tokio::test]

@@ -285,7 +285,7 @@ impl CLIPSKnowledgeBase {
                 FBDispose(fb);
                 Err(msg.to_string().into())
             };
-            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.clone())?.as_ptr()) {
+            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
                 PutSlotError::None => {}
                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
             }
@@ -429,7 +429,7 @@ impl CLIPSKnowledgeBase {
             if fact.is_null() {
                 return handle_err(&format!("Assertion failed: {:?}", FBError(fb)));
             }
-            self.facts.write().unwrap().entry(class.name.clone()).or_default().entry(object.id.clone()).or_default().insert(property_name.to_string(), fact);
+            self.facts.write().unwrap().entry(class.name.clone()).or_default().entry(object.id.as_ref().unwrap().clone()).or_default().insert(property_name.to_string(), fact);
 
             FBDispose(fb);
             Ok(())
@@ -438,7 +438,7 @@ impl CLIPSKnowledgeBase {
 
     fn update_prop(&self, object: &Object, class: &Class, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
         unsafe {
-            let fm = CreateFactModifier(self.env, *self.facts.read().unwrap().get(&class.name).and_then(|objs| objs.get(&object.id)).and_then(|props| props.get(property_name)).ok_or("Property fact not found in knowledge base")?);
+            let fm = CreateFactModifier(self.env, *self.facts.read().unwrap().get(&class.name).and_then(|objs| objs.get(object.id.as_ref().unwrap())).and_then(|props| props.get(property_name)).ok_or("Property fact not found in knowledge base")?);
             if fm.is_null() {
                 return Err("Failed to create FactBuilder".into());
             }
@@ -446,7 +446,7 @@ impl CLIPSKnowledgeBase {
                 FMDispose(fm);
                 Err(msg.to_string().into())
             };
-            match FMPutSlotSymbol(fm, CString::new("id")?.as_ptr(), CString::new(object.id.clone())?.as_ptr()) {
+            match FMPutSlotSymbol(fm, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
                 PutSlotError::None => {}
                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
             }
@@ -590,7 +590,7 @@ impl CLIPSKnowledgeBase {
             if modified_fact.is_null() {
                 return handle_err(&format!("Modification failed: {:?}", FMError(fm)));
             }
-            self.facts.write().unwrap().get_mut(&class.name).and_then(|objs| objs.get_mut(&object.id)).and_then(|props| props.get_mut(property_name)).map(|f| *f = modified_fact);
+            self.facts.write().unwrap().get_mut(&class.name).and_then(|objs| objs.get_mut(object.id.as_ref().unwrap())).and_then(|props| props.get_mut(property_name)).map(|f| *f = modified_fact);
 
             FMDispose(fm);
             Ok(())
@@ -636,7 +636,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 return Err("Failed to create FactBuilder".into());
             }
 
-            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.clone())?.as_ptr()) {
+            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
                 PutSlotError::None => {}
                 err => {
                     FBDispose(fb);
@@ -651,7 +651,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 return Err(format!("Assertion failed: {:?}", error).into());
             }
 
-            self.instances.write().unwrap().entry(class.name.clone()).or_default().insert(object.id.clone(), fact);
+            self.instances.write().unwrap().entry(class.name.clone()).or_default().insert(object.id.as_ref().unwrap().clone(), fact);
 
             FBDispose(fb);
 
@@ -1034,7 +1034,7 @@ mod tests {
         let mut props = HashMap::new();
         props.insert("s_prop".to_string(), Value::String("value1".to_string()));
 
-        let object = Object { id: "person1".to_string(), classes, properties: Some(props), values: None };
+        let object = Object { id: Some("person1".to_string()), classes, properties: Some(props), values: None };
 
         assert!(kb.create_object(&class, &object).is_ok());
     }
@@ -1058,7 +1058,7 @@ mod tests {
 
         // Initial creation with default
         let object = Object {
-            id: "person1".to_string(),
+            id: Some("person1".to_string()),
             classes,
             properties: Some(HashMap::new()), // Empty map means use defaults/nulls as per logic
             values: None,
@@ -1087,7 +1087,7 @@ mod tests {
 
         let mut classes = HashSet::new();
         classes.insert("Sensor".to_string());
-        let object = Object { id: "sensor1".to_string(), classes, properties: None, values: Some(HashMap::new()) };
+        let object = Object { id: Some("sensor1".to_string()), classes, properties: None, values: Some(HashMap::new()) };
         kb.create_object(&class, &object).unwrap();
 
         // Add data
@@ -1125,7 +1125,7 @@ mod tests {
         props.insert("p_string".to_string(), Value::String("hello".to_string()));
         props.insert("p_symbol".to_string(), Value::Symbol("sym".to_string()));
 
-        let object = Object { id: "obj1".to_string(), classes, properties: Some(props), values: None };
+        let object = Object { id: Some("obj1".to_string()), classes, properties: Some(props), values: None };
 
         assert!(kb.create_object(&class, &object).is_ok());
     }
@@ -1149,7 +1149,7 @@ mod tests {
         let mut props_valid = HashMap::new();
         props_valid.insert("p_int".to_string(), Value::Int(15));
         let obj_valid = Object {
-            id: "ok".to_string(),
+            id: Some("ok".to_string()),
             classes: classes.clone(),
             properties: Some(props_valid),
             values: None,
@@ -1160,7 +1160,7 @@ mod tests {
         let mut props_invalid = HashMap::new();
         props_invalid.insert("p_int".to_string(), Value::Int(5));
         let obj_invalid = Object {
-            id: "fail".to_string(),
+            id: Some("fail".to_string()),
             classes: classes.clone(),
             properties: Some(props_invalid),
             values: None,

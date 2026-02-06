@@ -4,8 +4,6 @@ import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
 
 export function ClassesList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_classes().values().map(cls => ListGroupItem(cls.get_name(), () => {
-    console.log('Clicked on class', cls.get_name());
-
     flick.ctx.current_page = Class(cls);
     flick.ctx.page_title = `Class: ${cls.get_name()}`;
     flick.redraw();

@@ -141,7 +141,9 @@ impl Display for Class {
 pub struct Object {
     pub id: Option<String>,
     pub classes: HashSet<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }
 

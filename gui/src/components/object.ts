@@ -1,6 +1,7 @@
 import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
 import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
+import { Class } from "./class";
 
 export function ObjectsList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_objects().values().map(obj => ListGroupItem(object_to_string(obj), () => {
@@ -11,7 +12,7 @@ export function ObjectsList(coco: coco.CoCo): VNode {
 }
 
 export function Object(obj: coco.CoCoObject): VNode {
-  const content = h('div.container.mt-2.text-center', [
+  const content = h('div.container.mt-2', [
     h('div.input-group', [
       h('input.form-control', { attrs: { type: 'text', value: obj.get_id(), placeholder: 'Type name', disabled: true } }),
       h('button.btn.btn-outline-secondary', {
@@ -19,6 +20,18 @@ export function Object(obj: coco.CoCoObject): VNode {
         on: { click: () => navigator.clipboard.writeText(obj.get_id()) }
       }, h('i.fa-solid.fa-copy')),
     ]),
+    h('div.mt-2', Array.from(obj.get_classes()).map(cls =>
+      h('span.badge.bg-primary.me-1', {
+        style: { cursor: 'pointer' },
+        on: {
+          click: () => {
+            flick.ctx.current_page = Class(cls);
+            flick.ctx.page_title = `Class: ${cls.get_name()}`;
+            flick.redraw();
+          }
+        }
+      }, cls.get_name())
+    )),
   ]);
   return content;
 }

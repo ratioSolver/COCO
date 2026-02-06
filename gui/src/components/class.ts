@@ -13,7 +13,7 @@ export function ClassesList(coco: coco.CoCo): VNode {
 }
 
 export function Class(cls: coco.CoCoClass): VNode {
-  const content = h('div.container.mt-2.text-center', [
+  const content = h('div.container.mt-2', [
     h('div.input-group', [
       h('input.form-control', { attrs: { type: 'text', value: cls.get_name(), placeholder: 'Type name', disabled: true } }),
       h('button.btn.btn-outline-secondary', {

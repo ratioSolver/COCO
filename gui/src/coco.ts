@@ -37,15 +37,15 @@ export namespace coco {
         for (const listener of this.listeners) listener.connection_error(error);
       };
       this.socket.onmessage = (event) => {
-        console.trace('CoCo message received:', event.data);        
+        console.trace('CoCo message received:', event.data);
         const msg: ServerMessage = JSON.parse(event.data);
         switch (msg.msg_type) {
           case 'coco': {
             for (const [name, _cls] of Object.entries(msg.classes))
               this.classes.set(name, new CoCoClass(name));
             if (msg.objects)
-              for (const [id, _obj] of Object.entries(msg.objects))
-                this.objects.set(id, new CoCoObject(id));
+              for (const [id, obj] of Object.entries(msg.objects))
+                this.objects.set(id, new CoCoObject(id, new Set(obj.classes.map(cls_name => this.get_class(cls_name)))));
             for (const listener of this.listeners) listener.initialized();
             break;
           }
@@ -56,7 +56,7 @@ export namespace coco {
             break;
           }
           case 'object_created': {
-            const obj = new CoCoObject(msg.id);
+            const obj = new CoCoObject(msg.id, new Set(msg.classes.map(cls_name => this.get_class(cls_name))));
             this.objects.set(obj.get_id(), obj);
             for (const listener of this.listeners) listener.created_object(obj);
             break;
@@ -78,25 +78,31 @@ export namespace coco {
   export class CoCoClass {
 
     private readonly name: string;
+    readonly _instances: Set<CoCoObject> = new Set();
 
     constructor(name: string) {
       this.name = name;
     }
 
     get_name(): string { return this.name; }
+    get_instances(): ReadonlySet<CoCoObject> { return this._instances; }
   }
 
   export class CoCoObject {
 
     private readonly id: string;
     private readonly properties?: Record<string, unknown>;
+    private readonly classes: Set<CoCoClass>;
 
-    constructor(id: string) {
+    constructor(id: string, classes: Set<CoCoClass>) {
       this.id = id;
+      this.classes = classes;
+      for (const cls of classes) cls._instances.add(this);
     }
 
     get_id(): string { return this.id; }
     get_properties(): Record<string, unknown> | undefined { return this.properties; }
+    get_classes(): ReadonlySet<CoCoClass> { return this.classes; }
   }
 
   export interface CoCoListener {
@@ -113,7 +119,7 @@ export namespace coco {
   type PartialClassMessage = {};
   type ClassMessage = ({ name: string } & PartialClassMessage);
 
-  type PartialObjectMessage = { properties?: Record<string, unknown> };
+  type PartialObjectMessage = { properties?: Record<string, unknown>, classes: string[] };
   type ObjectMessage = ({ id: string } & PartialObjectMessage);
 
   type CoCoMessage = { classes: Record<string, PartialClassMessage>, objects?: Record<string, PartialObjectMessage> };

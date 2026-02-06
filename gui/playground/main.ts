@@ -2,6 +2,7 @@ import { App, flick, Navbar, OffcanvasBrand } from '@ratiosolver/flick';
 import { h } from 'snabbdom';
 import { coco } from '../src/coco';
 import { Offcanvas } from '../src/components/offcanvas';
+import '@fortawesome/fontawesome-free/css/all.css';
 
 const cc = new coco.CoCo({ url: 'ws://localhost:3000/ws' });
 cc.add_listener({

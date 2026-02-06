@@ -143,7 +143,11 @@ impl Display for CoCoEvent {
 
 pub trait KnowledgeBase: Send + Sync {
     fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent>;
-    fn create_class(&self, class: &Class);
+    fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>>;
+    fn create_object(&self, class: &Class, object: &Object) -> Result<(), Box<dyn Error>>;
+    fn set_properties(&self, class: &Class, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>>;
+    fn add_data(&self, class: &Class, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>>;
+    fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>>;
 }
 
 #[async_trait]

@@ -1,10 +1,152 @@
 mod adapters;
 mod coco;
-mod db;
-mod kb;
-
 pub use adapters::clips::CLIPSKnowledgeBase;
 pub use adapters::mongo::MongoDBDataStore;
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 pub use coco::CoCo;
-pub use db::DataStore;
-pub use kb::KnowledgeBase;
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+    fmt::{Display, Formatter},
+};
+use tokio::sync::broadcast;
+use utoipa::ToSchema;
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
+#[serde(tag = "type")]
+pub enum Property {
+    #[serde(rename = "bool")]
+    Bool {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<bool>,
+    },
+    #[serde(rename = "int")]
+    Int {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        min: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        max: Option<i64>,
+    },
+    #[serde(rename = "float")]
+    Float {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        min: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        max: Option<f64>,
+    },
+}
+
+impl Display for Property {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Property::Bool { nullable, default } => {
+                write!(f, "bool(nullable: {:?}, default: {:?})", nullable, default)
+            }
+            Property::Int { nullable, default, min, max } => {
+                write!(f, "int(nullable: {:?}, default: {:?}, min: {:?}, max: {:?})", nullable, default, min, max)
+            }
+            Property::Float { nullable, default, min, max } => {
+                write!(f, "float(nullable: {:?}, default: {:?}, min: {:?}, max: {:?})", nullable, default, min, max)
+            }
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
+pub enum Value {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Null => write!(f, "null"),
+            Value::Bool(b) => write!(f, "{}", b),
+            Value::Int(i) => write!(f, "{}", i),
+            Value::Float(fl) => write!(f, "{}", fl),
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+pub struct Class {
+    pub name: String,
+    pub parents: Option<HashSet<String>>,
+    pub static_properties: Option<HashMap<String, Property>>,
+    pub dynamic_properties: Option<HashMap<String, Property>>,
+}
+
+impl Display for Class {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "class {} parents: {:?} static_properties: {:?} dynamic_properties: {:?}", self.name, self.parents, self.static_properties, self.dynamic_properties)
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+pub struct Object {
+    pub id: String,
+    pub classes: HashSet<String>,
+    pub properties: Option<HashMap<String, Value>>,
+    pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
+}
+
+impl Display for Object {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "object {} classes: {:?} properties: {:?} values: {:?}", self.id, self.classes, self.properties, self.values)
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+pub struct Rule {
+    pub name: String,
+    pub content: String,
+}
+
+impl Display for Rule {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "rule {} content: {}", self.name, self.content)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum CoCoEvent {
+    ClassCreated(Class),
+    ObjectCreated(Object),
+    AddedValues(String, HashMap<String, (Value, DateTime<Utc>)>),
+}
+
+impl Display for CoCoEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoCoEvent::ClassCreated(class) => write!(f, "ClassCreated: {}", class),
+            CoCoEvent::ObjectCreated(object) => write!(f, "ObjectCreated: {}", object),
+            CoCoEvent::AddedValues(object_id, values) => write!(f, "AddedValues to {}: {:?}", object_id, values),
+        }
+    }
+}
+
+pub trait KnowledgeBase: Send + Sync {
+    fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent>;
+    fn create_class(&self, class: &Class);
+}
+
+#[async_trait]
+pub trait DataStore: Send + Sync {
+    async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>>;
+}

@@ -1,9 +1,9 @@
-use crate::DataStore;
+use crate::{Class, DataStore};
 use async_trait::async_trait;
 use mongodb::bson::doc;
-use mongodb::error::Error;
 use mongodb::options::IndexOptions;
 use mongodb::{Client, IndexModel};
+use std::error::Error;
 
 pub struct MongoDBDataStore {
     name: String,
@@ -11,7 +11,7 @@ pub struct MongoDBDataStore {
 }
 
 impl MongoDBDataStore {
-    pub async fn new(name: &str, connection_string: &str) -> Result<Self, Error> {
+    pub async fn new(name: &str, connection_string: &str) -> Result<Self, Box<dyn Error>> {
         let client = Client::with_uri_str(connection_string).await?;
         let db = client.database(name);
         let collection_names = db.list_collection_names().await?;
@@ -34,8 +34,9 @@ impl MongoDBDataStore {
 
 #[async_trait]
 impl DataStore for MongoDBDataStore {
-    async fn add_class(&self, class_name: &str) -> Result<(), String> {
-        // Implement the logic to add a class to MongoDB
+    async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
+        let collection = self.client.database(&self.name).collection::<Class>("classes");
+        collection.insert_one(class).await?;
         Ok(())
     }
 }

@@ -1,10 +1,14 @@
 use axum::{
     Router,
-    extract::{Path, State, WebSocketUpgrade, ws::WebSocket},
+    extract::{
+        Path, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     http::StatusCode,
     response::IntoResponse,
+    routing::get,
 };
-use coco::{CLIPSKnowledgeBase, CoCo, MongoDBDataStore};
+use coco::{CLIPSKnowledgeBase, Class, CoCo, MongoDBDataStore, Object};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
@@ -79,7 +83,7 @@ async fn get_class(Path(name): Path<String>, State(coco): State<Arc<CoCo>>) -> i
         )
     )]
 async fn create_class(State(coco): State<Arc<CoCo>>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
-    coco.create_class(&class.name, class.parents, class.static_properties, class.dynamic_properties).await;
+    coco.create_class(&class).await;
     StatusCode::CREATED
 }
 
@@ -179,7 +183,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
     });
     socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.unwrap();
 
-    let mut rx = coco.notifier.tx.subscribe();
+    let mut rx = coco.lock().unwrap().get_event_sender().subscribe();
     while let Ok(msg) = rx.recv().await {
         println!("Sending WebSocket message: {:?}", msg);
         socket.send(Message::Text(serde_json::to_string(&msg).unwrap().into())).await.unwrap();

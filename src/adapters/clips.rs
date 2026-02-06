@@ -1,12 +1,11 @@
-use tokio::sync::broadcast;
-
-use crate::{KnowledgeBase, coco::CoCoEvent};
+use crate::{Class, CoCoEvent, KnowledgeBase, Value};
 use std::{
     collections::HashMap,
     ffi::{CString, c_char, c_double, c_long, c_longlong, c_ushort},
     marker::{PhantomData, PhantomPinned},
     os::raw::c_void,
 };
+use tokio::sync::broadcast;
 
 #[repr(C)]
 pub struct Environment {
@@ -221,19 +220,24 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         self.sender.clone()
     }
 
-    fn add_class(&mut self, class_name: &str) {}
+    fn create_class(&self, class: &Class) {}
 }
 
 unsafe extern "C" fn add_values(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
     unsafe {
         let sender = &*((*_udfc).context as *mut broadcast::Sender<CoCoEvent>);
-        let _ = sender.send(CoCoEvent::AddedValues("object".to_string(), "property".to_string(), vec!["value1".to_string(), "value2".to_string()]));
+        let _ = sender.send(CoCoEvent::AddedValues("Object1".to_string(), [("property1".to_string(), (Value::Bool(true), chrono::Utc::now()))].iter().cloned().collect()));
     }
 }
 
 unsafe extern "C" fn add_class(_env: *mut Environment, _udfc: *mut UDFContext, _out: *mut UDFValue) {
     unsafe {
         let sender = &*((*_udfc).context as *mut broadcast::Sender<CoCoEvent>);
-        let _ = sender.send(CoCoEvent::ClassCreated("NewClass".to_string()));
+        let _ = sender.send(CoCoEvent::ClassCreated(Class {
+            name: "TestClass".to_string(),
+            parents: None,
+            static_properties: None,
+            dynamic_properties: None,
+        }));
     }
 }

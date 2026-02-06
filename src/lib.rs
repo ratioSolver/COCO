@@ -148,5 +148,19 @@ pub trait KnowledgeBase: Send + Sync {
 
 #[async_trait]
 pub trait DataStore: Send + Sync {
+    fn name(&self) -> &str;
+
+    async fn get_classes(&self) -> Result<Vec<Class>, Box<dyn Error>>;
     async fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>>;
+
+    async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>>;
+    async fn create_object(&self, object: &Object) -> Result<String, Box<dyn Error>>;
+    async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>>;
+    async fn get_values(&self, object: &Object, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>>;
+    async fn set_values(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>>;
+
+    async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>>;
+    async fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>>;
+
+    async fn drop_db(&self) -> Result<(), Box<dyn Error>>;
 }

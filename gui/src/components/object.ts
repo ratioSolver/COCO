@@ -16,7 +16,7 @@ export function Object(obj: coco.CoCoObject): VNode {
       h('input.form-control', { attrs: { type: 'text', value: obj.get_id(), placeholder: 'Object ID', readonly: 'readonly' } }),
       h('button.btn.btn-outline-secondary', {
         on: { click: () => navigator.clipboard.writeText(obj.get_id()) }
-      }, [h('i.fa-regular.fa-copy.me-2'), 'Copy object ID']),
+      }, h('i.fa-regular.fa-copy.me-2')),
     ]),
   ]);
   return content;

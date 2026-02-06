@@ -13,13 +13,13 @@ export function ClassesList(coco: coco.CoCo): VNode {
 }
 
 export function Class(cls: coco.CoCoClass): VNode {
-  const content = h('div.container.mt-5.text-center', [
+  const content = h('div.container.mt-2.text-center', [
     h('div.input-group', [
       h('input.form-control', { attrs: { type: 'text', value: cls.get_name(), placeholder: 'Type name', disabled: true } }),
       h('button.btn.btn-outline-secondary', {
         attrs: { type: 'button', title: 'Copy type name to clipboard' },
         on: { click: () => navigator.clipboard.writeText(cls.get_name()) }
-      }, [h('i.fa-solid.fa-copy')]),
+      }, h('i.fa-solid.fa-copy')),
     ]),
   ]);
   return content;

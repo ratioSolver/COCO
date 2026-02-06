@@ -46,12 +46,14 @@ pub enum Property {
         #[serde(skip_serializing_if = "Option::is_none")]
         max: Option<f64>,
     },
+    #[serde(rename = "string")]
     String {
         #[serde(skip_serializing_if = "Option::is_none")]
         nullable: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<String>,
     },
+    #[serde(rename = "symbol")]
     Symbol {
         #[serde(skip_serializing_if = "Option::is_none")]
         nullable: Option<bool>,
@@ -60,6 +62,7 @@ pub enum Property {
         #[serde(skip_serializing_if = "Option::is_none")]
         allowed_values: Option<HashSet<String>>,
     },
+    #[serde(rename = "object")]
     Object {
         #[serde(skip_serializing_if = "Option::is_none")]
         nullable: Option<bool>,

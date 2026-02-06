@@ -380,10 +380,10 @@ impl CLIPSKnowledgeBase {
                         }
                     }
                     Value::Symbol(s) => {
-                        if let Some(allowed) = allowed_values {
-                            if !allowed.contains(s) {
-                                return handle_err("Value not in allowed values");
-                            }
+                        if let Some(allowed) = allowed_values
+                            && !allowed.contains(s)
+                        {
+                            return handle_err("Value not in allowed values");
                         }
                         match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
                             PutSlotError::None => {}
@@ -404,7 +404,7 @@ impl CLIPSKnowledgeBase {
                         }
                     }
                     Value::Object(o) => {
-                        if !self.instances.read().unwrap().get(class).map_or(false, |objs| objs.contains_key(o)) {
+                        if !self.instances.read().unwrap().get(class).is_some_and(|objs| objs.contains_key(o)) {
                             return handle_err("Object of specified class not found");
                         }
                         match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new(o.clone())?.as_ptr()) {
@@ -416,7 +416,7 @@ impl CLIPSKnowledgeBase {
                 },
             }
             if let Some(t) = time {
-                match FBPutSlotInteger(fb, CString::new(format!("time"))?.as_ptr(), t.timestamp()) {
+                match FBPutSlotInteger(fb, CString::new("time".to_string())?.as_ptr(), t.timestamp()) {
                     PutSlotError::None => {}
                     err => handle_err(&format!("PutSlot error: {:?}", err))?,
                 }
@@ -541,10 +541,10 @@ impl CLIPSKnowledgeBase {
                         }
                     }
                     Value::Symbol(s) => {
-                        if let Some(allowed) = allowed_values {
-                            if !allowed.contains(s) {
-                                return handle_err("Value not in allowed values");
-                            }
+                        if let Some(allowed) = allowed_values
+                            && !allowed.contains(s)
+                        {
+                            return handle_err("Value not in allowed values");
                         }
                         match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
                             PutSlotError::None => {}
@@ -565,7 +565,7 @@ impl CLIPSKnowledgeBase {
                         }
                     }
                     Value::Object(o) => {
-                        if !self.instances.read().unwrap().get(class).map_or(false, |objs| objs.contains_key(o)) {
+                        if !self.instances.read().unwrap().get(class).is_some_and(|objs| objs.contains_key(o)) {
                             return handle_err("Object of specified class not found");
                         }
                         match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(o.clone())?.as_ptr()) {
@@ -577,7 +577,7 @@ impl CLIPSKnowledgeBase {
                 },
             }
             if let Some(t) = time {
-                match FMPutSlotInteger(fm, CString::new(format!("time"))?.as_ptr(), t.timestamp()) {
+                match FMPutSlotInteger(fm, CString::new("time".to_string())?.as_ptr(), t.timestamp()) {
                     PutSlotError::None => {}
                     err => handle_err(&format!("PutSlot error: {:?}", err))?,
                 }
@@ -608,7 +608,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             }
             if let Some(static_props) = &class.static_properties {
                 for (name, prop) in static_props {
-                    match Build(self.env, CString::new(prop_deftemplate(&class, name, prop, true))?.as_ptr()) {
+                    match Build(self.env, CString::new(prop_deftemplate(class, name, prop, true))?.as_ptr()) {
                         BuildError::None => {}
                         err => return Err(format!("Build error: {:?}", err).into()),
                     }
@@ -616,7 +616,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             }
             if let Some(dynamic_props) = &class.dynamic_properties {
                 for (name, prop) in dynamic_props {
-                    match Build(self.env, CString::new(prop_deftemplate(&class, name, prop, false))?.as_ptr()) {
+                    match Build(self.env, CString::new(prop_deftemplate(class, name, prop, false))?.as_ptr()) {
                         BuildError::None => {}
                         err => return Err(format!("Build error: {:?}", err).into()),
                     }
@@ -702,9 +702,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         if let Some(props) = class.static_properties.as_ref() {
             for (prop_name, value) in values.iter() {
                 if let Some(prop) = props.get(prop_name) {
-                    if let Err(e) = self.update_prop(object, class, prop, prop_name, value, None) {
-                        return Err(e);
-                    }
+                    self.update_prop(object, class, prop, prop_name, value, None)?
                 }
             }
         }

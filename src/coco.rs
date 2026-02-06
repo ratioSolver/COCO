@@ -30,11 +30,8 @@ impl CoCo {
         let mut receiver = coco.sender.subscribe();
         tokio::spawn(async move {
             while let Ok(event) = receiver.recv().await {
-                match event {
-                    CoCoEvent::AddedValues(object_id, values) => {
-                        println!("Added values to object {}: {:?}", object_id, values);
-                    }
-                    _ => {}
+                if let CoCoEvent::AddedValues(object_id, values) = event {
+                    println!("Added values to object {}: {:?}", object_id, values);
                 }
             }
         });
@@ -96,7 +93,7 @@ impl CoCo {
         for object in objects {
             for class_name in &object.classes {
                 let class = class_guard.get(class_name).expect("Class not found for object");
-                self.kb.lock().unwrap().create_object(&class, &object).expect("Failed to create object in knowledge base");
+                self.kb.lock().unwrap().create_object(class, &object).expect("Failed to create object in knowledge base");
             }
             self.objects.write().expect("Failed to lock objects for writing").insert(object.id.clone(), object.clone());
             self.sender.send(CoCoEvent::ObjectCreated(object)).expect("Failed to send ObjectCreated event");
@@ -106,11 +103,11 @@ impl CoCo {
 
     pub async fn set_values(&self, object: &mut Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let date_time: DateTime<Utc> = Utc::now();
-        self.db.set_values(&object, &values, &date_time).await?;
+        self.db.set_values(object, values, &date_time).await?;
         let class_guard = self.classes.read().unwrap();
         for class_name in &object.classes {
             let class = class_guard.get(class_name).expect("Class not found for object");
-            self.kb.lock().unwrap().add_data(&class, &object, &values, &date_time)?;
+            self.kb.lock().unwrap().add_data(class, object, values, &date_time)?;
         }
         Ok(())
     }

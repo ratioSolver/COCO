@@ -119,7 +119,7 @@ impl DataStore for MongoDBDataStore {
         let objects_collection = self.client.database(&self.name).collection::<MongoObject>("objects");
         let mut update_doc = doc! {};
         for (prop, value) in values {
-            update_doc.insert(format!("values.{}", prop), bson::to_bson(&(value.clone(), date_time.clone()))?);
+            update_doc.insert(format!("values.{}", prop), bson::to_bson(&(value.clone(), *date_time))?);
         }
         objects_collection.update_one(doc! { "_id": ObjectId::parse_str(&object.id)? }, doc! { "$set": update_doc }).await?;
 

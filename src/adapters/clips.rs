@@ -786,7 +786,9 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             }
             def.push(')');
             if let Some(def_val) = default {
-                def.push_str(&format!(" (default {})", def_val));
+                let def_str = def_val.to_string();
+                let def_str = if def_str.contains('.') { def_str } else { format!("{}.0", def_str) };
+                def.push_str(&format!(" (default {})", def_str));
             } else if let Some(true) = nullable {
                 def.push_str(" (default nil)");
             }
@@ -976,5 +978,203 @@ unsafe extern "C" fn add_class(_env: *mut Environment, udfc: *mut UDFContext, _o
 
         let sender = &kb.sender;
         let _ = sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::{HashMap, HashSet};
+    use tokio::sync::broadcast;
+
+    fn create_kb() -> CLIPSKnowledgeBase {
+        let (tx, _) = broadcast::channel(100);
+        let kb = CLIPSKnowledgeBase::new(tx);
+        kb.init();
+        kb
+    }
+
+    #[test]
+    fn test_kb_initialization() {
+        let kb = create_kb();
+        assert!(!kb.env.is_null());
+    }
+
+    #[test]
+    fn test_create_class() {
+        let kb = create_kb();
+        let mut static_props = HashMap::new();
+        static_props.insert("name".to_string(), Property::String { nullable: Some(false), default: Some("default property".to_string()) });
+        let class = Class {
+            name: "TestClass".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+        assert!(kb.create_class(&class).is_ok());
+    }
+
+    #[test]
+    fn test_create_object() {
+        let kb = create_kb();
+
+        let mut static_props = HashMap::new();
+        static_props.insert("s_prop".to_string(), Property::String { nullable: Some(true), default: None });
+        let class = Class {
+            name: "Person".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+        kb.create_class(&class).unwrap();
+
+        let mut classes = HashSet::new();
+        classes.insert("Person".to_string());
+
+        let mut props = HashMap::new();
+        props.insert("s_prop".to_string(), Value::String("value1".to_string()));
+
+        let object = Object { id: "person1".to_string(), classes, properties: Some(props), values: None };
+
+        assert!(kb.create_object(&class, &object).is_ok());
+    }
+
+    #[test]
+    fn test_set_properties() {
+        let kb = create_kb();
+
+        let mut static_props = HashMap::new();
+        static_props.insert("age".to_string(), Property::Int { nullable: Some(false), default: Some(0), min: Some(0), max: Some(150) });
+        let class = Class {
+            name: "Person".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+        kb.create_class(&class).unwrap();
+
+        let mut classes = HashSet::new();
+        classes.insert("Person".to_string());
+
+        // Initial creation with default
+        let object = Object {
+            id: "person1".to_string(),
+            classes,
+            properties: Some(HashMap::new()), // Empty map means use defaults/nulls as per logic
+            values: None,
+        };
+        kb.create_object(&class, &object).unwrap();
+
+        // Update properties
+        let mut new_props = HashMap::new();
+        new_props.insert("age".to_string(), Value::Int(30));
+        assert!(kb.set_properties(&class, &object, &new_props).is_ok());
+    }
+
+    #[test]
+    fn test_add_data() {
+        let kb = create_kb();
+
+        let mut dynamic_props = HashMap::new();
+        dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: Some(-100.0), max: Some(100.0) });
+        let class = Class {
+            name: "Sensor".to_string(),
+            parents: None,
+            static_properties: None,
+            dynamic_properties: Some(dynamic_props),
+        };
+        kb.create_class(&class).unwrap();
+
+        let mut classes = HashSet::new();
+        classes.insert("Sensor".to_string());
+        let object = Object { id: "sensor1".to_string(), classes, properties: None, values: Some(HashMap::new()) };
+        kb.create_object(&class, &object).unwrap();
+
+        // Add data
+        let mut values = HashMap::new();
+        values.insert("temperature".to_string(), Value::Float(25.5));
+        assert!(kb.add_data(&class, &object, &values, &Utc::now()).is_ok());
+    }
+
+    #[test]
+    fn test_various_property_types() {
+        let kb = create_kb();
+
+        let mut static_props = HashMap::new();
+        static_props.insert("p_int".to_string(), Property::Int { nullable: Some(false), default: None, min: None, max: None });
+        static_props.insert("p_float".to_string(), Property::Float { nullable: Some(false), default: None, min: None, max: None });
+        static_props.insert("p_bool".to_string(), Property::Bool { nullable: Some(false), default: None });
+        static_props.insert("p_string".to_string(), Property::String { nullable: Some(false), default: None });
+        static_props.insert("p_symbol".to_string(), Property::Symbol { nullable: Some(false), default: None, allowed_values: None });
+
+        let class = Class {
+            name: "AllTypes".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+        kb.create_class(&class).unwrap();
+
+        let mut classes = HashSet::new();
+        classes.insert("AllTypes".to_string());
+
+        let mut props = HashMap::new();
+        props.insert("p_int".to_string(), Value::Int(42));
+        props.insert("p_float".to_string(), Value::Float(3.14));
+        props.insert("p_bool".to_string(), Value::Bool(true));
+        props.insert("p_string".to_string(), Value::String("hello".to_string()));
+        props.insert("p_symbol".to_string(), Value::Symbol("sym".to_string()));
+
+        let object = Object { id: "obj1".to_string(), classes, properties: Some(props), values: None };
+
+        assert!(kb.create_object(&class, &object).is_ok());
+    }
+
+    #[test]
+    fn test_range_validation() {
+        let kb = create_kb();
+        let mut static_props = HashMap::new();
+        static_props.insert("p_int".to_string(), Property::Int { nullable: Some(false), default: None, min: Some(10), max: Some(20) });
+        let class = Class {
+            name: "RangeTest".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+        kb.create_class(&class).unwrap();
+        let mut classes = HashSet::new();
+        classes.insert("RangeTest".to_string());
+
+        // Valid
+        let mut props_valid = HashMap::new();
+        props_valid.insert("p_int".to_string(), Value::Int(15));
+        let obj_valid = Object {
+            id: "ok".to_string(),
+            classes: classes.clone(),
+            properties: Some(props_valid),
+            values: None,
+        };
+        assert!(kb.create_object(&class, &obj_valid).is_ok());
+
+        // Invalid (below min)
+        let mut props_invalid = HashMap::new();
+        props_invalid.insert("p_int".to_string(), Value::Int(5));
+        let obj_invalid = Object {
+            id: "fail".to_string(),
+            classes: classes.clone(),
+            properties: Some(props_invalid),
+            values: None,
+        };
+        assert!(kb.create_object(&class, &obj_invalid).is_err());
+    }
+
+    #[test]
+    fn test_create_rule() {
+        let kb = create_kb();
+        let rule = crate::Rule {
+            name: "test-rule".to_string(),
+            content: "(defrule test-rule => (printout t \"Hello\" crlf))".to_string(),
+        };
+        assert!(kb.create_rule(&rule).is_ok());
     }
 }

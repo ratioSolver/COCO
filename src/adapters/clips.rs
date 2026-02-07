@@ -43,13 +43,13 @@ impl CLIPSKnowledgeBase {
                 facts: RwLock::new(HashMap::new()),
             };
             let kb_arc = std::sync::Arc::new(std::sync::Mutex::new(kb));
-            
+
             {
                 let kb_guard = kb_arc.lock().unwrap();
                 AddUDF(kb_guard.env, CString::new("add-data").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), Some(add_data), CString::new("add_data").unwrap().as_ptr(), &*kb_guard as *const _ as *mut c_void);
                 AddUDF(kb_guard.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), Some(add_class), CString::new("add_class").unwrap().as_ptr(), &*kb_guard as *const _ as *mut c_void);
             }
-            
+
             kb_arc
         }
     }

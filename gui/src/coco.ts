@@ -61,6 +61,22 @@ export namespace coco {
             for (const listener of this.listeners) listener.created_object(obj);
             break;
           }
+          case 'added_class': {
+            const obj = this.get_object(msg.object_id);
+            const cls = this.get_class(msg.class_name);
+            obj._add_class(cls);
+            break;
+          }
+          case 'updated_properties': {
+            const obj = this.get_object(msg.object_id);
+            obj._set_properties(msg.properties);
+            break;
+          }
+          case 'added_values': {
+            const obj = this.get_object(msg.object_id);
+            obj._set_values(msg.values, msg.date_time);
+            break;
+          }
         }
       }
     }
@@ -81,7 +97,7 @@ export namespace coco {
     private readonly parents: Set<string>;
     private readonly static_properties: Map<string, Property>;
     private readonly dynamic_properties: Map<string, Property>;
-    readonly _instances: Set<CoCoObject> = new Set();
+    private readonly instances: Set<CoCoObject> = new Set();
 
     constructor(name: string, parents: Set<string> = new Set(), static_properties: Map<string, Property> = new Map(), dynamic_properties: Map<string, Property> = new Map()) {
       this.name = name;
@@ -94,7 +110,8 @@ export namespace coco {
     get_parents(): ReadonlySet<string> { return this.parents; }
     get_static_properties(): ReadonlyMap<string, Property> { return this.static_properties; }
     get_dynamic_properties(): ReadonlyMap<string, Property> { return this.dynamic_properties; }
-    get_instances(): ReadonlySet<CoCoObject> { return this._instances; }
+    get_instances(): ReadonlySet<CoCoObject> { return this.instances; }
+    _add_instance(obj: CoCoObject) { this.instances.add(obj); }
   }
 
   export class CoCoObject {
@@ -109,13 +126,26 @@ export namespace coco {
       this.classes = classes;
       this.properties = properties;
       this.values = values;
-      for (const cls of classes) cls._instances.add(this);
+      for (const cls of classes) cls._add_instance(this);
     }
 
     get_id(): string { return this.id; }
     get_classes(): ReadonlySet<CoCoClass> { return this.classes; }
+    _add_class(cls: CoCoClass) { this.classes.add(cls); cls._add_instance(this); }
     get_properties(): Record<string, Value> | undefined { return this.properties; }
+    _set_properties(properties: Record<string, Value>) {
+      for (const key of Object.keys(this.properties!))
+        delete this.properties![key];
+      for (const [key, value] of Object.entries(properties))
+        this.properties![key] = value;
+    }
     get_values(): Record<string, TimeValue> | undefined { return this.values; }
+    _set_values(values: Record<string, Value>, date_time: string) {
+      for (const key of Object.keys(this.values!))
+        delete this.values![key];
+      for (const [key, value] of Object.entries(values))
+        this.values![key] = [value, date_time];
+    }
   }
 
   export interface CoCoListener {

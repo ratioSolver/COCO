@@ -993,16 +993,17 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), Box<dyn Error>> {
-        let mut objects_guard = self.objects.write().unwrap();
-        let object = objects_guard.get_mut(object_id).ok_or("Object not found")?;
-        if !self.classes.read().unwrap().contains_key(class_name) {
+        let classes_guard = self.classes.read().unwrap();
+        if !classes_guard.contains_key(class_name) {
             return Err("Class not found".into());
         }
+
+        let mut objects_guard = self.objects.write().unwrap();
+        let object = objects_guard.get_mut(object_id).ok_or("Object not found")?;
         if object.classes.contains(class_name) {
             return Ok(()); // Class already added, do nothing
         }
-        let classes_guard = self.classes.read();
-        let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
+        let class = classes_guard.get(class_name).ok_or("Class not found")?;
         self.create_object_class(object, class)?;
         object.classes.insert(class_name.to_string());
         let _ = self.sender.send(CoCoEvent::AddedClass(object.clone(), class.clone()));
@@ -1436,9 +1437,9 @@ mod tests {
     use std::collections::{HashMap, HashSet};
     use tokio::sync::broadcast;
 
-    fn create_kb() -> CLIPSKnowledgeBase {
+    fn create_kb() -> Box<CLIPSKnowledgeBase> {
         let (tx, _) = broadcast::channel(100);
-        let kb = CLIPSKnowledgeBase::new(tx);
+        let kb = Box::new(CLIPSKnowledgeBase::new(tx));
         kb.init();
         kb
     }

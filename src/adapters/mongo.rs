@@ -115,7 +115,7 @@ impl DataStore for MongoDBDataStore {
         Ok(values_map)
     }
 
-    async fn set_values(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+    async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
         let objects_collection = self.client.database(&self.name).collection::<MongoObject>("objects");
         let mut update_doc = doc! {};
         for (prop, value) in values {
@@ -287,7 +287,7 @@ mod tests {
         let mut values = HashMap::new();
         values.insert("temp".to_string(), Value::Float(25.5));
 
-        store.set_values(&object_with_id, &values, &now).await.unwrap();
+        store.add_data(&object_with_id, &values, &now).await.unwrap();
 
         // Retrieve values
         let retrieved_values = store.get_values(&object_with_id, &(now - chrono::Duration::seconds(1)), &(now + chrono::Duration::seconds(1))).await.unwrap();
@@ -377,7 +377,7 @@ mod tests {
         let mut values = HashMap::new();
         values.insert("readings".to_string(), Value::IntArray(vec![10, 20, 30]));
 
-        store.set_values(&object_with_id, &values, &now).await.unwrap();
+        store.add_data(&object_with_id, &values, &now).await.unwrap();
 
         let retrieved_values = store.get_values(&object_with_id, &(now - chrono::Duration::seconds(1)), &(now + chrono::Duration::seconds(1))).await.unwrap();
 

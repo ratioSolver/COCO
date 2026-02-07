@@ -75,13 +75,13 @@ impl CoCo {
 
     pub async fn set_properties(&self, object: &mut Object, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         self.db.set_properties(object, &values).await?;
-        self.kb.lock().unwrap().set_properties(object, values)?;
+        self.kb.lock().unwrap().set_properties(object.id.as_ref().unwrap(), values)?;
         Ok(())
     }
 
     pub async fn add_data(&self, object: &mut Object, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
-        self.db.set_values(object, &values, &date_time).await?;
-        self.kb.lock().unwrap().add_data(object, values, date_time)?;
+        self.db.add_data(object, &values, &date_time).await?;
+        self.kb.lock().unwrap().add_data(object.id.as_ref().unwrap(), values, date_time)?;
         Ok(())
     }
 
@@ -89,13 +89,6 @@ impl CoCo {
         for object in objects {
             self.kb.lock().unwrap().create_object(&object).expect("Failed to create object in knowledge base");
         }
-        Ok(())
-    }
-
-    pub async fn set_values(&self, object: &mut Object, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
-        let date_time: DateTime<Utc> = Utc::now();
-        self.db.set_values(object, &values, &date_time).await?;
-        self.kb.lock().unwrap().add_data(object, values, date_time)?;
         Ok(())
     }
 

@@ -1223,8 +1223,10 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         Ok(())
     }
 
-    fn set_properties(&self, object: &mut Object, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+    fn set_properties(&self, object_id: &str, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let classes_guard = self.classes.read();
+        let mut objects_guard = self.objects.write().unwrap();
+        let object = objects_guard.get_mut(object_id).ok_or("Object not found")?;
         for class_name in &object.classes {
             let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
             if let Some(props) = class.static_properties.as_ref() {
@@ -1236,12 +1238,14 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 }
             }
         }
-        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object.id.as_ref().unwrap().clone(), values));
+        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object_id.to_string(), values));
         Ok(())
     }
 
-    fn add_data(&self, object: &mut Object, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+    fn add_data(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
         let classes_guard = self.classes.read();
+        let mut objects_guard = self.objects.write().unwrap();
+        let object = objects_guard.get_mut(object_id).ok_or("Object not found")?;
         for class_name in &object.classes {
             let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
             if let Some(props) = class.dynamic_properties.as_ref() {
@@ -1253,7 +1257,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 }
             }
         }
-        let _ = self.sender.send(CoCoEvent::AddedValues(object.id.as_ref().unwrap().clone(), values.iter().map(|(k, v)| (k.clone(), (v.clone(), date_time))).collect()));
+        let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values.iter().map(|(k, v)| (k.clone(), (v.clone(), date_time))).collect()));
         Ok(())
     }
 
@@ -1577,32 +1581,34 @@ unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _
                     let val_str = std::ffi::CStr::from_ptr((*val.value.lexeme_value).contents).to_str().unwrap();
                     match val_str {
                         "TRUE" => {
-                            values.insert(par_name.to_string(), (Value::Bool(true), time));
+                            values.insert(par_name.to_string(), Value::Bool(true));
                         }
                         "FALSE" => {
-                            values.insert(par_name.to_string(), (Value::Bool(false), time));
+                            values.insert(par_name.to_string(), Value::Bool(false));
                         }
                         "nil" => {
-                            values.insert(par_name.to_string(), (Value::Null, time));
+                            values.insert(par_name.to_string(), Value::Null);
                         }
                         s => {
-                            values.insert(par_name.to_string(), (Value::Symbol(s.to_string()), time));
+                            values.insert(par_name.to_string(), Value::Symbol(s.to_string()));
                         }
                     }
                 }
                 CLIPSTypeCode::Integer => {
-                    values.insert(par_name.to_string(), (Value::Int((*val.value.integer_value).contents), time));
+                    values.insert(par_name.to_string(), Value::Int((*val.value.integer_value).contents));
                 }
                 CLIPSTypeCode::Float => {
-                    values.insert(par_name.to_string(), (Value::Float((*val.value.float_value).contents), time));
+                    values.insert(par_name.to_string(), Value::Float((*val.value.float_value).contents));
                 }
                 CLIPSTypeCode::String => {
                     let val_str = std::ffi::CStr::from_ptr((*val.value.lexeme_value).contents).to_str().unwrap();
-                    values.insert(par_name.to_string(), (Value::String(val_str.to_string()), time));
+                    values.insert(par_name.to_string(), Value::String(val_str.to_string()));
                 }
                 _ => {}
             }
         }
+
+        kb.add_data(object_id, values, time).unwrap();
     }
 }
 
@@ -1706,7 +1712,7 @@ mod tests {
         classes.insert("Person".to_string());
 
         // Initial creation with default
-        let mut object = Object {
+        let object = Object {
             id: Some("person1".to_string()),
             classes,
             properties: Some(HashMap::new()), // Empty map means use defaults/nulls as per logic
@@ -1717,7 +1723,7 @@ mod tests {
         // Update properties
         let mut new_props = HashMap::new();
         new_props.insert("age".to_string(), Value::Int(30));
-        assert!(kb.set_properties(&mut object, new_props).is_ok());
+        assert!(kb.set_properties(object.id.as_ref().unwrap(), new_props).is_ok());
     }
 
     #[test]
@@ -1736,13 +1742,13 @@ mod tests {
 
         let mut classes = HashSet::new();
         classes.insert("Sensor".to_string());
-        let mut object = Object { id: Some("sensor1".to_string()), classes, properties: None, values: Some(HashMap::new()) };
+        let object = Object { id: Some("sensor1".to_string()), classes, properties: None, values: Some(HashMap::new()) };
         kb.create_object(&object).unwrap();
 
         // Add data
         let mut values = HashMap::new();
         values.insert("temperature".to_string(), Value::Float(25.5));
-        assert!(kb.add_data(&mut object, values, Utc::now()).is_ok());
+        assert!(kb.add_data(object.id.as_ref().unwrap(), values, Utc::now()).is_ok());
     }
 
     #[test]

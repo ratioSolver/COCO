@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use std::{
     collections::HashMap,
     error::Error,
-    ffi::{CString, c_char, c_double, c_long, c_longlong, c_ushort},
+    ffi::{CString, c_char, c_double, c_long, c_longlong, c_uint, c_ushort},
     marker::{PhantomData, PhantomPinned},
     os::raw::c_void,
     sync::RwLock,
@@ -250,8 +250,8 @@ unsafe extern "C" {
     unsafe fn MBAppendString(mb: *mut MultifieldBuilder, value: *const c_char);
 
     unsafe fn AddUDF(env: *mut Environment, name: *const c_char, return_types: *const c_char, min_args: c_ushort, max_args: c_ushort, arg_types: *const c_char, function_ptr: UserDefinedFunction, r_name: *const c_char, context: *mut c_void) -> AddUDFError;
-    unsafe fn UDFFirstArgument(udfc: *mut UDFContext, expected_type: CLIPSType, out: *mut UDFValue) -> bool;
-    unsafe fn UDFNextArgument(udfc: *mut UDFContext, expected_type: CLIPSType, out: *mut UDFValue) -> bool;
+    unsafe fn UDFFirstArgument(udfc: *mut UDFContext, expected_type: c_uint, out: *mut UDFValue) -> bool;
+    unsafe fn UDFNextArgument(udfc: *mut UDFContext, expected_type: c_uint, out: *mut UDFValue) -> bool;
     unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
 }
 
@@ -1567,27 +1567,30 @@ unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _
     unsafe {
         let kb = &*((*udfc).context as *mut CLIPSKnowledgeBase);
         let mut object_id = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFFirstArgument(udfc, CLIPSType::SymbolBit, object_id.as_mut_ptr()) {
+        if !UDFFirstArgument(udfc, CLIPSType::SymbolBit as c_uint, object_id.as_mut_ptr()) {
             return;
         }
         let object_id = object_id.assume_init();
+        if object_id.value.header.is_null() {
+            panic!("Received NULL header in UDF argument object_id in add_values");
+        }
         assert!(object_id.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
         let object_id = std::ffi::CStr::from_ptr((*object_id.value.lexeme_value).contents).to_str().unwrap();
 
         let mut pars = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFNextArgument(udfc, CLIPSType::MultifieldBit, pars.as_mut_ptr()) {
+        if !UDFNextArgument(udfc, CLIPSType::MultifieldBit as c_uint, pars.as_mut_ptr()) {
             return;
         }
         let pars = pars.assume_init();
         let mut vars = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFNextArgument(udfc, CLIPSType::MultifieldBit, vars.as_mut_ptr()) {
+        if !UDFNextArgument(udfc, CLIPSType::MultifieldBit as c_uint, vars.as_mut_ptr()) {
             return;
         }
         let vars = vars.assume_init();
 
         let time = if !(*udfc).last_arg.is_null() {
             let mut time_val = std::mem::MaybeUninit::<UDFValue>::uninit();
-            if !UDFNextArgument(udfc, CLIPSType::IntegerBit, time_val.as_mut_ptr()) {
+            if !UDFNextArgument(udfc, CLIPSType::IntegerBit as c_uint, time_val.as_mut_ptr()) {
                 return;
             }
             let time_val = time_val.assume_init();
@@ -1607,7 +1610,7 @@ unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _
             assert!(par.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
             let par_name = std::ffi::CStr::from_ptr((*par.value.lexeme_value).contents).to_str().unwrap();
             let val = &*vars_contents.add(i);
-            match par.value.header.as_ref().unwrap().type_code {
+            match val.value.header.as_ref().unwrap().type_code {
                 CLIPSTypeCode::Symbol => {
                     let val_str = std::ffi::CStr::from_ptr((*val.value.lexeme_value).contents).to_str().unwrap();
                     match val_str {
@@ -1647,15 +1650,18 @@ unsafe extern "C" fn add_class(_env: *mut Environment, udfc: *mut UDFContext, _o
     unsafe {
         let kb = &*((*udfc).context as *mut CLIPSKnowledgeBase);
         let mut object_id = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFFirstArgument(udfc, CLIPSType::SymbolBit, object_id.as_mut_ptr()) {
+        if !UDFFirstArgument(udfc, CLIPSType::SymbolBit as c_uint, object_id.as_mut_ptr()) {
             return;
         }
         let object_id = object_id.assume_init();
+        if object_id.value.header.is_null() {
+            panic!("Received NULL header in UDF argument object_id in add_class");
+        }
         assert!(object_id.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
         let object_id = std::ffi::CStr::from_ptr((*object_id.value.lexeme_value).contents).to_str().unwrap();
 
         let mut class_name = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFNextArgument(udfc, CLIPSType::SymbolBit, class_name.as_mut_ptr()) {
+        if !UDFNextArgument(udfc, CLIPSType::SymbolBit as c_uint, class_name.as_mut_ptr()) {
             return;
         }
         let class_name = class_name.assume_init();
@@ -1919,5 +1925,87 @@ mod tests {
         let object = Object { id: Some("arr_obj".to_string()), classes, properties: Some(props), values: None };
 
         assert!(kb.create_object(&object).is_ok());
+    }
+
+    #[test]
+    fn test_add_data_deadlock() {
+        let kb = create_kb();
+
+        let mut dynamic_props = HashMap::new();
+        dynamic_props.insert("temp".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: None, max: None });
+        let class = Class {
+            name: "Sensor".to_string(),
+            parents: None,
+            static_properties: None,
+            dynamic_properties: Some(dynamic_props),
+        };
+        kb.create_class(&class).unwrap();
+
+        let rule = Rule {
+            name: "check-temp".to_string(),
+            content: "(defrule check-temp (Sensor_temp (id ?id) (value ?v&:(> ?v 50.0))) => (add-values ?id (create$ temp) (create$ 0.0)))".to_string(),
+        };
+        kb.create_rule(&rule).unwrap();
+
+        let mut classes = HashSet::new();
+        classes.insert("Sensor".to_string());
+        let object = Object { id: Some("s1".to_string()), classes, properties: None, values: Some(HashMap::new()) };
+        kb.create_object(&object).unwrap();
+
+        let mut values = HashMap::new();
+        values.insert("temp".to_string(), Value::Float(100.0));
+        kb.add_data("s1", values, Utc::now()).unwrap();
+
+        assert!(kb.run().is_ok());
+
+        let obj = kb.get_object("s1").unwrap();
+        let (val, _) = obj.values.unwrap().get("temp").unwrap().clone();
+        match val {
+            Value::Float(f) => assert_eq!(f, 0.0),
+            _ => panic!("Expected float"),
+        }
+    }
+
+    #[test]
+    fn test_add_class_deadlock() {
+        let kb = create_kb();
+
+        let mut static_props = HashMap::new();
+        static_props.insert("age".to_string(), Property::Int { nullable: Some(false), default: Some(0), min: None, max: None });
+        let person_class = Class {
+            name: "Person".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+        kb.create_class(&person_class).unwrap();
+
+        let adult_class = Class {
+            name: "Adult".to_string(),
+            parents: None,
+            static_properties: None,
+            dynamic_properties: None,
+        };
+        kb.create_class(&adult_class).unwrap();
+
+        let rule = Rule {
+            name: "check-age".to_string(),
+            content: "(defrule check-age (Person_age (id ?id) (value ?v&:(> ?v 18))) => (add-class ?id Adult))".to_string(),
+        };
+        kb.create_rule(&rule).unwrap();
+
+        let mut classes = HashSet::new();
+        classes.insert("Person".to_string());
+        let object = Object { id: Some("p1".to_string()), classes, properties: Some(HashMap::new()), values: None };
+        kb.create_object(&object).unwrap();
+
+        let mut props = HashMap::new();
+        props.insert("age".to_string(), Value::Int(20));
+        kb.set_properties("p1", props).unwrap();
+
+        assert!(kb.run().is_ok());
+
+        let obj = kb.get_object("p1").unwrap();
+        assert!(obj.classes.contains("Adult"));
     }
 }

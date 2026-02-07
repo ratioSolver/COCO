@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
 };
 use tokio::sync::broadcast;
 
@@ -11,22 +11,12 @@ pub struct CoCo {
     sender: broadcast::Sender<CoCoEvent>,
     db: Arc<dyn DataStore>,
     kb: Arc<Mutex<dyn KnowledgeBase>>,
-    classes: RwLock<HashMap<String, Class>>,
-    objects: RwLock<HashMap<String, Object>>,
-    rules: RwLock<HashMap<String, Rule>>,
 }
 
 impl CoCo {
     pub async fn new(db: Arc<dyn DataStore>, kb: Arc<Mutex<dyn KnowledgeBase>>) -> Self {
         let sender = kb.lock().unwrap().get_event_sender();
-        let coco = Self {
-            sender,
-            db: db.clone(),
-            kb: kb.clone(),
-            classes: RwLock::new(HashMap::new()),
-            objects: RwLock::new(HashMap::new()),
-            rules: RwLock::new(HashMap::new()),
-        };
+        let coco = Self { sender, db: db.clone(), kb: kb.clone() };
         let mut receiver = coco.sender.subscribe();
         tokio::spawn(async move {
             while let Ok(event) = receiver.recv().await {
@@ -48,11 +38,11 @@ impl CoCo {
     }
 
     pub fn get_classes(&self) -> Vec<Class> {
-        self.classes.read().unwrap().values().cloned().collect()
+        self.kb.lock().unwrap().get_classes()
     }
 
     pub fn get_class(&self, name: &str) -> Option<Class> {
-        self.classes.read().unwrap().get(name).cloned()
+        self.kb.lock().unwrap().get_class(name)
     }
 
     pub async fn create_new_class(&self, name: &str, parents: Option<HashSet<String>>, static_properties: Option<HashMap<String, Property>>, dynamic_properties: Option<HashMap<String, Property>>) -> Result<(), Box<dyn Error>> {
@@ -68,18 +58,16 @@ impl CoCo {
     fn add_classes(&self, classes: Vec<Class>) -> Result<(), Box<dyn Error>> {
         for class in classes {
             self.kb.lock().unwrap().create_class(&class)?;
-            self.classes.write().unwrap().insert(class.name.clone(), class.clone());
-            self.sender.send(CoCoEvent::ClassCreated(class)).expect("Failed to send ClassCreated event");
         }
         Ok(())
     }
 
     pub fn get_objects(&self) -> Vec<Object> {
-        self.objects.read().unwrap().values().cloned().collect()
+        self.kb.lock().unwrap().get_objects()
     }
 
     pub fn get_object(&self, id: &str) -> Option<Object> {
-        self.objects.read().unwrap().get(id).cloned()
+        self.kb.lock().unwrap().get_object(id)
     }
 
     pub async fn create_new_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) -> Result<(), Box<dyn Error>> {
@@ -95,30 +83,19 @@ impl CoCo {
 
     pub async fn set_properties(&self, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         self.db.set_properties(object, values).await?;
-        let class_guard = self.classes.read().unwrap();
-        for class_name in &object.classes {
-            let class = class_guard.get(class_name).expect("Class not found for object");
-            self.kb.lock().unwrap().set_properties(class, object, values)?;
-        }
-        self.sender.send(CoCoEvent::UpdatedProperties(object.id.as_ref().unwrap().clone(), values.clone())).expect("Failed to send UpdatedProperties event");
+        self.kb.lock().unwrap().set_properties(object, values)?;
         Ok(())
     }
 
-    pub async fn add_data(&self, class: &Class, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+    pub async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
         self.db.set_values(object, values, date_time).await?;
-        self.kb.lock().unwrap().add_data(class, object, values, date_time)?;
+        self.kb.lock().unwrap().add_data(object, values, date_time)?;
         Ok(())
     }
 
     fn add_objects(&self, objects: Vec<Object>) -> Result<(), Box<dyn Error>> {
-        let class_guard = self.classes.read().unwrap();
         for object in objects {
-            for class_name in &object.classes {
-                let class = class_guard.get(class_name).expect("Class not found for object");
-                self.kb.lock().unwrap().create_object(class, &object).expect("Failed to create object in knowledge base");
-            }
-            self.objects.write().expect("Failed to lock objects for writing").insert(object.id.clone().unwrap(), object.clone());
-            self.sender.send(CoCoEvent::ObjectCreated(object)).expect("Failed to send ObjectCreated event");
+            self.kb.lock().unwrap().create_object(&object).expect("Failed to create object in knowledge base");
         }
         Ok(())
     }
@@ -126,20 +103,16 @@ impl CoCo {
     pub async fn set_values(&self, object: &mut Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let date_time: DateTime<Utc> = Utc::now();
         self.db.set_values(object, values, &date_time).await?;
-        let class_guard = self.classes.read().unwrap();
-        for class_name in &object.classes {
-            let class = class_guard.get(class_name).expect("Class not found for object");
-            self.kb.lock().unwrap().add_data(class, object, values, &date_time)?;
-        }
+        self.kb.lock().unwrap().add_data(object, values, &date_time)?;
         Ok(())
     }
 
     pub fn get_rules(&self) -> Vec<Rule> {
-        self.rules.read().unwrap().values().cloned().collect()
+        self.kb.lock().unwrap().get_rules()
     }
 
     pub fn get_rule(&self, name: &str) -> Option<Rule> {
-        self.rules.read().unwrap().get(name).cloned()
+        self.kb.lock().unwrap().get_rule(name)
     }
 
     pub async fn create_new_rule(&self, name: &str, content: &str) -> Result<(), Box<dyn Error>> {
@@ -155,7 +128,6 @@ impl CoCo {
     fn add_rules(&self, db_rules: Vec<Rule>) -> Result<(), Box<dyn Error>> {
         for rule in db_rules {
             self.kb.lock().unwrap().create_rule(&rule)?;
-            self.rules.write().unwrap().insert(rule.name.clone(), rule);
         }
         Ok(())
     }
@@ -265,17 +237,35 @@ mod tests {
         fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
             self.sender.clone()
         }
+        fn get_classes(&self) -> Vec<Class> {
+            Vec::new()
+        }
+        fn get_class(&self, _name: &str) -> Option<Class> {
+            None
+        }
         fn create_class(&self, _class: &Class) -> Result<(), Box<dyn Error>> {
             Ok(())
         }
-        fn create_object(&self, _class: &Class, _object: &Object) -> Result<(), Box<dyn Error>> {
+        fn get_objects(&self) -> Vec<Object> {
+            Vec::new()
+        }
+        fn get_object(&self, _id: &str) -> Option<Object> {
+            None
+        }
+        fn create_object(&self, _object: &Object) -> Result<(), Box<dyn Error>> {
             Ok(())
         }
-        fn set_properties(&self, _class: &Class, _object: &Object, _values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+        fn set_properties(&self, _object: &Object, _values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
             Ok(())
         }
-        fn add_data(&self, _class: &Class, _object: &Object, _values: &HashMap<String, Value>, _date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+        fn add_data(&self, _object: &Object, _values: &HashMap<String, Value>, _date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
             Ok(())
+        }
+        fn get_rules(&self) -> Vec<Rule> {
+            Vec::new()
+        }
+        fn get_rule(&self, _name: &str) -> Option<Rule> {
+            None
         }
         fn create_rule(&self, _rule: &Rule) -> Result<(), Box<dyn Error>> {
             Ok(())

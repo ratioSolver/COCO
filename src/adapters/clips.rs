@@ -1,4 +1,4 @@
-use crate::{Class, CoCoEvent, KnowledgeBase, Object, Property, Value};
+use crate::{Class, CoCoEvent, KnowledgeBase, Object, Property, Rule, Value};
 use chrono::{DateTime, Utc};
 use std::{
     collections::HashMap,
@@ -258,6 +258,9 @@ unsafe extern "C" {
 pub struct CLIPSKnowledgeBase {
     sender: broadcast::Sender<CoCoEvent>,
     env: *mut Environment,
+    classes: RwLock<HashMap<String, Class>>,
+    objects: RwLock<HashMap<String, Object>>,
+    rules: RwLock<HashMap<String, Rule>>,
     instances: RwLock<HashMap<String, HashMap<String, *mut Fact>>>,              // class -> object -> fact
     facts: RwLock<HashMap<String, HashMap<String, HashMap<String, *mut Fact>>>>, // class -> object -> property -> fact
 }
@@ -271,6 +274,9 @@ impl CLIPSKnowledgeBase {
             CLIPSKnowledgeBase {
                 sender,
                 env: CreateEnvironment(),
+                classes: RwLock::new(HashMap::new()),
+                objects: RwLock::new(HashMap::new()),
+                rules: RwLock::new(HashMap::new()),
                 instances: RwLock::new(HashMap::new()),
                 facts: RwLock::new(HashMap::new()),
             }
@@ -1078,6 +1084,14 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         self.sender.clone()
     }
 
+    fn get_classes(&self) -> Vec<Class> {
+        self.classes.read().unwrap().values().cloned().collect()
+    }
+
+    fn get_class(&self, name: &str) -> Option<Class> {
+        self.classes.read().unwrap().get(name).cloned()
+    }
+
     fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
         unsafe {
             match Build(self.env, CString::new(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name))?.as_ptr()) {
@@ -1100,107 +1114,137 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                     }
                 }
             }
+            self.classes.write().unwrap().insert(class.name.clone(), class.clone());
+            self.sender.send(CoCoEvent::ClassCreated(class.clone()))?;
             Ok(())
         }
     }
 
-    fn create_object(&self, class: &Class, object: &Object) -> Result<(), Box<dyn Error>> {
-        unsafe {
-            let fb = CreateFactBuilder(self.env, CString::new(class.name.clone())?.as_ptr());
-            if fb.is_null() {
-                return Err("Failed to create FactBuilder".into());
-            }
+    fn get_objects(&self) -> Vec<Object> {
+        self.objects.read().unwrap().values().cloned().collect()
+    }
 
-            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
-                PutSlotError::None => {}
-                err => {
+    fn get_object(&self, id: &str) -> Option<Object> {
+        self.objects.read().unwrap().get(id).cloned()
+    }
+
+    fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>> {
+        let classes_guard = self.classes.read();
+        for class_name in &object.classes {
+            let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
+            unsafe {
+                let fb = CreateFactBuilder(self.env, CString::new(class_name.to_string())?.as_ptr());
+                if fb.is_null() {
+                    return Err("Failed to create FactBuilder".into());
+                }
+
+                match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
+                    PutSlotError::None => {}
+                    err => {
+                        FBDispose(fb);
+                        return Err(format!("PutSlot error: {:?}", err).into());
+                    }
+                }
+
+                let fact = FBAssert(fb);
+                if fact.is_null() {
+                    let error = FBError(fb);
                     FBDispose(fb);
-                    return Err(format!("PutSlot error: {:?}", err).into());
+                    return Err(format!("Assertion failed: {:?}", error).into());
                 }
-            }
 
-            let fact = FBAssert(fb);
-            if fact.is_null() {
-                let error = FBError(fb);
+                self.instances.write().unwrap().entry(class_name.to_string()).or_default().insert(object.id.as_ref().unwrap().clone(), fact);
+
                 FBDispose(fb);
-                return Err(format!("Assertion failed: {:?}", error).into());
+
+                if let Some(props) = class.static_properties.as_ref() {
+                    for (prop_name, prop) in props {
+                        let value = object.properties.as_ref().and_then(|props| props.get(prop_name));
+                        if let Some(v) = value {
+                            self.set_prop(object, &class, prop, prop_name, v, None)?;
+                        } else {
+                            let default_val = match prop {
+                                Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
+                                Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
+                                Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
+                                _ => None,
+                            };
+                            if let Some(v) = default_val {
+                                self.set_prop(object, &class, prop, prop_name, &v, None)?;
+                            } else {
+                                self.set_prop(object, &class, prop, prop_name, &Value::Null, None)?;
+                            }
+                        }
+                    }
+                }
+
+                if let Some(props) = class.dynamic_properties.as_ref() {
+                    for (prop_name, prop) in props {
+                        let value_time = object.values.as_ref().and_then(|vals| vals.get(prop_name));
+                        if let Some((v, t)) = value_time {
+                            self.set_prop(object, &class, prop, prop_name, v, Some(t))?;
+                        } else {
+                            let default_val = match prop {
+                                Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
+                                Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
+                                Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
+                                _ => None,
+                            };
+                            if let Some(v) = default_val {
+                                self.set_prop(object, &class, prop, prop_name, &v, None)?;
+                            } else {
+                                self.set_prop(object, &class, prop, prop_name, &Value::Null, None)?;
+                            }
+                        }
+                    }
+                }
             }
+        }
+        self.objects.write().unwrap().insert(object.id.as_ref().unwrap().clone(), object.clone());
+        self.sender.send(CoCoEvent::ObjectCreated(object.clone()))?;
+        Ok(())
+    }
 
-            self.instances.write().unwrap().entry(class.name.clone()).or_default().insert(object.id.as_ref().unwrap().clone(), fact);
-
-            FBDispose(fb);
-
+    fn set_properties(&self, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+        let classes_guard = self.classes.read();
+        for class_name in &object.classes {
+            let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
             if let Some(props) = class.static_properties.as_ref() {
-                for (prop_name, prop) in props {
-                    let value = object.properties.as_ref().and_then(|props| props.get(prop_name));
-                    if let Some(v) = value {
-                        self.set_prop(object, class, prop, prop_name, v, None)?;
-                    } else {
-                        let default_val = match prop {
-                            Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
-                            Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
-                            Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
-                            _ => None,
-                        };
-                        if let Some(v) = default_val {
-                            self.set_prop(object, class, prop, prop_name, &v, None)?;
-                        } else {
-                            self.set_prop(object, class, prop, prop_name, &Value::Null, None)?;
-                        }
+                for (prop_name, value) in values.iter() {
+                    if let Some(prop) = props.get(prop_name) {
+                        self.update_prop(object, class, prop, prop_name, value, None)?
                     }
                 }
             }
+        }
+        Ok(())
+    }
 
+    fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+        let classes_guard = self.classes.read();
+        for class_name in &object.classes {
+            let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
             if let Some(props) = class.dynamic_properties.as_ref() {
-                for (prop_name, prop) in props {
-                    let value_time = object.values.as_ref().and_then(|vals| vals.get(prop_name));
-                    if let Some((v, t)) = value_time {
-                        self.set_prop(object, class, prop, prop_name, v, Some(t))?;
-                    } else {
-                        let default_val = match prop {
-                            Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
-                            Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
-                            Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
-                            _ => None,
-                        };
-                        if let Some(v) = default_val {
-                            self.set_prop(object, class, prop, prop_name, &v, None)?;
-                        } else {
-                            self.set_prop(object, class, prop, prop_name, &Value::Null, None)?;
-                        }
+                for (prop_name, value) in values.iter() {
+                    if let Some(prop) = props.get(prop_name) {
+                        self.update_prop(object, class, prop, prop_name, value, Some(date_time))?;
                     }
                 }
             }
-
-            Ok(())
-        }
-    }
-
-    fn set_properties(&self, class: &Class, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
-        if let Some(props) = class.static_properties.as_ref() {
-            for (prop_name, value) in values.iter() {
-                if let Some(prop) = props.get(prop_name) {
-                    self.update_prop(object, class, prop, prop_name, value, None)?
-                }
-            }
         }
 
         Ok(())
     }
 
-    fn add_data(&self, class: &Class, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
-        if let Some(props) = class.dynamic_properties.as_ref() {
-            for (prop_name, value) in values.iter() {
-                if let Some(prop) = props.get(prop_name) {
-                    self.update_prop(object, class, prop, prop_name, value, Some(date_time))?;
-                }
-            }
-        }
-
-        Ok(())
+    fn get_rules(&self) -> Vec<Rule> {
+        self.rules.read().unwrap().values().cloned().collect()
     }
 
-    fn create_rule(&self, rule: &crate::Rule) -> Result<(), Box<dyn Error>> {
+    fn get_rule(&self, name: &str) -> Option<Rule> {
+        self.rules.read().unwrap().get(name).cloned()
+    }
+
+    fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>> {
         unsafe {
             match Build(self.env, CString::new(rule.content.clone())?.as_ptr()) {
                 BuildError::None => Ok(()),
@@ -1623,7 +1667,7 @@ mod tests {
 
         let object = Object { id: Some("person1".to_string()), classes, properties: Some(props), values: None };
 
-        assert!(kb.create_object(&class, &object).is_ok());
+        assert!(kb.create_object(&object).is_ok());
     }
 
     #[test]
@@ -1650,12 +1694,12 @@ mod tests {
             properties: Some(HashMap::new()), // Empty map means use defaults/nulls as per logic
             values: None,
         };
-        kb.create_object(&class, &object).unwrap();
+        kb.create_object(&object).unwrap();
 
         // Update properties
         let mut new_props = HashMap::new();
         new_props.insert("age".to_string(), Value::Int(30));
-        assert!(kb.set_properties(&class, &object, &new_props).is_ok());
+        assert!(kb.set_properties(&object, &new_props).is_ok());
     }
 
     #[test]
@@ -1675,12 +1719,12 @@ mod tests {
         let mut classes = HashSet::new();
         classes.insert("Sensor".to_string());
         let object = Object { id: Some("sensor1".to_string()), classes, properties: None, values: Some(HashMap::new()) };
-        kb.create_object(&class, &object).unwrap();
+        kb.create_object(&object).unwrap();
 
         // Add data
         let mut values = HashMap::new();
         values.insert("temperature".to_string(), Value::Float(25.5));
-        assert!(kb.add_data(&class, &object, &values, &Utc::now()).is_ok());
+        assert!(kb.add_data(&object, &values, &Utc::now()).is_ok());
     }
 
     #[test]
@@ -1714,7 +1758,7 @@ mod tests {
 
         let object = Object { id: Some("obj1".to_string()), classes, properties: Some(props), values: None };
 
-        assert!(kb.create_object(&class, &object).is_ok());
+        assert!(kb.create_object(&object).is_ok());
     }
 
     #[test]
@@ -1741,7 +1785,7 @@ mod tests {
             properties: Some(props_valid),
             values: None,
         };
-        assert!(kb.create_object(&class, &obj_valid).is_ok());
+        assert!(kb.create_object(&obj_valid).is_ok());
 
         // Invalid (below min)
         let mut props_invalid = HashMap::new();
@@ -1752,13 +1796,13 @@ mod tests {
             properties: Some(props_invalid),
             values: None,
         };
-        assert!(kb.create_object(&class, &obj_invalid).is_err());
+        assert!(kb.create_object(&obj_invalid).is_err());
     }
 
     #[test]
     fn test_create_rule() {
         let kb = create_kb();
-        let rule = crate::Rule {
+        let rule = Rule {
             name: "test-rule".to_string(),
             content: "(defrule test-rule => (printout t \"Hello\" crlf))".to_string(),
         };
@@ -1788,8 +1832,8 @@ mod tests {
             properties: None,
             values: None,
         };
-        kb.create_object(&item_class, &item1).unwrap();
-        kb.create_object(&item_class, &item2).unwrap();
+        kb.create_object(&item1).unwrap();
+        kb.create_object(&item2).unwrap();
 
         let mut static_props = HashMap::new();
         static_props.insert("p_bool_arr".to_string(), Property::BoolArray { default: None });
@@ -1820,6 +1864,6 @@ mod tests {
 
         let object = Object { id: Some("arr_obj".to_string()), classes, properties: Some(props), values: None };
 
-        assert!(kb.create_object(&class, &object).is_ok());
+        assert!(kb.create_object(&object).is_ok());
     }
 }

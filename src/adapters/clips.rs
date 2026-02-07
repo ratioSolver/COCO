@@ -1,267 +1,21 @@
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
+#[allow(non_upper_case_globals)]
+#[allow(non_camel_case_types)]
+#[allow(non_snake_case)]
+#[allow(dead_code)]
+#[allow(unsafe_op_in_unsafe_fn)]
+mod bindings {
+    include!("clips_bindings.rs");
+}
+pub use bindings::*;
+
 use crate::{Class, CoCoEvent, KnowledgeBase, Object, Property, Rule, Value};
 use chrono::{DateTime, Utc};
-use std::{
-    collections::HashMap,
-    error::Error,
-    ffi::{CString, c_char, c_double, c_long, c_longlong, c_uint, c_ushort},
-    marker::{PhantomData, PhantomPinned},
-    os::raw::c_void,
-    sync::RwLock,
-};
+use std::{collections::HashMap, error::Error, ffi::CString, os::raw::c_void, sync::RwLock};
 use tokio::sync::broadcast;
-
-#[repr(C)]
-pub struct Environment {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-struct FactBuilder {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-struct FactModifier {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-struct Fact {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-pub struct TypeHeader {
-    pub type_code: CLIPSTypeCode,
-}
-
-#[repr(C)]
-pub struct CLIPSLexeme {
-    pub header: TypeHeader,
-    pub next: *mut CLIPSLexeme,
-    pub count: c_long,
-    pub bitfields: c_uint,
-    pub contents: *const c_char,
-}
-
-#[repr(C)]
-pub struct CLIPSFloat {
-    pub header: TypeHeader,
-    pub next: *mut CLIPSFloat,
-    pub count: c_long,
-    pub bitfields: c_uint,
-    pub contents: c_double,
-}
-
-#[repr(C)]
-pub struct CLIPSInteger {
-    pub header: TypeHeader,
-    pub next: *mut CLIPSInteger,
-    pub count: c_long,
-    pub bitfields: c_uint,
-    pub contents: c_longlong,
-}
-
-#[repr(C)]
-pub struct CLIPSVoid {
-    pub header: TypeHeader,
-}
-
-#[repr(C)]
-pub struct Multifield {
-    pub header: TypeHeader,
-    pub length: usize,
-    pub contents: *mut UDFValue,
-}
-
-#[repr(C)]
-struct MultifieldBuilder {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-struct Instance {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-struct CLIPSExternalAddress {
-    _data: [u8; 0],
-    _marker: PhantomData<(*mut u8, PhantomPinned)>,
-}
-
-#[repr(C)]
-pub struct UDFContext {
-    pub environment: *mut Environment,
-    pub external_call: bool,
-    pub context: *mut c_void,
-    pub last_arg: *mut UDFValue,
-    pub last_arg_index: c_uint,
-}
-
-#[repr(C)]
-pub union UDFValueUnion {
-    value: *mut c_void,
-    header: *mut TypeHeader,
-    lexeme_value: *mut CLIPSLexeme,
-    float_value: *mut CLIPSFloat,
-    integer_value: *mut CLIPSInteger,
-    void_value: *mut CLIPSVoid,
-    multifield_value: *mut Multifield,
-    fact_value: *mut Fact,
-    instance_value: *mut Instance,
-    external_address_value: *mut CLIPSExternalAddress,
-}
-
-#[repr(C)]
-pub struct UDFValue {
-    value: UDFValueUnion,
-    begin: usize,
-    range: usize,
-}
-
-#[repr(u16)]
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CLIPSTypeCode {
-    Float,
-    Integer,
-    Symbol,
-    String,
-    Multifield,
-    ExternalAddress,
-    FactAddress,
-    InstanceAddress,
-    InstanceName,
-    Void,
-}
-
-#[repr(C)]
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
-pub enum CLIPSType {
-    FloatBit = 1 << 0,
-    IntegerBit = 1 << 1,
-    SymbolBit = 1 << 2,
-    StringBit = 1 << 3,
-    MultifieldBit = 1 << 4,
-    ExternalAddressBit = 1 << 5,
-    FactAddressBit = 1 << 6,
-    InstanceAddressBit = 1 << 7,
-    InstanceNameBit = 1 << 8,
-    VoidBit = 1 << 9,
-    BooleanBit = 1 << 10,
-}
-
-#[allow(dead_code)]
-type UserDefinedFunction = unsafe extern "C" fn(env: *mut Environment, udfc: *mut UDFContext, out: *mut UDFValue);
-
-#[repr(C)]
-#[derive(Debug)]
-#[allow(dead_code)]
-enum BuildError {
-    None,
-    CouldNotBuild,
-    ConstructNotFound,
-    Parsing,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-#[allow(dead_code)]
-enum FactBuilderError {
-    None,
-    NullPointer,
-    DeftemplateNotFound,
-    ImpliedDeftemplate,
-    CouldNotAssert,
-    RuleNetwork,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-#[allow(dead_code)]
-enum FactModifierError {
-    None,
-    NullPointer,
-    Retracted,
-    ImpliedDeftemplate,
-    CouldNotModify,
-    RuleNetwork,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-#[allow(dead_code)]
-enum PutSlotError {
-    None,
-    NullPointer,
-    InvalidTarget,
-    SlotNotFound,
-    Type,
-    Range,
-    AllowedValues,
-    Cardinality,
-    AllowedClasses,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-#[allow(dead_code)]
-enum AddUDFError {
-    None,
-    MinExceedsMax,
-    FunctionNameInUse,
-    InvalidArgumentType,
-    InvalidReturnType,
-}
-
-#[link(name = "clips")]
-#[allow(dead_code)]
-unsafe extern "C" {
-    unsafe fn CreateEnvironment() -> *mut Environment;
-    unsafe fn DestroyEnvironment(env: *mut Environment);
-    unsafe fn Build(env: *mut Environment, construct: *const c_char) -> BuildError;
-
-    unsafe fn CreateFactBuilder(env: *mut Environment, template_name: *const c_char) -> *mut FactBuilder;
-    unsafe fn FBAssert(fb: *mut FactBuilder) -> *mut Fact;
-    unsafe fn FBDispose(fb: *mut FactBuilder);
-    unsafe fn FBError(fb: *mut FactBuilder) -> FactBuilderError;
-    unsafe fn FBPutSlotInteger(fb: *mut FactBuilder, slot_name: *const c_char, value: c_longlong) -> PutSlotError;
-    unsafe fn FBPutSlotFloat(fb: *mut FactBuilder, slot_name: *const c_char, value: c_double) -> PutSlotError;
-    unsafe fn FBPutSlotSymbol(fb: *mut FactBuilder, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
-    unsafe fn FBPutSlotString(fb: *mut FactBuilder, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
-    unsafe fn FBPutSlotMultifield(fb: *mut FactBuilder, slot_name: *const c_char, mf: *mut Multifield) -> PutSlotError;
-
-    unsafe fn CreateFactModifier(env: *mut Environment, fact: *mut Fact) -> *mut FactModifier;
-    unsafe fn FMModify(fm: *mut FactModifier) -> *mut Fact;
-    unsafe fn FMDispose(fm: *mut FactModifier);
-    unsafe fn FMError(fm: *mut FactModifier) -> FactModifierError;
-    unsafe fn FMPutSlotInteger(fm: *mut FactModifier, slot_name: *const c_char, value: c_longlong) -> PutSlotError;
-    unsafe fn FMPutSlotFloat(fm: *mut FactModifier, slot_name: *const c_char, value: c_double) -> PutSlotError;
-    unsafe fn FMPutSlotSymbol(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
-    unsafe fn FMPutSlotString(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
-    unsafe fn FMPutSlotMultifield(fm: *mut FactModifier, slot_name: *const c_char, mf: *mut Multifield) -> PutSlotError;
-
-    unsafe fn CreateMultifieldBuilder(env: *mut Environment, capacity: usize) -> *mut MultifieldBuilder;
-    unsafe fn MBCreate(mb: *mut MultifieldBuilder) -> *mut Multifield;
-    unsafe fn MBDispose(mb: *mut MultifieldBuilder);
-    unsafe fn MBAppendInteger(mb: *mut MultifieldBuilder, value: c_longlong);
-    unsafe fn MBAppendFloat(mb: *mut MultifieldBuilder, value: c_double);
-    unsafe fn MBAppendSymbol(mb: *mut MultifieldBuilder, value: *const c_char);
-    unsafe fn MBAppendString(mb: *mut MultifieldBuilder, value: *const c_char);
-
-    unsafe fn AddUDF(env: *mut Environment, name: *const c_char, return_types: *const c_char, min_args: c_ushort, max_args: c_ushort, arg_types: *const c_char, function_ptr: UserDefinedFunction, r_name: *const c_char, context: *mut c_void) -> AddUDFError;
-    unsafe fn UDFFirstArgument(udfc: *mut UDFContext, expected_type: c_uint, out: *mut UDFValue) -> bool;
-    unsafe fn UDFNextArgument(udfc: *mut UDFContext, expected_type: c_uint, out: *mut UDFValue) -> bool;
-    unsafe fn Run(env: *mut Environment, run_limit: c_long) -> c_long;
-}
 
 pub struct CLIPSKnowledgeBase {
     sender: broadcast::Sender<CoCoEvent>,
@@ -293,8 +47,8 @@ impl CLIPSKnowledgeBase {
 
     pub fn init(&self) {
         unsafe {
-            AddUDF(self.env, CString::new("add-data").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), add_data, CString::new("add_data").unwrap().as_ptr(), self as *const _ as *mut c_void);
-            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), add_class, CString::new("add_class").unwrap().as_ptr(), self as *const _ as *mut c_void);
+            AddUDF(self.env, CString::new("add-data").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), Some(add_data), CString::new("add_data").unwrap().as_ptr(), self as *const _ as *mut c_void);
+            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), Some(add_class), CString::new("add_class").unwrap().as_ptr(), self as *const _ as *mut c_void);
         }
     }
 
@@ -302,7 +56,7 @@ impl CLIPSKnowledgeBase {
         unsafe {
             let result = AddUDF(self.env, CString::new(name)?.as_ptr(), CString::new(return_types)?.as_ptr(), min_args, max_args, CString::new(arg_types)?.as_ptr(), function_ptr, CString::new(r_name)?.as_ptr(), self as *const _ as *mut c_void);
             match result {
-                AddUDFError::None => Ok(()),
+                AddUDFError_AUE_NO_ERROR => Ok(()),
                 _ => Err(format!("AddUDF error: {:?}", result).into()),
             }
         }
@@ -316,7 +70,7 @@ impl CLIPSKnowledgeBase {
             }
 
             match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
-                PutSlotError::None => {}
+                PutSlotError_PSE_NO_ERROR => {}
                 err => {
                     FBDispose(fb);
                     return Err(format!("PutSlot error: {:?}", err).into());
@@ -325,7 +79,7 @@ impl CLIPSKnowledgeBase {
 
             let fact = FBAssert(fb);
             if fact.is_null() {
-                let error = FBError(fb);
+                let error = FBError(self.env);
                 FBDispose(fb);
                 return Err(format!("Assertion failed: {:?}", error).into());
             }
@@ -409,7 +163,7 @@ impl CLIPSKnowledgeBase {
                 Err(msg.to_string().into())
             };
             match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
-                PutSlotError::None => {}
+                PutSlotError_PSE_NO_ERROR => {}
                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
             }
             match property {
@@ -417,7 +171,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -427,7 +181,7 @@ impl CLIPSKnowledgeBase {
                     Value::Bool(b) => {
                         let symbol = if *b { "TRUE" } else { "FALSE" };
                         match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new(symbol)?.as_ptr()) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -437,7 +191,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -449,7 +203,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Value out of range");
                         }
                         match FBPutSlotInteger(fb, CString::new("value")?.as_ptr(), *i) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -459,7 +213,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -471,7 +225,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Value out of range");
                         }
                         match FBPutSlotFloat(fb, CString::new("value")?.as_ptr(), *f) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -481,7 +235,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -489,7 +243,7 @@ impl CLIPSKnowledgeBase {
                         }
                     }
                     Value::String(s) => match FBPutSlotString(fb, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
-                        PutSlotError::None => {}
+                        PutSlotError_PSE_NO_ERROR => {}
                         err => handle_err(&format!("PutSlot error: {:?}", err))?,
                     },
                     _ => return handle_err("Property type and value type mismatch"),
@@ -498,7 +252,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -512,7 +266,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Value not in allowed values");
                         }
                         match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -522,7 +276,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -534,7 +288,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Object of specified class not found");
                         }
                         match FBPutSlotSymbol(fb, CString::new("value")?.as_ptr(), CString::new(o.clone())?.as_ptr()) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -553,7 +307,7 @@ impl CLIPSKnowledgeBase {
                             let mf = MBCreate(mb);
                             MBDispose(mb);
                             match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -571,7 +325,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -594,7 +348,7 @@ impl CLIPSKnowledgeBase {
                             let mf = MBCreate(mb);
                             MBDispose(mb);
                             match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -616,7 +370,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -639,7 +393,7 @@ impl CLIPSKnowledgeBase {
                             let mf = MBCreate(mb);
                             MBDispose(mb);
                             match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -661,7 +415,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -680,7 +434,7 @@ impl CLIPSKnowledgeBase {
                             let mf = MBCreate(mb);
                             MBDispose(mb);
                             match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -698,7 +452,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -723,7 +477,7 @@ impl CLIPSKnowledgeBase {
                             let mf = MBCreate(mb);
                             MBDispose(mb);
                             match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -747,7 +501,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -770,7 +524,7 @@ impl CLIPSKnowledgeBase {
                             let mf = MBCreate(mb);
                             MBDispose(mb);
                             match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -792,7 +546,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -801,14 +555,14 @@ impl CLIPSKnowledgeBase {
             }
             if let Some(t) = time {
                 match FBPutSlotInteger(fb, CString::new("time".to_string())?.as_ptr(), t.timestamp()) {
-                    PutSlotError::None => {}
+                    PutSlotError_PSE_NO_ERROR => {}
                     err => handle_err(&format!("PutSlot error: {:?}", err))?,
                 }
             }
 
             let fact = FBAssert(fb);
             if fact.is_null() {
-                return handle_err(&format!("Assertion failed: {:?}", FBError(fb)));
+                return handle_err(&format!("Assertion failed: {:?}", FBError(self.env)));
             }
             self.facts.write().unwrap().entry(class.name.clone()).or_default().entry(object.id.as_ref().unwrap().clone()).or_default().insert(property_name.to_string(), fact);
 
@@ -828,7 +582,7 @@ impl CLIPSKnowledgeBase {
                 Err(msg.to_string().into())
             };
             match FMPutSlotSymbol(fm, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
-                PutSlotError::None => {}
+                PutSlotError_PSE_NO_ERROR => {}
                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
             }
             match property {
@@ -836,7 +590,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -846,7 +600,7 @@ impl CLIPSKnowledgeBase {
                     Value::Bool(b) => {
                         let symbol = if *b { "TRUE" } else { "FALSE" };
                         match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(symbol)?.as_ptr()) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -856,7 +610,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -868,7 +622,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Value out of range");
                         }
                         match FMPutSlotInteger(fm, CString::new("value")?.as_ptr(), *i) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -878,7 +632,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -890,7 +644,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Value out of range");
                         }
                         match FMPutSlotFloat(fm, CString::new("value")?.as_ptr(), *f) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -900,7 +654,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -908,7 +662,7 @@ impl CLIPSKnowledgeBase {
                         }
                     }
                     Value::String(s) => match FMPutSlotString(fm, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
-                        PutSlotError::None => {}
+                        PutSlotError_PSE_NO_ERROR => {}
                         err => handle_err(&format!("PutSlot error: {:?}", err))?,
                     },
                     _ => return handle_err("Property type and value type mismatch"),
@@ -917,7 +671,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -931,7 +685,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Value not in allowed values");
                         }
                         match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(s.clone())?.as_ptr()) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -941,7 +695,7 @@ impl CLIPSKnowledgeBase {
                     Value::Null => {
                         if let Some(true) = nullable {
                             match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new("nil")?.as_ptr()) {
-                                PutSlotError::None => {}
+                                PutSlotError_PSE_NO_ERROR => {}
                                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
                             }
                         } else {
@@ -953,7 +707,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Object of specified class not found");
                         }
                         match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(o.clone())?.as_ptr()) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -968,7 +722,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -983,7 +737,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -998,7 +752,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1017,7 +771,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1032,7 +786,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1051,7 +805,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1066,7 +820,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1081,7 +835,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1096,7 +850,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1117,7 +871,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1132,7 +886,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1151,7 +905,7 @@ impl CLIPSKnowledgeBase {
                         let mf = MBCreate(mb);
                         MBDispose(mb);
                         match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
-                            PutSlotError::None => {}
+                            PutSlotError_PSE_NO_ERROR => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
@@ -1160,14 +914,14 @@ impl CLIPSKnowledgeBase {
             }
             if let Some(t) = time {
                 match FMPutSlotInteger(fm, CString::new("time".to_string())?.as_ptr(), t.timestamp()) {
-                    PutSlotError::None => {}
+                    PutSlotError_PSE_NO_ERROR => {}
                     err => handle_err(&format!("PutSlot error: {:?}", err))?,
                 }
             }
 
             let modified_fact = FMModify(fm);
             if modified_fact.is_null() {
-                return handle_err(&format!("Modification failed: {:?}", FMError(fm)));
+                return handle_err(&format!("Modification failed: {:?}", FMError(self.env)));
             }
             self.facts.write().unwrap().get_mut(&class.name).and_then(|objs| objs.get_mut(object.id.as_ref().unwrap())).and_then(|props| props.get_mut(property_name)).map(|f| *f = modified_fact);
 
@@ -1193,13 +947,13 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>> {
         unsafe {
             match Build(self.env, CString::new(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name))?.as_ptr()) {
-                BuildError::None => {}
+                BuildError_BE_NO_ERROR => {}
                 err => return Err(format!("Build error: {:?}", err).into()),
             }
             if let Some(static_props) = &class.static_properties {
                 for (name, prop) in static_props {
                     match Build(self.env, CString::new(prop_deftemplate(class, name, prop, true))?.as_ptr()) {
-                        BuildError::None => {}
+                        BuildError_BE_NO_ERROR => {}
                         err => return Err(format!("Build error: {:?}", err).into()),
                     }
                 }
@@ -1207,7 +961,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             if let Some(dynamic_props) = &class.dynamic_properties {
                 for (name, prop) in dynamic_props {
                     match Build(self.env, CString::new(prop_deftemplate(class, name, prop, false))?.as_ptr()) {
-                        BuildError::None => {}
+                        BuildError_BE_NO_ERROR => {}
                         err => return Err(format!("Build error: {:?}", err).into()),
                     }
                 }
@@ -1304,7 +1058,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>> {
         unsafe {
             match Build(self.env, CString::new(rule.content.clone())?.as_ptr()) {
-                BuildError::None => Ok(()),
+                BuildError_BE_NO_ERROR => Ok(()),
                 err => Err(format!("Build error: {:?}", err).into()),
             }
         }
@@ -1575,52 +1329,50 @@ unsafe extern "C" fn add_data(_env: *mut Environment, udfc: *mut UDFContext, _ou
     unsafe {
         let kb = &*((*udfc).context as *mut CLIPSKnowledgeBase);
         let mut object_id = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFFirstArgument(udfc, CLIPSType::SymbolBit as c_uint, object_id.as_mut_ptr()) {
+        if !UDFFirstArgument(udfc, CLIPSType_SYMBOL_BIT, object_id.as_mut_ptr()) {
             return;
         }
         let object_id = object_id.assume_init();
-        if object_id.value.header.is_null() {
+        if object_id.__bindgen_anon_1.header.is_null() {
             panic!("Received NULL header in UDF argument object_id in add_values");
         }
-        assert!(object_id.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
-        let object_id = std::ffi::CStr::from_ptr((*object_id.value.lexeme_value).contents).to_str().unwrap();
+        let object_id = std::ffi::CStr::from_ptr((*object_id.__bindgen_anon_1.lexemeValue).contents).to_str().unwrap();
 
         let mut pars = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFNextArgument(udfc, CLIPSType::MultifieldBit as c_uint, pars.as_mut_ptr()) {
+        if !UDFNextArgument(udfc, CLIPSType_MULTIFIELD_BIT, pars.as_mut_ptr()) {
             return;
         }
         let pars = pars.assume_init();
         let mut vars = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFNextArgument(udfc, CLIPSType::MultifieldBit as c_uint, vars.as_mut_ptr()) {
+        if !UDFNextArgument(udfc, CLIPSType_MULTIFIELD_BIT, vars.as_mut_ptr()) {
             return;
         }
         let vars = vars.assume_init();
 
-        let time = if !(*udfc).last_arg.is_null() {
+        let time = if !(*udfc).lastArg.is_null() {
             let mut time_val = std::mem::MaybeUninit::<UDFValue>::uninit();
-            if !UDFNextArgument(udfc, CLIPSType::IntegerBit as c_uint, time_val.as_mut_ptr()) {
+            if !UDFNextArgument(udfc, CLIPSType_INTEGER_BIT, time_val.as_mut_ptr()) {
                 return;
             }
             let time_val = time_val.assume_init();
-            DateTime::<Utc>::from_timestamp((*time_val.value.integer_value).contents, 0).unwrap()
+            DateTime::<Utc>::from_timestamp((*time_val.__bindgen_anon_1.integerValue).contents, 0).unwrap()
         } else {
             Utc::now()
         };
 
-        assert!((*pars.value.multifield_value).length == (*vars.value.multifield_value).length);
-        let length = (*pars.value.multifield_value).length;
-        let pars_contents = (*pars.value.multifield_value).contents;
-        let vars_contents = (*vars.value.multifield_value).contents;
+        assert!((*pars.__bindgen_anon_1.multifieldValue).length == (*vars.__bindgen_anon_1.multifieldValue).length);
+        let length = (*pars.__bindgen_anon_1.multifieldValue).length;
+        let pars_contents = (*pars.__bindgen_anon_1.multifieldValue).contents;
+        let vars_contents = (*vars.__bindgen_anon_1.multifieldValue).contents;
 
         let mut values = HashMap::new();
         for i in 0..length {
-            let par = &*pars_contents.add(i);
-            assert!(par.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
-            let par_name = std::ffi::CStr::from_ptr((*par.value.lexeme_value).contents).to_str().unwrap();
-            let val = &*vars_contents.add(i);
-            match val.value.header.as_ref().unwrap().type_code {
-                CLIPSTypeCode::Symbol => {
-                    let val_str = std::ffi::CStr::from_ptr((*val.value.lexeme_value).contents).to_str().unwrap();
+            let par = pars_contents.get(i).unwrap();
+            let par_name = std::ffi::CStr::from_ptr((*par.__bindgen_anon_1.lexemeValue).contents).to_str().unwrap();
+            let val = vars_contents.get(i).unwrap();
+            match val.__bindgen_anon_1.header.as_ref().unwrap().type_ as u32 {
+                SYMBOL_TYPE => {
+                    let val_str = std::ffi::CStr::from_ptr((*val.__bindgen_anon_1.lexemeValue).contents).to_str().unwrap();
                     match val_str {
                         "TRUE" => {
                             values.insert(par_name.to_string(), Value::Bool(true));
@@ -1636,14 +1388,14 @@ unsafe extern "C" fn add_data(_env: *mut Environment, udfc: *mut UDFContext, _ou
                         }
                     }
                 }
-                CLIPSTypeCode::Integer => {
-                    values.insert(par_name.to_string(), Value::Int((*val.value.integer_value).contents));
+                INTEGER_TYPE => {
+                    values.insert(par_name.to_string(), Value::Int((*val.__bindgen_anon_1.integerValue).contents));
                 }
-                CLIPSTypeCode::Float => {
-                    values.insert(par_name.to_string(), Value::Float((*val.value.float_value).contents));
+                FLOAT_TYPE => {
+                    values.insert(par_name.to_string(), Value::Float((*val.__bindgen_anon_1.floatValue).contents));
                 }
-                CLIPSTypeCode::String => {
-                    let val_str = std::ffi::CStr::from_ptr((*val.value.lexeme_value).contents).to_str().unwrap();
+                STRING_TYPE => {
+                    let val_str = std::ffi::CStr::from_ptr((*val.__bindgen_anon_1.lexemeValue).contents).to_str().unwrap();
                     values.insert(par_name.to_string(), Value::String(val_str.to_string()));
                 }
                 _ => {}
@@ -1658,23 +1410,21 @@ unsafe extern "C" fn add_class(_env: *mut Environment, udfc: *mut UDFContext, _o
     unsafe {
         let kb = &*((*udfc).context as *mut CLIPSKnowledgeBase);
         let mut object_id = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFFirstArgument(udfc, CLIPSType::SymbolBit as c_uint, object_id.as_mut_ptr()) {
+        if !UDFFirstArgument(udfc, CLIPSType_SYMBOL_BIT, object_id.as_mut_ptr()) {
             return;
         }
         let object_id = object_id.assume_init();
-        if object_id.value.header.is_null() {
+        if object_id.__bindgen_anon_1.header.is_null() {
             panic!("Received NULL header in UDF argument object_id in add_class");
         }
-        assert!(object_id.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
-        let object_id = std::ffi::CStr::from_ptr((*object_id.value.lexeme_value).contents).to_str().unwrap();
+        let object_id = std::ffi::CStr::from_ptr((*object_id.__bindgen_anon_1.lexemeValue).contents).to_str().unwrap();
 
         let mut class_name = std::mem::MaybeUninit::<UDFValue>::uninit();
-        if !UDFNextArgument(udfc, CLIPSType::SymbolBit as c_uint, class_name.as_mut_ptr()) {
+        if !UDFNextArgument(udfc, CLIPSType_SYMBOL_BIT, class_name.as_mut_ptr()) {
             return;
         }
         let class_name = class_name.assume_init();
-        assert!(class_name.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
-        let class_name = std::ffi::CStr::from_ptr((*class_name.value.lexeme_value).contents).to_str().unwrap();
+        let class_name = std::ffi::CStr::from_ptr((*class_name.__bindgen_anon_1.lexemeValue).contents).to_str().unwrap();
 
         kb.add_class(object_id, class_name).unwrap();
     }

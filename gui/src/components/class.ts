@@ -10,8 +10,24 @@ export function ClassesList(coco: coco.CoCo): VNode {
   }, flick.ctx.page_title === `Class: ${cls.get_name()}`))));
 }
 
+const cls_listener = {
+  instance_added: (_obj: coco.CoCoObject) => {
+    flick.redraw();
+  }
+};
+
 export function Class(cls: coco.CoCoClass): VNode {
-  const content = h('div.container.mt-2', [
+  const content = h('div.container.mt-2',
+    {
+      hook: {
+        insert: () => {
+          cls.add_listener(cls_listener);
+        },
+        destroy: () => {
+          cls.remove_listener(cls_listener);
+        }
+      }
+    }, [
     h('div.input-group', [
       h('input.form-control', { attrs: { type: 'text', value: cls.get_name(), placeholder: 'Type name', disabled: true } }),
       h('button.btn.btn-outline-secondary', {

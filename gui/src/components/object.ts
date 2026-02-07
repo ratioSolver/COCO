@@ -11,8 +11,30 @@ export function ObjectsList(coco: coco.CoCo): VNode {
   }, flick.ctx.page_title === `Object: ${obj.get_id()}`))));
 }
 
+const obj_listener = {
+  class_added: (_cls: coco.CoCoClass) => {
+    flick.redraw();
+  },
+  properties_updated: (_properties: Record<string, coco.Value>) => {
+    flick.redraw();
+  },
+  values_added: (_values: Record<string, coco.Value>, _date_time: string) => {
+    flick.redraw();
+  }
+};
+
 export function Object(obj: coco.CoCoObject): VNode {
-  const content = h('div.container.mt-2', [
+  const content = h('div.container.mt-2',
+    {
+      hook: {
+        insert: () => {
+          obj.add_listener(obj_listener);
+        },
+        destroy: () => {
+          obj.remove_listener(obj_listener);
+        }
+      }
+    }, [
     h('div.input-group', [
       h('input.form-control', { attrs: { type: 'text', value: obj.get_id(), placeholder: 'Type name', disabled: true } }),
       h('button.btn.btn-outline-secondary', {

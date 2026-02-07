@@ -42,21 +42,21 @@ export namespace coco {
         switch (msg.msg_type) {
           case 'coco': {
             for (const [name, cls] of Object.entries(msg.classes))
-              this.classes.set(name, new CoCoClass(name, new Set(cls.parents || []), new Map(Object.entries(cls.static_properties || {})), new Map(Object.entries(cls.dynamic_properties || {}))));
+              this.classes.set(name, new CoCoClass(this, name, new Set(cls.parents || []), new Map(Object.entries(cls.static_properties || {})), new Map(Object.entries(cls.dynamic_properties || {}))));
             if (msg.objects)
               for (const [id, obj] of Object.entries(msg.objects))
-                this.objects.set(id, new CoCoObject(id, new Set(obj.classes.map(cls_name => this.get_class(cls_name)))));
+                this.objects.set(id, new CoCoObject(this, id, new Set(obj.classes.map(cls_name => this.get_class(cls_name)))));
             for (const listener of this.listeners) listener.initialized();
             break;
           }
           case 'class_created': {
-            const cls = new CoCoClass(msg.name, new Set(msg.parents || []), new Map(Object.entries(msg.static_properties || {})), new Map(Object.entries(msg.dynamic_properties || {})));
+            const cls = new CoCoClass(this, msg.name, new Set(msg.parents || []), new Map(Object.entries(msg.static_properties || {})), new Map(Object.entries(msg.dynamic_properties || {})));
             this.classes.set(cls.get_name(), cls);
             for (const listener of this.listeners) listener.created_class(cls);
             break;
           }
           case 'object_created': {
-            const obj = new CoCoObject(msg.id, new Set(msg.classes.map(cls_name => this.get_class(cls_name))));
+            const obj = new CoCoObject(this, msg.id, new Set(msg.classes.map(cls_name => this.get_class(cls_name))));
             this.objects.set(obj.get_id(), obj);
             for (const listener of this.listeners) listener.created_object(obj);
             break;
@@ -93,35 +93,48 @@ export namespace coco {
 
   export class CoCoClass {
 
+    private readonly coco: CoCo;
     private readonly name: string;
     private readonly parents: Set<string>;
     private readonly static_properties: Map<string, Property>;
     private readonly dynamic_properties: Map<string, Property>;
     private readonly instances: Set<CoCoObject> = new Set();
+    private readonly listeners: Set<CoCoClassListener> = new Set();
 
-    constructor(name: string, parents: Set<string> = new Set(), static_properties: Map<string, Property> = new Map(), dynamic_properties: Map<string, Property> = new Map()) {
+    constructor(coco: CoCo, name: string, parents: Set<string> = new Set(), static_properties: Map<string, Property> = new Map(), dynamic_properties: Map<string, Property> = new Map()) {
+      this.coco = coco;
       this.name = name;
       this.parents = parents;
       this.static_properties = static_properties;
       this.dynamic_properties = dynamic_properties;
     }
 
+    get_coco(): CoCo { return this.coco; }
     get_name(): string { return this.name; }
     get_parents(): ReadonlySet<string> { return this.parents; }
     get_static_properties(): ReadonlyMap<string, Property> { return this.static_properties; }
     get_dynamic_properties(): ReadonlyMap<string, Property> { return this.dynamic_properties; }
     get_instances(): ReadonlySet<CoCoObject> { return this.instances; }
-    _add_instance(obj: CoCoObject) { this.instances.add(obj); }
+    _add_instance(obj: CoCoObject) {
+      this.instances.add(obj);
+      for (const listener of this.listeners) listener.instance_added(obj);
+    }
+
+    add_listener(listener: CoCoClassListener) { this.listeners.add(listener); }
+    remove_listener(listener: CoCoClassListener) { this.listeners.delete(listener); }
   }
 
   export class CoCoObject {
 
+    private readonly coco: CoCo;
     private readonly id: string;
     private readonly classes: Set<CoCoClass>;
     private readonly properties?: Record<string, Value>;
     private readonly values?: Record<string, TimeValue>;
+    private readonly listeners: Set<CoCoObjectListener> = new Set();
 
-    constructor(id: string, classes: Set<CoCoClass>, properties?: Record<string, Value>, values?: Record<string, TimeValue>) {
+    constructor(coco: CoCo, id: string, classes: Set<CoCoClass>, properties?: Record<string, Value>, values?: Record<string, TimeValue>) {
+      this.coco = coco;
       this.id = id;
       this.classes = classes;
       this.properties = properties;
@@ -129,15 +142,20 @@ export namespace coco {
       for (const cls of classes) cls._add_instance(this);
     }
 
+    get_coco(): CoCo { return this.coco; }
     get_id(): string { return this.id; }
     get_classes(): ReadonlySet<CoCoClass> { return this.classes; }
-    _add_class(cls: CoCoClass) { this.classes.add(cls); cls._add_instance(this); }
+    _add_class(cls: CoCoClass) {
+      this.classes.add(cls); cls._add_instance(this);
+      for (const listener of this.listeners) listener.class_added(cls);
+    }
     get_properties(): Record<string, Value> | undefined { return this.properties; }
     _set_properties(properties: Record<string, Value>) {
       for (const key of Object.keys(this.properties!))
         delete this.properties![key];
       for (const [key, value] of Object.entries(properties))
         this.properties![key] = value;
+      for (const listener of this.listeners) listener.properties_updated(properties);
     }
     get_values(): Record<string, TimeValue> | undefined { return this.values; }
     _set_values(values: Record<string, Value>, date_time: string) {
@@ -145,7 +163,11 @@ export namespace coco {
         delete this.values![key];
       for (const [key, value] of Object.entries(values))
         this.values![key] = [value, date_time];
+      for (const listener of this.listeners) listener.values_added(values, date_time);
     }
+
+    add_listener(listener: CoCoObjectListener) { this.listeners.add(listener); }
+    remove_listener(listener: CoCoObjectListener) { this.listeners.delete(listener); }
   }
 
   export interface CoCoListener {
@@ -159,7 +181,17 @@ export namespace coco {
     created_object(obj: CoCoObject): void;
   }
 
-  type Value = null | boolean | number | string;
+  export interface CoCoClassListener {
+    instance_added(obj: CoCoObject): void;
+  }
+
+  export interface CoCoObjectListener {
+    class_added(cls: CoCoClass): void;
+    properties_updated(properties: Record<string, Value>): void;
+    values_added(values: Record<string, Value>, date_time: string): void;
+  }
+
+  export type Value = null | boolean | number | string;
   type TimeValue = [Value, string];
 
   type Property =

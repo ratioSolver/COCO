@@ -256,6 +256,7 @@ pub trait KnowledgeBase: Send + Sync {
     fn get_objects(&self) -> Vec<Object>;
     fn get_object(&self, id: &str) -> Option<Object>;
     fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>>;
+    fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), Box<dyn Error>>;
     fn set_properties(&self, object_id: &str, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>>;
     fn add_data(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>>;
 

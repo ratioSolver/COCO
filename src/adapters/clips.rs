@@ -300,6 +300,97 @@ impl CLIPSKnowledgeBase {
         }
     }
 
+    fn create_object_class(&self, object: &Object, class: &Class) -> Result<(), Box<dyn Error>> {
+        unsafe {
+            let fb = CreateFactBuilder(self.env, CString::new(class.name.clone())?.as_ptr());
+            if fb.is_null() {
+                return Err("Failed to create FactBuilder".into());
+            }
+
+            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
+                PutSlotError::None => {}
+                err => {
+                    FBDispose(fb);
+                    return Err(format!("PutSlot error: {:?}", err).into());
+                }
+            }
+
+            let fact = FBAssert(fb);
+            if fact.is_null() {
+                let error = FBError(fb);
+                FBDispose(fb);
+                return Err(format!("Assertion failed: {:?}", error).into());
+            }
+
+            self.instances.write().unwrap().entry(class.name.clone()).or_default().insert(object.id.as_ref().unwrap().clone(), fact);
+
+            FBDispose(fb);
+
+            if let Some(props) = class.static_properties.as_ref() {
+                for (prop_name, prop) in props {
+                    let value = object.properties.as_ref().and_then(|props| props.get(prop_name));
+                    if let Some(v) = value {
+                        self.set_prop(object, &class, prop, prop_name, v, None)?;
+                    } else {
+                        let default_val = match prop {
+                            Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
+                            Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
+                            Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
+                            Property::String { default: Some(v), .. } => Some(Value::String(v.clone())),
+                            Property::Symbol { default: Some(v), .. } => Some(Value::Symbol(v.clone())),
+                            Property::Object { default: Some(v), .. } => Some(Value::Object(v.clone())),
+                            Property::BoolArray { default: Some(v), .. } => Some(Value::BoolArray(v.clone())),
+                            Property::IntArray { default: Some(v), .. } => Some(Value::IntArray(v.clone())),
+                            Property::FloatArray { default: Some(v), .. } => Some(Value::FloatArray(v.clone())),
+                            Property::StringArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                            Property::SymbolArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                            Property::ObjectArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                            _ => None,
+                        };
+                        if let Some(v) = default_val {
+                            self.set_prop(object, &class, prop, prop_name, &v, None)?;
+                        } else {
+                            self.set_prop(object, &class, prop, prop_name, &Value::Null, None)?;
+                        }
+                    }
+                }
+            }
+
+            if let Some(props) = class.dynamic_properties.as_ref() {
+                for (prop_name, prop) in props {
+                    let value_time = object.values.as_ref().and_then(|vals| vals.get(prop_name));
+                    if let Some((v, t)) = value_time {
+                        self.set_prop(object, &class, prop, prop_name, v, Some(t))?;
+                    } else {
+                        let default_val = match prop {
+                            Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
+                            Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
+                            Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
+                            Property::String { default: Some(v), .. } => Some(Value::String(v.clone())),
+                            Property::Symbol { default: Some(v), .. } => Some(Value::Symbol(v.clone())),
+                            Property::Object { default: Some(v), .. } => Some(Value::Object(v.clone())),
+                            Property::BoolArray { default: Some(v), .. } => Some(Value::BoolArray(v.clone())),
+                            Property::IntArray { default: Some(v), .. } => Some(Value::IntArray(v.clone())),
+                            Property::FloatArray { default: Some(v), .. } => Some(Value::FloatArray(v.clone())),
+                            Property::StringArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                            Property::SymbolArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                            Property::ObjectArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                            _ => None,
+                        };
+                        if let Some(v) = default_val {
+                            self.set_prop(object, &class, prop, prop_name, &v, None)?;
+                        } else {
+                            self.set_prop(object, &class, prop, prop_name, &Value::Null, None)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        let _ = self.sender.send(CoCoEvent::AddedClass(object.id.as_ref().unwrap().clone(), class.name.clone()));
+        Ok(())
+    }
+
     fn set_prop(&self, object: &Object, class: &Class, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
         unsafe {
             let fb = CreateFactBuilder(self.env, CString::new(format!("{}_{}", class.name, property_name))?.as_ptr());
@@ -1114,6 +1205,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                     }
                 }
             }
+
             self.classes.write().unwrap().insert(class.name.clone(), class.clone());
             let _ = self.sender.send(CoCoEvent::ClassCreated(class.clone()));
             Ok(())
@@ -1129,97 +1221,19 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>> {
-        let classes_guard = self.classes.read();
-        for class_name in &object.classes {
-            let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
-            unsafe {
-                let fb = CreateFactBuilder(self.env, CString::new(class_name.to_string())?.as_ptr());
-                if fb.is_null() {
-                    return Err("Failed to create FactBuilder".into());
-                }
-
-                match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
-                    PutSlotError::None => {}
-                    err => {
-                        FBDispose(fb);
-                        return Err(format!("PutSlot error: {:?}", err).into());
-                    }
-                }
-
-                let fact = FBAssert(fb);
-                if fact.is_null() {
-                    let error = FBError(fb);
-                    FBDispose(fb);
-                    return Err(format!("Assertion failed: {:?}", error).into());
-                }
-
-                self.instances.write().unwrap().entry(class_name.to_string()).or_default().insert(object.id.as_ref().unwrap().clone(), fact);
-
-                FBDispose(fb);
-
-                if let Some(props) = class.static_properties.as_ref() {
-                    for (prop_name, prop) in props {
-                        let value = object.properties.as_ref().and_then(|props| props.get(prop_name));
-                        if let Some(v) = value {
-                            self.set_prop(object, &class, prop, prop_name, v, None)?;
-                        } else {
-                            let default_val = match prop {
-                                Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
-                                Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
-                                Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
-                                Property::String { default: Some(v), .. } => Some(Value::String(v.clone())),
-                                Property::Symbol { default: Some(v), .. } => Some(Value::Symbol(v.clone())),
-                                Property::Object { default: Some(v), .. } => Some(Value::Object(v.clone())),
-                                Property::BoolArray { default: Some(v), .. } => Some(Value::BoolArray(v.clone())),
-                                Property::IntArray { default: Some(v), .. } => Some(Value::IntArray(v.clone())),
-                                Property::FloatArray { default: Some(v), .. } => Some(Value::FloatArray(v.clone())),
-                                Property::StringArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
-                                Property::SymbolArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
-                                Property::ObjectArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
-                                _ => None,
-                            };
-                            if let Some(v) = default_val {
-                                self.set_prop(object, &class, prop, prop_name, &v, None)?;
-                            } else {
-                                self.set_prop(object, &class, prop, prop_name, &Value::Null, None)?;
-                            }
-                        }
-                    }
-                }
-
-                if let Some(props) = class.dynamic_properties.as_ref() {
-                    for (prop_name, prop) in props {
-                        let value_time = object.values.as_ref().and_then(|vals| vals.get(prop_name));
-                        if let Some((v, t)) = value_time {
-                            self.set_prop(object, &class, prop, prop_name, v, Some(t))?;
-                        } else {
-                            let default_val = match prop {
-                                Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
-                                Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
-                                Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
-                                Property::String { default: Some(v), .. } => Some(Value::String(v.clone())),
-                                Property::Symbol { default: Some(v), .. } => Some(Value::Symbol(v.clone())),
-                                Property::Object { default: Some(v), .. } => Some(Value::Object(v.clone())),
-                                Property::BoolArray { default: Some(v), .. } => Some(Value::BoolArray(v.clone())),
-                                Property::IntArray { default: Some(v), .. } => Some(Value::IntArray(v.clone())),
-                                Property::FloatArray { default: Some(v), .. } => Some(Value::FloatArray(v.clone())),
-                                Property::StringArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
-                                Property::SymbolArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
-                                Property::ObjectArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
-                                _ => None,
-                            };
-                            if let Some(v) = default_val {
-                                self.set_prop(object, &class, prop, prop_name, &v, None)?;
-                            } else {
-                                self.set_prop(object, &class, prop, prop_name, &Value::Null, None)?;
-                            }
-                        }
-                    }
-                }
-            }
-        }
         self.objects.write().unwrap().insert(object.id.as_ref().unwrap().clone(), object.clone());
         let _ = self.sender.send(CoCoEvent::ObjectCreated(object.clone()));
+
+        let classes_guard = self.classes.read();
+        for class_name in &object.classes {
+            self.create_object_class(object, classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?)?;
+        }
+
+        Ok(())
+    }
+
+    fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), Box<dyn Error>> {
+        let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
         Ok(())
     }
 

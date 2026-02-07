@@ -1,5 +1,5 @@
 use chrono::Utc;
-use coco::{CLIPSKnowledgeBase, Class, CoCo, DataStore, KnowledgeBase, MongoDBDataStore, Object, Property, Rule, Value};
+use coco::{CLIPSKnowledgeBase, Class, CoCo, DataStore, MongoDBDataStore, Object, Property, Rule, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
@@ -12,19 +12,10 @@ async fn setup_db(db_name: &str) -> Arc<MongoDBDataStore> {
     Arc::new(db)
 }
 
-// Function to create KB correctly wrapped in Arc<Mutex> + Init
+// Function to create KB correctly wrapped in Arc<Mutex>
 fn create_kb() -> Arc<Mutex<dyn coco::KnowledgeBase>> {
     let (tx, _) = broadcast::channel(100);
-    // Note: CLIPSKnowledgeBase logic must ensure proper initialization if not done in new().
-    // The previous implementation added init() to the trait and called it.
-    // However, since CLIPSKnowledgeBase::new() calls CreateEnvironment but doesn't register UDFs
-    // unless init is called, we must call it.
-    let kb = CLIPSKnowledgeBase::new(tx);
-    let kb_arc = Arc::new(Mutex::new(kb));
-
-    // We can call proper init via the trait method (assuming init is in KnowledgeBase trait)
-    kb_arc.lock().unwrap().init();
-
+    let kb_arc = CLIPSKnowledgeBase::new(tx);
     kb_arc
 }
 

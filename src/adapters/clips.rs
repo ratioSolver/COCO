@@ -31,9 +31,9 @@ unsafe impl Send for CLIPSKnowledgeBase {}
 unsafe impl Sync for CLIPSKnowledgeBase {}
 
 impl CLIPSKnowledgeBase {
-    pub fn new(sender: broadcast::Sender<CoCoEvent>) -> Self {
+    pub fn new(sender: broadcast::Sender<CoCoEvent>) -> std::sync::Arc<std::sync::Mutex<Self>> {
         unsafe {
-            CLIPSKnowledgeBase {
+            let kb = CLIPSKnowledgeBase {
                 sender,
                 env: CreateEnvironment(),
                 classes: RwLock::new(HashMap::new()),
@@ -41,7 +41,16 @@ impl CLIPSKnowledgeBase {
                 rules: RwLock::new(HashMap::new()),
                 instances: RwLock::new(HashMap::new()),
                 facts: RwLock::new(HashMap::new()),
+            };
+            let kb_arc = std::sync::Arc::new(std::sync::Mutex::new(kb));
+            
+            {
+                let kb_guard = kb_arc.lock().unwrap();
+                AddUDF(kb_guard.env, CString::new("add-data").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), Some(add_data), CString::new("add_data").unwrap().as_ptr(), &*kb_guard as *const _ as *mut c_void);
+                AddUDF(kb_guard.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), Some(add_class), CString::new("add_class").unwrap().as_ptr(), &*kb_guard as *const _ as *mut c_void);
             }
+            
+            kb_arc
         }
     }
 
@@ -925,13 +934,6 @@ impl CLIPSKnowledgeBase {
 }
 
 impl KnowledgeBase for CLIPSKnowledgeBase {
-    fn init(&self) {
-        unsafe {
-            AddUDF(self.env, CString::new("add-data").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), Some(add_data), CString::new("add_data").unwrap().as_ptr(), self as *const _ as *mut c_void);
-            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), Some(add_class), CString::new("add_class").unwrap().as_ptr(), self as *const _ as *mut c_void);
-        }
-    }
-
     fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
         self.sender.clone()
     }
@@ -1437,22 +1439,22 @@ mod tests {
     use std::collections::{HashMap, HashSet};
     use tokio::sync::broadcast;
 
-    fn create_kb() -> Box<CLIPSKnowledgeBase> {
+    fn create_kb() -> std::sync::Arc<std::sync::Mutex<CLIPSKnowledgeBase>> {
         let (tx, _) = broadcast::channel(100);
-        let kb = Box::new(CLIPSKnowledgeBase::new(tx));
-        kb.init();
-        kb
+        CLIPSKnowledgeBase::new(tx)
     }
 
     #[test]
     fn test_kb_initialization() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
         assert!(!kb.env.is_null());
     }
 
     #[test]
     fn test_create_class() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
         let mut static_props = HashMap::new();
         static_props.insert("name".to_string(), Property::String { nullable: Some(false), default: Some("default property".to_string()) });
         let class = Class {
@@ -1466,8 +1468,8 @@ mod tests {
 
     #[test]
     fn test_create_object() {
-        let kb = create_kb();
-
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
         let mut static_props = HashMap::new();
         static_props.insert("s_prop".to_string(), Property::String { nullable: Some(true), default: None });
         let class = Class {
@@ -1491,7 +1493,8 @@ mod tests {
 
     #[test]
     fn test_set_properties() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
 
         let mut static_props = HashMap::new();
         static_props.insert("age".to_string(), Property::Int { nullable: Some(false), default: Some(0), min: Some(0), max: Some(150) });
@@ -1523,7 +1526,8 @@ mod tests {
 
     #[test]
     fn test_add_data() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
 
         let mut dynamic_props = HashMap::new();
         dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: Some(-100.0), max: Some(100.0) });
@@ -1548,7 +1552,8 @@ mod tests {
 
     #[test]
     fn test_various_property_types() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
 
         let mut static_props = HashMap::new();
         static_props.insert("p_int".to_string(), Property::Int { nullable: Some(false), default: None, min: None, max: None });
@@ -1582,7 +1587,8 @@ mod tests {
 
     #[test]
     fn test_range_validation() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
         let mut static_props = HashMap::new();
         static_props.insert("p_int".to_string(), Property::Int { nullable: Some(false), default: None, min: Some(10), max: Some(20) });
         let class = Class {
@@ -1620,7 +1626,8 @@ mod tests {
 
     #[test]
     fn test_create_rule() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
         let rule = Rule {
             name: "test-rule".to_string(),
             content: "(defrule test-rule => (printout t \"Hello\" crlf))".to_string(),
@@ -1630,7 +1637,8 @@ mod tests {
 
     #[test]
     fn test_array_property_types() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
 
         // Setup for ObjectArray
         let item_class = Class { name: "Item".to_string(), parents: None, static_properties: None, dynamic_properties: None };
@@ -1688,7 +1696,8 @@ mod tests {
 
     #[test]
     fn test_add_data_deadlock() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
 
         let mut dynamic_props = HashMap::new();
         dynamic_props.insert("temp".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: None, max: None });
@@ -1727,7 +1736,8 @@ mod tests {
 
     #[test]
     fn test_add_class_deadlock() {
-        let kb = create_kb();
+        let kb_arc = create_kb();
+        let kb = kb_arc.lock().unwrap();
 
         let mut static_props = HashMap::new();
         static_props.insert("age".to_string(), Property::Int { nullable: Some(false), default: Some(0), min: None, max: None });

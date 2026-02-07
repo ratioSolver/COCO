@@ -8,8 +8,8 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use coco::{CLIPSKnowledgeBase, Class, CoCo, CoCoEvent, KnowledgeBase, MongoDBDataStore, Object};
-use std::sync::{Arc, Mutex};
+use coco::{CLIPSKnowledgeBase, Class, CoCo, CoCoEvent, MongoDBDataStore, Object};
+use std::sync::Arc;
 use tokio::sync::broadcast;
 use tower_http::services::{ServeDir, ServeFile};
 use utoipa::OpenApi;
@@ -18,8 +18,8 @@ use utoipa::OpenApi;
 async fn main() {
     let db = Arc::new(MongoDBDataStore::new("coco_server", "mongodb://localhost:27017").await.unwrap());
     let (tx, _rx) = broadcast::channel(100);
-    let kb = Arc::new(Mutex::new(CLIPSKnowledgeBase::new(tx)));
-    kb.lock().unwrap().init();
+    // kb is now returned as Arc<Mutex<CLIPSKnowledgeBase>> and initialized
+    let kb = CLIPSKnowledgeBase::new(tx);
     let coco = Arc::new(CoCo::new(db, kb).await);
 
     let app = Router::new();

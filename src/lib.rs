@@ -249,7 +249,6 @@ impl Display for CoCoEvent {
 
 pub trait KnowledgeBase: Send + Sync {
     fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent>;
-    fn init(&self) {}
     fn get_classes(&self) -> Vec<Class>;
     fn get_class(&self, name: &str) -> Option<Class>;
     fn create_class(&self, class: &Class) -> Result<(), Box<dyn Error>>;

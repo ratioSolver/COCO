@@ -23,20 +23,11 @@ impl CoCo {
         tokio::spawn(async move {
             while let Ok(event) = receiver.recv().await {
                 match event {
-                    CoCoEvent::AddedClass(object_id, class_name) => {
-                        let (object, class) = {
-                            let guard = kb.lock().unwrap();
-                            (guard.get_object(&object_id), guard.get_class(&class_name))
-                        };
-                        if let (Some(object), Some(class)) = (object, class) {
-                            c_db.add_class(&object, &class).await.expect("Failed to add class to database");
-                        }
+                    CoCoEvent::AddedClass(object, class) => {
+                        c_db.add_class(&object, &class).await.expect("Failed to add class to database");
                     }
-                    CoCoEvent::AddedValues(object_id, values, date_time) => {
-                        let object = kb.lock().unwrap().get_object(&object_id);
-                        if let Some(object) = object {
-                            c_db.add_data(&object, &values, &date_time).await.expect("Failed to add data to database");
-                        }
+                    CoCoEvent::AddedValues(object, values, date_time) => {
+                        c_db.add_data(&object, &values, &date_time).await.expect("Failed to add data to database");
                     }
                     _ => {}
                 }

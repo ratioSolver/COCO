@@ -1239,9 +1239,11 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         if object.classes.contains(class_name) {
             return Ok(()); // Class already added, do nothing
         }
-        self.create_object_class(object, self.classes.read().unwrap().get(class_name).ok_or("Class not found")?)?;
+        let classes_guard = self.classes.read();
+        let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
+        self.create_object_class(object, class)?;
         object.classes.insert(class_name.to_string());
-        let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
+        let _ = self.sender.send(CoCoEvent::AddedClass(object.clone(), class.clone()));
         Ok(())
     }
 
@@ -1260,7 +1262,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 }
             }
         }
-        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object_id.to_string(), values));
+        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object.clone(), values));
         Ok(())
     }
 
@@ -1279,7 +1281,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 }
             }
         }
-        let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values, date_time));
+        let _ = self.sender.send(CoCoEvent::AddedValues(object.clone(), values, date_time));
         Ok(())
     }
 

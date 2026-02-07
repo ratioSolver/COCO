@@ -1279,7 +1279,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 }
             }
         }
-        let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values.iter().map(|(k, v)| (k.clone(), (v.clone(), date_time))).collect()));
+        let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values, date_time));
         Ok(())
     }
 

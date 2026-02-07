@@ -18,6 +18,21 @@ impl CoCo {
         let sender = kb.lock().unwrap().get_event_sender();
         let coco = Self { sender, db: db.clone(), kb: kb.clone() };
 
+        let mut receiver = coco.sender.subscribe();
+        let c_db = db.clone();
+        tokio::spawn(async move {
+            while let Ok(event) = receiver.recv().await {
+                match event {
+                    CoCoEvent::AddedClass(object_id, class_name) => {}
+                    CoCoEvent::AddedValues(object_id, values, date_time) => {
+                        let mut kb = kb.lock().unwrap();
+                        c_db.add_data(kb.get_object(&object_id).as_ref().unwrap(), &values, &date_time).await.expect("Failed to add data to database");
+                    }
+                    _ => {}
+                }
+            }
+        });
+
         coco.add_classes(db.get_classes().await.expect("Failed to load classes from database")).expect("Failed to add classes to knowledge base");
         coco.add_objects(db.get_objects().await.expect("Failed to load objects from database")).expect("Failed to add objects to knowledge base");
         coco.add_rules(db.get_rules().await.expect("Failed to load rules from database")).expect("Failed to add rules to knowledge base");

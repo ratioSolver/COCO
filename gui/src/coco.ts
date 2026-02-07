@@ -155,5 +155,8 @@ export namespace coco {
   type ServerMessage =
     | ({ msg_type: 'coco' } & CoCoMessage)
     | ({ msg_type: 'class_created' } & ClassMessage)
-    | ({ msg_type: 'object_created' } & ObjectMessage);
+    | ({ msg_type: 'object_created' } & ObjectMessage)
+    | ({ msg_type: 'added_class', object_id: string, class_name: string })
+    | ({ msg_type: 'updated_properties', object_id: string, properties: Record<string, Value> })
+    | ({ msg_type: 'added_values', object_id: string, values: Record<string, Value>, date_time: string });
 }

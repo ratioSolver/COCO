@@ -1223,34 +1223,37 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         Ok(())
     }
 
-    fn set_properties(&self, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+    fn set_properties(&self, object: &mut Object, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let classes_guard = self.classes.read();
         for class_name in &object.classes {
             let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
             if let Some(props) = class.static_properties.as_ref() {
-                for (prop_name, value) in values.iter() {
-                    if let Some(prop) = props.get(prop_name) {
-                        self.update_prop(object, class, prop, prop_name, value, None)?
+                for (prop_name, value) in values.clone() {
+                    if let Some(prop) = props.get(&prop_name) {
+                        self.update_prop(object, class, &prop, &prop_name, &value, None)?;
+                        object.properties.as_mut().unwrap().insert(prop_name, value);
                     }
                 }
             }
         }
+        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object.id.as_ref().unwrap().clone(), values));
         Ok(())
     }
 
-    fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+    fn add_data(&self, object: &mut Object, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
         let classes_guard = self.classes.read();
         for class_name in &object.classes {
             let class = classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?;
             if let Some(props) = class.dynamic_properties.as_ref() {
-                for (prop_name, value) in values.iter() {
-                    if let Some(prop) = props.get(prop_name) {
-                        self.update_prop(object, class, prop, prop_name, value, Some(date_time))?;
+                for (prop_name, value) in values.clone() {
+                    if let Some(prop) = props.get(&prop_name) {
+                        self.update_prop(object, class, &prop, &prop_name, &value, Some(&date_time))?;
+                        object.values.as_mut().unwrap().insert(prop_name, (value, date_time));
                     }
                 }
             }
         }
-
+        let _ = self.sender.send(CoCoEvent::AddedValues(object.id.as_ref().unwrap().clone(), values.iter().map(|(k, v)| (k.clone(), (v.clone(), date_time))).collect()));
         Ok(())
     }
 
@@ -1600,9 +1603,6 @@ unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _
                 _ => {}
             }
         }
-
-        let sender = &kb.sender;
-        let _ = sender.send(CoCoEvent::AddedValues(object_id.to_string(), values));
     }
 }
 
@@ -1706,7 +1706,7 @@ mod tests {
         classes.insert("Person".to_string());
 
         // Initial creation with default
-        let object = Object {
+        let mut object = Object {
             id: Some("person1".to_string()),
             classes,
             properties: Some(HashMap::new()), // Empty map means use defaults/nulls as per logic
@@ -1717,7 +1717,7 @@ mod tests {
         // Update properties
         let mut new_props = HashMap::new();
         new_props.insert("age".to_string(), Value::Int(30));
-        assert!(kb.set_properties(&object, &new_props).is_ok());
+        assert!(kb.set_properties(&mut object, new_props).is_ok());
     }
 
     #[test]
@@ -1736,13 +1736,13 @@ mod tests {
 
         let mut classes = HashSet::new();
         classes.insert("Sensor".to_string());
-        let object = Object { id: Some("sensor1".to_string()), classes, properties: None, values: Some(HashMap::new()) };
+        let mut object = Object { id: Some("sensor1".to_string()), classes, properties: None, values: Some(HashMap::new()) };
         kb.create_object(&object).unwrap();
 
         // Add data
         let mut values = HashMap::new();
         values.insert("temperature".to_string(), Value::Float(25.5));
-        assert!(kb.add_data(&object, &values, &Utc::now()).is_ok());
+        assert!(kb.add_data(&mut object, values, Utc::now()).is_ok());
     }
 
     #[test]

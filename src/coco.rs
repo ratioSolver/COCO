@@ -17,14 +17,6 @@ impl CoCo {
     pub async fn new(db: Arc<dyn DataStore>, kb: Arc<Mutex<dyn KnowledgeBase>>) -> Self {
         let sender = kb.lock().unwrap().get_event_sender();
         let coco = Self { sender, db: db.clone(), kb: kb.clone() };
-        let mut receiver = coco.sender.subscribe();
-        tokio::spawn(async move {
-            while let Ok(event) = receiver.recv().await {
-                if let CoCoEvent::AddedValues(object_id, values) = event {
-                    println!("Added values to object {}: {:?}", object_id, values);
-                }
-            }
-        });
 
         coco.add_classes(db.get_classes().await.expect("Failed to load classes from database")).expect("Failed to add classes to knowledge base");
         coco.add_objects(db.get_objects().await.expect("Failed to load objects from database")).expect("Failed to add objects to knowledge base");
@@ -81,14 +73,14 @@ impl CoCo {
         Ok(())
     }
 
-    pub async fn set_properties(&self, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
-        self.db.set_properties(object, values).await?;
+    pub async fn set_properties(&self, object: &mut Object, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+        self.db.set_properties(object, &values).await?;
         self.kb.lock().unwrap().set_properties(object, values)?;
         Ok(())
     }
 
-    pub async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
-        self.db.set_values(object, values, date_time).await?;
+    pub async fn add_data(&self, object: &mut Object, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+        self.db.set_values(object, &values, &date_time).await?;
         self.kb.lock().unwrap().add_data(object, values, date_time)?;
         Ok(())
     }
@@ -100,10 +92,10 @@ impl CoCo {
         Ok(())
     }
 
-    pub async fn set_values(&self, object: &mut Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+    pub async fn set_values(&self, object: &mut Object, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let date_time: DateTime<Utc> = Utc::now();
-        self.db.set_values(object, values, &date_time).await?;
-        self.kb.lock().unwrap().add_data(object, values, &date_time)?;
+        self.db.set_values(object, &values, &date_time).await?;
+        self.kb.lock().unwrap().add_data(object, values, date_time)?;
         Ok(())
     }
 

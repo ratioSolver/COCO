@@ -8,7 +8,7 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use coco::{CLIPSKnowledgeBase, Class, CoCo, CoCoEvent, MongoDBDataStore, Object};
+use coco::{CLIPSKnowledgeBase, Class, CoCo, CoCoEvent, KnowledgeBase, MongoDBDataStore, Object};
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tower_http::services::{ServeDir, ServeFile};

@@ -78,15 +78,15 @@ impl CoCo {
         self.kb.lock().unwrap().get_object(id)
     }
 
-    pub async fn create_new_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) -> Result<(), Box<dyn Error>> {
+    pub async fn create_new_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) -> Result<String, Box<dyn Error>> {
         self.create_object(Object { id: None, classes, properties, values }).await
     }
 
-    pub async fn create_object(&self, object: Object) -> Result<(), Box<dyn Error>> {
+    pub async fn create_object(&self, object: Object) -> Result<String, Box<dyn Error>> {
         let id = self.db.create_object(&object).await?;
-        let object = Object { id: Some(id), ..object };
+        let object = Object { id: Some(id.clone()), ..object };
         self.add_objects(vec![object])?;
-        Ok(())
+        Ok(id)
     }
 
     pub async fn set_properties(&self, object: &mut Object, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
@@ -138,3 +138,5 @@ impl CoCo {
         Ok(())
     }
 }
+
+// Tests have been moved to tests/integration_test.rs

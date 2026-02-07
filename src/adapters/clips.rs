@@ -45,13 +45,6 @@ impl CLIPSKnowledgeBase {
         }
     }
 
-    pub fn init(&self) {
-        unsafe {
-            AddUDF(self.env, CString::new("add-data").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), Some(add_data), CString::new("add_data").unwrap().as_ptr(), self as *const _ as *mut c_void);
-            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), Some(add_class), CString::new("add_class").unwrap().as_ptr(), self as *const _ as *mut c_void);
-        }
-    }
-
     pub fn add_udf(&self, name: &str, return_types: &str, min_args: u16, max_args: u16, arg_types: &str, function_ptr: UserDefinedFunction, r_name: &str) -> Result<(), Box<dyn Error>> {
         unsafe {
             let result = AddUDF(self.env, CString::new(name)?.as_ptr(), CString::new(return_types)?.as_ptr(), min_args, max_args, CString::new(arg_types)?.as_ptr(), function_ptr, CString::new(r_name)?.as_ptr(), self as *const _ as *mut c_void);
@@ -932,6 +925,13 @@ impl CLIPSKnowledgeBase {
 }
 
 impl KnowledgeBase for CLIPSKnowledgeBase {
+    fn init(&self) {
+        unsafe {
+            AddUDF(self.env, CString::new("add-data").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), Some(add_data), CString::new("add_data").unwrap().as_ptr(), self as *const _ as *mut c_void);
+            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), Some(add_class), CString::new("add_class").unwrap().as_ptr(), self as *const _ as *mut c_void);
+        }
+    }
+
     fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
         self.sender.clone()
     }

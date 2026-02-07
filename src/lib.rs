@@ -164,8 +164,6 @@ pub enum Value {
     IntArray(Vec<i64>),
     FloatArray(Vec<f64>),
     StringArray(Vec<String>),
-    SymbolArray(Vec<String>),
-    ObjectArray(Vec<String>),
 }
 
 impl Display for Value {
@@ -182,8 +180,6 @@ impl Display for Value {
             Value::IntArray(arr) => write!(f, "int_array: {:?}", arr),
             Value::FloatArray(arr) => write!(f, "float_array: {:?}", arr),
             Value::StringArray(arr) => write!(f, "string_array: {:?}", arr),
-            Value::SymbolArray(arr) => write!(f, "symbol_array: {:?}", arr),
-            Value::ObjectArray(arr) => write!(f, "object_array: {:?}", arr),
         }
     }
 }

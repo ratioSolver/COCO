@@ -339,8 +339,8 @@ mod tests {
         properties.insert("int_arr".to_string(), Value::IntArray(vec![1, 2, 3]));
         properties.insert("float_arr".to_string(), Value::FloatArray(vec![1.1, 2.2]));
         properties.insert("string_arr".to_string(), Value::StringArray(vec!["a".to_string(), "b".to_string()]));
-        properties.insert("symbol_arr".to_string(), Value::SymbolArray(vec!["s1".to_string(), "s2".to_string()]));
-        properties.insert("obj_arr".to_string(), Value::ObjectArray(vec!["p1".to_string(), "p2".to_string()]));
+        properties.insert("symbol_arr".to_string(), Value::StringArray(vec!["s1".to_string(), "s2".to_string()]));
+        properties.insert("obj_arr".to_string(), Value::StringArray(vec!["p1".to_string(), "p2".to_string()]));
 
         let object = Object { id: None, classes: classes.clone(), properties: Some(properties.clone()), values: None };
 
@@ -355,9 +355,6 @@ mod tests {
         assert_eq!(props.get("int_arr"), Some(&Value::IntArray(vec![1, 2, 3])));
         assert_eq!(props.get("float_arr"), Some(&Value::FloatArray(vec![1.1, 2.2])));
         assert_eq!(props.get("string_arr"), Some(&Value::StringArray(vec!["a".to_string(), "b".to_string()])));
-
-        // Note: Due to serde(untagged) on Value enum, SymbolArray and ObjectArray deserialize as StringArray
-        // because StringArray is defined before them in the enum and has the same shape (Vec<String>).
         assert_eq!(props.get("symbol_arr"), Some(&Value::StringArray(vec!["s1".to_string(), "s2".to_string()])));
         assert_eq!(props.get("obj_arr"), Some(&Value::StringArray(vec!["p1".to_string(), "p2".to_string()])));
 

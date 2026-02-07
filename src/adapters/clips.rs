@@ -626,7 +626,7 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Cannot assign null to non-nullable property");
                         }
                     }
-                    Value::SymbolArray(arr) => {
+                    Value::StringArray(arr) => {
                         let mb = CreateMultifieldBuilder(self.env, arr.len());
                         if mb.is_null() {
                             return handle_err("Failed to create MultifieldBuilder");
@@ -649,11 +649,31 @@ impl CLIPSKnowledgeBase {
                     }
                     _ => return handle_err("Property type and value type mismatch"),
                 },
-                Property::ObjectArray { class, .. } => match value {
+                Property::ObjectArray { default, class, .. } => match value {
                     Value::Null => {
-                        return handle_err("Cannot assign null to non-nullable property");
+                        if let Some(default) = default {
+                            let mb = CreateMultifieldBuilder(self.env, default.len());
+                            if mb.is_null() {
+                                return handle_err("Failed to create MultifieldBuilder");
+                            }
+                            for o in default {
+                                if !self.instances.read().unwrap().get(class).is_some_and(|objs| objs.contains_key(o)) {
+                                    MBDispose(mb);
+                                    return handle_err("Object of specified class not found");
+                                }
+                                MBAppendSymbol(mb, CString::new(o.clone())?.as_ptr());
+                            }
+                            let mf = MBCreate(mb);
+                            MBDispose(mb);
+                            match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
                     }
-                    Value::ObjectArray(arr) => {
+                    Value::StringArray(arr) => {
                         let mb = CreateMultifieldBuilder(self.env, arr.len());
                         if mb.is_null() {
                             return handle_err("Failed to create MultifieldBuilder");
@@ -976,7 +996,7 @@ impl CLIPSKnowledgeBase {
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
-                    Value::SymbolArray(arr) => {
+                    Value::StringArray(arr) => {
                         let mb = CreateMultifieldBuilder(self.env, arr.len());
                         if mb.is_null() {
                             return handle_err("Failed to create MultifieldBuilder");
@@ -1012,7 +1032,7 @@ impl CLIPSKnowledgeBase {
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
                     }
-                    Value::ObjectArray(arr) => {
+                    Value::StringArray(arr) => {
                         let mb = CreateMultifieldBuilder(self.env, arr.len());
                         if mb.is_null() {
                             return handle_err("Failed to create MultifieldBuilder");
@@ -1795,8 +1815,8 @@ mod tests {
         props.insert("p_int_arr".to_string(), Value::IntArray(vec![1, 2, 3]));
         props.insert("p_float_arr".to_string(), Value::FloatArray(vec![1.1, 2.2, 3.3]));
         props.insert("p_string_arr".to_string(), Value::StringArray(vec!["s1".to_string(), "s2".to_string()]));
-        props.insert("p_symbol_arr".to_string(), Value::SymbolArray(vec!["sym1".to_string(), "sym2".to_string()]));
-        props.insert("p_obj_arr".to_string(), Value::ObjectArray(vec!["item1".to_string(), "item2".to_string()]));
+        props.insert("p_symbol_arr".to_string(), Value::StringArray(vec!["sym1".to_string(), "sym2".to_string()]));
+        props.insert("p_obj_arr".to_string(), Value::StringArray(vec!["item1".to_string(), "item2".to_string()]));
 
         let object = Object { id: Some("arr_obj".to_string()), classes, properties: Some(props), values: None };
 

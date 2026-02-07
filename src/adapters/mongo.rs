@@ -87,6 +87,12 @@ impl DataStore for MongoDBDataStore {
         Ok(objects)
     }
 
+    async fn add_class(&self, object: &Object, class: &Class) -> Result<(), Box<dyn Error>> {
+        let collection = self.client.database(&self.name).collection::<MongoObject>("objects");
+        collection.update_one(doc! { "_id": ObjectId::parse_str(object.id.as_ref().unwrap())? }, doc! { "$addToSet": { "classes": &class.name } }).await?;
+        Ok(())
+    }
+
     async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let collection = self.client.database(&self.name).collection::<MongoObject>("objects");
         let mut update_doc = doc! {};

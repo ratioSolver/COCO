@@ -274,6 +274,7 @@ pub trait DataStore: Send + Sync {
 
     async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>>;
     async fn create_object(&self, object: &Object) -> Result<String, Box<dyn Error>>;
+    async fn add_class(&self, object: &Object, class: &Class) -> Result<(), Box<dyn Error>>;
     async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>>;
     async fn get_values(&self, object: &Object, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>>;
     async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>>;

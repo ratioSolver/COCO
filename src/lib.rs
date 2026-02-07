@@ -231,6 +231,7 @@ pub enum CoCoEvent {
     ClassCreated(Class),
     ObjectCreated(Object),
     AddedClass(String, String),                                   // (object_id, class_name)
+    UpdatedProperties(String, HashMap<String, Value>),            // (object_id, properties)
     AddedValues(String, HashMap<String, (Value, DateTime<Utc>)>), // (object_id, values)
 }
 
@@ -240,6 +241,7 @@ impl Display for CoCoEvent {
             CoCoEvent::ClassCreated(class) => write!(f, "ClassCreated: {}", class),
             CoCoEvent::ObjectCreated(object) => write!(f, "ObjectCreated: {}", object),
             CoCoEvent::AddedClass(object_id, class_name) => write!(f, "AddedClass: {} to {}", class_name, object_id),
+            CoCoEvent::UpdatedProperties(object_id, properties) => write!(f, "UpdatedProperties for {}: {:?}", object_id, properties),
             CoCoEvent::AddedValues(object_id, values) => write!(f, "AddedValues to {}: {:?}", object_id, values),
         }
     }

@@ -93,6 +93,23 @@ impl CoCo {
         Ok(())
     }
 
+    pub async fn set_properties(&self, object: &Object, values: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+        self.db.set_properties(object, values).await?;
+        let class_guard = self.classes.read().unwrap();
+        for class_name in &object.classes {
+            let class = class_guard.get(class_name).expect("Class not found for object");
+            self.kb.lock().unwrap().set_properties(class, object, values)?;
+        }
+        self.sender.send(CoCoEvent::UpdatedProperties(object.id.as_ref().unwrap().clone(), values.clone())).expect("Failed to send UpdatedProperties event");
+        Ok(())
+    }
+
+    pub async fn add_data(&self, class: &Class, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+        self.db.set_values(object, values, date_time).await?;
+        self.kb.lock().unwrap().add_data(class, object, values, date_time)?;
+        Ok(())
+    }
+
     fn add_objects(&self, objects: Vec<Object>) -> Result<(), Box<dyn Error>> {
         let class_guard = self.classes.read().unwrap();
         for object in objects {

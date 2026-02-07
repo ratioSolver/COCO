@@ -234,6 +234,14 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                 });
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
+            CoCoEvent::UpdatedProperties(object_id, properties) => {
+                let update_msg = serde_json::json!({
+                    "msg_type": "updated_properties",
+                    "object_id": object_id,
+                    "properties": properties
+                });
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
+            }
             CoCoEvent::AddedValues(object_id, values) => {
                 let update_msg = serde_json::json!({
                     "msg_type": "added_values",

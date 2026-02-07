@@ -36,6 +36,8 @@ async fn test_coco_initialization() {
 
     let kb_guard = kb.lock().unwrap();
     assert!(kb_guard.get_class("TestClass").is_some());
+
+    db.drop_db().await.unwrap();
 }
 
 #[tokio::test]
@@ -56,6 +58,8 @@ async fn test_create_class_propagation() {
     let classes = db.get_classes().await.unwrap();
     assert!(classes.iter().any(|c| c.name == "NewClass"));
     assert!(kb.lock().unwrap().get_class("NewClass").is_some());
+
+    db.drop_db().await.unwrap();
 }
 
 #[tokio::test]
@@ -114,6 +118,8 @@ async fn test_create_object_and_add_class_event() {
     let objects = db.get_objects().await.unwrap();
     let p1 = objects.iter().find(|o| o.id.as_ref() == Some(&p1_id)).expect("p1 should exist");
     assert!(p1.classes.contains("Adult"), "DB object should have Adult class");
+
+    db.drop_db().await.unwrap();
 }
 
 #[tokio::test]
@@ -187,4 +193,6 @@ async fn test_add_data_event() {
 
     assert!(has_100, "Should have logged 100.0");
     assert!(has_0, "Should have logged 0.0 from rule");
+
+    db.drop_db().await.unwrap();
 }

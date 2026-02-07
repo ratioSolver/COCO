@@ -309,4 +309,86 @@ mod tests {
 
         store.drop_db().await.unwrap();
     }
+
+    #[tokio::test]
+    async fn test_array_properties() {
+        let store = get_test_store().await;
+
+        let mut static_props = HashMap::new();
+        static_props.insert("bool_arr".to_string(), Property::BoolArray { default: None });
+        static_props.insert("int_arr".to_string(), Property::IntArray { default: None, min: None, max: None });
+        static_props.insert("float_arr".to_string(), Property::FloatArray { default: None, min: None, max: None });
+        static_props.insert("string_arr".to_string(), Property::StringArray { default: None });
+        static_props.insert("symbol_arr".to_string(), Property::SymbolArray { default: None, allowed_values: None });
+        static_props.insert("obj_arr".to_string(), Property::ObjectArray { default: None, class: "SomeClass".to_string() });
+
+        let class = Class {
+            name: "ArrayClass".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+
+        store.create_class(&class).await.unwrap();
+
+        let mut classes = HashSet::new();
+        classes.insert("ArrayClass".to_string());
+
+        let mut properties = HashMap::new();
+        properties.insert("bool_arr".to_string(), Value::BoolArray(vec![true, false]));
+        properties.insert("int_arr".to_string(), Value::IntArray(vec![1, 2, 3]));
+        properties.insert("float_arr".to_string(), Value::FloatArray(vec![1.1, 2.2]));
+        properties.insert("string_arr".to_string(), Value::StringArray(vec!["a".to_string(), "b".to_string()]));
+        properties.insert("symbol_arr".to_string(), Value::SymbolArray(vec!["s1".to_string(), "s2".to_string()]));
+        properties.insert("obj_arr".to_string(), Value::ObjectArray(vec!["p1".to_string(), "p2".to_string()]));
+
+        let object = Object { id: None, classes: classes.clone(), properties: Some(properties.clone()), values: None };
+
+        let _id = store.create_object(&object).await.unwrap();
+
+        // Fetch and verify
+        let objects = store.get_objects().await.unwrap();
+        assert_eq!(objects.len(), 1);
+        let props = objects[0].properties.as_ref().unwrap();
+
+        assert_eq!(props.get("bool_arr"), Some(&Value::BoolArray(vec![true, false])));
+        assert_eq!(props.get("int_arr"), Some(&Value::IntArray(vec![1, 2, 3])));
+        assert_eq!(props.get("float_arr"), Some(&Value::FloatArray(vec![1.1, 2.2])));
+        assert_eq!(props.get("string_arr"), Some(&Value::StringArray(vec!["a".to_string(), "b".to_string()])));
+
+        // Note: Due to serde(untagged) on Value enum, SymbolArray and ObjectArray deserialize as StringArray
+        // because StringArray is defined before them in the enum and has the same shape (Vec<String>).
+        assert_eq!(props.get("symbol_arr"), Some(&Value::StringArray(vec!["s1".to_string(), "s2".to_string()])));
+        assert_eq!(props.get("obj_arr"), Some(&Value::StringArray(vec!["p1".to_string(), "p2".to_string()])));
+
+        store.drop_db().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_array_values() {
+        let store = get_test_store().await;
+
+        let mut classes = HashSet::new();
+        classes.insert("Sensor".to_string());
+
+        let object = Object { id: None, classes, properties: None, values: None };
+        let id = store.create_object(&object).await.unwrap();
+        let mut object_with_id = object.clone();
+        object_with_id.id = Some(id.clone());
+
+        let now = Utc::now();
+        let mut values = HashMap::new();
+        values.insert("readings".to_string(), Value::IntArray(vec![10, 20, 30]));
+
+        store.set_values(&object_with_id, &values, &now).await.unwrap();
+
+        let retrieved_values = store.get_values(&object_with_id, &(now - chrono::Duration::seconds(1)), &(now + chrono::Duration::seconds(1))).await.unwrap();
+
+        assert!(retrieved_values.contains_key("readings"));
+        let reading_vals = retrieved_values.get("readings").unwrap();
+        assert_eq!(reading_vals.len(), 1);
+        assert_eq!(reading_vals[0].0, Value::IntArray(vec![10, 20, 30]));
+
+        store.drop_db().await.unwrap();
+    }
 }

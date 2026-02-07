@@ -263,6 +263,8 @@ pub trait KnowledgeBase: Send + Sync {
     fn get_rules(&self) -> Vec<Rule>;
     fn get_rule(&self, name: &str) -> Option<Rule>;
     fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>>;
+
+    fn run(&self) -> Result<(), Box<dyn Error>>;
 }
 
 #[async_trait]

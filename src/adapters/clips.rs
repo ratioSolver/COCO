@@ -1301,6 +1301,13 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             }
         }
     }
+
+    fn run(&self) -> Result<(), Box<dyn Error>> {
+        unsafe {
+            let _ = Run(self.env, -1);
+            Ok(())
+        }
+    }
 }
 
 fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: bool) -> String {

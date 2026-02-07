@@ -42,18 +42,27 @@ pub struct TypeHeader {
 #[repr(C)]
 pub struct CLIPSLexeme {
     pub header: TypeHeader,
+    pub next: *mut CLIPSLexeme,
+    pub count: c_long,
+    pub bitfields: c_uint,
     pub contents: *const c_char,
 }
 
 #[repr(C)]
 pub struct CLIPSFloat {
     pub header: TypeHeader,
+    pub next: *mut CLIPSFloat,
+    pub count: c_long,
+    pub bitfields: c_uint,
     pub contents: c_double,
 }
 
 #[repr(C)]
 pub struct CLIPSInteger {
     pub header: TypeHeader,
+    pub next: *mut CLIPSInteger,
+    pub count: c_long,
+    pub bitfields: c_uint,
     pub contents: c_longlong,
 }
 
@@ -90,11 +99,10 @@ struct CLIPSExternalAddress {
 #[repr(C)]
 pub struct UDFContext {
     pub environment: *mut Environment,
+    pub external_call: bool,
     pub context: *mut c_void,
-    pub the_function: *mut c_void,
-    pub last_position: u32,
-    pub last_arg: *mut c_void,
-    pub return_value: *mut UDFValue,
+    pub last_arg: *mut UDFValue,
+    pub last_arg_index: c_uint,
 }
 
 #[repr(C)]
@@ -285,8 +293,8 @@ impl CLIPSKnowledgeBase {
 
     pub fn init(&self) {
         unsafe {
-            AddUDF(self.env, CString::new("add-values").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), add_values, CString::new("add-values").unwrap().as_ptr(), self as *const _ as *mut c_void);
-            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), add_class, CString::new("add-class").unwrap().as_ptr(), self as *const _ as *mut c_void);
+            AddUDF(self.env, CString::new("add-data").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 3, 4, CString::new("ymml").unwrap().as_ptr(), add_data, CString::new("add_data").unwrap().as_ptr(), self as *const _ as *mut c_void);
+            AddUDF(self.env, CString::new("add-class").unwrap().as_ptr(), CString::new("v").unwrap().as_ptr(), 2, 2, CString::new("yy").unwrap().as_ptr(), add_class, CString::new("add_class").unwrap().as_ptr(), self as *const _ as *mut c_void);
         }
     }
 
@@ -1563,7 +1571,7 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
     }
 }
 
-unsafe extern "C" fn add_values(_env: *mut Environment, udfc: *mut UDFContext, _out: *mut UDFValue) {
+unsafe extern "C" fn add_data(_env: *mut Environment, udfc: *mut UDFContext, _out: *mut UDFValue) {
     unsafe {
         let kb = &*((*udfc).context as *mut CLIPSKnowledgeBase);
         let mut object_id = std::mem::MaybeUninit::<UDFValue>::uninit();
@@ -1943,7 +1951,7 @@ mod tests {
 
         let rule = Rule {
             name: "check-temp".to_string(),
-            content: "(defrule check-temp (Sensor_temp (id ?id) (value ?v&:(> ?v 50.0))) => (add-values ?id (create$ temp) (create$ 0.0)))".to_string(),
+            content: "(defrule check-temp (Sensor_temp (id ?id) (value ?v&:(> ?v 50.0))) => (add-data ?id (create$ temp) (create$ 0.0)))".to_string(),
         };
         kb.create_rule(&rule).unwrap();
 

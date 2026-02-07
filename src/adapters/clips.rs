@@ -1334,7 +1334,7 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 let def_str = def_val.iter().map(|b| if *b { "TRUE" } else { "FALSE" }).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
             }
-            def.push_str("))");
+            def.push(')');
             if !is_static {
                 def.push_str(" (slot time (type INTEGER))");
             }
@@ -1352,6 +1352,7 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
+            def.push(')');
             if !is_static {
                 def.push_str(" (slot time (type INTEGER))");
             }
@@ -1386,6 +1387,7 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                     .unwrap_or("?VARIABLE".to_string());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
+            def.push(')');
             if !is_static {
                 def.push_str(" (slot time (type INTEGER))");
             }
@@ -1398,6 +1400,7 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 let def_str = def_val.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
             }
+            def.push(')');
             if !is_static {
                 def.push_str(" (slot time (type INTEGER))");
             }
@@ -1417,6 +1420,7 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 let def_str = def_val.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
             }
+            def.push(')');
             if !is_static {
                 def.push_str(" (slot time (type INTEGER))");
             }
@@ -1429,6 +1433,7 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 let def_str = def_val.iter().map(|o| o.as_str()).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
             }
+            def.push(')');
             if !is_static {
                 def.push_str(" (slot time (type INTEGER))");
             }
@@ -1738,5 +1743,63 @@ mod tests {
             content: "(defrule test-rule => (printout t \"Hello\" crlf))".to_string(),
         };
         assert!(kb.create_rule(&rule).is_ok());
+    }
+
+    #[test]
+    fn test_array_property_types() {
+        let kb = create_kb();
+
+        // Setup for ObjectArray
+        let item_class = Class { name: "Item".to_string(), parents: None, static_properties: None, dynamic_properties: None };
+        kb.create_class(&item_class).unwrap();
+
+        let mut item_classes = HashSet::new();
+        item_classes.insert("Item".to_string());
+
+        let item1 = Object {
+            id: Some("item1".to_string()),
+            classes: item_classes.clone(),
+            properties: None,
+            values: None,
+        };
+        let item2 = Object {
+            id: Some("item2".to_string()),
+            classes: item_classes.clone(),
+            properties: None,
+            values: None,
+        };
+        kb.create_object(&item_class, &item1).unwrap();
+        kb.create_object(&item_class, &item2).unwrap();
+
+        let mut static_props = HashMap::new();
+        static_props.insert("p_bool_arr".to_string(), Property::BoolArray { default: None });
+        static_props.insert("p_int_arr".to_string(), Property::IntArray { default: None, min: None, max: None });
+        static_props.insert("p_float_arr".to_string(), Property::FloatArray { default: None, min: None, max: None });
+        static_props.insert("p_string_arr".to_string(), Property::StringArray { default: None });
+        static_props.insert("p_symbol_arr".to_string(), Property::SymbolArray { default: None, allowed_values: None });
+        static_props.insert("p_obj_arr".to_string(), Property::ObjectArray { default: None, class: "Item".to_string() });
+
+        let class = Class {
+            name: "ArrayTypes".to_string(),
+            parents: None,
+            static_properties: Some(static_props),
+            dynamic_properties: None,
+        };
+        kb.create_class(&class).unwrap();
+
+        let mut classes = HashSet::new();
+        classes.insert("ArrayTypes".to_string());
+
+        let mut props = HashMap::new();
+        props.insert("p_bool_arr".to_string(), Value::BoolArray(vec![true, false, true]));
+        props.insert("p_int_arr".to_string(), Value::IntArray(vec![1, 2, 3]));
+        props.insert("p_float_arr".to_string(), Value::FloatArray(vec![1.1, 2.2, 3.3]));
+        props.insert("p_string_arr".to_string(), Value::StringArray(vec!["s1".to_string(), "s2".to_string()]));
+        props.insert("p_symbol_arr".to_string(), Value::SymbolArray(vec!["sym1".to_string(), "sym2".to_string()]));
+        props.insert("p_obj_arr".to_string(), Value::ObjectArray(vec!["item1".to_string(), "item2".to_string()]));
+
+        let object = Object { id: Some("arr_obj".to_string()), classes, properties: Some(props), values: None };
+
+        assert!(kb.create_object(&class, &object).is_ok());
     }
 }

@@ -387,7 +387,6 @@ impl CLIPSKnowledgeBase {
             }
         }
 
-        let _ = self.sender.send(CoCoEvent::AddedClass(object.id.as_ref().unwrap().clone(), class.name.clone()));
         Ok(())
     }
 
@@ -1221,18 +1220,27 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>> {
-        self.objects.write().unwrap().insert(object.id.as_ref().unwrap().clone(), object.clone());
-        let _ = self.sender.send(CoCoEvent::ObjectCreated(object.clone()));
-
         let classes_guard = self.classes.read();
         for class_name in &object.classes {
             self.create_object_class(object, classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?)?;
         }
 
+        self.objects.write().unwrap().insert(object.id.as_ref().unwrap().clone(), object.clone());
+        let _ = self.sender.send(CoCoEvent::ObjectCreated(object.clone()));
         Ok(())
     }
 
     fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), Box<dyn Error>> {
+        let mut objects_guard = self.objects.write().unwrap();
+        let object = objects_guard.get_mut(object_id).ok_or("Object not found")?;
+        if !self.classes.read().unwrap().contains_key(class_name) {
+            return Err("Class not found".into());
+        }
+        if object.classes.contains(class_name) {
+            return Ok(()); // Class already added, do nothing
+        }
+        self.create_object_class(object, self.classes.read().unwrap().get(class_name).ok_or("Class not found")?)?;
+        object.classes.insert(class_name.to_string());
         let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
         Ok(())
     }
@@ -1645,8 +1653,7 @@ unsafe extern "C" fn add_class(_env: *mut Environment, udfc: *mut UDFContext, _o
         assert!(class_name.value.header.as_ref().unwrap().type_code == CLIPSTypeCode::Symbol);
         let class_name = std::ffi::CStr::from_ptr((*class_name.value.lexeme_value).contents).to_str().unwrap();
 
-        let sender = &kb.sender;
-        let _ = sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
+        kb.add_class(object_id, class_name).unwrap();
     }
 }
 

@@ -1115,7 +1115,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 }
             }
             self.classes.write().unwrap().insert(class.name.clone(), class.clone());
-            self.sender.send(CoCoEvent::ClassCreated(class.clone()))?;
+            let _ = self.sender.send(CoCoEvent::ClassCreated(class.clone()));
             Ok(())
         }
     }
@@ -1201,7 +1201,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             }
         }
         self.objects.write().unwrap().insert(object.id.as_ref().unwrap().clone(), object.clone());
-        self.sender.send(CoCoEvent::ObjectCreated(object.clone()))?;
+        let _ = self.sender.send(CoCoEvent::ObjectCreated(object.clone()));
         Ok(())
     }
 

@@ -1167,6 +1167,15 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                                 Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
                                 Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
                                 Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
+                                Property::String { default: Some(v), .. } => Some(Value::String(v.clone())),
+                                Property::Symbol { default: Some(v), .. } => Some(Value::Symbol(v.clone())),
+                                Property::Object { default: Some(v), .. } => Some(Value::Object(v.clone())),
+                                Property::BoolArray { default: Some(v), .. } => Some(Value::BoolArray(v.clone())),
+                                Property::IntArray { default: Some(v), .. } => Some(Value::IntArray(v.clone())),
+                                Property::FloatArray { default: Some(v), .. } => Some(Value::FloatArray(v.clone())),
+                                Property::StringArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                                Property::SymbolArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                                Property::ObjectArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
                                 _ => None,
                             };
                             if let Some(v) = default_val {
@@ -1188,6 +1197,15 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                                 Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
                                 Property::Int { default: Some(v), .. } => Some(Value::Int(*v)),
                                 Property::Float { default: Some(v), .. } => Some(Value::Float(*v)),
+                                Property::String { default: Some(v), .. } => Some(Value::String(v.clone())),
+                                Property::Symbol { default: Some(v), .. } => Some(Value::Symbol(v.clone())),
+                                Property::Object { default: Some(v), .. } => Some(Value::Object(v.clone())),
+                                Property::BoolArray { default: Some(v), .. } => Some(Value::BoolArray(v.clone())),
+                                Property::IntArray { default: Some(v), .. } => Some(Value::IntArray(v.clone())),
+                                Property::FloatArray { default: Some(v), .. } => Some(Value::FloatArray(v.clone())),
+                                Property::StringArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                                Property::SymbolArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
+                                Property::ObjectArray { default: Some(v), .. } => Some(Value::StringArray(v.clone())),
                                 _ => None,
                             };
                             if let Some(v) = default_val {

@@ -70,6 +70,12 @@ pub struct Multifield {
 }
 
 #[repr(C)]
+struct MultifieldBuilder {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+#[repr(C)]
 struct Instance {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
@@ -214,22 +220,35 @@ unsafe extern "C" {
     unsafe fn CreateEnvironment() -> *mut Environment;
     unsafe fn DestroyEnvironment(env: *mut Environment);
     unsafe fn Build(env: *mut Environment, construct: *const c_char) -> BuildError;
+
     unsafe fn CreateFactBuilder(env: *mut Environment, template_name: *const c_char) -> *mut FactBuilder;
     unsafe fn FBAssert(fb: *mut FactBuilder) -> *mut Fact;
     unsafe fn FBDispose(fb: *mut FactBuilder);
     unsafe fn FBError(fb: *mut FactBuilder) -> FactBuilderError;
-    unsafe fn CreateFactModifier(env: *mut Environment, fact: *mut Fact) -> *mut FactModifier;
-    unsafe fn FMModify(fm: *mut FactModifier) -> *mut Fact;
-    unsafe fn FMDispose(fm: *mut FactModifier);
-    unsafe fn FMError(fm: *mut FactModifier) -> FactModifierError;
     unsafe fn FBPutSlotInteger(fb: *mut FactBuilder, slot_name: *const c_char, value: c_longlong) -> PutSlotError;
     unsafe fn FBPutSlotFloat(fb: *mut FactBuilder, slot_name: *const c_char, value: c_double) -> PutSlotError;
     unsafe fn FBPutSlotSymbol(fb: *mut FactBuilder, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn FBPutSlotString(fb: *mut FactBuilder, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
+    unsafe fn FBPutSlotMultifield(fb: *mut FactBuilder, slot_name: *const c_char, mf: *mut Multifield) -> PutSlotError;
+
+    unsafe fn CreateFactModifier(env: *mut Environment, fact: *mut Fact) -> *mut FactModifier;
+    unsafe fn FMModify(fm: *mut FactModifier) -> *mut Fact;
+    unsafe fn FMDispose(fm: *mut FactModifier);
+    unsafe fn FMError(fm: *mut FactModifier) -> FactModifierError;
     unsafe fn FMPutSlotInteger(fm: *mut FactModifier, slot_name: *const c_char, value: c_longlong) -> PutSlotError;
     unsafe fn FMPutSlotFloat(fm: *mut FactModifier, slot_name: *const c_char, value: c_double) -> PutSlotError;
     unsafe fn FMPutSlotSymbol(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
     unsafe fn FMPutSlotString(fm: *mut FactModifier, slot_name: *const c_char, value: *const c_char) -> PutSlotError;
+    unsafe fn FMPutSlotMultifield(fm: *mut FactModifier, slot_name: *const c_char, mf: *mut Multifield) -> PutSlotError;
+
+    unsafe fn CreateMultifieldBuilder(env: *mut Environment, capacity: usize) -> *mut MultifieldBuilder;
+    unsafe fn MBCreate(mb: *mut MultifieldBuilder) -> *mut Multifield;
+    unsafe fn MBDispose(mb: *mut MultifieldBuilder);
+    unsafe fn MBAppendInteger(mb: *mut MultifieldBuilder, value: c_longlong);
+    unsafe fn MBAppendFloat(mb: *mut MultifieldBuilder, value: c_double);
+    unsafe fn MBAppendSymbol(mb: *mut MultifieldBuilder, value: *const c_char);
+    unsafe fn MBAppendString(mb: *mut MultifieldBuilder, value: *const c_char);
+
     unsafe fn AddUDF(env: *mut Environment, name: *const c_char, return_types: *const c_char, min_args: c_ushort, max_args: c_ushort, arg_types: *const c_char, function_ptr: UserDefinedFunction, r_name: *const c_char, context: *mut c_void) -> AddUDFError;
     unsafe fn UDFFirstArgument(udfc: *mut UDFContext, expected_type: CLIPSType, out: *mut UDFValue) -> bool;
     unsafe fn UDFNextArgument(udfc: *mut UDFContext, expected_type: CLIPSType, out: *mut UDFValue) -> bool;
@@ -417,6 +436,244 @@ impl CLIPSKnowledgeBase {
                     }
                     _ => return handle_err("Property type and value type mismatch"),
                 },
+                Property::BoolArray { default } => match value {
+                    Value::Null => {
+                        if let Some(default) = default {
+                            let mb = CreateMultifieldBuilder(self.env, default.len());
+                            if mb.is_null() {
+                                return handle_err("Failed to create MultifieldBuilder");
+                            }
+                            for b in default {
+                                MBAppendSymbol(mb, CString::new(if *b { "TRUE" } else { "FALSE" })?.as_ptr());
+                            }
+                            let mf = MBCreate(mb);
+                            MBDispose(mb);
+                            match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::BoolArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for b in arr {
+                            MBAppendSymbol(mb, CString::new(if *b { "TRUE" } else { "FALSE" })?.as_ptr());
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::IntArray { default, min, max } => match value {
+                    Value::Null => {
+                        if let Some(default) = default {
+                            let mb = CreateMultifieldBuilder(self.env, default.len());
+                            if mb.is_null() {
+                                return handle_err("Failed to create MultifieldBuilder");
+                            }
+                            for i in default {
+                                if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
+                                    MBDispose(mb);
+                                    return handle_err("Value out of range");
+                                }
+                                MBAppendInteger(mb, *i);
+                            }
+                            let mf = MBCreate(mb);
+                            MBDispose(mb);
+                            match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::IntArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for i in arr {
+                            if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
+                                MBDispose(mb);
+                                return handle_err("Value out of range");
+                            }
+                            MBAppendInteger(mb, *i);
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::FloatArray { default, min, max } => match value {
+                    Value::Null => {
+                        if let Some(default) = default {
+                            let mb = CreateMultifieldBuilder(self.env, default.len());
+                            if mb.is_null() {
+                                return handle_err("Failed to create MultifieldBuilder");
+                            }
+                            for f in default {
+                                if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
+                                    MBDispose(mb);
+                                    return handle_err("Value out of range");
+                                }
+                                MBAppendFloat(mb, *f);
+                            }
+                            let mf = MBCreate(mb);
+                            MBDispose(mb);
+                            match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::FloatArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for f in arr {
+                            if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
+                                MBDispose(mb);
+                                return handle_err("Value out of range");
+                            }
+                            MBAppendFloat(mb, *f);
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::StringArray { default } => match value {
+                    Value::Null => {
+                        if let Some(default) = default {
+                            let mb = CreateMultifieldBuilder(self.env, default.len());
+                            if mb.is_null() {
+                                return handle_err("Failed to create MultifieldBuilder");
+                            }
+                            for s in default {
+                                MBAppendString(mb, CString::new(s.clone())?.as_ptr());
+                            }
+                            let mf = MBCreate(mb);
+                            MBDispose(mb);
+                            match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::StringArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for s in arr {
+                            MBAppendString(mb, CString::new(s.clone())?.as_ptr());
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::SymbolArray { default, allowed_values } => match value {
+                    Value::Null => {
+                        if let Some(default) = default {
+                            let mb = CreateMultifieldBuilder(self.env, default.len());
+                            if mb.is_null() {
+                                return handle_err("Failed to create MultifieldBuilder");
+                            }
+                            for s in default {
+                                if let Some(allowed) = allowed_values
+                                    && !allowed.contains(s)
+                                {
+                                    MBDispose(mb);
+                                    return handle_err("Value not in allowed values");
+                                }
+                                MBAppendSymbol(mb, CString::new(s.clone())?.as_ptr());
+                            }
+                            let mf = MBCreate(mb);
+                            MBDispose(mb);
+                            match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                                PutSlotError::None => {}
+                                err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                            }
+                        } else {
+                            return handle_err("Cannot assign null to non-nullable property");
+                        }
+                    }
+                    Value::SymbolArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for s in arr {
+                            if let Some(allowed) = allowed_values
+                                && !allowed.contains(s)
+                            {
+                                MBDispose(mb);
+                                return handle_err("Value not in allowed values");
+                            }
+                            MBAppendSymbol(mb, CString::new(s.clone())?.as_ptr());
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::ObjectArray { class, .. } => match value {
+                    Value::Null => {
+                        return handle_err("Cannot assign null to non-nullable property");
+                    }
+                    Value::ObjectArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for o in arr {
+                            if !self.instances.read().unwrap().get(class).is_some_and(|objs| objs.contains_key(o)) {
+                                MBDispose(mb);
+                                return handle_err("Object of specified class not found");
+                            }
+                            MBAppendSymbol(mb, CString::new(o.clone())?.as_ptr());
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FBPutSlotMultifield(fb, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
             }
             if let Some(t) = time {
                 match FBPutSlotInteger(fb, CString::new("time".to_string())?.as_ptr(), t.timestamp()) {
@@ -572,6 +829,204 @@ impl CLIPSKnowledgeBase {
                             return handle_err("Object of specified class not found");
                         }
                         match FMPutSlotSymbol(fm, CString::new("value")?.as_ptr(), CString::new(o.clone())?.as_ptr()) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::BoolArray { .. } => match value {
+                    Value::Null => {
+                        let mb = CreateMultifieldBuilder(self.env, 0);
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    Value::BoolArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for b in arr {
+                            MBAppendSymbol(mb, CString::new(if *b { "TRUE" } else { "FALSE" })?.as_ptr());
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::IntArray { min, max, .. } => match value {
+                    Value::Null => {
+                        let mb = CreateMultifieldBuilder(self.env, 0);
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    Value::IntArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for i in arr {
+                            if (min.is_some() && *i < min.unwrap()) || (max.is_some() && *i > max.unwrap()) {
+                                MBDispose(mb);
+                                return handle_err("Value out of range");
+                            }
+                            MBAppendInteger(mb, *i);
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::FloatArray { min, max, .. } => match value {
+                    Value::Null => {
+                        let mb = CreateMultifieldBuilder(self.env, 0);
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    Value::FloatArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for f in arr {
+                            if (min.is_some() && *f < min.unwrap()) || (max.is_some() && *f > max.unwrap()) {
+                                MBDispose(mb);
+                                return handle_err("Value out of range");
+                            }
+                            MBAppendFloat(mb, *f);
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::StringArray { .. } => match value {
+                    Value::Null => {
+                        let mb = CreateMultifieldBuilder(self.env, 0);
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    Value::StringArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for s in arr {
+                            MBAppendString(mb, CString::new(s.clone())?.as_ptr());
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::SymbolArray { allowed_values, .. } => match value {
+                    Value::Null => {
+                        let mb = CreateMultifieldBuilder(self.env, 0);
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    Value::SymbolArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for s in arr {
+                            if let Some(allowed) = allowed_values
+                                && !allowed.contains(s)
+                            {
+                                MBDispose(mb);
+                                return handle_err("Value not in allowed values");
+                            }
+                            MBAppendSymbol(mb, CString::new(s.clone())?.as_ptr());
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    _ => return handle_err("Property type and value type mismatch"),
+                },
+                Property::ObjectArray { class, .. } => match value {
+                    Value::Null => {
+                        let mb = CreateMultifieldBuilder(self.env, 0);
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
+                            PutSlotError::None => {}
+                            err => handle_err(&format!("PutSlot error: {:?}", err))?,
+                        }
+                    }
+                    Value::ObjectArray(arr) => {
+                        let mb = CreateMultifieldBuilder(self.env, arr.len());
+                        if mb.is_null() {
+                            return handle_err("Failed to create MultifieldBuilder");
+                        }
+                        for o in arr {
+                            if !self.instances.read().unwrap().get(class).is_some_and(|objs| objs.contains_key(o)) {
+                                MBDispose(mb);
+                                return handle_err("Object of specified class not found");
+                            }
+                            MBAppendSymbol(mb, CString::new(o.clone())?.as_ptr());
+                        }
+                        let mf = MBCreate(mb);
+                        MBDispose(mb);
+                        match FMPutSlotMultifield(fm, CString::new("value")?.as_ptr(), mf) {
                             PutSlotError::None => {}
                             err => handle_err(&format!("PutSlot error: {:?}", err))?,
                         }
@@ -867,6 +1322,113 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 def.push_str(" (default nil)");
             }
             def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::BoolArray { default } => {
+            def.push_str(" (multislot value (type SYMBOL) (allowed-symbols TRUE FALSE)");
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|b| if *b { "TRUE" } else { "FALSE" }).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            def.push_str("))");
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::IntArray { default, min, max } => {
+            def.push_str(" (multislot value (type INTEGER)");
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            if min.is_some() || max.is_some() {
+                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
+                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
+                def.push_str(&format!(" (range {} {})", min_str, max_str));
+            }
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::FloatArray { default, min, max } => {
+            def.push_str(" (multislot value (type FLOAT)");
+            if let Some(def_val) = default {
+                let def_str = def_val
+                    .iter()
+                    .map(|f| {
+                        let s = f.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            if min.is_some() || max.is_some() {
+                let min_str = min
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .unwrap_or("?VARIABLE".to_string());
+                let max_str = max
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .unwrap_or("?VARIABLE".to_string());
+                def.push_str(&format!(" (range {} {})", min_str, max_str));
+            }
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::StringArray { default } => {
+            def.push_str(" (multislot value (type STRING)");
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::SymbolArray { default, allowed_values } => {
+            def.push_str(" (multislot value (type SYMBOL)");
+            if let Some(allowed) = allowed_values {
+                def.push_str(" (allowed-symbols");
+                for v in allowed {
+                    def.push_str(&format!(" {}", v));
+                }
+                def.push(')');
+            }
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::ObjectArray { default, .. } => {
+            def.push_str(" (multislot value (type SYMBOL)");
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|o| o.as_str()).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
             if !is_static {
                 def.push_str(" (slot time (type INTEGER))");
             }

@@ -70,6 +70,41 @@ pub enum Property {
         default: Option<String>,
         class: String,
     },
+    BoolArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<Vec<bool>>,
+    },
+    IntArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<Vec<i64>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        min: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        max: Option<i64>,
+    },
+    FloatArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<Vec<f64>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        min: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        max: Option<f64>,
+    },
+    StringArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<Vec<String>>,
+    },
+    SymbolArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        allowed_values: Option<HashSet<String>>,
+    },
+    ObjectArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        default: Option<Vec<String>>,
+        class: String,
+    },
 }
 
 impl Display for Property {
@@ -93,6 +128,24 @@ impl Display for Property {
             Property::Object { nullable, default, class } => {
                 write!(f, "object(nullable: {:?}, default: {:?}, class: {:?})", nullable, default, class)
             }
+            Property::BoolArray { default } => {
+                write!(f, "bool_array(default: {:?})", default)
+            }
+            Property::IntArray { default, min, max } => {
+                write!(f, "int_array(default: {:?}, min: {:?}, max: {:?})", default, min, max)
+            }
+            Property::FloatArray { default, min, max } => {
+                write!(f, "float_array(default: {:?}, min: {:?}, max: {:?})", default, min, max)
+            }
+            Property::StringArray { default } => {
+                write!(f, "string_array(default: {:?})", default)
+            }
+            Property::SymbolArray { default, allowed_values } => {
+                write!(f, "symbol_array(default: {:?}, allowed_values: {:?})", default, allowed_values)
+            }
+            Property::ObjectArray { default, class } => {
+                write!(f, "object_array(default: {:?}, class: {:?})", default, class)
+            }
         }
     }
 }
@@ -107,6 +160,12 @@ pub enum Value {
     String(String),
     Symbol(String),
     Object(String),
+    BoolArray(Vec<bool>),
+    IntArray(Vec<i64>),
+    FloatArray(Vec<f64>),
+    StringArray(Vec<String>),
+    SymbolArray(Vec<String>),
+    ObjectArray(Vec<String>),
 }
 
 impl Display for Value {
@@ -119,6 +178,12 @@ impl Display for Value {
             Value::String(s) => write!(f, "\"{}\"", s),
             Value::Symbol(s) => write!(f, "'{}'", s),
             Value::Object(o) => write!(f, "object_id: {}", o),
+            Value::BoolArray(arr) => write!(f, "bool_array: {:?}", arr),
+            Value::IntArray(arr) => write!(f, "int_array: {:?}", arr),
+            Value::FloatArray(arr) => write!(f, "float_array: {:?}", arr),
+            Value::StringArray(arr) => write!(f, "string_array: {:?}", arr),
+            Value::SymbolArray(arr) => write!(f, "symbol_array: {:?}", arr),
+            Value::ObjectArray(arr) => write!(f, "object_array: {:?}", arr),
         }
     }
 }

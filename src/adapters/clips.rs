@@ -28,7 +28,6 @@ pub struct CLIPSKnowledgeBase {
 }
 
 unsafe impl Send for CLIPSKnowledgeBase {}
-unsafe impl Sync for CLIPSKnowledgeBase {}
 
 impl CLIPSKnowledgeBase {
     pub fn new(sender: broadcast::Sender<CoCoEvent>) -> std::sync::Arc<std::sync::Mutex<Self>> {

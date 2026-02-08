@@ -1061,10 +1061,13 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>> {
         unsafe {
             match Build(self.env, CString::new(rule.content.clone())?.as_ptr()) {
-                BuildError_BE_NO_ERROR => Ok(()),
-                err => Err(format!("Build error: {:?}", err).into()),
+                BuildError_BE_NO_ERROR => {}
+                err => return Err(format!("Build error: {:?}", err).into()),
             }
         }
+        self.rules.write().unwrap().insert(rule.name.clone(), rule.clone());
+        let _ = self.sender.send(CoCoEvent::RuleCreated(rule.clone()));
+        Ok(())
     }
 
     fn run(&self) -> Result<(), Box<dyn Error>> {

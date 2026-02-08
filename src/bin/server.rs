@@ -18,7 +18,6 @@ use utoipa::OpenApi;
 async fn main() {
     let db = Arc::new(MongoDBDataStore::new("coco_server", "mongodb://localhost:27017").await.unwrap());
     let (tx, _rx) = broadcast::channel(100);
-    // kb is now returned as Arc<Mutex<CLIPSKnowledgeBase>> and initialized
     let kb = CLIPSKnowledgeBase::new(tx);
     let coco = Arc::new(CoCo::new(db, kb).await);
 

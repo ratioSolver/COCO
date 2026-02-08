@@ -8,6 +8,7 @@ export namespace coco {
     private readonly options: CoCoOptions;
     private readonly classes: Map<string, CoCoClass> = new Map();
     private readonly objects: Map<string, CoCoObject> = new Map();
+    private readonly rules: Map<string, CoCoRule> = new Map();
     private socket: WebSocket | null = null;
     private readonly listeners: Set<CoCoListener> = new Set();
 
@@ -77,6 +78,12 @@ export namespace coco {
             obj._set_values(msg.values, msg.date_time);
             break;
           }
+          case 'rule_created': {
+            const rule = new CoCoRule(this, msg.name, msg.content);
+            this.rules.set(rule.get_name(), rule);
+            for (const listener of this.listeners) listener.created_rule(rule);
+            break;
+          }
         }
       }
     }
@@ -86,6 +93,9 @@ export namespace coco {
 
     get_objects(): ReadonlyMap<string, CoCoObject> { return this.objects; }
     get_object(id: string): CoCoObject { return this.objects.get(id)!; }
+
+    get_rules(): ReadonlyMap<string, CoCoRule> { return this.rules; }
+    get_rule(name: string): CoCoRule { return this.rules.get(name)!; }
 
     add_listener(listener: CoCoListener) { this.listeners.add(listener); }
     remove_listener(listener: CoCoListener) { this.listeners.delete(listener); }
@@ -170,6 +180,23 @@ export namespace coco {
     remove_listener(listener: CoCoObjectListener) { this.listeners.delete(listener); }
   }
 
+  export class CoCoRule {
+
+    private readonly coco: CoCo;
+    private readonly name: string;
+    private readonly content: string;
+
+    constructor(coco: CoCo, name: string, content: string) {
+      this.coco = coco;
+      this.name = name;
+      this.content = content;
+    }
+
+    get_coco(): CoCo { return this.coco; }
+    get_name(): string { return this.name; }
+    get_content(): string { return this.content; }
+  }
+
   export interface CoCoListener {
 
     connected(): void;
@@ -179,6 +206,7 @@ export namespace coco {
     initialized(): void;
     created_class(cls: CoCoClass): void;
     created_object(obj: CoCoObject): void;
+    created_rule(rule: CoCoRule): void;
   }
 
   export interface CoCoClassListener {
@@ -220,5 +248,6 @@ export namespace coco {
     | ({ msg_type: 'object_created' } & ObjectMessage)
     | ({ msg_type: 'added_class', object_id: string, class_name: string })
     | ({ msg_type: 'updated_properties', object_id: string, properties: Record<string, Value> })
-    | ({ msg_type: 'added_values', object_id: string, values: Record<string, Value>, date_time: string });
+    | ({ msg_type: 'added_values', object_id: string, values: Record<string, Value>, date_time: string })
+    | ({ msg_type: 'rule_created', name: string, content: string });
 }

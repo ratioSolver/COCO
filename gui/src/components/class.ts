@@ -17,7 +17,7 @@ const cls_listener = {
 };
 
 export function Class(cls: coco.CoCoClass): VNode {
-  const content = h('div.container.mt-2',
+  const content = h('div.container.mt-2.h-100',
     {
       hook: {
         insert: () => {

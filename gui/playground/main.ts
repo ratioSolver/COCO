@@ -9,13 +9,14 @@ cc.add_listener({
   initialized: () => flick.redraw(),
   created_class: (_cls) => flick.redraw(),
   created_object: (_obj) => flick.redraw(),
+  created_rule: (_rule) => flick.redraw(),
   connection_error: (error) => console.error('CoCo connection error', error),
   connected: () => { },
   disconnected: () => { },
 });
 
 flick.mount(() => {
-  const content = h('div', [
+  const content = h('div.h-100', [
     flick.ctx.current_page || h('div.container.mt-5', [
       h('div.text-center.mb-5', [
         h('h1.display-4', 'CoCo'),

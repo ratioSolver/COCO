@@ -2,6 +2,7 @@ import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
 import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
 import { Class } from "./class";
+import * as echarts from 'echarts';
 
 export function ObjectsList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_objects().values().map(obj => ListGroupItem(object_to_string(obj), () => {
@@ -23,8 +24,10 @@ const obj_listener = {
   }
 };
 
+let chart: echarts.ECharts | null = null;
+
 export function Object(obj: coco.CoCoObject): VNode {
-  const content = h('div.container.mt-2',
+  const content = h('div.container.mt-2.h-100',
     {
       hook: {
         insert: () => {
@@ -54,6 +57,19 @@ export function Object(obj: coco.CoCoObject): VNode {
         }
       }, cls.get_name())
     )),
+    h('div.mt-2.h-100', {
+      hook: {
+        insert: (vnode) => {
+          chart = echarts.init(vnode.elm as HTMLDivElement);
+        },
+        destroy: () => {
+          if (chart) {
+            chart.dispose();
+            chart = null;
+          }
+        }
+      }
+    }, 'Loading history...')
   ]);
   return content;
 }

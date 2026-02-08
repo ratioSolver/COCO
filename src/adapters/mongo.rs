@@ -87,26 +87,26 @@ impl DataStore for MongoDBDataStore {
         Ok(objects)
     }
 
-    async fn add_class(&self, object: &Object, class: &Class) -> Result<(), Box<dyn Error>> {
+    async fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), Box<dyn Error>> {
         let collection = self.client.database(&self.name).collection::<MongoObject>("objects");
-        collection.update_one(doc! { "_id": ObjectId::parse_str(object.id.as_ref().unwrap())? }, doc! { "$addToSet": { "classes": &class.name } }).await?;
+        collection.update_one(doc! { "_id": ObjectId::parse_str(object_id)? }, doc! { "$addToSet": { "classes": class_name } }).await?;
         Ok(())
     }
 
-    async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+    async fn set_properties(&self, object_id: &str, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
         let collection = self.client.database(&self.name).collection::<MongoObject>("objects");
         let mut update_doc = doc! {};
         for (prop, value) in properties {
             update_doc.insert(format!("properties.{}", prop), bson::to_bson(value)?);
         }
 
-        collection.update_one(doc! { "_id": ObjectId::parse_str(object.id.as_ref().unwrap())? }, doc! { "$set": update_doc }).await?;
+        collection.update_one(doc! { "_id": ObjectId::parse_str(object_id)? }, doc! { "$set": update_doc }).await?;
         Ok(())
     }
 
-    async fn get_values(&self, object: &Object, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>> {
+    async fn get_values(&self, object_id: &str, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>> {
         let data_collection = self.client.database(&self.name).collection::<Document>("object_data");
-        let mut cursor = data_collection.find(doc! { "object_id": object.id.as_ref().unwrap(), "timestamp": { "$gte": bson::DateTime::from_millis(from.timestamp_millis()), "$lte": bson::DateTime::from_millis(to.timestamp_millis()) } }).await?;
+        let mut cursor = data_collection.find(doc! { "object_id": object_id, "timestamp": { "$gte": bson::DateTime::from_millis(from.timestamp_millis()), "$lte": bson::DateTime::from_millis(to.timestamp_millis()) } }).await?;
 
         let mut values_map: HashMap<String, Vec<(Value, DateTime<Utc>)>> = HashMap::new();
         while let Some(doc) = cursor.try_next().await? {
@@ -121,17 +121,17 @@ impl DataStore for MongoDBDataStore {
         Ok(values_map)
     }
 
-    async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+    async fn add_data(&self, object_id: &str, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>> {
         let objects_collection = self.client.database(&self.name).collection::<MongoObject>("objects");
         let mut update_doc = doc! {};
         for (prop, value) in values {
             update_doc.insert(format!("values.{}", prop), bson::to_bson(&(value.clone(), *date_time))?);
         }
-        objects_collection.update_one(doc! { "_id": ObjectId::parse_str(object.id.as_ref().unwrap())? }, doc! { "$set": update_doc }).await?;
+        objects_collection.update_one(doc! { "_id": ObjectId::parse_str(object_id)? }, doc! { "$set": update_doc }).await?;
 
         let data_collection = self.client.database(&self.name).collection::<Document>("object_data");
         let doc = doc! {
-            "object_id": object.id.as_ref().unwrap(),
+            "object_id": object_id,
             "values": bson::to_bson(values)?,
             "timestamp": bson::DateTime::from_millis(date_time.timestamp_millis()),
         };
@@ -261,11 +261,7 @@ mod tests {
         let mut new_props = HashMap::new();
         new_props.insert("prop2".to_string(), Value::Int(42));
 
-        // Use the object with the correct ID
-        let mut object_with_id = object.clone();
-        object_with_id.id = Some(id.clone());
-
-        store.set_properties(&object_with_id, &new_props).await.unwrap();
+        store.set_properties(&id, &new_props).await.unwrap();
 
         let objects_updated = store.get_objects().await.unwrap();
         let updated_props = objects_updated[0].properties.as_ref().unwrap();
@@ -293,10 +289,10 @@ mod tests {
         let mut values = HashMap::new();
         values.insert("temp".to_string(), Value::Float(25.5));
 
-        store.add_data(&object_with_id, &values, &now).await.unwrap();
+        store.add_data(&id, &values, &now).await.unwrap();
 
         // Retrieve values
-        let retrieved_values = store.get_values(&object_with_id, &(now - chrono::Duration::seconds(1)), &(now + chrono::Duration::seconds(1))).await.unwrap();
+        let retrieved_values = store.get_values(&id, &(now - chrono::Duration::seconds(1)), &(now + chrono::Duration::seconds(1))).await.unwrap();
 
         assert!(retrieved_values.contains_key("temp"));
         let temp_values = retrieved_values.get("temp").unwrap();
@@ -376,16 +372,14 @@ mod tests {
 
         let object = Object { id: None, classes, properties: None, values: None };
         let id = store.create_object(&object).await.unwrap();
-        let mut object_with_id = object.clone();
-        object_with_id.id = Some(id.clone());
 
         let now = Utc::now();
         let mut values = HashMap::new();
         values.insert("readings".to_string(), Value::IntArray(vec![10, 20, 30]));
 
-        store.add_data(&object_with_id, &values, &now).await.unwrap();
+        store.add_data(&id, &values, &now).await.unwrap();
 
-        let retrieved_values = store.get_values(&object_with_id, &(now - chrono::Duration::seconds(1)), &(now + chrono::Duration::seconds(1))).await.unwrap();
+        let retrieved_values = store.get_values(&id, &(now - chrono::Duration::seconds(1)), &(now + chrono::Duration::seconds(1))).await.unwrap();
 
         assert!(retrieved_values.contains_key("readings"));
         let reading_vals = retrieved_values.get("readings").unwrap();

@@ -230,9 +230,9 @@ impl Display for Rule {
 pub enum CoCoEvent {
     ClassCreated(Class),
     ObjectCreated(Object),
-    AddedClass(Object, Class),                                  // (object_id, class_name)
-    UpdatedProperties(Object, HashMap<String, Value>),          // (object_id, properties)
-    AddedValues(Object, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
+    AddedClass(String, String),                                 // (object_id, class_name)
+    UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
+    AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
     RuleCreated(Rule),
 }
 
@@ -278,10 +278,10 @@ pub trait DataStore: Send + Sync {
 
     async fn get_objects(&self) -> Result<Vec<Object>, Box<dyn Error>>;
     async fn create_object(&self, object: &Object) -> Result<String, Box<dyn Error>>;
-    async fn add_class(&self, object: &Object, class: &Class) -> Result<(), Box<dyn Error>>;
-    async fn set_properties(&self, object: &Object, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>>;
-    async fn get_values(&self, object: &Object, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>>;
-    async fn add_data(&self, object: &Object, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>>;
+    async fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), Box<dyn Error>>;
+    async fn set_properties(&self, object_id: &str, properties: &HashMap<String, Value>) -> Result<(), Box<dyn Error>>;
+    async fn get_values(&self, object_id: &str, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, Box<dyn Error>>;
+    async fn add_data(&self, object_id: &str, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), Box<dyn Error>>;
 
     async fn get_rules(&self) -> Result<Vec<Rule>, Box<dyn Error>>;
     async fn create_rule(&self, rule: &Rule) -> Result<(), Box<dyn Error>>;

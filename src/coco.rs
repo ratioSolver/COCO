@@ -89,15 +89,15 @@ impl CoCo {
         Ok(id)
     }
 
-    pub async fn set_properties(&self, object: &mut Object, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
-        self.db.set_properties(object, &values).await?;
-        self.kb.lock().unwrap().set_properties(object.id.as_ref().unwrap(), values)?;
+    pub async fn set_properties(&self, object_id: &str, values: HashMap<String, Value>) -> Result<(), Box<dyn Error>> {
+        self.db.set_properties(object_id, &values).await?;
+        self.kb.lock().unwrap().set_properties(object_id, values)?;
         Ok(())
     }
 
-    pub async fn add_data(&self, object: &mut Object, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
-        self.db.add_data(object, &values, &date_time).await?;
-        self.kb.lock().unwrap().add_data(object.id.as_ref().unwrap(), values, date_time)?;
+    pub async fn add_data(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), Box<dyn Error>> {
+        self.db.add_data(object_id, &values, &date_time).await?;
+        self.kb.lock().unwrap().add_data(object_id, values, date_time)?;
         Ok(())
     }
 

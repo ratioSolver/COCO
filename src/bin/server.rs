@@ -226,26 +226,26 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                 update_msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::json!("object_created"));
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
-            CoCoEvent::AddedClass(object, class_name) => {
+            CoCoEvent::AddedClass(object_id, class_name) => {
                 let update_msg = serde_json::json!({
                     "msg_type": "added_class",
-                    "object_id": object.id,
+                    "object_id": object_id,
                     "class_name": class_name
                 });
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
-            CoCoEvent::UpdatedProperties(object, properties) => {
+            CoCoEvent::UpdatedProperties(object_id, properties) => {
                 let update_msg = serde_json::json!({
                     "msg_type": "updated_properties",
-                    "object_id": object.id,
+                    "object_id": object_id,
                     "properties": properties
                 });
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
-            CoCoEvent::AddedValues(object, values, date_time) => {
+            CoCoEvent::AddedValues(object_id, values, date_time) => {
                 let update_msg = serde_json::json!({
                     "msg_type": "added_values",
-                    "object_id": object.id,
+                    "object_id": object_id,
                     "values": values,
                     "date_time": date_time
                 });

@@ -64,9 +64,9 @@ impl CLIPSKnowledgeBase {
         }
     }
 
-    fn create_object_class(&self, object: &Object, class: &Class) -> Result<(), Box<dyn Error>> {
+    fn create_object_class(&self, object: &Object, class_name: &str) -> Result<(), Box<dyn Error>> {
         unsafe {
-            let fb = CreateFactBuilder(self.env, CString::new(class.name.clone())?.as_ptr());
+            let fb = CreateFactBuilder(self.env, CString::new(class_name)?.as_ptr());
             if fb.is_null() {
                 return Err("Failed to create FactBuilder".into());
             }
@@ -86,15 +86,17 @@ impl CLIPSKnowledgeBase {
                 return Err(format!("Assertion failed: {:?}", error).into());
             }
 
-            self.instances.write().unwrap().entry(class.name.clone()).or_default().insert(object.id.as_ref().unwrap().clone(), fact);
+            self.instances.write().unwrap().entry(class_name.to_string()).or_default().insert(object.id.as_ref().unwrap().clone(), fact);
 
             FBDispose(fb);
 
+            let classes_guard = self.classes.read().unwrap();
+            let class = classes_guard.get(class_name).ok_or("Class not found")?;
             if let Some(props) = class.static_properties.as_ref() {
                 for (prop_name, prop) in props {
                     let value = object.properties.as_ref().and_then(|props| props.get(prop_name));
                     if let Some(v) = value {
-                        self.set_prop(object, &class, prop, prop_name, v, None)?;
+                        self.set_prop(object.id.as_ref().unwrap(), class_name, prop, prop_name, v, None)?;
                     } else {
                         let default_val = match prop {
                             Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
@@ -112,9 +114,9 @@ impl CLIPSKnowledgeBase {
                             _ => None,
                         };
                         if let Some(v) = default_val {
-                            self.set_prop(object, &class, prop, prop_name, &v, None)?;
+                            self.set_prop(object.id.as_ref().unwrap(), class_name, prop, prop_name, &v, None)?;
                         } else {
-                            self.set_prop(object, &class, prop, prop_name, &Value::Null, None)?;
+                            self.set_prop(object.id.as_ref().unwrap(), class_name, prop, prop_name, &Value::Null, None)?;
                         }
                     }
                 }
@@ -124,7 +126,7 @@ impl CLIPSKnowledgeBase {
                 for (prop_name, prop) in props {
                     let value_time = object.values.as_ref().and_then(|vals| vals.get(prop_name));
                     if let Some((v, t)) = value_time {
-                        self.set_prop(object, &class, prop, prop_name, v, Some(t))?;
+                        self.set_prop(object.id.as_ref().unwrap(), class_name, prop, prop_name, v, Some(t))?;
                     } else {
                         let default_val = match prop {
                             Property::Bool { default: Some(v), .. } => Some(Value::Bool(*v)),
@@ -142,9 +144,9 @@ impl CLIPSKnowledgeBase {
                             _ => None,
                         };
                         if let Some(v) = default_val {
-                            self.set_prop(object, &class, prop, prop_name, &v, None)?;
+                            self.set_prop(object.id.as_ref().unwrap(), class_name, prop, prop_name, &v, None)?;
                         } else {
-                            self.set_prop(object, &class, prop, prop_name, &Value::Null, None)?;
+                            self.set_prop(object.id.as_ref().unwrap(), class_name, prop, prop_name, &Value::Null, None)?;
                         }
                     }
                 }
@@ -154,9 +156,9 @@ impl CLIPSKnowledgeBase {
         Ok(())
     }
 
-    fn set_prop(&self, object: &Object, class: &Class, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
+    fn set_prop(&self, object_id: &str, class_name: &str, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
         unsafe {
-            let fb = CreateFactBuilder(self.env, CString::new(format!("{}_{}", class.name, property_name))?.as_ptr());
+            let fb = CreateFactBuilder(self.env, CString::new(format!("{}_{}", class_name, property_name))?.as_ptr());
             if fb.is_null() {
                 return Err("Failed to create FactBuilder".into());
             }
@@ -164,7 +166,7 @@ impl CLIPSKnowledgeBase {
                 FBDispose(fb);
                 Err(msg.to_string().into())
             };
-            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
+            match FBPutSlotSymbol(fb, CString::new("id")?.as_ptr(), CString::new(object_id)?.as_ptr()) {
                 PutSlotError_PSE_NO_ERROR => {}
                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
             }
@@ -566,16 +568,16 @@ impl CLIPSKnowledgeBase {
             if fact.is_null() {
                 return handle_err(&format!("Assertion failed: {:?}", FBError(self.env)));
             }
-            self.facts.write().unwrap().entry(class.name.clone()).or_default().entry(object.id.as_ref().unwrap().clone()).or_default().insert(property_name.to_string(), fact);
+            self.facts.write().unwrap().entry(class_name.to_string()).or_default().entry(object_id.to_string()).or_default().insert(property_name.to_string(), fact);
 
             FBDispose(fb);
             Ok(())
         }
     }
 
-    fn update_prop(&self, object: &Object, class: &Class, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
+    fn update_prop(&self, object_id: &str, class_name: &str, property: &Property, property_name: &str, value: &Value, time: Option<&DateTime<Utc>>) -> Result<(), Box<dyn Error>> {
         unsafe {
-            let fm = CreateFactModifier(self.env, *self.facts.read().unwrap().get(&class.name).and_then(|objs| objs.get(object.id.as_ref().unwrap())).and_then(|props| props.get(property_name)).ok_or("Property fact not found in knowledge base")?);
+            let fm = CreateFactModifier(self.env, *self.facts.read().unwrap().get(class_name).and_then(|objs| objs.get(object_id)).and_then(|props| props.get(property_name)).ok_or("Property fact not found in knowledge base")?);
             if fm.is_null() {
                 return Err("Failed to create FactBuilder".into());
             }
@@ -583,7 +585,7 @@ impl CLIPSKnowledgeBase {
                 FMDispose(fm);
                 Err(msg.to_string().into())
             };
-            match FMPutSlotSymbol(fm, CString::new("id")?.as_ptr(), CString::new(object.id.as_ref().unwrap().clone())?.as_ptr()) {
+            match FMPutSlotSymbol(fm, CString::new("id")?.as_ptr(), CString::new(object_id)?.as_ptr()) {
                 PutSlotError_PSE_NO_ERROR => {}
                 err => handle_err(&format!("PutSlot error: {:?}", err))?,
             }
@@ -925,7 +927,7 @@ impl CLIPSKnowledgeBase {
             if modified_fact.is_null() {
                 return handle_err(&format!("Modification failed: {:?}", FMError(self.env)));
             }
-            self.facts.write().unwrap().get_mut(&class.name).and_then(|objs| objs.get_mut(object.id.as_ref().unwrap())).and_then(|props| props.get_mut(property_name)).map(|f| *f = modified_fact);
+            self.facts.write().unwrap().get_mut(class_name).and_then(|objs| objs.get_mut(object_id)).and_then(|props| props.get_mut(property_name)).map(|f| *f = modified_fact);
 
             FMDispose(fm);
             Ok(())
@@ -984,9 +986,8 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn create_object(&self, object: &Object) -> Result<(), Box<dyn Error>> {
-        let classes_guard = self.classes.read();
         for class_name in &object.classes {
-            self.create_object_class(object, classes_guard.as_ref().unwrap().get(class_name).ok_or("Class not found")?)?;
+            self.create_object_class(object, class_name)?;
         }
 
         self.objects.write().unwrap().insert(object.id.as_ref().unwrap().clone(), object.clone());
@@ -1005,10 +1006,9 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         if object.classes.contains(class_name) {
             return Ok(()); // Class already added, do nothing
         }
-        let class = classes_guard.get(class_name).ok_or("Class not found")?;
-        self.create_object_class(object, class)?;
+        self.create_object_class(object, class_name)?;
         object.classes.insert(class_name.to_string());
-        let _ = self.sender.send(CoCoEvent::AddedClass(object.clone(), class.clone()));
+        let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
         Ok(())
     }
 
@@ -1021,13 +1021,13 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             if let Some(props) = class.static_properties.as_ref() {
                 for (prop_name, value) in values.clone() {
                     if let Some(prop) = props.get(&prop_name) {
-                        self.update_prop(object, class, &prop, &prop_name, &value, None)?;
+                        self.update_prop(object_id, class_name, &prop, &prop_name, &value, None)?;
                         object.properties.as_mut().unwrap().insert(prop_name, value);
                     }
                 }
             }
         }
-        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object.clone(), values));
+        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object_id.to_string(), values));
         Ok(())
     }
 
@@ -1040,13 +1040,13 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             if let Some(props) = class.dynamic_properties.as_ref() {
                 for (prop_name, value) in values.clone() {
                     if let Some(prop) = props.get(&prop_name) {
-                        self.update_prop(object, class, &prop, &prop_name, &value, Some(&date_time))?;
+                        self.update_prop(object_id, class_name, &prop, &prop_name, &value, Some(&date_time))?;
                         object.values.as_mut().unwrap().insert(prop_name, (value, date_time));
                     }
                 }
             }
         }
-        let _ = self.sender.send(CoCoEvent::AddedValues(object.clone(), values, date_time));
+        let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values, date_time));
         Ok(())
     }
 

@@ -157,17 +157,7 @@ async fn test_add_data_event() {
     let mut values = HashMap::new();
     values.insert("temp".to_string(), Value::Float(100.0));
 
-    // Use manually constructed object instead of `object` which was moved/consumed
-    coco.add_data(
-        &mut {
-            let mut o = Object { id: Some(s1_id.clone()), classes: HashSet::new(), properties: None, values: None };
-            o
-        },
-        values,
-        Utc::now(),
-    )
-    .await
-    .unwrap();
+    coco.add_data(&s1_id, values, Utc::now()).await.unwrap();
 
     {
         let kb_guard = kb.lock().unwrap();
@@ -182,8 +172,7 @@ async fn test_add_data_event() {
     // 2. Loopback from KB manual add_data (100.0) - might result in redundant store or just same val
     // 3. Rule triggered add_data (0.0)
 
-    let object_ref = Object { id: Some(s1_id.clone()), classes: HashSet::new(), properties: None, values: None };
-    let stored_values = db.get_values(&object_ref, &Utc::now().checked_sub_signed(chrono::Duration::minutes(1)).unwrap(), &Utc::now().checked_add_signed(chrono::Duration::minutes(1)).unwrap()).await.unwrap();
+    let stored_values = db.get_values(&s1_id, &Utc::now().checked_sub_signed(chrono::Duration::minutes(1)).unwrap(), &Utc::now().checked_add_signed(chrono::Duration::minutes(1)).unwrap()).await.unwrap();
 
     let temp_history = stored_values.get("temp").expect("Should have temp values");
 

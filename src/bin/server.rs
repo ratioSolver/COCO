@@ -177,9 +177,9 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
     let classes_map: std::collections::HashMap<String, serde_json::Value> = coco
         .get_classes()
         .into_iter()
-        .map(|c| {
-            let name = c.name.clone();
-            let mut v = serde_json::to_value(c).unwrap();
+        .map(|mut c| {
+            let name = std::mem::take(&mut c.name);
+            let mut v = serde_json::to_value(&c).unwrap();
             v.as_object_mut().unwrap().remove("name");
             (name, v)
         })
@@ -187,9 +187,9 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
     let objects_map: std::collections::HashMap<String, serde_json::Value> = coco
         .get_objects()
         .into_iter()
-        .map(|o| {
-            let id = o.id.as_ref().unwrap().clone();
-            let mut v = serde_json::to_value(o).unwrap();
+        .map(|mut o| {
+            let id = o.id.take().unwrap();
+            let mut v = serde_json::to_value(&o).unwrap();
             v.as_object_mut().unwrap().remove("id");
             (id, v)
         })
@@ -198,8 +198,8 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
         .get_rules()
         .into_iter()
         .map(|r| {
-            let name = r.name.clone();
-            let mut v = serde_json::to_value(r).unwrap();
+            let name = r.name;
+            let mut v = serde_json::to_value(&r.content).unwrap();
             v.as_object_mut().unwrap().remove("name");
             (name, v)
         })

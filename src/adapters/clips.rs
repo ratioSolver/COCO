@@ -927,7 +927,7 @@ impl CLIPSKnowledgeBase {
             if modified_fact.is_null() {
                 return handle_err(&format!("Modification failed: {:?}", FMError(self.env)));
             }
-            self.facts.write().unwrap().get_mut(class_name).and_then(|objs| objs.get_mut(object_id)).and_then(|props| props.get_mut(property_name)).map(|f| *f = modified_fact);
+            self.facts.write().unwrap().get_mut(class_name).and_then(|objs| objs.get_mut(object_id)).and_then(|props| props.get_mut(property_name));
 
             FMDispose(fm);
             Ok(())
@@ -1021,7 +1021,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             if let Some(props) = class.static_properties.as_ref() {
                 for (prop_name, value) in values.clone() {
                     if let Some(prop) = props.get(&prop_name) {
-                        self.update_prop(object_id, class_name, &prop, &prop_name, &value, None)?;
+                        self.update_prop(object_id, class_name, prop, &prop_name, &value, None)?;
                         object.properties.as_mut().unwrap().insert(prop_name, value);
                     }
                 }
@@ -1040,7 +1040,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             if let Some(props) = class.dynamic_properties.as_ref() {
                 for (prop_name, value) in values.clone() {
                     if let Some(prop) = props.get(&prop_name) {
-                        self.update_prop(object_id, class_name, &prop, &prop_name, &value, Some(&date_time))?;
+                        self.update_prop(object_id, class_name, prop, &prop_name, &value, Some(&date_time))?;
                         object.values.as_mut().unwrap().insert(prop_name, (value, date_time));
                     }
                 }

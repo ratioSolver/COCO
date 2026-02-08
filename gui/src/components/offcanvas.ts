@@ -5,7 +5,7 @@ import { ClassesList } from "./class";
 import { ObjectsList } from "./object";
 import { RulesList } from "./rule";
 
-export function Offcanvas(coco: coco.CoCo): VNode {
+export function CoCoOffcanvas(coco: coco.CoCo): VNode {
     return OffcanvasComponent(
         OffcanvasBody([
             coco.get_classes().size > 0 ? h('label', 'Classes') : null,

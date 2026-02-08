@@ -4,7 +4,7 @@ import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
 
 export function ClassesList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_classes().values().map(cls => ListGroupItem(cls.get_name(), () => {
-    flick.ctx.current_page = Class(cls);
+    flick.ctx.current_page = CoCoClass(cls);
     flick.ctx.page_title = `Class: ${cls.get_name()}`;
     flick.redraw();
   }, flick.ctx.page_title === `Class: ${cls.get_name()}`))));
@@ -16,8 +16,8 @@ const cls_listener = {
   }
 };
 
-export function Class(cls: coco.CoCoClass): VNode {
-  const content = h('div.container.mt-2.h-100',
+export function CoCoClass(cls: coco.CoCoClass): VNode {
+  const content = h('div.container.mt-2',
     {
       hook: {
         insert: () => {

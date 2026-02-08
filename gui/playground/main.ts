@@ -1,7 +1,7 @@
 import { App, flick, Navbar, OffcanvasBrand } from '@ratiosolver/flick';
 import { h } from 'snabbdom';
 import { coco } from '../src/coco';
-import { Offcanvas } from '../src/components/offcanvas';
+import { CoCoOffcanvas } from '../src/components/offcanvas';
 import '@fortawesome/fontawesome-free/css/all.css';
 
 const cc = new coco.CoCo({ url: 'ws://localhost:3000/ws' });
@@ -16,7 +16,7 @@ cc.add_listener({
 });
 
 flick.mount(() => {
-  const content = h('div.h-100', [
+  const content = h('div', [
     flick.ctx.current_page || h('div.container.mt-5', [
       h('div.text-center.mb-5', [
         h('h1.display-4', 'CoCo'),
@@ -36,7 +36,7 @@ flick.mount(() => {
         ])
       ])
     ]),
-    Offcanvas(cc)
+    CoCoOffcanvas(cc)
   ]);
 
   return App(Navbar(OffcanvasBrand('CoCo')), content);

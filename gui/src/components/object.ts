@@ -1,12 +1,12 @@
 import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
 import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
-import { Class } from "./class";
+import { CoCoClass } from "./class";
 import * as echarts from 'echarts';
 
 export function ObjectsList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_objects().values().map(obj => ListGroupItem(object_to_string(obj), () => {
-    flick.ctx.current_page = Object(obj);
+    flick.ctx.current_page = CoCoObject(obj);
     flick.ctx.page_title = `Object: ${obj.get_id()}`;
     flick.redraw();
   }, flick.ctx.page_title === `Object: ${obj.get_id()}`))));
@@ -26,8 +26,9 @@ const obj_listener = {
 
 let chart: echarts.ECharts | null = null;
 
-export function Object(obj: coco.CoCoObject): VNode {
-  const content = h('div.container.mt-2.h-100',
+export function CoCoObject(obj: coco.CoCoObject): VNode {
+  const vals = obj.get_values();
+  const content = h('div.container.mt-2',
     {
       hook: {
         insert: () => {
@@ -50,14 +51,15 @@ export function Object(obj: coco.CoCoObject): VNode {
         style: { cursor: 'pointer' },
         on: {
           click: () => {
-            flick.ctx.current_page = Class(cls);
+            flick.ctx.current_page = CoCoClass(cls);
             flick.ctx.page_title = `Class: ${cls.get_name()}`;
             flick.redraw();
           }
         }
       }, cls.get_name())
     )),
-    h('div.mt-2.h-100', {
+    h('div.mt-2', {
+      style: { minHeight: `${vals ? Object.values(vals).length * 300 : 30}px` },
       hook: {
         insert: (vnode) => {
           chart = echarts.init(vnode.elm as HTMLDivElement);

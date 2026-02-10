@@ -11,9 +11,6 @@ license-file = "LICENSE.txt"
 [lib]
 name = "coco"
 
-[build-dependencies]
-bindgen = "0.71.0"
-
 [dependencies]
 axum = { version = "0.8.8", features = ["ws"] }
 tower-http = { version = "0.6.8", features = ["fs"] }
@@ -25,3 +22,4 @@ async-trait = "0.1.89"
 chrono = { version = "0.4.43", features = ["serde"] }
 utoipa = { version = "5.4.0", features = ["chrono"] }
 serde_json = "1.0.149"
+clips = { git = "https://github.com/ratioSolver/rust-clips" }

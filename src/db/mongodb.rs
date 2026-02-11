@@ -1,5 +1,6 @@
 use crate::db::{Database, DatabaseError};
 use crate::model::Class;
+use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 use mongodb::{Client, IndexModel, bson::Document, options::IndexOptions};
@@ -31,6 +32,7 @@ impl MongoDB {
     }
 }
 
+#[async_trait]
 impl Database for MongoDB {
     fn name(&self) -> &str {
         &self.name

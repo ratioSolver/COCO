@@ -1,4 +1,5 @@
 use crate::model::Class;
+use async_trait::async_trait;
 
 #[cfg(feature = "mongodb")]
 pub mod mongodb;
@@ -10,6 +11,7 @@ pub enum DatabaseError {
     ClassAlreadyExists(String),
 }
 
+#[async_trait]
 pub trait Database {
     fn name(&self) -> &str;
 

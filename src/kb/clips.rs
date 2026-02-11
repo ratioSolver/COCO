@@ -1,6 +1,6 @@
 use crate::{
     kb::{KnowledgeBase, KnowledgeBaseError},
-    model::{Class, Object, Property, Rule},
+    model::{Class, Object, Property, Rule, Value},
 };
 use clips::{ClipsValue, Environment, Fact, Type};
 use std::{collections::HashMap, sync::Mutex};
@@ -29,16 +29,6 @@ impl CLIPSKnowledgeBase {
             instances: HashMap::new(),
         }
     }
-
-    fn create_class_instance(&self, class: &Class, object: &Object) -> Result<(), KnowledgeBaseError> {
-        let env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
-
-        let mut fb = env.fact_builder(&class.name);
-        fb.put_symbol("id", object.id.as_ref().unwrap()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", object.id.as_ref().unwrap(), e)))?;
-        fb.assert();
-
-        Ok(())
-    }
 }
 
 impl KnowledgeBase for CLIPSKnowledgeBase {
@@ -54,7 +44,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         if self.classes.contains_key(&class.name) {
             return Err(KnowledgeBaseError::ClassAlreadyExists(class.name.clone()));
         }
-        let env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+        let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
         env.build(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create class in CLIPS: {}", e)))?;
         if let Some(static_props) = &class.static_properties {
             for (name, prop) in static_props {
@@ -83,9 +73,19 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             if self.objects.contains_key(id) {
                 return Err(KnowledgeBaseError::ObjectAlreadyExists(id.clone()));
             }
+            let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
             for class in &object.classes {
                 if let Some(class) = self.classes.get(class) {
-                    self.create_class_instance(class, object)?;
+                    let fb = env.fact_builder(&class.name).unwrap().put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
+                    let fact = env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
+                    self.instances.entry(class.name.clone()).or_insert_with(HashMap::new).insert(id.clone(), fact);
+
+                    if let Some(props) = &object.properties {
+                        for (name, value) in props {
+                            let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, id, e)))?;
+                            fb.put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for property {} of object {}: {}", name, id, e)))?;
+                        }
+                    }
                 } else {
                     return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class, id)));
                 }
@@ -348,5 +348,46 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
+    }
+}
+
+fn get_default(property: &Property) -> Option<Value> {
+    match property {
+        Property::Bool { default, .. } => default.map(Value::Bool),
+        Property::Int { default, .. } => default.map(Value::Int),
+        Property::Float { default, .. } => default.map(Value::Float),
+        Property::String { default, .. } => default.clone().map(Value::String),
+        Property::Symbol { default, .. } => default.clone().map(Value::Symbol),
+        Property::Object { default, .. } => default.clone().map(Value::Object),
+        Property::BoolArray { default } => default.clone().map(Value::BoolArray),
+        Property::IntArray { default, .. } => default.clone().map(Value::IntArray),
+        Property::FloatArray { default, .. } => default.clone().map(Value::FloatArray),
+        Property::StringArray { default } => default.clone().map(Value::StringArray),
+        Property::SymbolArray { default, .. } => default.clone().map(Value::StringArray),
+        Property::ObjectArray { default, .. } => default.clone().map(Value::StringArray),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_defaults() {
+        let prop = Property::Int { nullable: Some(true), default: Some(42), min: Some(0), max: Some(100) };
+        assert_eq!(get_default(&prop), Some(Value::Int(42)));
+
+        let prop = Property::String { nullable: None, default: Some("hello".to_string()) };
+        assert_eq!(get_default(&prop), Some(Value::String("hello".to_string())));
+
+        let prop = Property::BoolArray { default: Some(vec![true, false, true]) };
+        assert_eq!(get_default(&prop), Some(Value::BoolArray(vec![true, false, true])));
+
+        let prop = Property::Symbol {
+            nullable: Some(true),
+            default: None,
+            allowed_values: Some(vec!["red".to_string(), "green".to_string(), "blue".to_string()].into_iter().collect()),
+        };
+        assert_eq!(get_default(&prop), None);
     }
 }

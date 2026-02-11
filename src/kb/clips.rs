@@ -29,6 +29,16 @@ impl CLIPSKnowledgeBase {
             instances: HashMap::new(),
         }
     }
+
+    fn create_class_instance(&self, class: &Class, object: &Object) -> Result<(), KnowledgeBaseError> {
+        let env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+
+        let mut fb = env.fact_builder(&class.name);
+        fb.put_symbol("id", object.id.as_ref().unwrap()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", object.id.as_ref().unwrap(), e)))?;
+        fb.assert();
+
+        Ok(())
+    }
 }
 
 impl KnowledgeBase for CLIPSKnowledgeBase {
@@ -57,6 +67,33 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             }
         }
         self.classes.insert(class.name.clone(), class.clone());
+        Ok(())
+    }
+
+    fn get_objects(&self) -> Vec<&Object> {
+        self.objects.values().collect()
+    }
+
+    fn get_object(&self, id: &str) -> Option<&Object> {
+        self.objects.get(id)
+    }
+
+    fn create_object(&mut self, object: &Object) -> Result<(), KnowledgeBaseError> {
+        if let Some(id) = &object.id {
+            if self.objects.contains_key(id) {
+                return Err(KnowledgeBaseError::ObjectAlreadyExists(id.clone()));
+            }
+            for class in &object.classes {
+                if let Some(class) = self.classes.get(class) {
+                    self.create_class_instance(class, object)?;
+                } else {
+                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class, id)));
+                }
+            }
+            self.objects.insert(id.clone(), object.clone());
+        } else {
+            return Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()));
+        }
         Ok(())
     }
 }

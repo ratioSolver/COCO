@@ -7,6 +7,7 @@ pub mod clips;
 pub enum KnowledgeBaseError {
     ClassAlreadyExists(String),
     ClassNotFound(String),
+    KBError(String),
 }
 
 pub trait KnowledgeBase {

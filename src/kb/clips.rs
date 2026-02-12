@@ -258,8 +258,12 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::BoolArray { default } => {
-            def.push_str(" (multislot value (type SYMBOL) (allowed-symbols TRUE FALSE)");
+        Property::BoolArray { nullable, default } => {
+            def.push_str(" (multislot value (type SYMBOL) (allowed-symbols TRUE FALSE");
+            if let Some(true) = nullable {
+                def.push_str(" nil");
+            }
+            def.push(')');
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|b| if *b { "TRUE" } else { "FALSE" }).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
@@ -271,8 +275,12 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::IntArray { default, min, max } => {
-            def.push_str(" (multislot value (type INTEGER)");
+        Property::IntArray { nullable, default, min, max } => {
+            def.push_str(" (multislot value (type INTEGER");
+            if let Some(true) = nullable {
+                def.push_str(" SYMBOL) (allowed-symbols nil");
+            }
+            def.push(')');
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
@@ -289,8 +297,12 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::FloatArray { default, min, max } => {
-            def.push_str(" (multislot value (type FLOAT)");
+        Property::FloatArray { nullable, default, min, max } => {
+            def.push_str(" (multislot value (type FLOAT");
+            if let Some(true) = nullable {
+                def.push_str(" SYMBOL) (allowed-symbols nil");
+            }
+            def.push(')');
             if let Some(def_val) = default {
                 let def_str = def_val
                     .iter()
@@ -324,8 +336,12 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::StringArray { default } => {
-            def.push_str(" (multislot value (type STRING)");
+        Property::StringArray { nullable, default } => {
+            def.push_str(" (multislot value (type STRING");
+            if let Some(true) = nullable {
+                def.push_str(" SYMBOL) (allowed-symbols nil");
+            }
+            def.push(')');
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
@@ -337,14 +353,19 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::SymbolArray { default, allowed_values } => {
+        Property::SymbolArray { nullable, default, allowed_values } => {
             def.push_str(" (multislot value (type SYMBOL)");
             if let Some(allowed) = allowed_values {
                 def.push_str(" (allowed-symbols");
+                if let Some(true) = nullable {
+                    def.push_str(" nil");
+                }
                 for v in allowed {
                     def.push_str(&format!(" {}", v));
                 }
                 def.push(')');
+            } else if let Some(true) = nullable {
+                def.push_str(" (allowed-symbols nil)");
             }
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ");
@@ -357,11 +378,13 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::ObjectArray { default, .. } => {
+        Property::ObjectArray { nullable, default, .. } => {
             def.push_str(" (multislot value (type SYMBOL)");
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|o| o.as_str()).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
+            } else if let Some(true) = nullable {
+                def.push_str(" (default nil)");
             }
             def.push(')');
             if !is_static {
@@ -461,18 +484,18 @@ fn update_prop(env: &Environment, fm: FactModifier, property: &Property, value: 
 
 fn get_default(property: &Property) -> Option<Value> {
     match property {
-        Property::Bool { default, .. } => default.map(Value::Bool),
-        Property::Int { default, .. } => default.map(Value::Int),
-        Property::Float { default, .. } => default.map(Value::Float),
-        Property::String { default, .. } => default.clone().map(Value::String),
-        Property::Symbol { default, .. } => default.clone().map(Value::Symbol),
-        Property::Object { default, .. } => default.clone().map(Value::Object),
-        Property::BoolArray { default } => default.clone().map(Value::BoolArray),
-        Property::IntArray { default, .. } => default.clone().map(Value::IntArray),
-        Property::FloatArray { default, .. } => default.clone().map(Value::FloatArray),
-        Property::StringArray { default } => default.clone().map(Value::StringArray),
-        Property::SymbolArray { default, .. } => default.clone().map(Value::StringArray),
-        Property::ObjectArray { default, .. } => default.clone().map(Value::StringArray),
+        Property::Bool { default, nullable, .. } => default.map(Value::Bool).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::Int { default, nullable, .. } => default.map(Value::Int).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::Float { default, nullable, .. } => default.map(Value::Float).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::String { default, nullable, .. } => default.clone().map(Value::String).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::Symbol { default, nullable, .. } => default.clone().map(Value::Symbol).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::Object { default, nullable, .. } => default.clone().map(Value::Object).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::BoolArray { default, nullable } => default.clone().map(Value::BoolArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::IntArray { default, nullable, .. } => default.clone().map(Value::IntArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::FloatArray { default, nullable, .. } => default.clone().map(Value::FloatArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::StringArray { default, nullable } => default.clone().map(Value::StringArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::SymbolArray { default, nullable, .. } => default.clone().map(Value::StringArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::ObjectArray { default, nullable, .. } => default.clone().map(Value::StringArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
     }
 }
 
@@ -488,7 +511,7 @@ mod tests {
         let prop = Property::String { nullable: None, default: Some("hello".to_string()) };
         assert_eq!(get_default(&prop), Some(Value::String("hello".to_string())));
 
-        let prop = Property::BoolArray { default: Some(vec![true, false, true]) };
+        let prop = Property::BoolArray { nullable: None, default: Some(vec![true, false, true]) };
         assert_eq!(get_default(&prop), Some(Value::BoolArray(vec![true, false, true])));
 
         let prop = Property::Symbol {
@@ -496,6 +519,6 @@ mod tests {
             default: None,
             allowed_values: Some(vec!["red".to_string(), "green".to_string(), "blue".to_string()].into_iter().collect()),
         };
-        assert_eq!(get_default(&prop), None);
+        assert_eq!(get_default(&prop), Some(Value::Null));
     }
 }

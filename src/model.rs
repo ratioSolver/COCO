@@ -64,9 +64,13 @@ pub enum Property {
     },
     BoolArray {
         #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<bool>>,
     },
     IntArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<i64>>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -76,6 +80,8 @@ pub enum Property {
     },
     FloatArray {
         #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<f64>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         min: Option<f64>,
@@ -84,15 +90,21 @@ pub enum Property {
     },
     StringArray {
         #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<String>>,
     },
     SymbolArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         allowed_values: Option<HashSet<String>>,
     },
     ObjectArray {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nullable: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<String>>,
         class: String,
@@ -120,23 +132,23 @@ impl Display for Property {
             Property::Object { nullable, default, class } => {
                 write!(f, "object(nullable: {:?}, default: {:?}, class: {:?})", nullable, default, class)
             }
-            Property::BoolArray { default } => {
-                write!(f, "bool_array(default: {:?})", default)
+            Property::BoolArray { nullable, default } => {
+                write!(f, "bool_array(nullable: {:?}, default: {:?})", nullable, default)
             }
-            Property::IntArray { default, min, max } => {
-                write!(f, "int_array(default: {:?}, min: {:?}, max: {:?})", default, min, max)
+            Property::IntArray { nullable, default, min, max } => {
+                write!(f, "int_array(nullable: {:?}, default: {:?}, min: {:?}, max: {:?})", nullable, default, min, max)
             }
-            Property::FloatArray { default, min, max } => {
-                write!(f, "float_array(default: {:?}, min: {:?}, max: {:?})", default, min, max)
+            Property::FloatArray { nullable, default, min, max } => {
+                write!(f, "float_array(nullable: {:?}, default: {:?}, min: {:?}, max: {:?})", nullable, default, min, max)
             }
-            Property::StringArray { default } => {
-                write!(f, "string_array(default: {:?})", default)
+            Property::StringArray { nullable, default } => {
+                write!(f, "string_array(nullable: {:?}, default: {:?})", nullable, default)
             }
-            Property::SymbolArray { default, allowed_values } => {
-                write!(f, "symbol_array(default: {:?}, allowed_values: {:?})", default, allowed_values)
+            Property::SymbolArray { nullable, default, allowed_values } => {
+                write!(f, "symbol_array(nullable: {:?}, default: {:?}, allowed_values: {:?})", nullable, default, allowed_values)
             }
-            Property::ObjectArray { default, class } => {
-                write!(f, "object_array(default: {:?}, class: {:?})", default, class)
+            Property::ObjectArray { nullable, default, class } => {
+                write!(f, "object_array(nullable: {:?}, default: {:?}, class: {:?})", nullable, default, class)
             }
         }
     }

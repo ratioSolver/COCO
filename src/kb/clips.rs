@@ -7,11 +7,11 @@ use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type};
 use std::{collections::HashMap, sync::Mutex};
 
 pub struct CLIPSKnowledgeBase {
-    env: Mutex<Environment>,
     classes: HashMap<String, Class>,
     objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
     instances: HashMap<String, HashMap<String, Fact>>,
+    env: Mutex<Environment>,
 }
 
 unsafe impl Send for CLIPSKnowledgeBase {}
@@ -25,16 +25,19 @@ impl Default for CLIPSKnowledgeBase {
 
 impl CLIPSKnowledgeBase {
     pub fn new() -> Self {
-        let mut env = Environment::new().expect("Failed to create CLIPS environment");
-        env.add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], |_env, _ctx| ClipsValue::Void()).expect("Failed to add UDF to CLIPS environment");
-        env.add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], |_env, _ctx| ClipsValue::Void()).expect("Failed to add UDF to CLIPS environment");
-        Self {
-            env: Mutex::new(env),
+        let kb = Self {
             classes: HashMap::new(),
             objects: HashMap::new(),
             rules: HashMap::new(),
             instances: HashMap::new(),
+            env: Mutex::new(Environment::new().expect("Failed to create CLIPS environment")),
+        };
+        {
+            let mut env = kb.env.lock().expect("Failed to lock CLIPS environment");
+            env.add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], |_env, _ctx| ClipsValue::Void()).expect("Failed to add UDF to CLIPS environment");
+            env.add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], |_env, _ctx| ClipsValue::Void()).expect("Failed to add UDF to CLIPS environment");
         }
+        kb
     }
 }
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 
-use crate::model::{Class, Object, Value};
+use crate::model::{Class, Object, Rule, Value};
 
 #[cfg(feature = "clips")]
 pub mod clips;
@@ -27,4 +27,10 @@ pub trait KnowledgeBase {
     fn add_class(&mut self, object: &Object, class: &Class) -> Result<(), KnowledgeBaseError>;
     fn set_properties(&mut self, object: &Object, properties: HashMap<String, Value>) -> Result<(), KnowledgeBaseError>;
     fn add_values(&mut self, object: &Object, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), KnowledgeBaseError>;
+
+    fn get_rules(&self) -> Vec<&Rule>;
+    fn get_rule(&self, name: &str) -> Option<&Rule>;
+    fn create_rule(&mut self, rule: &Rule) -> Result<(), KnowledgeBaseError>;
+
+    fn run(&mut self) -> Result<(), KnowledgeBaseError>;
 }

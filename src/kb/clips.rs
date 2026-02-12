@@ -222,6 +222,30 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))
         }
     }
+
+    fn get_rules(&self) -> Vec<&Rule> {
+        self.rules.values().collect()
+    }
+
+    fn get_rule(&self, name: &str) -> Option<&Rule> {
+        self.rules.get(name)
+    }
+
+    fn create_rule(&mut self, rule: &Rule) -> Result<(), KnowledgeBaseError> {
+        if self.rules.contains_key(&rule.name) {
+            return Err(KnowledgeBaseError::KBError(format!("Rule {} already exists", rule.name)));
+        }
+        let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+        env.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
+        self.rules.insert(rule.name.clone(), rule.clone());
+        Ok(())
+    }
+
+    fn run(&mut self) -> Result<(), KnowledgeBaseError> {
+        let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+        env.run(-1);
+        Ok(())
+    }
 }
 
 fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: bool) -> String {

@@ -47,7 +47,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         self.classes.get(name)
     }
 
-    fn create_class(&mut self, class: &Class) -> Result<(), KnowledgeBaseError> {
+    fn create_class(&mut self, class: Class) -> Result<(), KnowledgeBaseError> {
         if self.classes.contains_key(&class.name) {
             return Err(KnowledgeBaseError::ClassAlreadyExists(class.name.clone()));
         }
@@ -55,15 +55,15 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         env.build(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create class in CLIPS: {}", e)))?;
         if let Some(static_props) = &class.static_properties {
             for (name, prop) in static_props {
-                env.build(prop_deftemplate(class, name, prop, true).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create static property {} for class {} in CLIPS: {}", name, class.name, e)))?;
+                env.build(prop_deftemplate(&class, name, prop, true).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create static property {} for class {} in CLIPS: {}", name, class.name, e)))?;
             }
         }
         if let Some(dynamic_props) = &class.dynamic_properties {
             for (name, prop) in dynamic_props {
-                env.build(prop_deftemplate(class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
+                env.build(prop_deftemplate(&class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
             }
         }
-        self.classes.insert(class.name.clone(), class.clone());
+        self.classes.insert(class.name.clone(), class);
         Ok(())
     }
 
@@ -75,7 +75,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         self.objects.get(id)
     }
 
-    fn create_object(&mut self, object: &Object) -> Result<(), KnowledgeBaseError> {
+    fn create_object(&mut self, object: Object) -> Result<(), KnowledgeBaseError> {
         if let Some(id) = &object.id {
             if self.objects.contains_key(id) {
                 return Err(KnowledgeBaseError::ObjectAlreadyExists(id.clone()));
@@ -118,115 +118,95 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                     return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
                 }
             }
-            self.objects.insert(id.clone(), object.clone());
+            self.objects.insert(id.clone(), object);
         } else {
             return Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()));
         }
         Ok(())
     }
 
-    fn add_class(&mut self, object: &Object, class: &Class) -> Result<(), KnowledgeBaseError> {
-        if let Some(id) = &object.id {
-            if !self.objects.contains_key(id) {
-                return Err(KnowledgeBaseError::ObjectNotFound(id.clone()));
-            }
-            if !self.classes.contains_key(&class.name) {
-                return Err(KnowledgeBaseError::ClassNotFound(class.name.clone()));
-            }
-            let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
-            let fb = env.fact_builder(&class.name).unwrap().put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
-            let fact = env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
-            self.instances.entry(class.name.clone()).or_default().insert(id.clone(), fact);
+    fn add_class(&mut self, object_id: &str, class_name: &str) -> Result<(), KnowledgeBaseError> {
+        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_string()))?;
+        let class = self.classes.get(class_name).ok_or_else(|| KnowledgeBaseError::ClassNotFound(class_name.to_string()))?;
+        let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+        let fb = env.fact_builder(&class.name).unwrap().put_symbol("id", object_id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", object_id, e)))?;
+        let fact = env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", object_id, e)))?;
+        self.instances.entry(class.name.clone()).or_default().insert(object_id.to_string(), fact);
 
-            if let Some(static_props) = &class.static_properties {
-                for (name, prop) in static_props {
-                    let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, id, e)))?;
-                    if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
-                        let fb = set_prop(&env, fb, prop, v.clone(), None)?;
-                        env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, id, e)))?;
-                    } else if let Some(def) = get_default(prop) {
-                        let fb = set_prop(&env, fb, prop, def.clone(), None)?;
-                        env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, id, e)))?;
-                    }
+        if let Some(static_props) = &class.static_properties {
+            for (name, prop) in static_props {
+                let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, object_id, e)))?;
+                if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
+                    let fb = set_prop(&env, fb, prop, v.clone(), None)?;
+                    env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
+                } else if let Some(def) = get_default(prop) {
+                    let fb = set_prop(&env, fb, prop, def.clone(), None)?;
+                    env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
                 }
             }
-
-            if let Some(dynamic_props) = &class.dynamic_properties {
-                for (name, prop) in dynamic_props {
-                    if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
-                        let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
-                        let fb = set_prop(&env, fb, prop, v.0.clone(), Some(v.1))?;
-                        env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
-                    } else if let Some(def) = get_default(prop) {
-                        // If the object doesn't have a value for this dynamic property, but there is a default, we should use the default
-                        let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
-                        let fb = set_prop(&env, fb, prop, def.clone(), Some(Utc::now()))?;
-                        env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, id, e)))?;
-                    }
-                }
-            }
-            Ok(())
-        } else {
-            Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))
         }
+
+        if let Some(dynamic_props) = &class.dynamic_properties {
+            for (name, prop) in dynamic_props {
+                if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
+                    let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    let fb = set_prop(&env, fb, prop, v.0.clone(), Some(v.1))?;
+                    env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                } else if let Some(def) = get_default(prop) {
+                    // If the object doesn't have a value for this dynamic property, but there is a default, we should use the default
+                    let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    let fb = set_prop(&env, fb, prop, def.clone(), Some(Utc::now()))?;
+                    env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
+                }
+            }
+        }
+        Ok(())
     }
 
-    fn set_properties(&mut self, object: &Object, properties: HashMap<String, Value>) -> Result<(), KnowledgeBaseError> {
-        if let Some(id) = &object.id {
-            if !self.objects.contains_key(id) {
-                return Err(KnowledgeBaseError::ObjectNotFound(id.clone()));
-            }
-            let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
-            for class_name in &object.classes {
-                if let Some(class) = self.classes.get(class_name) {
-                    if let Some(static_props) = &class.static_properties {
-                        for (name, prop) in static_props {
-                            if let Some(v) = properties.get(name) {
-                                let fact = self.instances.get(class_name).and_then(|insts| insts.get(id)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Instance of class {} for object {} not found", class_name, id)))?;
-                                let fm = env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", id, e)))?;
-                                let fm = update_prop(&env, fm, prop, v.clone(), None)?;
-                                let fact = env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for property {} of object {}: {}", name, id, e)))?;
-                                self.instances.get_mut(class_name).and_then(|insts| insts.insert(id.clone(), fact));
-                            }
+    fn set_properties(&mut self, object_id: &str, properties: HashMap<String, Value>) -> Result<(), KnowledgeBaseError> {
+        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_string()))?;
+        let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+        for class_name in &object.classes {
+            if let Some(class) = self.classes.get(class_name) {
+                if let Some(static_props) = &class.static_properties {
+                    for (name, prop) in static_props {
+                        if let Some(v) = properties.get(name) {
+                            let fact = self.instances.get(class_name).and_then(|insts| insts.get(object_id)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Instance of class {} for object {} not found", class_name, object_id)))?;
+                            let fm = env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
+                            let fm = update_prop(&env, fm, prop, v.clone(), None)?;
+                            let fact = env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for property {} of object {}: {}", name, object_id, e)))?;
+                            self.instances.get_mut(class_name).and_then(|insts| insts.insert(object_id.to_string(), fact));
                         }
                     }
-                } else {
-                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
                 }
+            } else {
+                return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
             }
-            Ok(())
-        } else {
-            Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))
         }
+        Ok(())
     }
 
-    fn add_values(&mut self, object: &Object, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), KnowledgeBaseError> {
-        if let Some(id) = &object.id {
-            if !self.objects.contains_key(id) {
-                return Err(KnowledgeBaseError::ObjectNotFound(id.clone()));
-            }
-            let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
-            for class_name in &object.classes {
-                if let Some(class) = self.classes.get(class_name) {
-                    if let Some(dynamic_props) = &class.dynamic_properties {
-                        for (name, prop) in dynamic_props {
-                            if let Some(v) = values.get(name) {
-                                let fact = self.instances.get(class_name).and_then(|insts| insts.get(id)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Instance of class {} for object {} not found", class_name, id)))?;
-                                let fm = env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", id, e)))?;
-                                let fm = update_prop(&env, fm, prop, v.clone(), Some(date_time))?;
-                                let fact = env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, id, e)))?;
-                                self.instances.get_mut(class_name).and_then(|insts| insts.insert(id.clone(), fact));
-                            }
+    fn add_values(&mut self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), KnowledgeBaseError> {
+        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_string()))?;
+        let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+        for class_name in &object.classes {
+            if let Some(class) = self.classes.get(class_name) {
+                if let Some(dynamic_props) = &class.dynamic_properties {
+                    for (name, prop) in dynamic_props {
+                        if let Some(v) = values.get(name) {
+                            let fact = self.instances.get(class_name).and_then(|insts| insts.get(object_id)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Instance of class {} for object {} not found", class_name, object_id)))?;
+                            let fm = env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
+                            let fm = update_prop(&env, fm, prop, v.clone(), Some(date_time))?;
+                            let fact = env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                            self.instances.get_mut(class_name).and_then(|insts| insts.insert(object_id.to_string(), fact));
                         }
                     }
-                } else {
-                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
                 }
+            } else {
+                return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
             }
-            Ok(())
-        } else {
-            Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))
         }
+        Ok(())
     }
 
     fn get_rules(&self) -> Vec<&Rule> {
@@ -237,13 +217,13 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         self.rules.get(name)
     }
 
-    fn create_rule(&mut self, rule: &Rule) -> Result<(), KnowledgeBaseError> {
+    fn create_rule(&mut self, rule: Rule) -> Result<(), KnowledgeBaseError> {
         if self.rules.contains_key(&rule.name) {
             return Err(KnowledgeBaseError::KBError(format!("Rule {} already exists", rule.name)));
         }
         let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
         env.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
-        self.rules.insert(rule.name.clone(), rule.clone());
+        self.rules.insert(rule.name.clone(), rule);
         Ok(())
     }
 
@@ -666,7 +646,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
         assert_eq!(kb.get_classes().len(), 1);
     }
@@ -681,7 +661,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
         let retrieved = kb.get_class("TestClass");
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().name, "TestClass");
@@ -691,13 +671,7 @@ mod tests {
     fn test_create_class_with_static_bool_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "active".to_string(),
-            Property::Bool {
-                nullable: Some(false),
-                default: Some(true),
-            },
-        );
+        static_props.insert("active".to_string(), Property::Bool { nullable: Some(false), default: Some(true) });
 
         let class = Class {
             name: "Device".to_string(),
@@ -706,7 +680,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
     }
 
@@ -714,15 +688,7 @@ mod tests {
     fn test_create_class_with_static_int_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "temperature".to_string(),
-            Property::Int {
-                nullable: Some(false),
-                default: Some(25),
-                min: Some(0),
-                max: Some(100),
-            },
-        );
+        static_props.insert("temperature".to_string(), Property::Int { nullable: Some(false), default: Some(25), min: Some(0), max: Some(100) });
 
         let class = Class {
             name: "Sensor".to_string(),
@@ -731,7 +697,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
     }
 
@@ -739,15 +705,7 @@ mod tests {
     fn test_create_class_with_static_float_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "voltage".to_string(),
-            Property::Float {
-                nullable: Some(false),
-                default: Some(5.0),
-                min: Some(0.0),
-                max: Some(10.0),
-            },
-        );
+        static_props.insert("voltage".to_string(), Property::Float { nullable: Some(false), default: Some(5.0), min: Some(0.0), max: Some(10.0) });
 
         let class = Class {
             name: "PowerSupply".to_string(),
@@ -756,7 +714,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
     }
 
@@ -764,13 +722,7 @@ mod tests {
     fn test_create_class_with_static_string_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "name".to_string(),
-            Property::String {
-                nullable: Some(false),
-                default: Some("Default Name".to_string()),
-            },
-        );
+        static_props.insert("name".to_string(), Property::String { nullable: Some(false), default: Some("Default Name".to_string()) });
 
         let class = Class {
             name: "Entity".to_string(),
@@ -779,7 +731,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
     }
 
@@ -807,7 +759,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
     }
 
@@ -815,14 +767,7 @@ mod tests {
     fn test_create_class_with_static_object_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "owner".to_string(),
-            Property::Object {
-                nullable: Some(true),
-                default: None,
-                class: "Person".to_string(),
-            },
-        );
+        static_props.insert("owner".to_string(), Property::Object { nullable: Some(true), default: None, class: "Person".to_string() });
 
         let class = Class {
             name: "Item".to_string(),
@@ -831,7 +776,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
     }
 
@@ -840,41 +785,13 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
 
-        static_props.insert(
-            "bool_array".to_string(),
-            Property::BoolArray {
-                nullable: Some(false),
-                default: Some(vec![true, false, true]),
-            },
-        );
+        static_props.insert("bool_array".to_string(), Property::BoolArray { nullable: Some(false), default: Some(vec![true, false, true]) });
 
-        static_props.insert(
-            "int_array".to_string(),
-            Property::IntArray {
-                nullable: Some(false),
-                default: Some(vec![1, 2, 3]),
-                min: Some(0),
-                max: Some(100),
-            },
-        );
+        static_props.insert("int_array".to_string(), Property::IntArray { nullable: Some(false), default: Some(vec![1, 2, 3]), min: Some(0), max: Some(100) });
 
-        static_props.insert(
-            "float_array".to_string(),
-            Property::FloatArray {
-                nullable: Some(false),
-                default: Some(vec![1.5, 2.5, 3.5]),
-                min: Some(0.0),
-                max: Some(10.0),
-            },
-        );
+        static_props.insert("float_array".to_string(), Property::FloatArray { nullable: Some(false), default: Some(vec![1.5, 2.5, 3.5]), min: Some(0.0), max: Some(10.0) });
 
-        static_props.insert(
-            "string_array".to_string(),
-            Property::StringArray {
-                nullable: Some(false),
-                default: Some(vec!["a".to_string(), "b".to_string()]),
-            },
-        );
+        static_props.insert("string_array".to_string(), Property::StringArray { nullable: Some(false), default: Some(vec!["a".to_string(), "b".to_string()]) });
 
         let class = Class {
             name: "ArrayHolder".to_string(),
@@ -883,7 +800,7 @@ mod tests {
             dynamic_properties: None,
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
     }
 
@@ -891,15 +808,7 @@ mod tests {
     fn test_create_class_with_dynamic_properties() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert(
-            "pressure".to_string(),
-            Property::Float {
-                nullable: Some(false),
-                default: Some(0.0),
-                min: None,
-                max: None,
-            },
-        );
+        dynamic_props.insert("pressure".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: None, max: None });
 
         let class = Class {
             name: "DynamicSensor".to_string(),
@@ -908,7 +817,7 @@ mod tests {
             dynamic_properties: Some(dynamic_props),
         };
 
-        let result = kb.create_class(&class);
+        let result = kb.create_class(class);
         assert!(result.is_ok());
     }
 
@@ -922,8 +831,8 @@ mod tests {
             dynamic_properties: None,
         };
 
-        kb.create_class(&class).unwrap();
-        let result = kb.create_class(&class);
+        kb.create_class(class.clone()).unwrap();
+        let result = kb.create_class(class);
         assert!(result.is_err());
         match result {
             Err(KnowledgeBaseError::ClassAlreadyExists(_)) => (),
@@ -938,14 +847,9 @@ mod tests {
         let mut classes = HashSet::new();
         classes.insert("TestClass".to_string());
 
-        let object = Object {
-            id: None,
-            classes,
-            properties: None,
-            values: None,
-        };
+        let object = Object { id: None, classes, properties: None, values: None };
 
-        let result = kb.create_object(&object);
+        let result = kb.create_object(object);
         assert!(result.is_err());
     }
 
@@ -955,19 +859,13 @@ mod tests {
         let mut classes = HashSet::new();
         classes.insert("NonExistentClass".to_string());
 
-        let object = Object {
-            id: Some("obj1".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
+        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
 
-        let result = kb.create_object(&object);
+        let result = kb.create_object(object);
         assert!(result.is_err());
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue with object creation
     fn test_create_simple_object() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
@@ -976,25 +874,19 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("TestClass".to_string());
 
-        let object = Object {
-            id: Some("obj1".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
+        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
 
-        let result = kb.create_object(&object);
+        let result = kb.create_object(object);
         assert!(result.is_ok());
         assert_eq!(kb.get_objects().len(), 1);
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_get_object_by_id() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
@@ -1003,18 +895,13 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("TestClass".to_string());
 
-        let object = Object {
-            id: Some("obj1".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
-        kb.create_object(&object).unwrap();
+        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
+        kb.create_object(object).unwrap();
 
         let retrieved = kb.get_object("obj1");
         assert!(retrieved.is_some());
@@ -1022,7 +909,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_create_duplicate_object_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
@@ -1031,37 +917,23 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("TestClass".to_string());
 
-        let object = Object {
-            id: Some("obj1".to_string()),
-            classes: classes.clone(),
-            properties: None,
-            values: None,
-        };
+        let object = Object { id: Some("obj1".to_string()), classes: classes.clone(), properties: None, values: None };
 
-        kb.create_object(&object).unwrap();
-        let result = kb.create_object(&object);
+        kb.create_object(object.clone()).unwrap();
+        let result = kb.create_object(object);
         assert!(result.is_err());
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_create_object_with_static_properties() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "count".to_string(),
-            Property::Int {
-                nullable: Some(false),
-                default: Some(0),
-                min: None,
-                max: None,
-            },
-        );
+        static_props.insert("count".to_string(), Property::Int { nullable: Some(false), default: Some(0), min: None, max: None });
 
         let class = Class {
             name: "Counter".to_string(),
@@ -1069,7 +941,7 @@ mod tests {
             static_properties: Some(static_props),
             dynamic_properties: None,
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("Counter".to_string());
@@ -1077,31 +949,17 @@ mod tests {
         let mut properties = HashMap::new();
         properties.insert("count".to_string(), Value::Int(42));
 
-        let object = Object {
-            id: Some("counter1".to_string()),
-            classes,
-            properties: Some(properties),
-            values: None,
-        };
+        let object = Object { id: Some("counter1".to_string()), classes, properties: Some(properties), values: None };
 
-        let result = kb.create_object(&object);
+        let result = kb.create_object(object);
         assert!(result.is_ok());
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_create_object_with_dynamic_values() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert(
-            "temperature".to_string(),
-            Property::Float {
-                nullable: Some(false),
-                default: Some(20.0),
-                min: None,
-                max: None,
-            },
-        );
+        dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(20.0), min: None, max: None });
 
         let class = Class {
             name: "ThermometerDynamic".to_string(),
@@ -1109,25 +967,17 @@ mod tests {
             static_properties: None,
             dynamic_properties: Some(dynamic_props),
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("ThermometerDynamic".to_string());
 
         let mut values = HashMap::new();
-        values.insert(
-            "temperature".to_string(),
-            (Value::Float(25.5), Utc::now()),
-        );
+        values.insert("temperature".to_string(), (Value::Float(25.5), Utc::now()));
 
-        let object = Object {
-            id: Some("temp_sensor1".to_string()),
-            classes,
-            properties: None,
-            values: Some(values),
-        };
+        let object = Object { id: Some("temp_sensor1".to_string()), classes, properties: None, values: Some(values) };
 
-        let result = kb.create_object(&object);
+        let result = kb.create_object(object);
         assert!(result.is_ok());
     }
 
@@ -1141,19 +991,9 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
-        let mut classes = HashSet::new();
-        classes.insert("TestClass".to_string());
-
-        let object = Object {
-            id: Some("nonexistent".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
-
-        let result = kb.add_class(&object, &class);
+        let result = kb.add_class("nonexistent", "TestClass");
         assert!(result.is_err());
     }
 
@@ -1166,32 +1006,19 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("TestClass".to_string());
 
-        let object = Object {
-            id: Some("obj1".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
-        kb.create_object(&object).unwrap();
+        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
+        kb.create_object(object).unwrap();
 
-        let nonexistent_class = Class {
-            name: "NonExistentClass".to_string(),
-            parents: None,
-            static_properties: None,
-            dynamic_properties: None,
-        };
-
-        let result = kb.add_class(&object, &nonexistent_class);
+        let result = kb.add_class("obj1", &"NonExistentClass");
         assert!(result.is_err());
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_add_class_to_object() {
         let mut kb = CLIPSKnowledgeBase::new();
 
@@ -1208,21 +1035,16 @@ mod tests {
             dynamic_properties: None,
         };
 
-        kb.create_class(&class1).unwrap();
-        kb.create_class(&class2).unwrap();
+        kb.create_class(class1).unwrap();
+        kb.create_class(class2).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("Class1".to_string());
 
-        let object = Object {
-            id: Some("obj1".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
-        kb.create_object(&object).unwrap();
+        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
+        kb.create_object(object).unwrap();
 
-        let result = kb.add_class(&object, &class2);
+        let result = kb.add_class("obj1", "Class2");
         assert!(result.is_ok());
     }
 
@@ -1230,37 +1052,19 @@ mod tests {
     #[test]
     fn test_set_properties_on_nonexistent_object_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
-        let mut classes = HashSet::new();
-        classes.insert("NonExistent".to_string());
-
-        let object = Object {
-            id: Some("nonexistent".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
 
         let mut properties = HashMap::new();
         properties.insert("prop".to_string(), Value::Int(42));
 
-        let result = kb.set_properties(&object, properties);
+        let result = kb.set_properties("nonexistent", properties);
         assert!(result.is_err());
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_set_properties_on_object() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "value".to_string(),
-            Property::Int {
-                nullable: Some(false),
-                default: Some(0),
-                min: None,
-                max: None,
-            },
-        );
+        static_props.insert("value".to_string(), Property::Int { nullable: Some(false), default: Some(0), min: None, max: None });
 
         let class = Class {
             name: "Configurable".to_string(),
@@ -1268,23 +1072,18 @@ mod tests {
             static_properties: Some(static_props),
             dynamic_properties: None,
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("Configurable".to_string());
 
-        let object = Object {
-            id: Some("config1".to_string()),
-            classes: classes.clone(),
-            properties: None,
-            values: None,
-        };
-        kb.create_object(&object).unwrap();
+        let object = Object { id: Some("config1".to_string()), classes: classes.clone(), properties: None, values: None };
+        kb.create_object(object).unwrap();
 
         let mut properties = HashMap::new();
         properties.insert("value".to_string(), Value::Int(100));
 
-        let result = kb.set_properties(&object, properties);
+        let result = kb.set_properties("config1", properties);
         assert!(result.is_ok());
     }
 
@@ -1295,34 +1094,18 @@ mod tests {
         let mut classes = HashSet::new();
         classes.insert("NonExistent".to_string());
 
-        let object = Object {
-            id: Some("nonexistent".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
-
         let mut values = HashMap::new();
         values.insert("value".to_string(), Value::Float(1.0));
 
-        let result = kb.add_values(&object, values, Utc::now());
+        let result = kb.add_values("nonexistent", values, Utc::now());
         assert!(result.is_err());
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_add_values_to_object() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert(
-            "measurement".to_string(),
-            Property::Float {
-                nullable: Some(false),
-                default: Some(0.0),
-                min: None,
-                max: None,
-            },
-        );
+        dynamic_props.insert("measurement".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: None, max: None });
 
         let class = Class {
             name: "TimeSeries".to_string(),
@@ -1330,23 +1113,18 @@ mod tests {
             static_properties: None,
             dynamic_properties: Some(dynamic_props),
         };
-        kb.create_class(&class).unwrap();
+        kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
         classes.insert("TimeSeries".to_string());
 
-        let object = Object {
-            id: Some("ts1".to_string()),
-            classes: classes.clone(),
-            properties: None,
-            values: None,
-        };
-        kb.create_object(&object).unwrap();
+        let object = Object { id: Some("ts1".to_string()), classes: classes.clone(), properties: None, values: None };
+        kb.create_object(object).unwrap();
 
         let mut values = HashMap::new();
         values.insert("measurement".to_string(), Value::Float(42.5));
 
-        let result = kb.add_values(&object, values, Utc::now());
+        let result = kb.add_values("ts1", values, Utc::now());
         assert!(result.is_ok());
     }
 
@@ -1359,7 +1137,7 @@ mod tests {
             content: "(defrule test_rule (fact) => (assert (derived)))".to_string(),
         };
 
-        let result = kb.create_rule(&rule);
+        let result = kb.create_rule(rule);
         assert!(result.is_ok());
         assert_eq!(kb.get_rules().len(), 1);
     }
@@ -1372,7 +1150,7 @@ mod tests {
             content: "(defrule my_rule (fact) => (assert (result)))".to_string(),
         };
 
-        kb.create_rule(&rule).unwrap();
+        kb.create_rule(rule).unwrap();
         let retrieved = kb.get_rule("my_rule");
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().name, "my_rule");
@@ -1386,133 +1164,87 @@ mod tests {
             content: "(defrule duplicate_rule (fact) => (assert (result)))".to_string(),
         };
 
-        kb.create_rule(&rule).unwrap();
-        let result = kb.create_rule(&rule);
+        kb.create_rule(rule.clone()).unwrap();
+        let result = kb.create_rule(rule);
         assert!(result.is_err());
     }
 
     // Helper Function Tests
     #[test]
     fn test_get_default_bool_with_default() {
-        let property = Property::Bool {
-            nullable: Some(false),
-            default: Some(true),
-        };
+        let property = Property::Bool { nullable: Some(false), default: Some(true) };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::Bool(true)));
     }
 
     #[test]
     fn test_get_default_bool_nullable_without_default() {
-        let property = Property::Bool {
-            nullable: Some(true),
-            default: None,
-        };
+        let property = Property::Bool { nullable: Some(true), default: None };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::Null));
     }
 
     #[test]
     fn test_get_default_int_with_default() {
-        let property = Property::Int {
-            nullable: Some(false),
-            default: Some(42),
-            min: None,
-            max: None,
-        };
+        let property = Property::Int { nullable: Some(false), default: Some(42), min: None, max: None };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::Int(42)));
     }
 
     #[test]
     fn test_get_default_float_with_default() {
-        let property = Property::Float {
-            nullable: Some(false),
-            default: Some(3.14),
-            min: None,
-            max: None,
-        };
+        let property = Property::Float { nullable: Some(false), default: Some(3.14), min: None, max: None };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::Float(3.14)));
     }
 
     #[test]
     fn test_get_default_string_with_default() {
-        let property = Property::String {
-            nullable: Some(false),
-            default: Some("hello".to_string()),
-        };
+        let property = Property::String { nullable: Some(false), default: Some("hello".to_string()) };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::String("hello".to_string())));
     }
 
     #[test]
     fn test_get_default_symbol_with_default() {
-        let property = Property::Symbol {
-            nullable: Some(false),
-            default: Some("SYMBOL_VALUE".to_string()),
-            allowed_values: None,
-        };
+        let property = Property::Symbol { nullable: Some(false), default: Some("SYMBOL_VALUE".to_string()), allowed_values: None };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::Symbol("SYMBOL_VALUE".to_string())));
     }
 
     #[test]
     fn test_get_default_object_with_default() {
-        let property = Property::Object {
-            nullable: Some(false),
-            default: Some("obj_id".to_string()),
-            class: "MyClass".to_string(),
-        };
+        let property = Property::Object { nullable: Some(false), default: Some("obj_id".to_string()), class: "MyClass".to_string() };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::Object("obj_id".to_string())));
     }
 
     #[test]
     fn test_get_default_bool_array_with_default() {
-        let property = Property::BoolArray {
-            nullable: Some(false),
-            default: Some(vec![true, false]),
-        };
+        let property = Property::BoolArray { nullable: Some(false), default: Some(vec![true, false]) };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::BoolArray(vec![true, false])));
     }
 
     #[test]
     fn test_get_default_int_array_with_default() {
-        let property = Property::IntArray {
-            nullable: Some(false),
-            default: Some(vec![1, 2, 3]),
-            min: None,
-            max: None,
-        };
+        let property = Property::IntArray { nullable: Some(false), default: Some(vec![1, 2, 3]), min: None, max: None };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::IntArray(vec![1, 2, 3])));
     }
 
     #[test]
     fn test_get_default_float_array_with_default() {
-        let property = Property::FloatArray {
-            nullable: Some(false),
-            default: Some(vec![1.5, 2.5]),
-            min: None,
-            max: None,
-        };
+        let property = Property::FloatArray { nullable: Some(false), default: Some(vec![1.5, 2.5]), min: None, max: None };
         let default_val = get_default(&property);
         assert_eq!(default_val, Some(Value::FloatArray(vec![1.5, 2.5])));
     }
 
     #[test]
     fn test_get_default_string_array_with_default() {
-        let property = Property::StringArray {
-            nullable: Some(false),
-            default: Some(vec!["a".to_string(), "b".to_string()]),
-        };
+        let property = Property::StringArray { nullable: Some(false), default: Some(vec!["a".to_string(), "b".to_string()]) };
         let default_val = get_default(&property);
-        assert_eq!(
-            default_val,
-            Some(Value::StringArray(vec!["a".to_string(), "b".to_string()]))
-        );
+        assert_eq!(default_val, Some(Value::StringArray(vec!["a".to_string(), "b".to_string()])));
     }
 
     #[test]
@@ -1524,10 +1256,7 @@ mod tests {
         };
         let default_val = get_default(&property);
         // Note: SymbolArray returns StringArray due to the implementation
-        assert_eq!(
-            default_val,
-            Some(Value::StringArray(vec!["SYM1".to_string(), "SYM2".to_string()]))
-        );
+        assert_eq!(default_val, Some(Value::StringArray(vec!["SYM1".to_string(), "SYM2".to_string()])));
     }
 
     #[test]
@@ -1538,10 +1267,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::Bool {
-            nullable: Some(true),
-            default: Some(false),
-        };
+        let property = Property::Bool { nullable: Some(true), default: Some(false) };
 
         let template = prop_deftemplate(&class, "active", &property, true);
         assert!(template.contains("TestClass_active"));
@@ -1558,12 +1284,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::Int {
-            nullable: Some(false),
-            default: Some(50),
-            min: Some(0),
-            max: Some(100),
-        };
+        let property = Property::Int { nullable: Some(false), default: Some(50), min: Some(0), max: Some(100) };
 
         let template = prop_deftemplate(&class, "percentage", &property, true);
         assert!(template.contains("TestClass_percentage"));
@@ -1580,12 +1301,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::Float {
-            nullable: Some(false),
-            default: Some(1.5),
-            min: None,
-            max: None,
-        };
+        let property = Property::Float { nullable: Some(false), default: Some(1.5), min: None, max: None };
 
         let template = prop_deftemplate(&class, "metric", &property, false);
         assert!(template.contains("TestClass_metric"));
@@ -1605,11 +1321,7 @@ mod tests {
         allowed.insert("ON".to_string());
         allowed.insert("OFF".to_string());
 
-        let property = Property::Symbol {
-            nullable: Some(false),
-            default: Some("OFF".to_string()),
-            allowed_values: Some(allowed),
-        };
+        let property = Property::Symbol { nullable: Some(false), default: Some("OFF".to_string()), allowed_values: Some(allowed) };
 
         let template = prop_deftemplate(&class, "state", &property, true);
         assert!(template.contains("TestClass_state"));
@@ -1625,12 +1337,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::IntArray {
-            nullable: Some(false),
-            default: Some(vec![1, 2, 3]),
-            min: Some(0),
-            max: Some(10),
-        };
+        let property = Property::IntArray { nullable: Some(false), default: Some(vec![1, 2, 3]), min: Some(0), max: Some(10) };
 
         let template = prop_deftemplate(&class, "values", &property, true);
         assert!(template.contains("TestClass_values"));
@@ -1646,10 +1353,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::StringArray {
-            nullable: Some(true),
-            default: Some(vec!["item1".to_string(), "item2".to_string()]),
-        };
+        let property = Property::StringArray { nullable: Some(true), default: Some(vec!["item1".to_string(), "item2".to_string()]) };
 
         let template = prop_deftemplate(&class, "items", &property, true);
         assert!(template.contains("TestClass_items"));
@@ -1658,38 +1362,17 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_complex_workflow() {
         // Create a knowledge base
         let mut kb = CLIPSKnowledgeBase::new();
 
         // Create a class with mixed properties
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "name".to_string(),
-            Property::String {
-                nullable: Some(false),
-                default: Some("Unknown".to_string()),
-            },
-        );
-        static_props.insert(
-            "enabled".to_string(),
-            Property::Bool {
-                nullable: Some(false),
-                default: Some(true),
-            },
-        );
+        static_props.insert("name".to_string(), Property::String { nullable: Some(false), default: Some("Unknown".to_string()) });
+        static_props.insert("enabled".to_string(), Property::Bool { nullable: Some(false), default: Some(true) });
 
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert(
-            "reading".to_string(),
-            Property::Float {
-                nullable: Some(false),
-                default: Some(0.0),
-                min: None,
-                max: None,
-            },
-        );
+        dynamic_props.insert("reading".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: None, max: None });
 
         let class = Class {
             name: "Sensor".to_string(),
@@ -1699,17 +1382,14 @@ mod tests {
         };
 
         // Create the class
-        assert!(kb.create_class(&class).is_ok());
+        assert!(kb.create_class(class).is_ok());
 
         // Create an object
         let mut classes = HashSet::new();
         classes.insert("Sensor".to_string());
 
         let mut properties = HashMap::new();
-        properties.insert(
-            "name".to_string(),
-            Value::String("Temperature Sensor".to_string()),
-        );
+        properties.insert("name".to_string(), Value::String("Temperature Sensor".to_string()));
 
         let object = Object {
             id: Some("sensor1".to_string()),
@@ -1718,13 +1398,13 @@ mod tests {
             values: None,
         };
 
-        assert!(kb.create_object(&object).is_ok());
+        assert!(kb.create_object(object).is_ok());
 
         // Add a value
         let mut values = HashMap::new();
         values.insert("reading".to_string(), Value::Float(23.5));
 
-        assert!(kb.add_values(&object, values, Utc::now()).is_ok());
+        assert!(kb.add_values("sensor1", values, Utc::now()).is_ok());
 
         // Verify the setup
         assert_eq!(kb.get_classes().len(), 1);
@@ -1734,7 +1414,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_multiple_classes_and_objects() {
         let mut kb = CLIPSKnowledgeBase::new();
 
@@ -1746,7 +1425,7 @@ mod tests {
                 static_properties: None,
                 dynamic_properties: None,
             };
-            assert!(kb.create_class(&class).is_ok());
+            assert!(kb.create_class(class).is_ok());
         }
 
         // Create multiple objects for each class
@@ -1754,14 +1433,9 @@ mod tests {
             let mut classes = HashSet::new();
             classes.insert(format!("Class{}", i));
 
-            let object = Object {
-                id: Some(format!("obj{}", i)),
-                classes,
-                properties: None,
-                values: None,
-            };
+            let object = Object { id: Some(format!("obj{}", i)), classes, properties: None, values: None };
 
-            assert!(kb.create_object(&object).is_ok());
+            assert!(kb.create_object(object).is_ok());
         }
 
         assert_eq!(kb.get_classes().len(), 5);
@@ -1769,7 +1443,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_object_with_multiple_classes() {
         let mut kb = CLIPSKnowledgeBase::new();
 
@@ -1787,39 +1460,27 @@ mod tests {
             dynamic_properties: None,
         };
 
-        kb.create_class(&class1).unwrap();
-        kb.create_class(&class2).unwrap();
+        kb.create_class(class1).unwrap();
+        kb.create_class(class2).unwrap();
 
         // Create an object with both classes
         let mut classes = HashSet::new();
         classes.insert("Class1".to_string());
         classes.insert("Class2".to_string());
 
-        let object = Object {
-            id: Some("multi_obj".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
+        let object = Object { id: Some("multi_obj".to_string()), classes, properties: None, values: None };
 
-        assert!(kb.create_object(&object).is_ok());
+        assert!(kb.create_object(object).is_ok());
         let retrieved = kb.get_object("multi_obj").unwrap();
         assert_eq!(retrieved.classes.len(), 2);
     }
 
     #[test]
-    #[ignore] // CLIPS environment issue
     fn test_nullable_properties() {
         let mut kb = CLIPSKnowledgeBase::new();
 
         let mut static_props = HashMap::new();
-        static_props.insert(
-            "optional_field".to_string(),
-            Property::String {
-                nullable: Some(true),
-                default: None,
-            },
-        );
+        static_props.insert("optional_field".to_string(), Property::String { nullable: Some(true), default: None });
 
         let class = Class {
             name: "NullableClass".to_string(),
@@ -1828,19 +1489,14 @@ mod tests {
             dynamic_properties: None,
         };
 
-        assert!(kb.create_class(&class).is_ok());
+        assert!(kb.create_class(class).is_ok());
 
         let mut classes = HashSet::new();
         classes.insert("NullableClass".to_string());
 
-        let object = Object {
-            id: Some("nullable_obj".to_string()),
-            classes,
-            properties: None,
-            values: None,
-        };
+        let object = Object { id: Some("nullable_obj".to_string()), classes, properties: None, values: None };
 
-        assert!(kb.create_object(&object).is_ok());
+        assert!(kb.create_object(object).is_ok());
     }
 
     #[test]

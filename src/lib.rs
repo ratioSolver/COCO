@@ -21,8 +21,9 @@ impl<KB: KnowledgeBase, DB: Database> CoCo<KB, DB> {
 
     fn add_classes(&mut self, classes: Vec<Class>) {
         for class in classes {
-            self.knowledge_base.create_class(&class).unwrap_or_else(|e| {
-                eprintln!("Error adding class {}: {:?}", class.name, e);
+            let class_name = class.name.clone();
+            self.knowledge_base.create_class(class).unwrap_or_else(|e| {
+                eprintln!("Error adding class '{}' to knowledge base: {:?}", class_name, e);
             });
         }
     }

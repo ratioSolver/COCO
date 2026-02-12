@@ -75,8 +75,8 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 return Err(KnowledgeBaseError::ObjectAlreadyExists(id.clone()));
             }
             let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
-            for class in &object.classes {
-                if let Some(class) = self.classes.get(class) {
+            for class_name in &object.classes {
+                if let Some(class) = self.classes.get(class_name) {
                     let fb = env.fact_builder(&class.name).unwrap().put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
                     let fact = env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
                     self.instances.entry(class.name.clone()).or_insert_with(HashMap::new).insert(id.clone(), fact);
@@ -109,7 +109,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                         }
                     }
                 } else {
-                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class, id)));
+                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
                 }
             }
             self.objects.insert(id.clone(), object.clone());
@@ -117,6 +117,110 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             return Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()));
         }
         Ok(())
+    }
+
+    fn add_class(&mut self, object: &Object, class: &Class) -> Result<(), KnowledgeBaseError> {
+        if let Some(id) = &object.id {
+            if !self.objects.contains_key(id) {
+                return Err(KnowledgeBaseError::ObjectNotFound(id.clone()));
+            }
+            if !self.classes.contains_key(&class.name) {
+                return Err(KnowledgeBaseError::ClassNotFound(class.name.clone()));
+            }
+            let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+            let fb = env.fact_builder(&class.name).unwrap().put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
+            let fact = env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
+            self.instances.entry(class.name.clone()).or_insert_with(HashMap::new).insert(id.clone(), fact);
+
+            if let Some(static_props) = &class.static_properties {
+                for (name, prop) in static_props {
+                    let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, id, e)))?;
+                    if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
+                        let fb = set_prop(&env, fb, prop, v.clone(), None)?;
+                        env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, id, e)))?;
+                    } else if let Some(def) = get_default(prop) {
+                        let fb = set_prop(&env, fb, prop, def.clone(), None)?;
+                        env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, id, e)))?;
+                    }
+                }
+            }
+
+            if let Some(dynamic_props) = &class.dynamic_properties {
+                for (name, prop) in dynamic_props {
+                    if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
+                        let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
+                        let fb = set_prop(&env, fb, prop, v.0.clone(), Some(v.1))?;
+                        env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
+                    } else if let Some(def) = get_default(prop) {
+                        // If the object doesn't have a value for this dynamic property, but there is a default, we should use the default
+                        let fb = env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
+                        let fb = set_prop(&env, fb, prop, def.clone(), Some(Utc::now()))?;
+                        env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, id, e)))?;
+                    }
+                }
+            }
+            Ok(())
+        } else {
+            Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))
+        }
+    }
+
+    fn set_properties(&mut self, object: &Object, properties: HashMap<String, Value>) -> Result<(), KnowledgeBaseError> {
+        if let Some(id) = &object.id {
+            if !self.objects.contains_key(id) {
+                return Err(KnowledgeBaseError::ObjectNotFound(id.clone()));
+            }
+            let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+            for class_name in &object.classes {
+                if let Some(class) = self.classes.get(class_name) {
+                    if let Some(static_props) = &class.static_properties {
+                        for (name, prop) in static_props {
+                            if let Some(v) = properties.get(name) {
+                                let fact = self.instances.get(class_name).and_then(|insts| insts.get(id)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Instance of class {} for object {} not found", class_name, id)))?;
+                                let fm = env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", id, e)))?;
+                                let fm = update_prop(&env, fm, prop, v.clone(), None)?;
+                                let fact = env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for property {} of object {}: {}", name, id, e)))?;
+                                self.instances.get_mut(class_name).and_then(|insts| insts.insert(id.clone(), fact));
+                            }
+                        }
+                    }
+                } else {
+                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
+                }
+            }
+            Ok(())
+        } else {
+            Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))
+        }
+    }
+
+    fn add_values(&mut self, object: &Object, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), KnowledgeBaseError> {
+        if let Some(id) = &object.id {
+            if !self.objects.contains_key(id) {
+                return Err(KnowledgeBaseError::ObjectNotFound(id.clone()));
+            }
+            let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
+            for class_name in &object.classes {
+                if let Some(class) = self.classes.get(class_name) {
+                    if let Some(dynamic_props) = &class.dynamic_properties {
+                        for (name, prop) in dynamic_props {
+                            if let Some(v) = values.get(name) {
+                                let fact = self.instances.get(class_name).and_then(|insts| insts.get(id)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Instance of class {} for object {} not found", class_name, id)))?;
+                                let fm = env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", id, e)))?;
+                                let fm = update_prop(&env, fm, prop, v.clone(), Some(date_time))?;
+                                let fact = env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, id, e)))?;
+                                self.instances.get_mut(class_name).and_then(|insts| insts.insert(id.clone(), fact));
+                            }
+                        }
+                    }
+                } else {
+                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
+                }
+            }
+            Ok(())
+        } else {
+            Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))
+        }
     }
 }
 

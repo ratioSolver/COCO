@@ -17,6 +17,12 @@ pub struct CLIPSKnowledgeBase {
 unsafe impl Send for CLIPSKnowledgeBase {}
 unsafe impl Sync for CLIPSKnowledgeBase {}
 
+impl Default for CLIPSKnowledgeBase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CLIPSKnowledgeBase {
     pub fn new() -> Self {
         let mut env = Environment::new().expect("Failed to create CLIPS environment");
@@ -79,7 +85,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 if let Some(class) = self.classes.get(class_name) {
                     let fb = env.fact_builder(&class.name).unwrap().put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
                     let fact = env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
-                    self.instances.entry(class.name.clone()).or_insert_with(HashMap::new).insert(id.clone(), fact);
+                    self.instances.entry(class.name.clone()).or_default().insert(id.clone(), fact);
 
                     if let Some(static_props) = &class.static_properties {
                         for (name, prop) in static_props {
@@ -130,7 +136,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
             let fb = env.fact_builder(&class.name).unwrap().put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
             let fact = env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
-            self.instances.entry(class.name.clone()).or_insert_with(HashMap::new).insert(id.clone(), fact);
+            self.instances.entry(class.name.clone()).or_default().insert(id.clone(), fact);
 
             if let Some(static_props) = &class.static_properties {
                 for (name, prop) in static_props {

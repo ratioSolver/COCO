@@ -17,7 +17,6 @@ pub mod kb;
 pub mod model;
 
 pub struct CoCo {
-    db: Arc<dyn Database>,
     kb_tx: mpsc::Sender<KbCommand>,
     event_tx: broadcast::Sender<CoCoEvent>,
 }
@@ -91,7 +90,7 @@ impl CoCo {
         let _ = kb_tx.send(KbCommand::InitData { classes, objects, rules, resp: resp_tx }).await;
         let _ = resp_rx.await;
 
-        CoCo { db, kb_tx, event_tx }
+        CoCo { kb_tx, event_tx }
     }
 
     pub fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {

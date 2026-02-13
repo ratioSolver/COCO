@@ -239,7 +239,7 @@ pub enum CoCoEvent {
     UpdatedProperties(String, HashMap<String, Value>),            // (object_id, properties)
     AddedValues(String, HashMap<String, Value>, DateTime<Utc>),   // (object_id, value, date_time)
     PendingValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
-    RuleCreated(Rule),
+    RuleCreated(String),                                          // rule_name
 }
 
 impl Display for CoCoEvent {

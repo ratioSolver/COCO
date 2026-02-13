@@ -295,16 +295,14 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn create_rule(&mut self, rule: Rule) -> Result<(), KnowledgeBaseError> {
-        if self.rules.contains_key(&rule.name) {
-            return Err(KnowledgeBaseError::KBError(format!("Rule {} already exists", rule.name)));
+        let rule_name = rule.name.clone();
+        if self.rules.contains_key(&rule_name) {
+            return Err(KnowledgeBaseError::KBError(format!("Rule {} already exists", rule_name)));
         }
         self.env.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
-        if self.sender.receiver_count() == 0 {
-            self.rules.insert(rule.name.clone(), rule);
-        } else {
-            self.rules.insert(rule.name.clone(), rule.clone());
-            let _ = self.sender.send(CoCoEvent::RuleCreated(rule));
-        }
+
+        self.rules.insert(rule_name.clone(), rule);
+        let _ = self.sender.send(CoCoEvent::RuleCreated(rule_name));
         Ok(())
     }
 

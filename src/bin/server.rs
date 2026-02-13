@@ -220,12 +220,12 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
         println!("Sending WebSocket message: {:?}", msg);
         match msg {
             CoCoEvent::ClassCreated(class_name) => {
-                let mut update_msg = serde_json::to_value(&class_name).unwrap();
+                let mut update_msg = serde_json::to_value(coco.get_class(&class_name).await).unwrap();
                 update_msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::json!("class_created"));
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
             CoCoEvent::ObjectCreated(object_id) => {
-                let mut update_msg = serde_json::to_value(&object_id).unwrap();
+                let mut update_msg = serde_json::to_value(coco.get_object(&object_id).await).unwrap();
                 update_msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::json!("object_created"));
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
@@ -255,7 +255,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
             CoCoEvent::RuleCreated(rule) => {
-                let mut update_msg = serde_json::to_value(&rule).unwrap();
+                let mut update_msg = serde_json::to_value(coco.get_rule(&rule).await).unwrap();
                 update_msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::json!("rule_created"));
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }

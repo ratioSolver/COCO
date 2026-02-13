@@ -82,7 +82,7 @@ impl CLIPSKnowledgeBase {
                             DateTime::<Utc>::from_timestamp(dt, 0).expect("Failed to convert date_time argument in add-data UDF")
                         })
                         .unwrap_or(Utc::now());
-                    let values = args.into_iter().zip(vals.into_iter()).collect::<HashMap<_, _>>();
+                    let values = args.into_iter().zip(vals).collect::<HashMap<_, _>>();
                     let _ = add_data_sender.send(CoCoEvent::PendingValues(object_id, values, date_time));
                     ClipsValue::Void()
                 })

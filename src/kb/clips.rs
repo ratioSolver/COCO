@@ -108,12 +108,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         self.sender.clone()
     }
 
-    fn get_classes(&self) -> Vec<&Class> {
-        self.classes.values().collect()
+    fn get_classes(&self) -> Vec<Class> {
+        self.classes.values().cloned().collect()
     }
 
-    fn get_class(&self, name: &str) -> Option<&Class> {
-        self.classes.get(name)
+    fn get_class(&self, name: &str) -> Option<Class> {
+        self.classes.get(name).cloned()
     }
 
     fn create_class(&mut self, class: Class) -> Result<(), KnowledgeBaseError> {
@@ -138,12 +138,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         Ok(())
     }
 
-    fn get_objects(&self) -> Vec<&Object> {
-        self.objects.values().collect()
+    fn get_objects(&self) -> Vec<Object> {
+        self.objects.values().cloned().collect()
     }
 
-    fn get_object(&self, id: &str) -> Option<&Object> {
-        self.objects.get(id)
+    fn get_object(&self, id: &str) -> Option<Object> {
+        self.objects.get(id).cloned()
     }
 
     fn create_object(&mut self, object: Object) -> Result<(), KnowledgeBaseError> {
@@ -286,12 +286,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         Ok(())
     }
 
-    fn get_rules(&self) -> Vec<&Rule> {
-        self.rules.values().collect()
+    fn get_rules(&self) -> Vec<Rule> {
+        self.rules.values().cloned().collect()
     }
 
-    fn get_rule(&self, name: &str) -> Option<&Rule> {
-        self.rules.get(name)
+    fn get_rule(&self, name: &str) -> Option<Rule> {
+        self.rules.get(name).cloned()
     }
 
     fn create_rule(&mut self, rule: Rule) -> Result<(), KnowledgeBaseError> {

@@ -232,8 +232,8 @@ impl Display for Rule {
 
 #[derive(Clone, Debug)]
 pub enum CoCoEvent {
-    ClassCreated(Class),
-    ObjectCreated(Object),
+    ClassCreated(String),                                       // class_name
+    ObjectCreated(String),                                      // object_id
     AddedClass(String, String),                                 // (object_id, class_name)
     UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
     AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)

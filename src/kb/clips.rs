@@ -42,9 +42,6 @@ impl CLIPSKnowledgeBase {
             let add_data_sender = sender.clone();
             kb.env
                 .add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], move |_env, ctx| {
-                    if add_data_sender.receiver_count() == 0 {
-                        return ClipsValue::Void();
-                    }
                     let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-data UDF");
                     let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-data UDF") };
                     let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get args argument for add-data UDF");
@@ -92,9 +89,6 @@ impl CLIPSKnowledgeBase {
             let add_class_sender = sender.clone();
             kb.env
                 .add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], move |_env, ctx| {
-                    if add_class_sender.receiver_count() == 0 {
-                        return ClipsValue::Void();
-                    }
                     let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-class UDF");
                     let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-class UDF") };
                     let class_name = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get class name argument for add-class UDF");
@@ -118,7 +112,8 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn create_class(&mut self, class: Class) -> Result<(), KnowledgeBaseError> {
-        if self.classes.contains_key(&class.name) {
+        let class_name = class.name.clone();
+        if self.classes.contains_key(&class_name) {
             return Err(KnowledgeBaseError::ClassAlreadyExists(class.name.clone()));
         }
         self.env.build(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create class in CLIPS: {}", e)))?;
@@ -132,12 +127,8 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 self.env.build(prop_deftemplate(&class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
             }
         }
-        if self.sender.receiver_count() == 0 {
-            self.classes.insert(class.name.clone(), class);
-        } else {
-            self.classes.insert(class.name.clone(), class.clone());
-            let _ = self.sender.send(CoCoEvent::ClassCreated(class));
-        }
+        self.classes.insert(class_name.clone(), class);
+        let _ = self.sender.send(CoCoEvent::ClassCreated(class_name));
         Ok(())
     }
 
@@ -150,61 +141,54 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn create_object(&mut self, object: Object) -> Result<(), KnowledgeBaseError> {
-        if let Some(id) = &object.id {
-            if self.objects.contains_key(id) {
-                return Err(KnowledgeBaseError::ObjectAlreadyExists(id.clone()));
-            }
-            for class_name in &object.classes {
-                if let Some(class) = self.classes.get(class_name) {
-                    let fb = self.env.fact_builder(&class.name).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for class {}: {}", class_name, e)))?;
-                    let fb = fb.put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
-                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
-                    self.instances.entry(class.name.clone()).or_default().insert(id.clone(), fact);
-
-                    if let Some(static_props) = &class.static_properties {
-                        for (name, prop) in static_props {
-                            let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, id, e)))?;
-                            let fb = fb.put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for property {} of object {}: {}", name, id, e)))?;
-                            if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
-                                let fb: FactBuilder = set_prop(&self.env, fb, prop, v.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set property {} for object {}: {:#?}", name, id, e)))?;
-                                let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, id, e)))?;
-                                self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
-                            } else if let Some(def) = get_default(prop) {
-                                let fb = set_prop(&self.env, fb, prop, def.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for property {} of object {}: {:#?}", name, id, e)))?;
-                                let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, id, e)))?;
-                                self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
-                            }
-                        }
-                    }
-
-                    if let Some(dynamic_props) = &class.dynamic_properties {
-                        for (name, prop) in dynamic_props {
-                            let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
-                            let fb = fb.put_symbol("id", id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for dynamic property {} of object {}: {}", name, id, e)))?;
-                            if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
-                                let fb = set_prop(&self.env, fb, prop, v.0.clone(), Some(v.1)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, id, e)))?;
-                                let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
-                                self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
-                            } else if let Some(def) = get_default(prop) {
-                                let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now())).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for dynamic property {} of object {}: {:#?}", name, id, e)))?;
-                                let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, id, e)))?;
-                                self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
-                            }
-                        }
-                    }
-                } else {
-                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
-                }
-            }
-            if self.sender.receiver_count() == 0 {
-                self.objects.insert(id.clone(), object);
-            } else {
-                self.objects.insert(id.clone(), object.clone());
-                let _ = self.sender.send(CoCoEvent::ObjectCreated(object));
-            }
-        } else {
-            return Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()));
+        let id = object.id.clone().ok_or_else(|| KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))?;
+        if self.objects.contains_key(&id) {
+            return Err(KnowledgeBaseError::ObjectAlreadyExists(id.clone()));
         }
+        for class_name in object.classes.iter() {
+            if let Some(class) = self.classes.get(class_name.as_str()) {
+                let fb = self.env.fact_builder(&class.name).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for class {}: {}", class_name, e)))?;
+                let fb = fb.put_symbol("id", id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
+                let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
+                self.instances.entry(class.name.clone()).or_default().insert(id.clone(), fact);
+
+                if let Some(static_props) = &class.static_properties {
+                    for (name, prop) in static_props {
+                        let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, id, e)))?;
+                        let fb = fb.put_symbol("id", id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for property {} of object {}: {}", name, id, e)))?;
+                        if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
+                            let fb: FactBuilder = set_prop(&self.env, fb, prop, v.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set property {} for object {}: {:#?}", name, id, e)))?;
+                            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, id, e)))?;
+                            self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
+                        } else if let Some(def) = get_default(prop) {
+                            let fb = set_prop(&self.env, fb, prop, def.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for property {} of object {}: {:#?}", name, id, e)))?;
+                            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, id, e)))?;
+                            self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
+                        }
+                    }
+                }
+
+                if let Some(dynamic_props) = &class.dynamic_properties {
+                    for (name, prop) in dynamic_props {
+                        let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
+                        let fb = fb.put_symbol("id", id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for dynamic property {} of object {}: {}", name, id, e)))?;
+                        if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
+                            let fb = set_prop(&self.env, fb, prop, v.0.clone(), Some(v.1)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, id, e)))?;
+                            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
+                            self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
+                        } else if let Some(def) = get_default(prop) {
+                            let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now())).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for dynamic property {} of object {}: {:#?}", name, id, e)))?;
+                            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, id, e)))?;
+                            self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
+                        }
+                    }
+                }
+            } else {
+                return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
+            }
+        }
+        self.objects.insert(id.clone(), object);
+        let _ = self.sender.send(CoCoEvent::ObjectCreated(id));
         Ok(())
     }
 

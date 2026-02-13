@@ -42,6 +42,7 @@ impl CLIPSKnowledgeBase {
             let add_data_sender = sender.clone();
             kb.env
                 .add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], move |_env, ctx| {
+                    println!("add-data UDF called with {} arguments", ctx.has_next_argument());
                     let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-data UDF");
                     let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-data UDF") };
                     let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get args argument for add-data UDF");
@@ -128,6 +129,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         }
         if let Some(dynamic_props) = &class.dynamic_properties {
             for (name, prop) in dynamic_props {
+                println!("Creating deftemplate {}", prop_deftemplate(&class, name, prop, false));
                 self.env.build(prop_deftemplate(&class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
             }
         }
@@ -179,6 +181,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                         if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
                             let fb = set_prop(&self.env, fb, prop, v.0.clone(), Some(v.1)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, id, e)))?;
                             let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
+                            println!("Asserted fact for dynamic property {} of object {}: {}", name, id, fact);
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
                         } else if let Some(def) = get_default(prop) {
                             let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now())).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for dynamic property {} of object {}: {:#?}", name, id, e)))?;
@@ -208,10 +211,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, object_id, e)))?;
                 if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
                     let fb = set_prop(&self.env, fb, prop, v.clone(), None)?;
-                    self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
+                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
+                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
                 } else if let Some(def) = get_default(prop) {
                     let fb = set_prop(&self.env, fb, prop, def.clone(), None)?;
-                    self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
+                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
+                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
                 }
             }
         }
@@ -221,18 +226,17 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
                     let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
                     let fb = set_prop(&self.env, fb, prop, v.0.clone(), Some(v.1))?;
-                    self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
                 } else if let Some(def) = get_default(prop) {
-                    // If the object doesn't have a value for this dynamic property, but there is a default, we should use the default
                     let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
                     let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now()))?;
-                    self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
                 }
             }
         }
-        if self.sender.receiver_count() > 0 {
-            let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
-        }
+        let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
         Ok(())
     }
 
@@ -246,8 +250,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                             let fact = self.values.get(class_name).and_then(|objs| objs.get(object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for property {} of object {} of class {} not found", name, object_id, class_name)))?;
                             let fm = self.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
                             let fm = update_prop(&self.env, fm, prop, v.clone(), None)?;
-                            let fact = self.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for property {} of object {}: {}", name, object_id, e)))?;
-                            self.instances.get_mut(class_name).and_then(|insts| insts.insert(object_id.to_string(), fact));
+                            self.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for property {} of object {}: {}", name, object_id, e)))?;
                         }
                     }
                 }
@@ -255,9 +258,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
             }
         }
-        if self.sender.receiver_count() > 0 {
-            let _ = self.sender.send(CoCoEvent::UpdatedProperties(object_id.to_string(), properties));
-        }
+        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object_id.to_string(), properties));
         Ok(())
     }
 
@@ -271,8 +272,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                             let fact = self.values.get(class_name).and_then(|objs| objs.get(object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for dynamic property {} of object {} of class {} not found", name, object_id, class_name)))?;
                             let fm = self.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
                             let fm = update_prop(&self.env, fm, prop, v.clone(), Some(date_time))?;
-                            let fact = self.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
-                            self.instances.get_mut(class_name).and_then(|insts| insts.insert(object_id.to_string(), fact));
+                            self.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
                         }
                     }
                 }
@@ -1608,5 +1608,141 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
         // Just test that run doesn't panic
         assert!(kb.run().is_ok());
+    }
+
+    #[test]
+    fn test_dynamic_property_with_rule_threshold() {
+        // Create a knowledge base
+        let mut kb = CLIPSKnowledgeBase::new();
+
+        // Create a class with a dynamic property (temperature monitoring)
+        let mut dynamic_props = HashMap::new();
+        dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(20.0), min: None, max: None });
+
+        let class = Class {
+            name: "ThermometerMonitor".to_string(),
+            parents: None,
+            static_properties: None,
+            dynamic_properties: Some(dynamic_props),
+        };
+
+        // Create the class
+        assert!(kb.create_class(class).is_ok());
+
+        // Create an object for temperature monitoring
+        let mut classes = HashSet::new();
+        classes.insert("ThermometerMonitor".to_string());
+
+        let object = Object { id: Some("thermo1".to_string()), classes, properties: None, values: None };
+
+        assert!(kb.create_object(object).is_ok());
+
+        // Register a rule that triggers when temperature exceeds threshold (30 degrees)
+        // When triggered, it will call the add-data UDF with existing dynamic properties
+        // add-data signature: (add-data object-id param-names-multifield param-values-multifield [timestamp])
+        let rule = Rule {
+            name: "temperature_alert_rule".to_string(),
+            content: "(defrule temperature_alert_rule
+                (ThermometerMonitor_temperature (id ?id) (value ?temp&:(> ?temp 35)))
+                =>
+                (add-data ?id (create$ temperature) (create$ 99.9))
+            )"
+            .to_string(),
+        };
+
+        assert!(kb.create_rule(rule).is_ok());
+
+        // Initial values - set temperature below threshold (should not trigger rule)
+        let mut values = HashMap::new();
+        values.insert("temperature".to_string(), Value::Float(25.0));
+        assert!(kb.add_values("thermo1", values, Utc::now()).is_ok());
+
+        // Run the knowledge base with low temperature
+        assert!(kb.run().is_ok());
+
+        // Now update temperature to exceed threshold (should trigger rule)
+        let mut values_high = HashMap::new();
+        values_high.insert("temperature".to_string(), Value::Float(35.0));
+        assert!(kb.add_values("thermo1", values_high, Utc::now()).is_ok());
+
+        // Run the knowledge base again - this should trigger the rule and call add-data UDF
+        assert!(kb.run().is_ok());
+
+        // Verify the object still exists after rule execution
+        assert_eq!(kb.get_object("thermo1").is_some(), true);
+
+        // Verify the rule exists
+        assert_eq!(kb.get_rule("temperature_alert_rule").is_some(), true);
+    }
+
+    #[test]
+    fn test_multiple_dynamic_properties_with_multiple_rules() {
+        // Create a knowledge base
+        let mut kb = CLIPSKnowledgeBase::new();
+
+        // Create a complex sensor class with multiple dynamic properties
+        let mut dynamic_props = HashMap::new();
+        dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(20.0), min: None, max: None });
+        dynamic_props.insert("humidity".to_string(), Property::Float { nullable: Some(false), default: Some(50.0), min: None, max: None });
+        dynamic_props.insert("pressure".to_string(), Property::Float { nullable: Some(false), default: Some(1013.0), min: None, max: None });
+
+        let class = Class {
+            name: "EnvironmentalSensor".to_string(),
+            parents: None,
+            static_properties: None,
+            dynamic_properties: Some(dynamic_props),
+        };
+
+        assert!(kb.create_class(class).is_ok());
+
+        // Create an object
+        let mut classes = HashSet::new();
+        classes.insert("EnvironmentalSensor".to_string());
+
+        let object = Object { id: Some("env_sensor1".to_string()), classes, properties: None, values: None };
+
+        assert!(kb.create_object(object).is_ok());
+
+        // Register rule for temperature threshold - calls add-data UDF to update the temperature parameter
+        // add-data takes: object_id, param-names (multifield), param-values (multifield)
+        let temp_rule = Rule {
+            name: "high_temperature_alert".to_string(),
+            content: "(defrule high_temperature_alert
+                (EnvironmentalSensor_temperature (id ?id) (value ?temp&:(> ?temp 35)))
+                =>
+                (add-data ?id (create$ temperature) (create$ ?temp))
+            )"
+            .to_string(),
+        };
+
+        assert!(kb.create_rule(temp_rule).is_ok());
+
+        // Register rule for humidity threshold - uses add-data UDF to update humidity parameter
+        let humidity_rule = Rule {
+            name: "high_humidity_alert".to_string(),
+            content: "(defrule high_humidity_alert
+                (EnvironmentalSensor_humidity (id ?id) (value ?humid&:(> ?humid 80)))
+                =>
+                (add-data ?id (create$ humidity) (create$ ?humid))
+            )"
+            .to_string(),
+        };
+
+        assert!(kb.create_rule(humidity_rule).is_ok());
+
+        // Update all properties with values that trigger both rules
+        let mut values = HashMap::new();
+        values.insert("temperature".to_string(), Value::Float(40.0)); // Exceeds 35 threshold
+        values.insert("humidity".to_string(), Value::Float(85.0)); // Exceeds 80 threshold
+        values.insert("pressure".to_string(), Value::Float(1020.0)); // Normal
+
+        assert!(kb.add_values("env_sensor1", values, Utc::now()).is_ok());
+
+        // Run the knowledge base - both rules should trigger
+        assert!(kb.run().is_ok());
+
+        // Verify both rules exist
+        assert_eq!(kb.get_rule("high_temperature_alert").is_some(), true);
+        assert_eq!(kb.get_rule("high_humidity_alert").is_some(), true);
     }
 }

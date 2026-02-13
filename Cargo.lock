@@ -252,7 +252,7 @@ dependencies = [
 [[package]]
 name = "clips"
 version = "0.1.0"
-source = "git+https://github.com/ratioSolver/rust-clips#ba13d8919781dcb459576d35a686580d53e4c7a6"
+source = "git+https://github.com/ratioSolver/rust-clips#3d0dde6630049dd4a9c458bf3c5561250d2e481c"
 dependencies = [
  "clips-sys",
 ]
@@ -260,7 +260,7 @@ dependencies = [
 [[package]]
 name = "clips-sys"
 version = "0.1.0"
-source = "git+https://github.com/ratioSolver/rust-clips#ba13d8919781dcb459576d35a686580d53e4c7a6"
+source = "git+https://github.com/ratioSolver/rust-clips#3d0dde6630049dd4a9c458bf3c5561250d2e481c"
 dependencies = [
  "bindgen",
  "cc",

@@ -98,6 +98,28 @@ impl CLIPSKnowledgeBase {
                     ClipsValue::Void()
                 })
                 .expect("Failed to add UDF to CLIPS environment");
+            let llm_sender = sender.clone();
+            kb.env
+                .add_udf("llm", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
+                    let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for llm UDF");
+                    let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in llm UDF") };
+                    let message = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get message argument for llm UDF");
+                    let message = if let ClipsValue::String(s) = message { s } else { panic!("Expected string for message argument in llm UDF") };
+                    let _ = llm_sender.send(CoCoEvent::LLMMessage(object_id, message));
+                    ClipsValue::Void()
+                })
+                .expect("Failed to add UDF to CLIPS environment");
+            let fcm_sender = sender.clone();
+            kb.env
+                .add_udf("fcm", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
+                    let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for fcm UDF");
+                    let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in fcm UDF") };
+                    let message = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get message argument for fcm UDF");
+                    let message = if let ClipsValue::String(s) = message { s } else { panic!("Expected string for message argument in fcm UDF") };
+                    let _ = fcm_sender.send(CoCoEvent::FCMMessage(object_id, message));
+                    ClipsValue::Void()
+                })
+                .expect("Failed to add UDF to CLIPS environment");
         }
         kb
     }

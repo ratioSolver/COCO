@@ -261,21 +261,29 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
 
 async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, event_tx: &broadcast::Sender<CoCoEvent>) {
     match event {
-        CoCoEvent::PendingClass(object, class) => {
-            db.add_class(&object, &class).await.unwrap_or_else(|e| {
-                eprintln!("Error adding class '{}' to object '{}' in database: {:?}", class, object, e);
+        CoCoEvent::PendingClass(object_id, class_name) => {
+            db.add_class(&object_id, &class_name).await.unwrap_or_else(|e| {
+                eprintln!("Error adding class '{}' to object '{}' in database: {:?}", class_name, object_id, e);
             });
-            if let Err(e) = kb.add_class(&object, &class) {
-                eprintln!("Error adding class '{}' to object '{}' in knowledge base: {:?}", class, object, e);
+            if let Err(e) = kb.add_class(&object_id, &class_name) {
+                eprintln!("Error adding class '{}' to object '{}' in knowledge base: {:?}", class_name, object_id, e);
             }
         }
-        CoCoEvent::PendingValues(object, values, date_time) => {
-            db.add_data(&object, &values, &date_time).await.unwrap_or_else(|e| {
-                eprintln!("Error adding values to object '{}' in database: {:?}", object, e);
+        CoCoEvent::PendingValues(object_id, values, date_time) => {
+            db.add_data(&object_id, &values, &date_time).await.unwrap_or_else(|e| {
+                eprintln!("Error adding values to object '{}' in database: {:?}", object_id, e);
             });
-            if let Err(e) = kb.add_values(&object, values, date_time) {
-                eprintln!("Error adding values to object '{}' in knowledge base: {:?}", object, e);
+            if let Err(e) = kb.add_values(&object_id, values, date_time) {
+                eprintln!("Error adding values to object '{}' in knowledge base: {:?}", object_id, e);
             }
+        }
+        CoCoEvent::LLMMessage(object_id, message) => {
+            // For LLM messages, we just log them for now. In a real implementation, you might want to handle them differently.
+            println!("Received LLM message for object '{}': {}", object_id, message);
+        }
+        CoCoEvent::FCMMessage(object_id, message) => {
+            // For FCM messages, we just log them for now. In a real implementation, you might want to handle them differently.
+            println!("Received FCM message for object '{}': {}", object_id, message);
         }
         _ => {
             let _ = event_tx.send(event);

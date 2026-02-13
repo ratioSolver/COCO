@@ -134,13 +134,13 @@ async fn get_object(Path(id): Path<String>, State(coco): State<Arc<CoCo>>) -> im
         description = "Create a new object in the knowledge base.",
         request_body = Object,
         responses(
-            (status = 201, description = "Object created successfully"),
+            (status = 201, description = "Object created successfully", body = String),
             (status = 500, description = "Failed to create object")
         )
     )]
 async fn create_object(State(coco): State<Arc<CoCo>>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
     match coco.create_object(object).await {
-        Ok(_) => StatusCode::CREATED.into_response(),
+        Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create object: {}", e)).into_response(),
     }
 }

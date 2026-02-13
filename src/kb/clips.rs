@@ -129,7 +129,6 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         }
         if let Some(dynamic_props) = &class.dynamic_properties {
             for (name, prop) in dynamic_props {
-                println!("Creating deftemplate {}", prop_deftemplate(&class, name, prop, false));
                 self.env.build(prop_deftemplate(&class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
             }
         }

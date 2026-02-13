@@ -13,15 +13,14 @@ use coco::{
     model::{Class, CoCoEvent, Object},
 };
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tower_http::services::{ServeDir, ServeFile};
 use utoipa::OpenApi;
 
 #[tokio::main]
 async fn main() {
     let db = Arc::new(coco::db::mongodb::MongoDB::new("coco_db", "mongodb://localhost:27017").await.unwrap());
-    let kb = Arc::new(coco::kb::clips::CLIPSKnowledgeBase::new());
-    let coco = Arc::new(RwLock::new(CoCo::new(db, kb).await));
+    let kb = Box::new(coco::kb::clips::CLIPSKnowledgeBase::new());
+    let coco = Arc::new(CoCo::new(db, kb).await);
 
     let app = Router::new();
     let app = app.route("/ws", get(ws_handler));
@@ -47,8 +46,8 @@ async fn main() {
             (status = 200, description = "List of classes", body = [Class])
         )
     )]
-async fn get_classes(State(coco): State<Arc<RwLock<CoCo>>>) -> impl IntoResponse {
-    axum::Json(coco.read().await.get_classes())
+async fn get_classes(State(coco): State<Arc<CoCo>>) -> impl IntoResponse {
+    axum::Json(coco.get_classes().await)
 }
 
 #[utoipa::path(
@@ -65,8 +64,8 @@ async fn get_classes(State(coco): State<Arc<RwLock<CoCo>>>) -> impl IntoResponse
             (status = 404, description = "Class not found")
         )
     )]
-async fn get_class(Path(name): Path<String>, State(coco): State<Arc<RwLock<CoCo>>>) -> impl IntoResponse {
-    match coco.read().await.get_class(&name) {
+async fn get_class(Path(name): Path<String>, State(coco): State<Arc<CoCo>>) -> impl IntoResponse {
+    match coco.get_class(&name).await {
         // We clone the single class to safely return it
         Some(class) => axum::Json(class).into_response(),
         None => (StatusCode::NOT_FOUND, "Class not found").into_response(),
@@ -85,8 +84,7 @@ async fn get_class(Path(name): Path<String>, State(coco): State<Arc<RwLock<CoCo>
             (status = 500, description = "Failed to create class")
         )
     )]
-async fn create_class(State(coco): State<Arc<RwLock<CoCo>>>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
-    let mut coco = coco.write().await;
+async fn create_class(State(coco): State<Arc<CoCo>>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
     match coco.create_class(class).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create class: {}", e)).into_response(),
@@ -103,8 +101,8 @@ async fn create_class(State(coco): State<Arc<RwLock<CoCo>>>, axum::Json(class): 
             (status = 200, description = "List of objects", body = [Object])
         )
     )]
-async fn get_objects(State(coco): State<Arc<RwLock<CoCo>>>) -> impl IntoResponse {
-    axum::Json(coco.read().await.get_objects())
+async fn get_objects(State(coco): State<Arc<CoCo>>) -> impl IntoResponse {
+    axum::Json(coco.get_objects().await)
 }
 
 #[utoipa::path(
@@ -121,8 +119,8 @@ async fn get_objects(State(coco): State<Arc<RwLock<CoCo>>>) -> impl IntoResponse
             (status = 404, description = "Object not found")
         )
     )]
-async fn get_object(Path(id): Path<String>, State(coco): State<Arc<RwLock<CoCo>>>) -> impl IntoResponse {
-    match coco.read().await.get_object(&id) {
+async fn get_object(Path(id): Path<String>, State(coco): State<Arc<CoCo>>) -> impl IntoResponse {
+    match coco.get_object(&id).await {
         Some(object) => axum::Json(object).into_response(),
         None => (StatusCode::NOT_FOUND, "Object not found").into_response(),
     }
@@ -140,8 +138,8 @@ async fn get_object(Path(id): Path<String>, State(coco): State<Arc<RwLock<CoCo>>
             (status = 500, description = "Failed to create object")
         )
     )]
-async fn create_object(State(coco): State<Arc<RwLock<CoCo>>>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
-    match coco.write().await.create_object(object).await {
+async fn create_object(State(coco): State<Arc<CoCo>>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
+    match coco.create_object(object).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create object: {}", e)).into_response(),
     }
@@ -157,7 +155,7 @@ async fn create_object(State(coco): State<Arc<RwLock<CoCo>>>, axum::Json(object)
             (status = 101, description = "WebSocket connection established"),
         )
     )]
-async fn ws_handler(ws: WebSocketUpgrade, State(coco): State<Arc<RwLock<CoCo>>>) -> impl IntoResponse {
+async fn ws_handler(ws: WebSocketUpgrade, State(coco): State<Arc<CoCo>>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, coco.clone()))
 }
 
@@ -175,10 +173,10 @@ async fn openapi() -> impl IntoResponse {
     axum::Json(ApiDoc::openapi())
 }
 
-async fn handle_socket(mut socket: WebSocket, coco: Arc<RwLock<CoCo>>) {
-    let coco_read = coco.read().await;
-    let classes_map: std::collections::HashMap<String, serde_json::Value> = coco_read
+async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
+    let classes_map: std::collections::HashMap<String, serde_json::Value> = coco
         .get_classes()
+        .await
         .into_iter()
         .map(|mut c| {
             let name = std::mem::take(&mut c.name);
@@ -187,8 +185,9 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<RwLock<CoCo>>) {
             (name, v)
         })
         .collect();
-    let objects_map: std::collections::HashMap<String, serde_json::Value> = coco_read
+    let objects_map: std::collections::HashMap<String, serde_json::Value> = coco
         .get_objects()
+        .await
         .into_iter()
         .map(|mut o| {
             let id = o.id.take().unwrap();
@@ -197,8 +196,9 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<RwLock<CoCo>>) {
             (id, v)
         })
         .collect();
-    let rules_map: std::collections::HashMap<String, serde_json::Value> = coco_read
+    let rules_map: std::collections::HashMap<String, serde_json::Value> = coco
         .get_rules()
+        .await
         .into_iter()
         .map(|r| {
             let name = r.name;
@@ -215,7 +215,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<RwLock<CoCo>>) {
     });
     socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.unwrap();
 
-    let mut rx = coco_read.get_event_sender().subscribe();
+    let mut rx = coco.get_event_sender().subscribe();
     while let Ok(msg) = rx.recv().await {
         println!("Sending WebSocket message: {:?}", msg);
         match msg {

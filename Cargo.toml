@@ -15,6 +15,7 @@ name = "coco"
 default = ["mongodb", "clips"]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
+server = []
 
 [dependencies]
 axum = { version = "0.8.8", features = ["ws"] }

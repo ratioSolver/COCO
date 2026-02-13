@@ -14,6 +14,7 @@ use std::{
 pub mod db;
 pub mod kb;
 pub mod model;
+pub mod server;
 
 pub struct CoCo {
     kb_tx: mpsc::Sender<KbCommand>,

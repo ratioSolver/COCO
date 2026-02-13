@@ -82,7 +82,7 @@ impl CLIPSKnowledgeBase {
                         })
                         .unwrap_or(Utc::now());
                     let values = args.into_iter().zip(vals.into_iter()).collect::<HashMap<_, _>>();
-                    let _ = add_data_sender.send(CoCoEvent::AddedValues(object_id, values, date_time));
+                    let _ = add_data_sender.send(CoCoEvent::PendingValues(object_id, values, date_time));
                     ClipsValue::Void()
                 })
                 .expect("Failed to add UDF to CLIPS environment");
@@ -93,7 +93,7 @@ impl CLIPSKnowledgeBase {
                     let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-class UDF") };
                     let class_name = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get class name argument for add-class UDF");
                     let class_name = if let ClipsValue::Symbol(s) = class_name { s } else { panic!("Expected symbol for class name argument in add-class UDF") };
-                    let _ = add_class_sender.send(CoCoEvent::AddedClass(object_id, class_name));
+                    let _ = add_class_sender.send(CoCoEvent::PendingClass(object_id, class_name));
                     ClipsValue::Void()
                 })
                 .expect("Failed to add UDF to CLIPS environment");
@@ -103,6 +103,10 @@ impl CLIPSKnowledgeBase {
 }
 
 impl KnowledgeBase for CLIPSKnowledgeBase {
+    fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
+        self.sender.clone()
+    }
+
     fn get_classes(&self) -> Vec<&Class> {
         self.classes.values().collect()
     }

@@ -5,8 +5,8 @@ use tower_http::services::{ServeDir, ServeFile};
 
 #[tokio::main]
 async fn main() {
-    let db = coco::db::mongodb::MongoDB::new("coco_db", "mongodb://localhost:27017").await.unwrap();
-    let kb = coco::kb::clips::CLIPSKnowledgeBase::new();
+    let db = Arc::new(coco::db::mongodb::MongoDB::new("coco_db", "mongodb://localhost:27017").await.unwrap());
+    let kb = Arc::new(coco::kb::clips::CLIPSKnowledgeBase::new());
     let coco = Arc::new(CoCo::new(db, kb).await);
 
     let app = Router::new();

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
+use tokio::sync::broadcast;
 
-use crate::model::{Class, Object, Rule, Value};
+use crate::model::{Class, CoCoEvent, Object, Rule, Value};
 
 #[cfg(feature = "clips")]
 pub mod clips;
@@ -16,7 +17,9 @@ pub enum KnowledgeBaseError {
     KBError(String),
 }
 
-pub trait KnowledgeBase {
+pub trait KnowledgeBase: Send + Sync {
+    fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent>;
+
     fn get_classes(&self) -> Vec<&Class>;
     fn get_class(&self, name: &str) -> Option<&Class>;
     fn create_class(&mut self, class: Class) -> Result<(), KnowledgeBaseError>;

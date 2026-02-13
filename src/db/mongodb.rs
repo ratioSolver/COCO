@@ -1,13 +1,29 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::db::{Database, DatabaseError};
-use crate::model::Class;
+use crate::model::{Class, Object, Rule, Value};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
-use mongodb::bson::doc;
+use mongodb::bson::oid::ObjectId;
+use mongodb::bson::{self, doc};
 use mongodb::{Client, IndexModel, bson::Document, options::IndexOptions};
+use serde::{Deserialize, Serialize};
 
 pub struct MongoDB {
     name: String,
     client: Client,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct MongoObject {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
+    pub classes: HashSet<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub properties: Option<HashMap<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }
 
 impl MongoDB {
@@ -57,6 +73,103 @@ impl Database for MongoDB {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Class>("classes");
         collection.insert_one(class).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(class.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
+        Ok(())
+    }
+
+    async fn get_objects(&self) -> Result<Vec<Object>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<MongoObject>("objects");
+        let cursor = collection.find(doc! {}).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let mongo_objects: Vec<MongoObject> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let objects = mongo_objects
+            .into_iter()
+            .map(|mongo_object| Object {
+                id: mongo_object.id.map(|oid| oid.to_hex()),
+                classes: mongo_object.classes,
+                properties: mongo_object.properties,
+                values: mongo_object.values,
+            })
+            .collect();
+        Ok(objects)
+    }
+
+    async fn create_object(&self, object: &Object) -> Result<String, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<MongoObject>("objects");
+        let mongo_object = MongoObject {
+            id: None,
+            classes: object.classes.clone(),
+            properties: object.properties.clone(),
+            values: object.values.clone(),
+        };
+        let result = collection.insert_one(mongo_object).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(result.inserted_id.as_object_id().unwrap().to_hex())
+    }
+
+    async fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<MongoObject>("objects");
+        let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        collection.update_one(doc! { "_id": oid }, doc! { "$addToSet": { "classes": class_name } }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn set_properties(&self, object_id: &str, properties: &HashMap<String, Value>) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<MongoObject>("objects");
+        let mut update_doc = doc! {};
+        for (prop, value) in properties {
+            update_doc.insert(format!("properties.{}", prop), bson::to_bson(value).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?);
+        }
+        let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        collection.update_one(doc! { "_id": oid }, doc! { "$set": update_doc }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn get_values(&self, object_id: &str, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<MongoObject>("objects");
+        let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let object = collection.find_one(doc! { "_id": oid }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        if let Some(object) = object {
+            Ok(object.values.unwrap_or_default().into_iter().filter(|(_, (_, timestamp))| timestamp >= from && timestamp <= to).map(|(key, (value, timestamp))| (key, vec![(value, timestamp)])).collect())
+        } else {
+            Err(DatabaseError::ClassNotFound(object_id.to_string()))
+        }
+    }
+
+    async fn add_data(&self, object_id: &str, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<MongoObject>("objects");
+        let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let mut update_doc = doc! {};
+        for (prop, value) in values {
+            update_doc.insert(format!("values.{}", prop), bson::to_bson(&(value.clone(), *date_time)).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?);
+        }
+        collection.update_one(doc! { "_id": oid }, doc! { "$set": update_doc }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+
+        let data_collection = db.collection::<Document>("object_data");
+        let data_doc = doc! {
+            "object_id": object_id,
+            "values": bson::to_bson(values).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?,
+            "timestamp": bson::DateTime::from_millis(date_time.timestamp_millis()),
+        };
+        data_collection.insert_one(data_doc).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Rule>("rules");
+        let cursor = collection.find(doc! {}).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let rules: Vec<Rule> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(rules)
+    }
+
+    async fn create_rule(&self, rule: &Rule) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Rule>("rules");
+        collection.insert_one(rule).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(rule.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
         Ok(())
     }
 

@@ -1,12 +1,14 @@
 use crate::{
     kb::{KnowledgeBase, KnowledgeBaseError},
-    model::{Class, Object, Property, Rule, Value},
+    model::{Class, CoCoEvent, Object, Property, Rule, Value},
 };
 use chrono::{DateTime, Utc};
 use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type};
 use std::{collections::HashMap, sync::Mutex};
+use tokio::sync::broadcast;
 
 pub struct CLIPSKnowledgeBase {
+    sender: broadcast::Sender<CoCoEvent>,
     classes: HashMap<String, Class>,
     objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
@@ -26,7 +28,9 @@ impl Default for CLIPSKnowledgeBase {
 
 impl CLIPSKnowledgeBase {
     pub fn new() -> Self {
+        let (sender, _receiver) = broadcast::channel(16);
         let kb = Self {
+            sender: sender.clone(),
             classes: HashMap::new(),
             objects: HashMap::new(),
             rules: HashMap::new(),
@@ -36,8 +40,68 @@ impl CLIPSKnowledgeBase {
         };
         {
             let mut env = kb.env.lock().expect("Failed to lock CLIPS environment");
-            env.add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], |_env, _ctx| ClipsValue::Void()).expect("Failed to add UDF to CLIPS environment");
-            env.add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], |_env, _ctx| ClipsValue::Void()).expect("Failed to add UDF to CLIPS environment");
+            let add_data_sender = sender.clone();
+            env.add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], move |_env, ctx| {
+                if add_data_sender.receiver_count() == 0 {
+                    return ClipsValue::Void();
+                }
+                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-data UDF");
+                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-data UDF") };
+                let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get args argument for add-data UDF");
+                let args: Vec<String> = if let ClipsValue::Multifield(mf) = args {
+                    mf.into_iter()
+                        .map(|v| match v {
+                            ClipsValue::Symbol(s) => s,
+                            _ => panic!("Expected symbol, integer, or float in args multifield for add-data UDF"),
+                        })
+                        .collect()
+                } else {
+                    panic!("Expected multifield for args argument in add-data UDF");
+                };
+                let vals = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get values argument for add-data UDF");
+                let vals: Vec<Value> = if let ClipsValue::Multifield(mf) = vals {
+                    mf.into_iter()
+                        .map(|v| match v {
+                            ClipsValue::Integer(i) => Value::Int(i),
+                            ClipsValue::Float(f) => Value::Float(f),
+                            ClipsValue::Symbol(s) => match s.as_str() {
+                                "TRUE" => Value::Bool(true),
+                                "FALSE" => Value::Bool(false),
+                                "nil" => Value::Null,
+                                other => Value::Symbol(other.to_string()),
+                            },
+                            ClipsValue::String(s) => Value::String(s),
+                            _ => panic!("Expected symbol, integer, or float in values multifield for add-data UDF"),
+                        })
+                        .collect()
+                } else {
+                    panic!("Expected multifield for values argument in add-data UDF");
+                };
+                let date_time = if ctx.has_next_argument() { Some(ctx.get_next_argument(Type(Type::INTEGER)).expect("Failed to get date_time argument for add-data UDF")) } else { None };
+                let date_time = date_time
+                    .map(|dt| {
+                        let dt = if let ClipsValue::Integer(i) = dt { i } else { panic!("Expected integer for date_time argument in add-data UDF") };
+                        DateTime::<Utc>::from_timestamp(dt, 0).expect("Failed to convert date_time argument in add-data UDF")
+                    })
+                    .unwrap_or(Utc::now());
+                let values = args.into_iter().zip(vals.into_iter()).collect::<HashMap<_, _>>();
+                let _ = add_data_sender.send(CoCoEvent::AddedValues(object_id, values, date_time));
+                ClipsValue::Void()
+            })
+            .expect("Failed to add UDF to CLIPS environment");
+            let add_class_sender = sender.clone();
+            env.add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], move |_env, ctx| {
+                if add_class_sender.receiver_count() == 0 {
+                    return ClipsValue::Void();
+                }
+                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-class UDF");
+                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-class UDF") };
+                let class_name = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get class name argument for add-class UDF");
+                let class_name = if let ClipsValue::Symbol(s) = class_name { s } else { panic!("Expected symbol for class name argument in add-class UDF") };
+                let _ = add_class_sender.send(CoCoEvent::AddedClass(object_id, class_name));
+                ClipsValue::Void()
+            })
+            .expect("Failed to add UDF to CLIPS environment");
         }
         kb
     }
@@ -68,7 +132,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 env.build(prop_deftemplate(&class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
             }
         }
-        self.classes.insert(class.name.clone(), class);
+        if self.sender.receiver_count() == 0 {
+            self.classes.insert(class.name.clone(), class);
+        } else {
+            self.classes.insert(class.name.clone(), class.clone());
+            let _ = self.sender.send(CoCoEvent::ClassCreated(class));
+        }
         Ok(())
     }
 
@@ -128,7 +197,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                     return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, id)));
                 }
             }
-            self.objects.insert(id.clone(), object);
+            if self.sender.receiver_count() == 0 {
+                self.objects.insert(id.clone(), object);
+            } else {
+                self.objects.insert(id.clone(), object.clone());
+                let _ = self.sender.send(CoCoEvent::ObjectCreated(object));
+            }
         } else {
             return Err(KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()));
         }
@@ -170,6 +244,9 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 }
             }
         }
+        if self.sender.receiver_count() > 0 {
+            let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
+        }
         Ok(())
     }
 
@@ -192,6 +269,9 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             } else {
                 return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
             }
+        }
+        if self.sender.receiver_count() > 0 {
+            let _ = self.sender.send(CoCoEvent::UpdatedProperties(object_id.to_string(), properties));
         }
         Ok(())
     }
@@ -216,6 +296,9 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
             }
         }
+        if self.sender.receiver_count() > 0 {
+            let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values, date_time));
+        }
         Ok(())
     }
 
@@ -233,7 +316,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         }
         let mut env = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to lock CLIPS environment: {}", e)))?;
         env.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
-        self.rules.insert(rule.name.clone(), rule);
+        if self.sender.receiver_count() == 0 {
+            self.rules.insert(rule.name.clone(), rule);
+        } else {
+            self.rules.insert(rule.name.clone(), rule.clone());
+            let _ = self.sender.send(CoCoEvent::RuleCreated(rule));
+        }
         Ok(())
     }
 

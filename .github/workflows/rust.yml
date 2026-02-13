@@ -23,8 +23,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libclips-dev
+          wget -O clips_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
+          unzip clips_642.zip -d clips_temp
+          mkdir clips_source
+          mv clips_temp/clips_core_source_642/core/* clips_source/
+          rm -rf clips_temp clips_642.zip
       - name: Build
         run: cargo build --verbose
       - name: Run tests

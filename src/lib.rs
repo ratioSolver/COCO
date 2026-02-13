@@ -41,18 +41,6 @@ impl Display for CoCoError {
 impl CoCo {
     pub async fn new(db: Arc<dyn Database>, kb: Arc<dyn KnowledgeBase>) -> Self {
         let mut coco = CoCo { db: db.clone(), kb: kb.clone() };
-        coco.add_classes(db.get_classes().await.unwrap_or_else(|e| {
-            eprintln!("Error fetching classes from database: {:?}", e);
-            vec![]
-        }));
-        coco.add_objects(db.get_objects().await.unwrap_or_else(|e| {
-            eprintln!("Error fetching objects from database: {:?}", e);
-            vec![]
-        }));
-        coco.add_rules(db.get_rules().await.unwrap_or_else(|e| {
-            eprintln!("Error fetching rules from database: {:?}", e);
-            vec![]
-        }));
 
         let mut receiver = kb.get_event_sender().subscribe();
         let mut ac_kb = coco.kb.clone();
@@ -86,6 +74,19 @@ impl CoCo {
                 }
             }
         });
+
+        coco.add_classes(db.get_classes().await.unwrap_or_else(|e| {
+            eprintln!("Error fetching classes from database: {:?}", e);
+            vec![]
+        }));
+        coco.add_objects(db.get_objects().await.unwrap_or_else(|e| {
+            eprintln!("Error fetching objects from database: {:?}", e);
+            vec![]
+        }));
+        coco.add_rules(db.get_rules().await.unwrap_or_else(|e| {
+            eprintln!("Error fetching rules from database: {:?}", e);
+            vec![]
+        }));
 
         coco
     }

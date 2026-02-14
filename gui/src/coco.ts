@@ -222,6 +222,15 @@ export namespace coco {
   export type Value = null | boolean | number | string;
   type TimeValue = [Value, string];
 
+  export function value_to_string(value: Value): string {
+    switch (typeof value) {
+      case 'string': return value;
+      case 'number': return value.toString();
+      case 'boolean': return value ? 'true' : 'false';
+      default: return '';
+    }
+  }
+
   type Property =
     | { type: 'bool', nullable?: boolean, default?: boolean }
     | { type: 'int', nullable?: boolean, default?: number, min?: number, max?: number }

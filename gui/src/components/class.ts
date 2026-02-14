@@ -18,24 +18,22 @@ const cls_listener = {
 };
 
 export function CoCoClass(cls: coco.CoCoClass): VNode {
-  const header = ["ID", ...cls.get_static_properties().keys().toArray().sort()];
+  const header = ["ID", ...cls.get_static_properties().keys().toArray().sort(), ...cls.get_dynamic_properties().keys().toArray().sort()];
   const rows = cls.get_instances().values().map(obj => {
     const row = [obj.get_id()];
-    for (const prop of header.slice(1)) {
-      const value = obj.get_properties()![prop];
-      switch (typeof value) {
-        case 'string':
-          row.push(value);
-          break;
-        case 'number':
-          row.push(value.toString());
-          break;
-        case 'boolean':
-          row.push(value ? 'true' : 'false');
-          break;
-        default:
-          row.push('');
-      }
+    for (const prop of cls.get_static_properties().keys().toArray().sort()) {
+      const props = obj.get_properties();
+      if (props && prop in props)
+        row.push(coco.value_to_string(props[prop]));
+      else
+        row.push('');
+    }
+    for (const prop of cls.get_dynamic_properties().keys().toArray().sort()) {
+      const props = obj.get_values();
+      if (props && prop in props)
+        row.push(coco.value_to_string(props[prop][0]));
+      else
+        row.push('');
     }
     return Row(row, () => {
       flick.ctx.current_page = CoCoObject(obj);

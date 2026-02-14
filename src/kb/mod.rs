@@ -14,6 +14,8 @@ pub enum KnowledgeBaseError {
     ClassNotFound(String),
     ObjectAlreadyExists(String),
     ObjectNotFound(String),
+    RuleAlreadyExists(String),
+    RuleNotFound(String),
     KBError(String),
 }
 

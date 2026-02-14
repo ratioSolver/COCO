@@ -318,7 +318,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     fn create_rule(&mut self, rule: Rule) -> Result<(), KnowledgeBaseError> {
         let rule_name = rule.name.clone();
         if self.rules.contains_key(&rule_name) {
-            return Err(KnowledgeBaseError::KBError(format!("Rule {} already exists", rule_name)));
+            return Err(KnowledgeBaseError::RuleAlreadyExists(rule_name.clone()));
         }
         self.env.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
 

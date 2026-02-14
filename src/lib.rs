@@ -50,10 +50,10 @@ impl CoCo {
             loop {
                 tokio::select! {
                     Some(cmd) = kb_rx.recv() => {
-                        handle_command(cmd, &db_for_task, &mut kb, &llm).await;
+                        handle_command(cmd, &db_for_task, &mut kb).await;
                     }
                     Ok(event) = kb_event_rx.recv() => {
-                        handle_kb_event(event, &db_for_task, &mut kb, &event_tx_task).await;
+                        handle_kb_event(event, &db_for_task, &mut kb, &llm, &event_tx_task).await;
                     }
                 }
             }
@@ -162,7 +162,7 @@ impl CoCo {
     }
 }
 
-async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>) {
+async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>) {
     match cmd {
         KbCommand::InitData { classes, objects, rules, resp } => {
             for class in classes {
@@ -261,7 +261,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
     }
 }
 
-async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, event_tx: &broadcast::Sender<CoCoEvent>) {
+async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, event_tx: &broadcast::Sender<CoCoEvent>) {
     match event {
         CoCoEvent::PendingClass(object_id, class_name) => {
             db.add_class(&object_id, &class_name).await.unwrap_or_else(|e| {
@@ -280,8 +280,16 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
             }
         }
         CoCoEvent::LLMPrompt(object_id, message) => {
-            // For LLM messages, we just log them for now. In a real implementation, you might want to handle them differently.
-            println!("Received LLM message for object '{}': {}", object_id, message);
+            if let Some(llm) = llm {
+                match llm.propmt(&message).await {
+                    Ok(response) => {
+                        let _ = event_tx.send(CoCoEvent::LLMResponse(object_id.clone(), response));
+                    }
+                    Err(e) => eprintln!("Error generating LLM response for object '{}': {:?}", object_id, e),
+                }
+            } else {
+                eprintln!("Received LLM prompt for object '{}', but no LLM is configured", object_id);
+            }
         }
         CoCoEvent::FCMMessage(object_id, message) => {
             // For FCM messages, we just log them for now. In a real implementation, you might want to handle them differently.
@@ -299,6 +307,8 @@ fn map_kb_error(error: KnowledgeBaseError) -> String {
         KnowledgeBaseError::ClassNotFound(name) => format!("Class '{}' not found", name),
         KnowledgeBaseError::ObjectAlreadyExists(id) => format!("Object with ID '{}' already exists", id),
         KnowledgeBaseError::ObjectNotFound(id) => format!("Object with ID '{}' not found", id),
+        KnowledgeBaseError::RuleAlreadyExists(name) => format!("Rule '{}' already exists", name),
+        KnowledgeBaseError::RuleNotFound(name) => format!("Rule '{}' not found", name),
         other => format!("Knowledge base error: {:?}", other),
     }
 }

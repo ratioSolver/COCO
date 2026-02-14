@@ -24,8 +24,9 @@ impl CoCoState for AppState {
 async fn main() {
     let db = Arc::new(MongoDB::new("coco_db", "mongodb://localhost:27017").await.unwrap());
     let kb = Box::new(CLIPSKnowledgeBase::new());
-    let llm = Box::new(Ollama::new("localhost".to_string(), 11434, "llama3".to_string()));
-    let coco = Arc::new(CoCo::new(db, kb, Some(llm)).await);
+    let llm = setup_llm();
+
+    let coco = Arc::new(CoCo::new(db, kb, llm).await);
     let state = AppState { coco };
 
     let app = build_coco_router::<AppState>();
@@ -34,4 +35,12 @@ async fn main() {
     println!("Server running on http://0.0.0.0:3000");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+fn setup_llm() -> Option<Box<dyn coco::llm::LLM>> {
+    #[cfg(feature = "ollama")]
+    return Some(Box::new(Ollama::new("localhost", 11434, "llama3")));
+
+    #[cfg(not(feature = "ollama"))]
+    None
 }

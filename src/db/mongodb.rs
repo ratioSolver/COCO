@@ -1,5 +1,3 @@
-use std::collections::{HashMap, HashSet};
-
 use crate::db::{Database, DatabaseError};
 use crate::model::{Class, Object, Rule, Value};
 use async_trait::async_trait;
@@ -9,6 +7,7 @@ use mongodb::bson::oid::ObjectId;
 use mongodb::bson::{self, doc};
 use mongodb::{Client, IndexModel, bson::Document, options::IndexOptions};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 pub struct MongoDB {
     name: String,
@@ -43,6 +42,10 @@ impl MongoDB {
             let object_data_collection = db.collection::<Document>("object_data");
             let index = IndexModel::builder().keys(doc! { "object_id": 1, "timestamp": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             object_data_collection.create_index(index).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+
+            let fcm_tokens_collection = db.collection::<Document>("fcm_tokens");
+            let index = IndexModel::builder().keys(doc! { "object_id": 1, "token": 1 }).options(IndexOptions::builder().unique(true).build()).build();
+            fcm_tokens_collection.create_index(index).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         }
         Ok(Self { name: name.to_string(), client })
     }
@@ -171,6 +174,27 @@ impl Database for MongoDB {
         let collection = db.collection::<Rule>("rules");
         collection.insert_one(rule).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(rule.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
         Ok(())
+    }
+
+    async fn add_fcm_token(&self, object_id: &str, token: &str) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Document>("fcm_tokens");
+        collection.update_one(doc! { "object_id": object_id }, doc! { "$addToSet": { "token": token } }).upsert(true).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn remove_fcm_token(&self, object_id: &str, token: &str) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Document>("fcm_tokens");
+        collection.update_one(doc! { "object_id": object_id }, doc! { "$pull": { "token": token } }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn get_fcm_tokens(&self, object_id: &str) -> Result<Vec<String>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Document>("fcm_tokens");
+        let doc = collection.find_one(doc! { "object_id": object_id }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        if let Some(doc) = doc { if let Ok(tokens) = doc.get_array("token") { Ok(tokens.iter().filter_map(|v| v.as_str()).map(|s| s.to_string()).collect()) } else { Ok(vec![]) } } else { Ok(vec![]) }
     }
 
     async fn drop_database(&self) -> Result<(), DatabaseError> {

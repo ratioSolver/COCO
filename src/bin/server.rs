@@ -1,6 +1,7 @@
 use coco::{
     CoCo,
     db::mongodb::MongoDB,
+    fcm::FCMClient,
     kb::clips::CLIPSKnowledgeBase,
     llm::ollama::Ollama,
     server::{CoCoState, build_coco_router},
@@ -25,8 +26,9 @@ async fn main() {
     let db = Arc::new(MongoDB::new("coco_db", "mongodb://localhost:27017").await.unwrap());
     let kb = Box::new(CLIPSKnowledgeBase::new());
     let llm = setup_llm();
+    let fcm = setup_fcm();
 
-    let coco = Arc::new(CoCo::new(db, kb, llm).await);
+    let coco = Arc::new(CoCo::new(db, kb, llm, fcm).await);
     let state = AppState { coco };
 
     let app = build_coco_router::<AppState>();
@@ -42,5 +44,13 @@ fn setup_llm() -> Option<Box<dyn coco::llm::LLM>> {
     return Some(Box::new(Ollama::new("localhost", 11434, "llama3")));
 
     #[cfg(not(feature = "ollama"))]
+    None
+}
+
+fn setup_fcm() -> Option<FCMClient> {
+    #[cfg(feature = "fcm")]
+    return Some(FCMClient::new("coco-project-id".to_string()));
+
+    #[cfg(not(feature = "fcm"))]
     None
 }

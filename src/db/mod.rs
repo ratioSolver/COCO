@@ -31,5 +31,9 @@ pub trait Database: Send + Sync {
     async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError>;
     async fn create_rule(&self, rule: &Rule) -> Result<(), DatabaseError>;
 
+    async fn add_fcm_token(&self, object_id: &str, token: &str) -> Result<(), DatabaseError>;
+    async fn remove_fcm_token(&self, object_id: &str, token: &str) -> Result<(), DatabaseError>;
+    async fn get_fcm_tokens(&self, object_id: &str) -> Result<Vec<String>, DatabaseError>;
+
     async fn drop_database(&self) -> Result<(), DatabaseError>;
 }

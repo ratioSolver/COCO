@@ -111,12 +111,14 @@ impl CLIPSKnowledgeBase {
                 .expect("Failed to add UDF to CLIPS environment");
             let fcm_sender = sender.clone();
             kb.env
-                .add_udf("fcm", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
+                .add_udf("fcm", None, 3, 3, vec![Type(Type::SYMBOL), Type(Type::STRING), Type(Type::STRING)], move |_env, ctx| {
                     let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for fcm UDF");
                     let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in fcm UDF") };
+                    let title = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get title argument for fcm UDF");
+                    let title = if let ClipsValue::String(s) = title { s } else { panic!("Expected string for title argument in fcm UDF") };
                     let message = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get message argument for fcm UDF");
                     let message = if let ClipsValue::String(s) = message { s } else { panic!("Expected string for message argument in fcm UDF") };
-                    let _ = fcm_sender.send(CoCoEvent::FCMMessage(object_id, message));
+                    let _ = fcm_sender.send(CoCoEvent::FCMMessage(object_id, title, message));
                     ClipsValue::Void()
                 })
                 .expect("Failed to add UDF to CLIPS environment");

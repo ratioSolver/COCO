@@ -242,7 +242,7 @@ pub enum CoCoEvent {
     RuleCreated(String),                                          // rule_name
     LLMPrompt(String, String),                                    // (object_id, prompt)
     LLMResponse(String, String),                                  // (object_id, response)
-    FCMMessage(String, String),                                   // (object_id, message)
+    FCMMessage(String, String, String),                           // (object_id, title, message)
 }
 
 impl Display for CoCoEvent {
@@ -258,7 +258,7 @@ impl Display for CoCoEvent {
             CoCoEvent::RuleCreated(rule) => write!(f, "RuleCreated: {}", rule),
             CoCoEvent::LLMPrompt(object, prompt) => write!(f, "LLMPrompt to {}: {}", object, prompt),
             CoCoEvent::LLMResponse(object, response) => write!(f, "LLMResponse from {}: {}", object, response),
-            CoCoEvent::FCMMessage(object, message) => write!(f, "FCMMessage to {}: {}", object, message),
+            CoCoEvent::FCMMessage(object, title, message) => write!(f, "FCMMessage to {}: {} - {}", object, title, message),
         }
     }
 }

@@ -3,6 +3,7 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 
 use crate::{
     db::Database,
+    fcm::FCMClient,
     kb::{KnowledgeBase, KnowledgeBaseError},
     llm::LLM,
     model::{Class, CoCoEvent, Object, Property, Rule, Value},
@@ -13,10 +14,10 @@ use std::{
 };
 
 pub mod db;
-pub mod kb;
-pub mod llm;
 #[cfg(feature = "fcm")]
 pub mod fcm;
+pub mod kb;
+pub mod llm;
 pub mod model;
 pub mod server;
 
@@ -41,7 +42,7 @@ enum KbCommand {
 }
 
 impl CoCo {
-    pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>, llm: Option<Box<dyn LLM>>) -> Self {
+    pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>, llm: Option<Box<dyn LLM>>, fcm: Option<FCMClient>) -> Self {
         let (kb_tx, mut kb_rx) = mpsc::channel(64);
         let (event_tx, _event_rx) = broadcast::channel(64);
         let mut kb_event_rx = kb.get_event_sender().subscribe();
@@ -55,7 +56,7 @@ impl CoCo {
                         handle_command(cmd, &db_for_task, &mut kb).await;
                     }
                     Ok(event) = kb_event_rx.recv() => {
-                        handle_kb_event(event, &db_for_task, &mut kb, &llm, &event_tx_task).await;
+                        handle_kb_event(event, &db_for_task, &mut kb, &llm, &fcm, &event_tx_task).await;
                     }
                 }
             }
@@ -263,7 +264,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
     }
 }
 
-async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, event_tx: &broadcast::Sender<CoCoEvent>) {
+async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, fcm: &Option<FCMClient>, event_tx: &broadcast::Sender<CoCoEvent>) {
     match event {
         CoCoEvent::PendingClass(object_id, class_name) => {
             db.add_class(&object_id, &class_name).await.unwrap_or_else(|e| {
@@ -293,9 +294,21 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
                 eprintln!("Received LLM prompt for object '{}', but no LLM is configured", object_id);
             }
         }
-        CoCoEvent::FCMMessage(object_id, message) => {
-            // For FCM messages, we just log them for now. In a real implementation, you might want to handle them differently.
-            println!("Received FCM message for object '{}': {}", object_id, message);
+        CoCoEvent::FCMMessage(object_id, title, message) => {
+            if let Some(fcm) = fcm {
+                let tokens = db.get_fcm_tokens(&object_id).await.unwrap_or_else(|e| {
+                    eprintln!("Error fetching FCM tokens for object '{}' from database: {:?}", object_id, e);
+                    vec![]
+                });
+                let failed_tokens = fcm.send_message(tokens, &title, &message).await;
+                for token in failed_tokens.unwrap_or_default() {
+                    db.remove_fcm_token(&object_id, &token).await.unwrap_or_else(|e| {
+                        eprintln!("Error removing failed FCM token '{}' for object '{}' from database: {:?}", token, object_id, e);
+                    });
+                }
+            } else {
+                eprintln!("Received FCM message for object '{}', but no FCM client is configured: {} - {}", object_id, title, message);
+            }
         }
         _ => {
             let _ = event_tx.send(event);

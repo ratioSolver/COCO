@@ -98,14 +98,14 @@ impl CLIPSKnowledgeBase {
                     ClipsValue::Void()
                 })
                 .expect("Failed to add UDF to CLIPS environment");
-            let llm_sender = sender.clone();
+            let prompt_sender = sender.clone();
             kb.env
-                .add_udf("llm", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
-                    let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for llm UDF");
-                    let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in llm UDF") };
-                    let message = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get message argument for llm UDF");
-                    let message = if let ClipsValue::String(s) = message { s } else { panic!("Expected string for message argument in llm UDF") };
-                    let _ = llm_sender.send(CoCoEvent::LLMMessage(object_id, message));
+                .add_udf("prompt", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
+                    let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for prompt UDF");
+                    let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in prompt UDF") };
+                    let message = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get message argument for prompt UDF");
+                    let message = if let ClipsValue::String(s) = message { s } else { panic!("Expected string for message argument in prompt UDF") };
+                    let _ = prompt_sender.send(CoCoEvent::LLMPrompt(object_id, message));
                     ClipsValue::Void()
                 })
                 .expect("Failed to add UDF to CLIPS environment");

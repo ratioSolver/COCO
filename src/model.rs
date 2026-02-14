@@ -240,7 +240,7 @@ pub enum CoCoEvent {
     AddedValues(String, HashMap<String, Value>, DateTime<Utc>),   // (object_id, value, date_time)
     PendingValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
     RuleCreated(String),                                          // rule_name
-    LLMMessage(String, String),                                   // (object_id, message)
+    LLMPrompt(String, String),                                    // (object_id, prompt)
     FCMMessage(String, String),                                   // (object_id, message)
 }
 
@@ -255,7 +255,7 @@ impl Display for CoCoEvent {
             CoCoEvent::AddedValues(object, values, date_time) => write!(f, "AddedValues to {}: {:?} at {}", object, values, date_time),
             CoCoEvent::PendingValues(object, values, date_time) => write!(f, "PendingValues to {}: {:?} at {}", object, values, date_time),
             CoCoEvent::RuleCreated(rule) => write!(f, "RuleCreated: {}", rule),
-            CoCoEvent::LLMMessage(object, message) => write!(f, "LLMMessage to {}: {}", object, message),
+            CoCoEvent::LLMPrompt(object, prompt) => write!(f, "LLMPrompt to {}: {}", object, prompt),
             CoCoEvent::FCMMessage(object, message) => write!(f, "FCMMessage to {}: {}", object, message),
         }
     }

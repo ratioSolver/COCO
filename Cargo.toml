@@ -12,9 +12,10 @@ license-file = "LICENSE.txt"
 name = "coco"
 
 [features]
-default = ["mongodb", "clips"]
+default = ["mongodb", "clips", "ollama", "server"]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
+ollama = []
 server = []
 
 [dependencies]

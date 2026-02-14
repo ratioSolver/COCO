@@ -4,6 +4,7 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 use crate::{
     db::Database,
     kb::{KnowledgeBase, KnowledgeBaseError},
+    llm::LLM,
     model::{Class, CoCoEvent, Object, Property, Rule, Value},
 };
 use std::{
@@ -13,6 +14,7 @@ use std::{
 
 pub mod db;
 pub mod kb;
+pub mod llm;
 pub mod model;
 pub mod server;
 
@@ -37,7 +39,7 @@ enum KbCommand {
 }
 
 impl CoCo {
-    pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>) -> Self {
+    pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>, llm: Option<Box<dyn LLM>>) -> Self {
         let (kb_tx, mut kb_rx) = mpsc::channel(64);
         let (event_tx, _event_rx) = broadcast::channel(64);
         let mut kb_event_rx = kb.get_event_sender().subscribe();
@@ -48,7 +50,7 @@ impl CoCo {
             loop {
                 tokio::select! {
                     Some(cmd) = kb_rx.recv() => {
-                        handle_command(cmd, &db_for_task, &mut kb).await;
+                        handle_command(cmd, &db_for_task, &mut kb, &llm).await;
                     }
                     Ok(event) = kb_event_rx.recv() => {
                         handle_kb_event(event, &db_for_task, &mut kb, &event_tx_task).await;
@@ -160,7 +162,7 @@ impl CoCo {
     }
 }
 
-async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>) {
+async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>) {
     match cmd {
         KbCommand::InitData { classes, objects, rules, resp } => {
             for class in classes {
@@ -277,7 +279,7 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
                 eprintln!("Error adding values to object '{}' in knowledge base: {:?}", object_id, e);
             }
         }
-        CoCoEvent::LLMMessage(object_id, message) => {
+        CoCoEvent::LLMPrompt(object_id, message) => {
             // For LLM messages, we just log them for now. In a real implementation, you might want to handle them differently.
             println!("Received LLM message for object '{}': {}", object_id, message);
         }

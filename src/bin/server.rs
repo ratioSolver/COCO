@@ -1,5 +1,8 @@
 use coco::{
     CoCo,
+    db::mongodb::MongoDB,
+    kb::clips::CLIPSKnowledgeBase,
+    llm::ollama::Ollama,
     server::{CoCoState, build_coco_router},
 };
 use std::sync::Arc;
@@ -19,9 +22,10 @@ impl CoCoState for AppState {
 
 #[tokio::main]
 async fn main() {
-    let db = Arc::new(coco::db::mongodb::MongoDB::new("coco_db", "mongodb://localhost:27017").await.unwrap());
-    let kb = Box::new(coco::kb::clips::CLIPSKnowledgeBase::new());
-    let coco = Arc::new(CoCo::new(db, kb).await);
+    let db = Arc::new(MongoDB::new("coco_db", "mongodb://localhost:27017").await.unwrap());
+    let kb = Box::new(CLIPSKnowledgeBase::new());
+    let llm = Box::new(Ollama::new("localhost".to_string(), 11434, "llama3".to_string()));
+    let coco = Arc::new(CoCo::new(db, kb, Some(llm)).await);
     let state = AppState { coco };
 
     let app = build_coco_router::<AppState>();

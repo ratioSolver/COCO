@@ -15,6 +15,8 @@ use std::{
 pub mod db;
 pub mod kb;
 pub mod llm;
+#[cfg(feature = "fcm")]
+pub mod fcm;
 pub mod model;
 pub mod server;
 

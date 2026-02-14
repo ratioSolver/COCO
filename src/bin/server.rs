@@ -3,8 +3,8 @@ use coco::llm::ollama::Ollama;
 #[cfg(feature = "fcm")]
 use coco::msg::fcm::FCMClient;
 #[cfg(feature = "server")]
-use coco::server::{CoCoState, build_coco_router};
-use coco::{CoCo, db::mongodb::MongoDB, kb::clips::CLIPSKnowledgeBase, msg::Messaging};
+use coco::server::build_coco_router;
+use coco::{CoCo, CoCoState, db::mongodb::MongoDB, kb::clips::CLIPSKnowledgeBase, msg::Messaging};
 use std::sync::Arc;
 #[cfg(feature = "server")]
 use tower_http::services::{ServeDir, ServeFile};
@@ -14,7 +14,6 @@ struct AppState {
     coco: Arc<CoCo>,
 }
 
-// 2. Implement the trait so the base router works
 #[cfg(feature = "server")]
 impl CoCoState for AppState {
     fn coco(&self) -> Arc<CoCo> {

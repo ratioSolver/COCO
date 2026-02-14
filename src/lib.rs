@@ -19,10 +19,16 @@ pub mod model;
 pub mod msg;
 #[cfg(feature = "server")]
 pub mod server;
+#[cfg(feature = "mqtt")]
+pub mod mqtt;
 
 pub struct CoCo {
     kb_tx: mpsc::Sender<KbCommand>,
     event_tx: broadcast::Sender<CoCoEvent>,
+}
+
+pub trait CoCoState: Clone + Send + Sync + 'static {
+    fn coco(&self) -> Arc<CoCo>;
 }
 
 enum KbCommand {

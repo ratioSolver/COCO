@@ -12,13 +12,9 @@ use std::sync::Arc;
 use utoipa::OpenApi;
 
 use crate::{
-    CoCo,
+    CoCo, CoCoState,
     model::{Class, CoCoEvent, Object},
 };
-
-pub trait CoCoState: Clone + Send + Sync + 'static {
-    fn coco(&self) -> Arc<CoCo>;
-}
 
 pub fn build_coco_router<S>() -> Router<S>
 where
@@ -204,12 +200,12 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
         match msg {
             CoCoEvent::ClassCreated(class_name) => {
                 let mut update_msg = serde_json::to_value(coco.get_class(&class_name).await).unwrap();
-                update_msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::json!("class_created"));
+                update_msg["msg_type"] = serde_json::json!("class_created");
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
             CoCoEvent::ObjectCreated(object_id) => {
                 let mut update_msg = serde_json::to_value(coco.get_object(&object_id).await).unwrap();
-                update_msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::json!("object_created"));
+                update_msg["msg_type"] = serde_json::json!("object_created");
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
             CoCoEvent::AddedClass(object_id, class_name) => {
@@ -239,7 +235,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
             }
             CoCoEvent::RuleCreated(rule) => {
                 let mut update_msg = serde_json::to_value(coco.get_rule(&rule).await).unwrap();
-                update_msg.as_object_mut().unwrap().insert("msg_type".to_string(), serde_json::json!("rule_created"));
+                update_msg["msg_type"] = serde_json::json!("rule_created");
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
             }
             _ => {}

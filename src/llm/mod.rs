@@ -11,5 +11,5 @@ pub enum LLMError {
 
 #[async_trait]
 pub trait LLM: Send + Sync {
-    async fn propmt(&self, prompt: &str) -> Result<String, LLMError>;
+    async fn prompt(&self, prompt: &str) -> Result<String, LLMError>;
 }

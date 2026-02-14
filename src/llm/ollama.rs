@@ -17,7 +17,7 @@ impl Ollama {
 
 #[async_trait]
 impl LLM for Ollama {
-    async fn propmt(&self, prompt: &str) -> Result<String, LLMError> {
+    async fn prompt(&self, prompt: &str) -> Result<String, LLMError> {
         let url = format!("http://{}:{}/api/chat", self.host, self.port);
         let body = serde_json::json!({
             "model": self.model,

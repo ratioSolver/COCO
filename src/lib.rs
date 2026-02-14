@@ -186,10 +186,10 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
             let _ = resp.send(());
         }
         KbCommand::GetClasses { resp } => {
-            let _ = resp.send(kb.get_classes());
+            let _ = resp.send(kb.get_classes().into_iter().cloned().collect());
         }
         KbCommand::GetClass { name, resp } => {
-            let _ = resp.send(kb.get_class(&name));
+            let _ = resp.send(kb.get_class(&name).cloned());
         }
         KbCommand::CreateClass { class, resp } => {
             let result = db
@@ -203,10 +203,10 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
             let _ = resp.send(result);
         }
         KbCommand::GetObjects { resp } => {
-            let _ = resp.send(kb.get_objects());
+            let _ = resp.send(kb.get_objects().into_iter().cloned().collect());
         }
         KbCommand::GetObject { id, resp } => {
-            let _ = resp.send(kb.get_object(&id));
+            let _ = resp.send(kb.get_object(&id).cloned());
         }
         KbCommand::CreateObject { object, resp } => {
             let result = db
@@ -245,10 +245,10 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
             let _ = resp.send(result);
         }
         KbCommand::GetRules { resp } => {
-            let _ = resp.send(kb.get_rules());
+            let _ = resp.send(kb.get_rules().into_iter().cloned().collect());
         }
         KbCommand::GetRule { name, resp } => {
-            let _ = resp.send(kb.get_rule(&name));
+            let _ = resp.send(kb.get_rule(&name).cloned());
         }
         KbCommand::CreateRule { rule, resp } => {
             let result = db
@@ -284,7 +284,7 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
         }
         CoCoEvent::LLMPrompt(object_id, message) => {
             if let Some(llm) = llm {
-                match llm.propmt(&message).await {
+                match llm.prompt(&message).await {
                     Ok(response) => {
                         let _ = event_tx.send(CoCoEvent::LLMResponse(object_id.clone(), response));
                     }

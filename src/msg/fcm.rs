@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use yup_oauth2::{ServiceAccountAuthenticator, read_service_account_key};
 
-use crate::msg::Messaging;
+use crate::msg::{Messaging, MessagingError};
 
 pub struct FCMClient {
     project_id: String,
@@ -16,7 +16,7 @@ impl FCMClient {
 
 #[async_trait]
 impl Messaging for FCMClient {
-    async fn send_message(&self, tokens: Vec<String>, title: &str, message: &str) -> Result<Vec<String>, reqwest::Error> {
+    async fn send_message(&self, tokens: Vec<String>, title: &str, message: &str) -> Result<Vec<String>, MessagingError> {
         let token = get_token().await;
         let url = format!("https://fcm.googleapis.com/v1/projects/{}/messages:send", self.project_id);
         let mut failed_tokens = Vec::new();
@@ -30,7 +30,7 @@ impl Messaging for FCMClient {
                     }
                 }
             });
-            let response = self.client.post(&url).bearer_auth(&token).json(&payload).send().await?;
+            let response = self.client.post(&url).bearer_auth(&token).json(&payload).send().await.map_err(|e| MessagingError::ConnectionError(format!("Failed to send message: {}", e)))?;
             if !response.status().is_success() {
                 failed_tokens.push(tkn);
             }

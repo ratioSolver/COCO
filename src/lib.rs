@@ -293,7 +293,7 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
                 eprintln!("Received LLM prompt for object '{}', but no LLM is configured", object_id);
             }
         }
-        CoCoEvent::FCMMessage(object_id, title, message) => {
+        CoCoEvent::Message(object_id, title, message) => {
             if let Some(fcm) = fcm {
                 let tokens = db.get_fcm_tokens(&object_id).await.unwrap_or_else(|e| {
                     eprintln!("Error fetching FCM tokens for object '{}' from database: {:?}", object_id, e);

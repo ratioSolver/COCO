@@ -4,9 +4,11 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::{Display, Formatter},
 };
+#[cfg(feature = "server")]
 use utoipa::ToSchema;
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 #[serde(tag = "type")]
 pub enum Property {
     #[serde(rename = "bool")]
@@ -188,7 +190,8 @@ impl Display for Value {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct Class {
     pub name: String,
     pub parents: Option<HashSet<String>>,
@@ -202,7 +205,8 @@ impl Display for Class {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct Object {
     pub id: Option<String>,
     pub classes: HashSet<String>,
@@ -218,7 +222,8 @@ impl Display for Object {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct Rule {
     pub name: String,
     pub content: String,

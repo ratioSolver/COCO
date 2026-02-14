@@ -1,24 +1,23 @@
-use chrono::{DateTime, Utc};
-use tokio::sync::{broadcast, mpsc, oneshot};
-
 use crate::{
     db::Database,
-    fcm::FCMClient,
     kb::{KnowledgeBase, KnowledgeBaseError},
     llm::LLM,
     model::{Class, CoCoEvent, Object, Property, Rule, Value},
+    msg::Messaging,
 };
+use chrono::{DateTime, Utc};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
+use tokio::sync::{broadcast, mpsc, oneshot};
 
 pub mod db;
-#[cfg(feature = "fcm")]
-pub mod fcm;
 pub mod kb;
 pub mod llm;
 pub mod model;
+pub mod msg;
+#[cfg(feature = "server")]
 pub mod server;
 
 pub struct CoCo {
@@ -42,7 +41,7 @@ enum KbCommand {
 }
 
 impl CoCo {
-    pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>, llm: Option<Box<dyn LLM>>, fcm: Option<FCMClient>) -> Self {
+    pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>, llm: Option<Box<dyn LLM>>, fcm: Option<Box<dyn Messaging>>) -> Self {
         let (kb_tx, mut kb_rx) = mpsc::channel(64);
         let (event_tx, _event_rx) = broadcast::channel(64);
         let mut kb_event_rx = kb.get_event_sender().subscribe();
@@ -264,7 +263,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
     }
 }
 
-async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, fcm: &Option<FCMClient>, event_tx: &broadcast::Sender<CoCoEvent>) {
+async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, fcm: &Option<Box<dyn Messaging>>, event_tx: &broadcast::Sender<CoCoEvent>) {
     match event {
         CoCoEvent::PendingClass(object_id, class_name) => {
             db.add_class(&object_id, &class_name).await.unwrap_or_else(|e| {

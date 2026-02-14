@@ -1,4 +1,7 @@
+use async_trait::async_trait;
 use yup_oauth2::{ServiceAccountAuthenticator, read_service_account_key};
+
+use crate::msg::Messaging;
 
 pub struct FCMClient {
     project_id: String,
@@ -9,8 +12,11 @@ impl FCMClient {
     pub fn new(project_id: String) -> Self {
         Self { project_id, client: reqwest::Client::new() }
     }
+}
 
-    pub async fn send_message(&self, tokens: Vec<String>, title: &str, message: &str) -> Result<Vec<String>, reqwest::Error> {
+#[async_trait]
+impl Messaging for FCMClient {
+    async fn send_message(&self, tokens: Vec<String>, title: &str, message: &str) -> Result<Vec<String>, reqwest::Error> {
         let token = get_token().await;
         let url = format!("https://fcm.googleapis.com/v1/projects/{}/messages:send", self.project_id);
         let mut failed_tokens = Vec::new();

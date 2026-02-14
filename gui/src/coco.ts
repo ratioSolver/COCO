@@ -46,7 +46,7 @@ export namespace coco {
               this.classes.set(name, new CoCoClass(this, name, new Set(cls.parents || []), new Map(Object.entries(cls.static_properties || {})), new Map(Object.entries(cls.dynamic_properties || {}))));
             if (msg.objects)
               for (const [id, obj] of Object.entries(msg.objects))
-                this.objects.set(id, new CoCoObject(this, id, new Set(obj.classes.map(cls_name => this.get_class(cls_name)))));
+                this.objects.set(id, new CoCoObject(this, id, new Set(obj.classes.map(cls_name => this.get_class(cls_name))), obj.properties, obj.values));
             for (const listener of this.listeners) listener.initialized();
             break;
           }
@@ -57,7 +57,7 @@ export namespace coco {
             break;
           }
           case 'object_created': {
-            const obj = new CoCoObject(this, msg.id, new Set(msg.classes.map(cls_name => this.get_class(cls_name))));
+            const obj = new CoCoObject(this, msg.id, new Set(msg.classes.map(cls_name => this.get_class(cls_name))), msg.properties, msg.values);
             this.objects.set(obj.get_id(), obj);
             for (const listener of this.listeners) listener.created_object(obj);
             break;

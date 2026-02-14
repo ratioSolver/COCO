@@ -5,14 +5,17 @@ use crate::{
 use chrono::{DateTime, Utc};
 use rumqttc::v5::{
     AsyncClient, Event, MqttOptions,
-    mqttbytes::{QoS, v5::Packet},
+    mqttbytes::{
+        QoS,
+        v5::{Filter, Packet},
+    },
 };
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 pub fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: &str, mqtt_port: u16) {
-    let mut mqttoptions = MqttOptions::new("coco-client-id", mqtt_broker, mqtt_port);
-    mqttoptions.set_keep_alive(Duration::from_secs(5));
-    let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
+    let mut mqtt_options = MqttOptions::new("coco-client-id", mqtt_broker, mqtt_port);
+    mqtt_options.set_keep_alive(Duration::from_secs(5));
+    let (client, mut eventloop) = AsyncClient::new(mqtt_options, 10);
 
     let mut rx = coco.get_event_sender().subscribe();
     let coco_clone = coco.clone();
@@ -30,7 +33,9 @@ pub fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: &str, mqtt_port: u16) {
                     update_msg["msg_type"] = serde_json::json!("object_created");
                     let payload = serde_json::to_string(&update_msg).unwrap();
                     client.publish("coco/events", QoS::AtLeastOnce, false, payload).await.unwrap();
-                    client.subscribe(format!("coco/{}/#", object_id), QoS::AtLeastOnce).await.unwrap();
+                    let mut filter = Filter::new(format!("coco/{}/#", object_id), QoS::AtLeastOnce);
+                    filter.nolocal = true;
+                    client.subscribe_many(vec![filter]).await.unwrap();
                 }
                 CoCoEvent::AddedClass(object_id, class_name) => {
                     let update_msg = serde_json::json!({

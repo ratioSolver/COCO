@@ -270,6 +270,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 if let Some(static_props) = &class.static_properties {
                     for (name, prop) in static_props {
                         if let Some(v) = properties.get(name) {
+                            object.properties.get_or_insert_with(HashMap::new).insert(name.clone(), v.clone());
                             let fact = self.values.get(class_name).and_then(|objs| objs.get(object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for property {} of object {} of class {} not found", name, object_id, class_name)))?;
                             let fm = self.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
                             let fm = update_prop(&self.env, fm, prop, v.clone(), None)?;
@@ -292,6 +293,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 if let Some(dynamic_props) = &class.dynamic_properties {
                     for (name, prop) in dynamic_props {
                         if let Some(v) = values.get(name) {
+                            object.values.get_or_insert_with(HashMap::new).insert(name.clone(), (v.clone(), date_time));
                             let fact = self.values.get(class_name).and_then(|objs| objs.get(object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for dynamic property {} of object {} of class {} not found", name, object_id, class_name)))?;
                             let fm = self.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
                             let fm = update_prop(&self.env, fm, prop, v.clone(), Some(date_time))?;

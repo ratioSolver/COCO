@@ -237,7 +237,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                 })
                 .and_then(|id| {
                     let object = Object { id: Some(id.clone()), ..object };
-                    kb.create_object(object).map_err(map_kb_error).map(|_| id)
+                    kb.create_object(object).and_then(|_| kb.run()).map_err(map_kb_error).map(|_| id)
                 });
             let _ = resp.send(result);
         }
@@ -249,7 +249,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                     eprintln!("Error setting properties for object '{}' in database: {:?}", object_id, e);
                     CoCoError::DatabaseError(format!("Failed to set properties for object '{}'", object_id))
                 })
-                .and_then(|_| kb.set_properties(&object_id, values).map_err(map_kb_error));
+                .and_then(|_| kb.set_properties(&object_id, values).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
         KbCommand::AddData { object_id, values, date_time, resp } => {
@@ -260,7 +260,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                     eprintln!("Error adding data to object '{}' in database: {:?}", object_id, e);
                     CoCoError::DatabaseError(format!("Failed to add data to object '{}'", object_id))
                 })
-                .and_then(|_| kb.add_values(&object_id, values, date_time).map_err(map_kb_error));
+                .and_then(|_| kb.add_values(&object_id, values, date_time).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
         KbCommand::GetRules { resp } => {
@@ -277,7 +277,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                     eprintln!("Error creating rule '{}' in database: {:?}", rule.name, e);
                     CoCoError::DatabaseError(format!("Failed to create rule '{}'", rule.name))
                 })
-                .and_then(|_| kb.create_rule(rule).map_err(map_kb_error));
+                .and_then(|_| kb.create_rule(rule).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
     }

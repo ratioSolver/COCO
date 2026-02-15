@@ -227,7 +227,6 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
 
     let mut rx = coco.get_event_sender().subscribe();
     while let Ok(msg) = rx.recv().await {
-        println!("Sending WebSocket message: {:?}", msg);
         match msg {
             CoCoEvent::ClassCreated(class_name) => {
                 let mut update_msg = serde_json::to_value(coco.get_class(&class_name).await).unwrap();

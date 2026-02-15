@@ -1,27 +1,46 @@
 import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
-import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
+import { flick, ListGroup } from "@ratiosolver/flick";
 import { CoCoClass } from "./class";
 import * as echarts from 'echarts';
 
+const obj_item_listener = {
+  class_added: (_cls: coco.CoCoClass) => { },
+  properties_updated: (_properties: Record<string, coco.Value>) => { flick.redraw(); },
+  values_added: (_values: Record<string, coco.Value>, _date_time: string) => { }
+};
+
+export function ObjectGroupItem(obj: coco.CoCoObject): VNode {
+  const active = flick.ctx.page_title === `Object: ${obj.get_id()}`;
+  return h('button.list-group-item.list-group-item-action' + (active ? '.active.rounded' : ''), {
+    hook: {
+      insert: () => {
+        obj.add_listener(obj_item_listener);
+      },
+      destroy: () => {
+        obj.remove_listener(obj_item_listener);
+      }
+    },
+    props: { type: 'button' },
+    attrs: { 'aria-current': active ? 'true' : 'false' },
+    on: {
+      click: () => {
+        flick.ctx.current_page = CoCoObject(obj);
+        flick.ctx.page_title = `Object: ${obj.get_id()}`;
+        flick.redraw();
+      }
+    }
+  }, object_to_string(obj));
+}
+
 export function ObjectsList(coco: coco.CoCo): VNode {
-  return ListGroup(Array.from(coco.get_objects().values().map(obj => ListGroupItem(object_to_string(obj), () => {
-    flick.ctx.current_page = CoCoObject(obj);
-    flick.ctx.page_title = `Object: ${obj.get_id()}`;
-    flick.redraw();
-  }, flick.ctx.page_title === `Object: ${obj.get_id()}`))));
+  return ListGroup(Array.from(coco.get_objects().values().map(obj => ObjectGroupItem(obj))));
 }
 
 const obj_listener = {
-  class_added: (_cls: coco.CoCoClass) => {
-    flick.redraw();
-  },
-  properties_updated: (_properties: Record<string, coco.Value>) => {
-    flick.redraw();
-  },
-  values_added: (_values: Record<string, coco.Value>, _date_time: string) => {
-    flick.redraw();
-  }
+  class_added: (_cls: coco.CoCoClass) => { flick.redraw(); },
+  properties_updated: (_properties: Record<string, coco.Value>) => { flick.redraw(); },
+  values_added: (_values: Record<string, coco.Value>, _date_time: string) => { flick.redraw(); }
 };
 
 let chart: echarts.ECharts | null = null;

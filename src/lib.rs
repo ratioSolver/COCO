@@ -16,11 +16,11 @@ pub mod db;
 pub mod kb;
 pub mod llm;
 pub mod model;
+#[cfg(feature = "mqtt")]
+pub mod mqtt;
 pub mod msg;
 #[cfg(feature = "server")]
 pub mod server;
-#[cfg(feature = "mqtt")]
-pub mod mqtt;
 
 pub struct CoCo {
     kb_tx: mpsc::Sender<KbCommand>,
@@ -31,19 +31,33 @@ pub trait CoCoState: Clone + Send + Sync + 'static {
     fn coco(&self) -> Arc<CoCo>;
 }
 
+#[derive(Clone, Debug)]
+pub enum CoCoError {
+    ClassAlreadyExists(String),
+    ClassNotFound(String),
+    ObjectAlreadyExists(String),
+    ObjectNotFound(String),
+    RuleAlreadyExists(String),
+    RuleNotFound(String),
+    DatabaseError(String),
+    KnowledgeBaseError(String),
+    LLMError(String),
+    MessagingError(String),
+}
+
 enum KbCommand {
     InitData { classes: Vec<Class>, objects: Vec<Object>, rules: Vec<Rule>, resp: oneshot::Sender<()> },
     GetClasses { resp: oneshot::Sender<Vec<Class>> },
     GetClass { name: String, resp: oneshot::Sender<Option<Class>> },
-    CreateClass { class: Class, resp: oneshot::Sender<Result<(), String>> },
+    CreateClass { class: Class, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetObjects { resp: oneshot::Sender<Vec<Object>> },
     GetObject { id: String, resp: oneshot::Sender<Option<Object>> },
-    CreateObject { object: Object, resp: oneshot::Sender<Result<String, String>> },
-    SetProperties { object_id: String, values: HashMap<String, Value>, resp: oneshot::Sender<Result<(), String>> },
-    AddData { object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>, resp: oneshot::Sender<Result<(), String>> },
+    CreateObject { object: Object, resp: oneshot::Sender<Result<String, CoCoError>> },
+    SetProperties { object_id: String, values: HashMap<String, Value>, resp: oneshot::Sender<Result<(), CoCoError>> },
+    AddData { object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetRules { resp: oneshot::Sender<Vec<Rule>> },
     GetRule { name: String, resp: oneshot::Sender<Option<Rule>> },
-    CreateRule { rule: Rule, resp: oneshot::Sender<Result<(), String>> },
+    CreateRule { rule: Rule, resp: oneshot::Sender<Result<(), CoCoError>> },
 }
 
 impl CoCo {
@@ -102,15 +116,15 @@ impl CoCo {
         resp_rx.await.unwrap_or(None)
     }
 
-    pub async fn create_new_class(&self, name: &str, parents: Option<HashSet<String>>, static_properties: Option<HashMap<String, Property>>, dynamic_properties: Option<HashMap<String, Property>>) -> Result<(), String> {
+    pub async fn create_new_class(&self, name: &str, parents: Option<HashSet<String>>, static_properties: Option<HashMap<String, Property>>, dynamic_properties: Option<HashMap<String, Property>>) -> Result<(), CoCoError> {
         let class = Class { name: name.to_string(), parents, static_properties, dynamic_properties };
         self.create_class(class).await
     }
 
-    pub async fn create_class(&self, class: Class) -> Result<(), String> {
+    pub async fn create_class(&self, class: Class) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::CreateClass { class, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err("KB task closed".to_string()))
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
     }
 
     pub async fn get_objects(&self) -> Vec<Object> {
@@ -125,26 +139,26 @@ impl CoCo {
         resp_rx.await.unwrap_or(None)
     }
 
-    pub async fn create_new_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) -> Result<String, String> {
+    pub async fn create_new_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) -> Result<String, CoCoError> {
         self.create_object(Object { id: None, classes, properties, values }).await
     }
 
-    pub async fn create_object(&self, object: Object) -> Result<String, String> {
+    pub async fn create_object(&self, object: Object) -> Result<String, CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::CreateObject { object, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err("KB task closed".to_string()))
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
     }
 
-    pub async fn set_properties(&self, object_id: &str, values: HashMap<String, Value>) -> Result<(), String> {
+    pub async fn set_properties(&self, object_id: &str, values: HashMap<String, Value>) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::SetProperties { object_id: object_id.to_string(), values, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err("KB task closed".to_string()))
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
     }
 
-    pub async fn add_data(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), String> {
+    pub async fn add_data(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::AddData { object_id: object_id.to_string(), values, date_time, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err("KB task closed".to_string()))
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
     }
 
     pub async fn get_rules(&self) -> Vec<Rule> {
@@ -159,14 +173,14 @@ impl CoCo {
         resp_rx.await.unwrap_or(None)
     }
 
-    pub async fn create_new_rule(&self, name: &str, content: &str) -> Result<(), String> {
+    pub async fn create_new_rule(&self, name: &str, content: &str) -> Result<(), CoCoError> {
         self.create_rule(Rule { name: name.to_string(), content: content.to_string() }).await
     }
 
-    pub async fn create_rule(&self, rule: Rule) -> Result<(), String> {
+    pub async fn create_rule(&self, rule: Rule) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::CreateRule { rule, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err("KB task closed".to_string()))
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
     }
 }
 
@@ -202,7 +216,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                 .await
                 .map_err(|e| {
                     eprintln!("Error creating class '{}' in database: {:?}", class.name, e);
-                    format!("Failed to create class '{}'", class.name)
+                    CoCoError::DatabaseError(format!("Failed to create class '{}'", class.name))
                 })
                 .and_then(|_| kb.create_class(class).map_err(map_kb_error));
             let _ = resp.send(result);
@@ -219,7 +233,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                 .await
                 .map_err(|e| {
                     eprintln!("Error creating object in database: {:?}", e);
-                    "Failed to create object".to_string()
+                    CoCoError::DatabaseError("Failed to create object".to_string())
                 })
                 .and_then(|id| {
                     let object = Object { id: Some(id.clone()), ..object };
@@ -233,7 +247,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                 .await
                 .map_err(|e| {
                     eprintln!("Error setting properties for object '{}' in database: {:?}", object_id, e);
-                    format!("Failed to set properties for object '{}'", object_id)
+                    CoCoError::DatabaseError(format!("Failed to set properties for object '{}'", object_id))
                 })
                 .and_then(|_| kb.set_properties(&object_id, values).map_err(map_kb_error));
             let _ = resp.send(result);
@@ -244,7 +258,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                 .await
                 .map_err(|e| {
                     eprintln!("Error adding data to object '{}' in database: {:?}", object_id, e);
-                    format!("Failed to add data to object '{}'", object_id)
+                    CoCoError::DatabaseError(format!("Failed to add data to object '{}'", object_id))
                 })
                 .and_then(|_| kb.add_values(&object_id, values, date_time).map_err(map_kb_error));
             let _ = resp.send(result);
@@ -261,7 +275,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                 .await
                 .map_err(|e| {
                     eprintln!("Error creating rule '{}' in database: {:?}", rule.name, e);
-                    format!("Failed to create rule '{}'", rule.name)
+                    CoCoError::DatabaseError(format!("Failed to create rule '{}'", rule.name))
                 })
                 .and_then(|_| kb.create_rule(rule).map_err(map_kb_error));
             let _ = resp.send(result);
@@ -321,14 +335,14 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
     }
 }
 
-fn map_kb_error(error: KnowledgeBaseError) -> String {
+fn map_kb_error(error: KnowledgeBaseError) -> CoCoError {
     match error {
-        KnowledgeBaseError::ClassAlreadyExists(name) => format!("Class '{}' already exists", name),
-        KnowledgeBaseError::ClassNotFound(name) => format!("Class '{}' not found", name),
-        KnowledgeBaseError::ObjectAlreadyExists(id) => format!("Object with ID '{}' already exists", id),
-        KnowledgeBaseError::ObjectNotFound(id) => format!("Object with ID '{}' not found", id),
-        KnowledgeBaseError::RuleAlreadyExists(name) => format!("Rule '{}' already exists", name),
-        KnowledgeBaseError::RuleNotFound(name) => format!("Rule '{}' not found", name),
-        other => format!("Knowledge base error: {:?}", other),
+        KnowledgeBaseError::ClassAlreadyExists(name) => CoCoError::ClassAlreadyExists(format!("Class '{}' already exists", name)),
+        KnowledgeBaseError::ClassNotFound(name) => CoCoError::ClassNotFound(format!("Class '{}' not found", name)),
+        KnowledgeBaseError::ObjectAlreadyExists(id) => CoCoError::ObjectAlreadyExists(format!("Object with ID '{}' already exists", id)),
+        KnowledgeBaseError::ObjectNotFound(id) => CoCoError::ObjectNotFound(format!("Object with ID '{}' not found", id)),
+        KnowledgeBaseError::RuleAlreadyExists(name) => CoCoError::RuleAlreadyExists(format!("Rule '{}' already exists", name)),
+        KnowledgeBaseError::RuleNotFound(name) => CoCoError::RuleNotFound(format!("Rule '{}' not found", name)),
+        other => CoCoError::KnowledgeBaseError(format!("Knowledge base error: {:?}", other)),
     }
 }

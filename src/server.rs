@@ -12,7 +12,7 @@ use std::{collections::HashMap, sync::Arc};
 use utoipa::OpenApi;
 
 use crate::{
-    CoCo, CoCoState,
+    CoCo, CoCoError, CoCoState,
     model::{Class, CoCoEvent, Object, Value},
 };
 
@@ -80,7 +80,10 @@ async fn get_class<S: CoCoState>(Path(name): Path<String>, State(coco): State<S>
 async fn create_class<S: CoCoState>(State(coco): State<S>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
     match coco.coco().create_class(class).await {
         Ok(_) => StatusCode::CREATED.into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create class: {}", e)).into_response(),
+        Err(e) => match e {
+            CoCoError::ClassAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create class")).into_response(),
+        },
     }
 }
 
@@ -134,7 +137,10 @@ async fn get_object<S: CoCoState>(Path(id): Path<String>, State(coco): State<S>)
 async fn create_object<S: CoCoState>(State(coco): State<S>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
     match coco.coco().create_object(object).await {
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create object: {}", e)).into_response(),
+        Err(e) => match e {
+            CoCoError::ObjectAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create object")).into_response(),
+        },
     }
 }
 
@@ -156,7 +162,10 @@ async fn create_object<S: CoCoState>(State(coco): State<S>, axum::Json(object): 
 async fn set_properties<S: CoCoState>(State(coco): State<S>, Path(id): Path<String>, axum::Json(properties): axum::Json<HashMap<String, Value>>) -> impl IntoResponse {
     match coco.coco().set_properties(&id, properties).await {
         Ok(_) => StatusCode::OK.into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update object: {}", e)).into_response(),
+        Err(e) => match e {
+            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update object properties")).into_response(),
+        },
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    db::Database,
+    db::{Database, DatabaseError},
     kb::{KnowledgeBase, KnowledgeBaseError},
     llm::LLM,
     model::{Class, CoCoEvent, Object, Property, Rule, Value},
@@ -43,6 +43,23 @@ pub enum CoCoError {
     KnowledgeBaseError(String),
     LLMError(String),
     MessagingError(String),
+}
+
+impl std::fmt::Display for CoCoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoCoError::ClassAlreadyExists(msg) => write!(f, "Class already exists: {}", msg),
+            CoCoError::ClassNotFound(msg) => write!(f, "Class not found: {}", msg),
+            CoCoError::ObjectAlreadyExists(msg) => write!(f, "Object already exists: {}", msg),
+            CoCoError::ObjectNotFound(msg) => write!(f, "Object not found: {}", msg),
+            CoCoError::RuleAlreadyExists(msg) => write!(f, "Rule already exists: {}", msg),
+            CoCoError::RuleNotFound(msg) => write!(f, "Rule not found: {}", msg),
+            CoCoError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
+            CoCoError::KnowledgeBaseError(msg) => write!(f, "Knowledge base error: {}", msg),
+            CoCoError::LLMError(msg) => write!(f, "LLM error: {}", msg),
+            CoCoError::MessagingError(msg) => write!(f, "Messaging error: {}", msg),
+        }
+    }
 }
 
 enum KbCommand {
@@ -202,6 +219,9 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
                     eprintln!("Error adding rule to knowledge base: {:?}", e);
                 }
             }
+            if let Err(e) = kb.run() {
+                eprintln!("Error running knowledge base after initialization: {:?}", e);
+            }
             let _ = resp.send(());
         }
         KbCommand::GetClasses { resp } => {
@@ -211,14 +231,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
             let _ = resp.send(kb.get_class(&name).cloned());
         }
         KbCommand::CreateClass { class, resp } => {
-            let result = db
-                .create_class(&class)
-                .await
-                .map_err(|e| {
-                    eprintln!("Error creating class '{}' in database: {:?}", class.name, e);
-                    CoCoError::DatabaseError(format!("Failed to create class '{}'", class.name))
-                })
-                .and_then(|_| kb.create_class(class).map_err(map_kb_error));
+            let result = db.create_class(&class).await.map_err(map_db_error).and_then(|_| kb.create_class(class).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
         KbCommand::GetObjects { resp } => {
@@ -228,39 +241,18 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
             let _ = resp.send(kb.get_object(&id).cloned());
         }
         KbCommand::CreateObject { object, resp } => {
-            let result = db
-                .create_object(&object)
-                .await
-                .map_err(|e| {
-                    eprintln!("Error creating object in database: {:?}", e);
-                    CoCoError::DatabaseError("Failed to create object".to_string())
-                })
-                .and_then(|id| {
-                    let object = Object { id: Some(id.clone()), ..object };
-                    kb.create_object(object).and_then(|_| kb.run()).map_err(map_kb_error).map(|_| id)
-                });
+            let result = db.create_object(&object).await.map_err(map_db_error).and_then(|id| {
+                let object = Object { id: Some(id.clone()), ..object };
+                kb.create_object(object).and_then(|_| kb.run()).map_err(map_kb_error).map(|_| id)
+            });
             let _ = resp.send(result);
         }
         KbCommand::SetProperties { object_id, values, resp } => {
-            let result = db
-                .set_properties(&object_id, &values)
-                .await
-                .map_err(|e| {
-                    eprintln!("Error setting properties for object '{}' in database: {:?}", object_id, e);
-                    CoCoError::DatabaseError(format!("Failed to set properties for object '{}'", object_id))
-                })
-                .and_then(|_| kb.set_properties(&object_id, values).and_then(|_| kb.run()).map_err(map_kb_error));
+            let result = db.set_properties(&object_id, &values).await.map_err(map_db_error).and_then(|_| kb.set_properties(&object_id, values).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
         KbCommand::AddData { object_id, values, date_time, resp } => {
-            let result = db
-                .add_data(&object_id, &values, &date_time)
-                .await
-                .map_err(|e| {
-                    eprintln!("Error adding data to object '{}' in database: {:?}", object_id, e);
-                    CoCoError::DatabaseError(format!("Failed to add data to object '{}'", object_id))
-                })
-                .and_then(|_| kb.add_values(&object_id, values, date_time).and_then(|_| kb.run()).map_err(map_kb_error));
+            let result = db.add_data(&object_id, &values, &date_time).await.map_err(map_db_error).and_then(|_| kb.add_values(&object_id, values, date_time).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
         KbCommand::GetRules { resp } => {
@@ -270,14 +262,7 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
             let _ = resp.send(kb.get_rule(&name).cloned());
         }
         KbCommand::CreateRule { rule, resp } => {
-            let result = db
-                .create_rule(&rule)
-                .await
-                .map_err(|e| {
-                    eprintln!("Error creating rule '{}' in database: {:?}", rule.name, e);
-                    CoCoError::DatabaseError(format!("Failed to create rule '{}'", rule.name))
-                })
-                .and_then(|_| kb.create_rule(rule).and_then(|_| kb.run()).map_err(map_kb_error));
+            let result = db.create_rule(&rule).await.map_err(map_db_error).and_then(|_| kb.create_rule(rule).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
     }
@@ -335,14 +320,26 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
     }
 }
 
+fn map_db_error(error: DatabaseError) -> CoCoError {
+    match error {
+        DatabaseError::ClassAlreadyExists(name) => CoCoError::ClassAlreadyExists(name),
+        DatabaseError::ClassNotFound(name) => CoCoError::ClassNotFound(name),
+        DatabaseError::ObjectAlreadyExists(id) => CoCoError::ObjectAlreadyExists(id),
+        DatabaseError::ObjectNotFound(id) => CoCoError::ObjectNotFound(id),
+        DatabaseError::RuleAlreadyExists(name) => CoCoError::RuleAlreadyExists(name),
+        DatabaseError::RuleNotFound(name) => CoCoError::RuleNotFound(name),
+        other => CoCoError::DatabaseError(format!("Database error: {:?}", other)),
+    }
+}
+
 fn map_kb_error(error: KnowledgeBaseError) -> CoCoError {
     match error {
-        KnowledgeBaseError::ClassAlreadyExists(name) => CoCoError::ClassAlreadyExists(format!("Class '{}' already exists", name)),
-        KnowledgeBaseError::ClassNotFound(name) => CoCoError::ClassNotFound(format!("Class '{}' not found", name)),
-        KnowledgeBaseError::ObjectAlreadyExists(id) => CoCoError::ObjectAlreadyExists(format!("Object with ID '{}' already exists", id)),
-        KnowledgeBaseError::ObjectNotFound(id) => CoCoError::ObjectNotFound(format!("Object with ID '{}' not found", id)),
-        KnowledgeBaseError::RuleAlreadyExists(name) => CoCoError::RuleAlreadyExists(format!("Rule '{}' already exists", name)),
-        KnowledgeBaseError::RuleNotFound(name) => CoCoError::RuleNotFound(format!("Rule '{}' not found", name)),
+        KnowledgeBaseError::ClassAlreadyExists(name) => CoCoError::ClassAlreadyExists(name),
+        KnowledgeBaseError::ClassNotFound(name) => CoCoError::ClassNotFound(name),
+        KnowledgeBaseError::ObjectAlreadyExists(id) => CoCoError::ObjectAlreadyExists(id),
+        KnowledgeBaseError::ObjectNotFound(id) => CoCoError::ObjectNotFound(id),
+        KnowledgeBaseError::RuleAlreadyExists(name) => CoCoError::RuleAlreadyExists(name),
+        KnowledgeBaseError::RuleNotFound(name) => CoCoError::RuleNotFound(name),
         other => CoCoError::KnowledgeBaseError(format!("Knowledge base error: {:?}", other)),
     }
 }

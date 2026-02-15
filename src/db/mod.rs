@@ -11,6 +11,10 @@ pub enum DatabaseError {
     ConnectionError(String),
     ClassNotFound(String),
     ClassAlreadyExists(String),
+    ObjectNotFound(String),
+    ObjectAlreadyExists(String),
+    RuleNotFound(String),
+    RuleAlreadyExists(String),
 }
 
 #[async_trait]

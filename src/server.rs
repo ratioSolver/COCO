@@ -8,12 +8,12 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use utoipa::OpenApi;
 
 use crate::{
     CoCo, CoCoState,
-    model::{Class, CoCoEvent, Object},
+    model::{Class, CoCoEvent, Object, Value},
 };
 
 pub fn build_coco_router<S>() -> Router<S>
@@ -25,7 +25,7 @@ where
         .route("/classes", get(get_classes::<S>).post(create_class::<S>))
         .route("/classes/{name}", get(get_class::<S>))
         .route("/objects", get(get_objects::<S>).post(create_object::<S>))
-        .route("/objects/{id}", get(get_object::<S>))
+        .route("/objects/{id}", get(get_object::<S>).patch(set_properties::<S>))
         .route("/openapi", get(openapi))
 }
 
@@ -135,6 +135,28 @@ async fn create_object<S: CoCoState>(State(coco): State<S>, axum::Json(object): 
     match coco.coco().create_object(object).await {
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create object: {}", e)).into_response(),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/objects/{id}",
+        tag = "Objects",
+        summary = "Set object properties",
+        description = "Update the properties of an existing object.",
+        params(
+            ("id" = String, Path, description = "ID of the object to update")
+        ),
+        request_body = HashMap<String, Value>,
+        responses(
+            (status = 200, description = "Object properties updated successfully"),
+            (status = 500, description = "Failed to update object properties")
+        )
+    )]
+async fn set_properties<S: CoCoState>(State(coco): State<S>, Path(id): Path<String>, axum::Json(properties): axum::Json<HashMap<String, Value>>) -> impl IntoResponse {
+    match coco.coco().set_properties(&id, properties).await {
+        Ok(_) => StatusCode::OK.into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update object: {}", e)).into_response(),
     }
 }
 

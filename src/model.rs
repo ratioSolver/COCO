@@ -157,8 +157,8 @@ impl Display for Property {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
+#[serde(untagged)]
 pub enum Value {
     Null,
     Bool(bool),

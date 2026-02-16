@@ -1,3 +1,7 @@
+use crate::{
+    CoCo, CoCoError, CoCoState,
+    model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
+};
 use axum::{
     Router,
     extract::{
@@ -13,10 +17,8 @@ use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 use utoipa::OpenApi;
 
-use crate::{
-    CoCo, CoCoError, CoCoState,
-    model::{Class, CoCoEvent, Object, Rule, Value},
-};
+type OpenApiValue = Value;
+type OpenApiObject = Object;
 
 pub fn build_coco_router<S>() -> Router<S>
 where
@@ -99,7 +101,7 @@ async fn create_class<S: CoCoState>(State(state): State<S>, axum::Json(class): a
         summary = "List all objects",
         description = "Retrieve a list of all available objects in the knowledge base.",
         responses(
-            (status = 200, description = "List of objects", body = [Object])
+            (status = 200, description = "List of objects", body = [OpenApiObject])
         )
     )]
 async fn get_objects<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
@@ -116,7 +118,7 @@ async fn get_objects<S: CoCoState>(State(state): State<S>) -> impl IntoResponse 
             ("id" = String, Path, description = "ID of the object to retrieve")
         ),
         responses(
-            (status = 200, description = "The requested object", body = Object),
+            (status = 200, description = "The requested object", body = OpenApiObject),
             (status = 404, description = "Object not found")
         )
     )]
@@ -133,13 +135,13 @@ async fn get_object<S: CoCoState>(Path(id): Path<String>, State(state): State<S>
         tag = "Objects",
         summary = "Create an object",
         description = "Create a new object in the knowledge base.",
-        request_body = Object,
+        request_body = OpenApiObject,
         responses(
             (status = 201, description = "Object created successfully", body = String),
             (status = 500, description = "Failed to create object")
         )
     )]
-async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
+async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object): axum::Json<OpenApiObject>) -> impl IntoResponse {
     match state.coco().create_object(object).await {
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
         Err(e) => match e {
@@ -242,7 +244,7 @@ async fn get_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<St
 #[utoipa::path(
         get,
         path = "/rules",
-        tag = "System",
+        tag = "Rules",
         summary = "List all rules",
         description = "Retrieve a list of all available rules in the knowledge base.",
         responses(
@@ -256,7 +258,7 @@ async fn get_rules<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
 #[utoipa::path(
         get,
         path = "/rules/{name}",
-        tag = "System",
+        tag = "Rules",
         summary = "Get a rule",
         description = "Retrieve details for a specific rule by its name.",
         params(
@@ -277,7 +279,7 @@ async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(state): State<S>
 #[utoipa::path(
         post,
         path = "/rules",
-        tag = "System",
+        tag = "Rules",
         summary = "Create a rule",
         description = "Create a new rule in the knowledge base.",
         request_body = Rule,
@@ -417,9 +419,13 @@ async fn openapi() -> impl IntoResponse {
 #[derive(OpenApi)]
 #[openapi(
     paths(get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
+    components(
+        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue, TimedValue)
+    ),
     tags(
         (name = "Classes", description = "Operations related to knowledge base classes"),
         (name = "Objects", description = "Operations related to knowledge base objects"),
+        (name = "Rules", description = "Operations related to knowledge base rules"),
         (name = "System", description = "System and utility endpoints")
     )
 )]

@@ -139,16 +139,16 @@ export namespace coco {
     private readonly coco: CoCo;
     private readonly id: string;
     private readonly classes: Set<CoCoClass>;
-    private readonly properties?: Record<string, Value>;
-    private readonly values?: Record<string, TimeValue>;
+    private readonly properties: Record<string, Value>;
+    private readonly values: Record<string, TimeValue>;
     private readonly listeners: Set<CoCoObjectListener> = new Set();
 
     constructor(coco: CoCo, id: string, classes: Set<CoCoClass>, properties?: Record<string, Value>, values?: Record<string, TimeValue>) {
       this.coco = coco;
       this.id = id;
       this.classes = classes;
-      this.properties = properties;
-      this.values = values;
+      this.properties = properties || {};
+      this.values = values || {};
       for (const cls of classes) cls._add_instance(this);
     }
 

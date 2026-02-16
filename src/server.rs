@@ -1,6 +1,6 @@
 use crate::{
     CoCo, CoCoError, CoCoState,
-    model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
+    model::{Class, CoCoEvent, Object, Property, Rule, Value},
 };
 use axum::{
     Router,
@@ -189,7 +189,8 @@ struct DateQuery {
         summary = "Add data to an object",
         description = "Add new data values to an existing object.",
         params(
-            ("id" = String, Path, description = "ID of the object to update")
+            ("id" = String, Path, description = "ID of the object to update"),
+            ("time" = Option<DateTime<Utc>>, Query, description = "Timestamp for the data being added (optional, defaults to current time)")
         ),
         request_body = inline(HashMap<String, Value>),
         responses(
@@ -352,20 +353,20 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
         "objects": objects_map,
         "rules": rules_map
     });
-    socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.unwrap();
+    socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.ok();
 
     let mut rx = coco.get_event_sender().subscribe();
     while let Ok(msg) = rx.recv().await {
-        match msg {
+        let send_result = match msg {
             CoCoEvent::ClassCreated(class_name) => {
                 let mut update_msg = serde_json::to_value(coco.get_class(&class_name).await).unwrap();
                 update_msg["msg_type"] = serde_json::json!("class_created");
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::ObjectCreated(object_id) => {
                 let mut update_msg = serde_json::to_value(coco.get_object(&object_id).await).unwrap();
                 update_msg["msg_type"] = serde_json::json!("object_created");
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::AddedClass(object_id, class_name) => {
                 let update_msg = serde_json::json!({
@@ -373,7 +374,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                     "object_id": object_id,
                     "class_name": class_name
                 });
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::UpdatedProperties(object_id, properties) => {
                 let update_msg = serde_json::json!({
@@ -381,7 +382,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                     "object_id": object_id,
                     "properties": properties
                 });
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::AddedValues(object_id, values, date_time) => {
                 let update_msg = serde_json::json!({
@@ -390,14 +391,19 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                     "values": values,
                     "date_time": date_time
                 });
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::RuleCreated(rule) => {
                 let mut update_msg = serde_json::to_value(coco.get_rule(&rule).await).unwrap();
                 update_msg["msg_type"] = serde_json::json!("rule_created");
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await.unwrap();
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
-            _ => {}
+            _ => Ok(()),
+        };
+
+        // If sending fails (e.g., client disconnected), break out of the loop
+        if send_result.is_err() {
+            break;
         }
     }
 }
@@ -420,7 +426,7 @@ async fn openapi() -> impl IntoResponse {
 #[openapi(
     paths(get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     components(
-        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue, TimedValue)
+        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue)
     ),
     tags(
         (name = "Classes", description = "Operations related to knowledge base classes"),

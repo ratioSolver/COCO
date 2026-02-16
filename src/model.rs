@@ -191,19 +191,6 @@ impl Display for Value {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[cfg_attr(feature = "server", derive(ToSchema))]
-pub struct TimedValue {
-    pub value: Value,
-    pub timestamp: DateTime<Utc>,
-}
-
-impl Display for TimedValue {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} at {}", self.value, self.timestamp)
-    }
-}
-
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct Class {
@@ -227,7 +214,7 @@ pub struct Object {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub values: Option<HashMap<String, TimedValue>>,
+    pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }
 
 impl Display for Object {

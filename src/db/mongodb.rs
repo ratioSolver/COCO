@@ -1,5 +1,5 @@
 use crate::db::{Database, DatabaseError};
-use crate::model::{Class, Object, Rule, TimedValue, Value};
+use crate::model::{Class, Object, Rule, Value};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
@@ -22,7 +22,7 @@ struct MongoObject {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub values: Option<HashMap<String, TimedValue>>,
+    pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

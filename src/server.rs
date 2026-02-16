@@ -1,13 +1,15 @@
 use axum::{
     Router,
     extract::{
-        Path, State, WebSocketUpgrade,
+        Path, Query, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
     http::StatusCode,
     response::IntoResponse,
     routing::get,
 };
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 use utoipa::OpenApi;
 
@@ -26,6 +28,7 @@ where
         .route("/classes/{name}", get(get_class::<S>))
         .route("/objects", get(get_objects::<S>).post(create_object::<S>))
         .route("/objects/{id}", get(get_object::<S>).patch(set_properties::<S>))
+        .route("/objects/{id}/data", get(get_data::<S>).post(add_data::<S>))
         .route("/rules", get(get_rules::<S>).post(create_rule::<S>))
         .route("/rules/{name}", get(get_rule::<S>))
         .route("/openapi", get(openapi))
@@ -155,9 +158,10 @@ async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object):
         params(
             ("id" = String, Path, description = "ID of the object to update")
         ),
-        request_body = HashMap<String, Value>,
+        request_body = inline(HashMap<String, Value>),
         responses(
             (status = 200, description = "Object properties updated successfully"),
+            (status = 404, description = "Object not found"),
             (status = 500, description = "Failed to update object properties")
         )
     )]
@@ -167,6 +171,70 @@ async fn set_properties<S: CoCoState>(State(state): State<S>, Path(id): Path<Str
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update object properties")).into_response(),
+        },
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DateQuery {
+    time: Option<DateTime<Utc>>,
+}
+
+#[utoipa::path(
+        post,
+        path = "/objects/{id}/data",
+        tag = "Objects",
+        summary = "Add data to an object",
+        description = "Add new data values to an existing object.",
+        params(
+            ("id" = String, Path, description = "ID of the object to update")
+        ),
+        request_body = inline(HashMap<String, Value>),
+        responses(
+            (status = 200, description = "Data added to object successfully"),
+            (status = 404, description = "Object not found"),
+            (status = 500, description = "Failed to add data to object")
+        )
+    )]
+async fn add_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<String>, Query(date_time): Query<DateQuery>, axum::Json(values): axum::Json<HashMap<String, Value>>) -> impl IntoResponse {
+    match state.coco().add_data(&object_id, values, date_time.time.unwrap_or_else(|| Utc::now())).await {
+        Ok(_) => StatusCode::OK.into_response(),
+        Err(e) => match e {
+            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to add data to object")).into_response(),
+        },
+    }
+}
+
+#[derive(Deserialize)]
+struct DataFilter {
+    start: Option<DateTime<Utc>>,
+    end: Option<DateTime<Utc>>,
+}
+
+#[utoipa::path(
+        get,
+        path = "/objects/{id}/data",
+        tag = "Objects",
+        summary = "Get object data",
+        description = "Retrieve data values for a specific object, optionally filtered by a time range.",
+        params(
+            ("id" = String, Path, description = "ID of the object to retrieve data for"),
+            ("start" = Option<DateTime<Utc>>, Query, description = "Start of the time range filter (optional)"),
+            ("end" = Option<DateTime<Utc>>, Query, description = "End of the time range filter (optional)")
+        ),
+        responses(
+            (status = 200, description = "List of data values for the object", body = [HashMap<String, Value>]),
+            (status = 404, description = "Object not found"),
+            (status = 500, description = "Failed to retrieve object data")
+        )
+    )]
+async fn get_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<String>, Query(filter): Query<DataFilter>) -> impl IntoResponse {
+    match state.coco().get_data(&object_id, filter.start, filter.end).await {
+        Ok(data) => axum::Json(data).into_response(),
+        Err(e) => match e {
+            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to retrieve object data")).into_response(),
         },
     }
 }
@@ -348,7 +416,7 @@ async fn openapi() -> impl IntoResponse {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(get_classes, get_class, create_class, get_objects, get_object, create_object, ws_handler, openapi),
+    paths(get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     tags(
         (name = "Classes", description = "Operations related to knowledge base classes"),
         (name = "Objects", description = "Operations related to knowledge base objects"),

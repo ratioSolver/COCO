@@ -29,7 +29,6 @@ pub trait Database: Send + Sync {
     async fn create_object(&self, object: &Object) -> Result<String, DatabaseError>;
     async fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), DatabaseError>;
     async fn set_properties(&self, object_id: &str, properties: &HashMap<String, Value>) -> Result<(), DatabaseError>;
-    async fn get_values(&self, object_id: &str, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, DatabaseError>;
     async fn add_data(&self, object_id: &str, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), DatabaseError>;
     async fn get_data(&self, object_id: &str, start_time: Option<&DateTime<Utc>>, end_time: Option<&DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, DatabaseError>;
 

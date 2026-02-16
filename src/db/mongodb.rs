@@ -1,5 +1,5 @@
 use crate::db::{Database, DatabaseError};
-use crate::model::{Class, Object, Rule, Value};
+use crate::model::{Class, Object, Rule, TimedValue, Value};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
@@ -22,7 +22,7 @@ struct MongoObject {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
+    pub values: Option<HashMap<String, TimedValue>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -134,18 +134,6 @@ impl Database for MongoDB {
         let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         collection.update_one(doc! { "_id": oid }, doc! { "$set": update_doc }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         Ok(())
-    }
-
-    async fn get_values(&self, object_id: &str, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<MongoObject>("objects");
-        let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        let object = collection.find_one(doc! { "_id": oid }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        if let Some(object) = object {
-            Ok(object.values.unwrap_or_default().into_iter().filter(|(_, (_, timestamp))| timestamp >= from && timestamp <= to).map(|(key, (value, timestamp))| (key, vec![(value, timestamp)])).collect())
-        } else {
-            Err(DatabaseError::ClassNotFound(object_id.to_string()))
-        }
     }
 
     async fn add_data(&self, object_id: &str, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), DatabaseError> {

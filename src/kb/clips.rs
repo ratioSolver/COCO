@@ -189,7 +189,8 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                             let fb: FactBuilder = set_prop(&self.env, fb, prop, v.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set property {} for object {}: {:#?}", name, id, e)))?;
                             let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
-                        } else if let Some(def) = get_default(prop) {
+                        } else {
+                            let def = get_default(prop);
                             let fb = set_prop(&self.env, fb, prop, def.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for property {} of object {}: {:#?}", name, id, e)))?;
                             let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
@@ -205,7 +206,8 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                             let fb = set_prop(&self.env, fb, prop, v.0.clone(), Some(v.1)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, id, e)))?;
                             let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
-                        } else if let Some(def) = get_default(prop) {
+                        } else {
+                            let def = get_default(prop);
                             let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now())).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for dynamic property {} of object {}: {:#?}", name, id, e)))?;
                             let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
@@ -235,7 +237,8 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                     let fb = set_prop(&self.env, fb, prop, v.clone(), None)?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
                     self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
-                } else if let Some(def) = get_default(prop) {
+                } else {
+                    let def = get_default(prop);
                     let fb = set_prop(&self.env, fb, prop, def.clone(), None)?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
                     self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
@@ -250,7 +253,8 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                     let fb = set_prop(&self.env, fb, prop, v.0.clone(), Some(v.1))?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
                     self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
-                } else if let Some(def) = get_default(prop) {
+                } else {
+                    let def = get_default(prop);
                     let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
                     let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now()))?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
@@ -339,15 +343,11 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
 fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: bool) -> String {
     let mut def = format!("(deftemplate {}_{} (slot id (type SYMBOL))", class.name, name);
     match property {
-        Property::Bool { nullable, default } => {
-            def.push_str(" (slot value (type SYMBOL) (allowed-symbols TRUE FALSE");
-            if let Some(true) = nullable {
-                def.push_str(" nil");
-            }
-            def.push(')');
+        Property::Bool { default } => {
+            def.push_str(" (slot value (type SYMBOL) (allowed-symbols TRUE FALSE nil)");
             if let Some(def_val) = default {
                 def.push_str(&format!(" (default {})", if *def_val { "TRUE" } else { "FALSE" }));
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (default nil)");
             }
             def.push(')');
@@ -357,18 +357,14 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::Int { nullable, default, min, max } => {
-            def.push_str(" (slot value (type INTEGER");
-            if let Some(true) = nullable {
-                def.push_str(" SYMBOL) (allowed-symbols nil");
-            }
-            def.push(')');
+        Property::Int { default, min, max } => {
+            def.push_str(" (slot value (type INTEGER SYMBOL) (allowed-symbols nil)");
             if let Some(def_val) = default {
                 def.push_str(&format!(" (default {})", def_val));
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (default nil)");
             }
-            if (min.is_some() || max.is_some()) && !nullable.unwrap_or(false) {
+            if min.is_some() || max.is_some() {
                 let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
                 let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
@@ -380,20 +376,16 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::Float { nullable, default, min, max } => {
-            def.push_str(" (slot value (type FLOAT");
-            if let Some(true) = nullable {
-                def.push_str(" SYMBOL) (allowed-symbols nil");
-            }
-            def.push(')');
+        Property::Float { default, min, max } => {
+            def.push_str(" (slot value (type FLOAT SYMBOL) (allowed-symbols nil)");
             if let Some(def_val) = default {
                 let def_str = def_val.to_string();
                 let def_str = if def_str.contains('.') { def_str } else { format!("{}.0", def_str) };
                 def.push_str(&format!(" (default {})", def_str));
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (default nil)");
             }
-            if (min.is_some() || max.is_some()) && !nullable.unwrap_or(false) {
+            if min.is_some() || max.is_some() {
                 let min_str = min
                     .map(|v| {
                         let s = v.to_string();
@@ -415,15 +407,11 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::String { nullable, default } => {
-            def.push_str(" (slot value (type STRING");
-            if let Some(true) = nullable {
-                def.push_str(" SYMBOL) (allowed-symbols nil");
-            }
-            def.push(')');
+        Property::String { default } => {
+            def.push_str(" (slot value (type STRING SYMBOL) (allowed-symbols nil)");
             if let Some(def_val) = default {
                 def.push_str(&format!(" (default \"{}\")", def_val));
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (default nil)");
             }
             def.push(')');
@@ -433,24 +421,21 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::Symbol { nullable, default, allowed_values } => {
+        Property::Symbol { default, allowed_values } => {
             def.push_str(" (slot value (type SYMBOL)");
             if let Some(allowed) = allowed_values {
-                def.push_str(" (allowed-symbols");
-                if let Some(true) = nullable {
-                    def.push_str(" nil");
-                }
+                def.push_str(" (allowed-symbols nil");
                 for v in allowed {
                     def.push_str(&format!(" {}", v));
                 }
                 def.push(')');
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (allowed-symbols nil)");
             }
 
             if let Some(def_val) = default {
                 def.push_str(&format!(" (default {})", def_val));
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (default nil)");
             }
             def.push(')');
@@ -460,11 +445,11 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::Object { nullable, default, .. } => {
+        Property::Object { default, .. } => {
             def.push_str(" (slot value (type SYMBOL)");
             if let Some(def_val) = default {
                 def.push_str(&format!(" (default {})", def_val));
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (default nil)");
             }
             def.push(')');
@@ -474,12 +459,8 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::BoolArray { nullable, default } => {
-            def.push_str(" (multislot value (type SYMBOL) (allowed-symbols TRUE FALSE");
-            if let Some(true) = nullable {
-                def.push_str(" nil");
-            }
-            def.push(')');
+        Property::BoolArray { default } => {
+            def.push_str(" (multislot value (type SYMBOL) (allowed-symbols TRUE FALSE nil)");
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|b| if *b { "TRUE" } else { "FALSE" }).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
@@ -491,12 +472,8 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::IntArray { nullable, default, min, max } => {
-            def.push_str(" (multislot value (type INTEGER");
-            if let Some(true) = nullable {
-                def.push_str(" SYMBOL) (allowed-symbols nil");
-            }
-            def.push(')');
+        Property::IntArray { default, min, max } => {
+            def.push_str(" (multislot value (type INTEGER SYMBOL) (allowed-symbols nil)");
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
@@ -513,12 +490,8 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::FloatArray { nullable, default, min, max } => {
-            def.push_str(" (multislot value (type FLOAT");
-            if let Some(true) = nullable {
-                def.push_str(" SYMBOL) (allowed-symbols nil");
-            }
-            def.push(')');
+        Property::FloatArray { default, min, max } => {
+            def.push_str(" (multislot value (type FLOAT SYMBOL) (allowed-symbols nil)");
             if let Some(def_val) = default {
                 let def_str = def_val
                     .iter()
@@ -552,12 +525,8 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::StringArray { nullable, default } => {
-            def.push_str(" (multislot value (type STRING");
-            if let Some(true) = nullable {
-                def.push_str(" SYMBOL) (allowed-symbols nil");
-            }
-            def.push(')');
+        Property::StringArray { default } => {
+            def.push_str(" (multislot value (type STRING SYMBOL) (allowed-symbols nil)");
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
@@ -569,18 +538,15 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::SymbolArray { nullable, default, allowed_values } => {
+        Property::SymbolArray { default, allowed_values } => {
             def.push_str(" (multislot value (type SYMBOL)");
             if let Some(allowed) = allowed_values {
-                def.push_str(" (allowed-symbols");
-                if let Some(true) = nullable {
-                    def.push_str(" nil");
-                }
+                def.push_str(" (allowed-symbols nil");
                 for v in allowed {
                     def.push_str(&format!(" {}", v));
                 }
                 def.push(')');
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (allowed-symbols nil)");
             }
             if let Some(def_val) = default {
@@ -594,12 +560,12 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
             def.push(')');
             def
         }
-        Property::ObjectArray { nullable, default, .. } => {
+        Property::ObjectArray { default, .. } => {
             def.push_str(" (multislot value (type SYMBOL)");
             if let Some(def_val) = default {
                 let def_str = def_val.iter().map(|o| o.as_str()).collect::<Vec<_>>().join(" ");
                 def.push_str(&format!(" (default {})", def_str));
-            } else if let Some(true) = nullable {
+            } else {
                 def.push_str(" (default nil)");
             }
             def.push(')');
@@ -615,53 +581,53 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
 fn set_prop(env: &Environment, fb: FactBuilder, property: &Property, value: Value, time: Option<DateTime<Utc>>) -> Result<FactBuilder, KnowledgeBaseError> {
     let builder = match (property, value) {
         (Property::Bool { .. }, Value::Bool(b)) => fb.put_symbol("value", if b { "TRUE" } else { "FALSE" }).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool property value: {}", e))),
-        (Property::Bool { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool property: {}", e))),
+        (Property::Bool { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool property: {}", e))),
         (Property::Int { .. }, Value::Int(i)) => fb.put_int("value", i).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int property value: {}", e))),
-        (Property::Int { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int property: {}", e))),
+        (Property::Int { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int property: {}", e))),
         (Property::Float { .. }, Value::Float(f)) => fb.put_float("value", f).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float property value: {}", e))),
-        (Property::Float { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float property: {}", e))),
+        (Property::Float { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float property: {}", e))),
         (Property::String { .. }, Value::String(s)) => fb.put_string("value", s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string property value: {}", e))),
-        (Property::String { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string property: {}", e))),
+        (Property::String { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string property: {}", e))),
         (Property::Symbol { .. }, Value::Symbol(s)) => fb.put_symbol("value", s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol property value: {}", e))),
-        (Property::Symbol { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol property: {}", e))),
+        (Property::Symbol { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol property: {}", e))),
         (Property::Object { .. }, Value::Object(o)) => fb.put_symbol("value", o.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object property value: {}", e))),
-        (Property::Object { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object property: {}", e))),
+        (Property::Object { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object property: {}", e))),
         (Property::BoolArray { .. }, Value::BoolArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for bool array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, &b| bld.put_symbol(if b { "TRUE" } else { "FALSE" }));
             fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool array property value: {}", e)))
         }
-        (Property::BoolArray { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool array property: {}", e))),
+        (Property::BoolArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool array property: {}", e))),
         (Property::IntArray { .. }, Value::IntArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for int array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, &i| bld.put_int(i));
             fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int array property value: {}", e)))
         }
-        (Property::IntArray { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int array property: {}", e))),
+        (Property::IntArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int array property: {}", e))),
         (Property::FloatArray { .. }, Value::FloatArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for float array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, &f| bld.put_float(f));
             fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float array property value: {}", e)))
         }
-        (Property::FloatArray { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float array property: {}", e))),
+        (Property::FloatArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float array property: {}", e))),
         (Property::StringArray { .. }, Value::StringArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for string array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, s| bld.put_string(s.as_str()));
             fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string array property value: {}", e)))
         }
-        (Property::StringArray { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string array property: {}", e))),
+        (Property::StringArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string array property: {}", e))),
         (Property::SymbolArray { .. }, Value::StringArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for symbol array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, s| bld.put_symbol(s.as_str()));
             fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol array property value: {}", e)))
         }
-        (Property::SymbolArray { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol array property: {}", e))),
+        (Property::SymbolArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol array property: {}", e))),
         (Property::ObjectArray { .. }, Value::StringArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for object array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, o| bld.put_symbol(o.as_str()));
             fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object array property value: {}", e)))
         }
-        (Property::ObjectArray { nullable: Some(true), .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object array property: {}", e))),
+        (Property::ObjectArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object array property: {}", e))),
         _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_string())),
     };
     if let Some(t) = time { builder.and_then(|fb| fb.put_int("time", t.timestamp()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set time slot for property value: {}", e)))) } else { builder }
@@ -670,72 +636,72 @@ fn set_prop(env: &Environment, fb: FactBuilder, property: &Property, value: Valu
 fn update_prop(env: &Environment, fm: FactModifier, property: &Property, value: Value, time: Option<DateTime<Utc>>) -> Result<FactModifier, KnowledgeBaseError> {
     let modifier = match (property, value) {
         (Property::Bool { .. }, Value::Bool(b)) => fm.put_symbol("value", if b { "TRUE" } else { "FALSE" }).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool property value: {}", e))),
-        (Property::Bool { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool property: {}", e))),
+        (Property::Bool { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool property: {}", e))),
         (Property::Int { .. }, Value::Int(i)) => fm.put_int("value", i).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int property value: {}", e))),
-        (Property::Int { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int property: {}", e))),
+        (Property::Int { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int property: {}", e))),
         (Property::Float { .. }, Value::Float(f)) => fm.put_float("value", f).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float property value: {}", e))),
-        (Property::Float { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float property: {}", e))),
+        (Property::Float { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float property: {}", e))),
         (Property::String { .. }, Value::String(s)) => fm.put_string("value", s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string property value: {}", e))),
-        (Property::String { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string property: {}", e))),
+        (Property::String { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string property: {}", e))),
         (Property::Symbol { .. }, Value::Symbol(s)) => fm.put_symbol("value", s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol property value: {}", e))),
-        (Property::Symbol { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol property: {}", e))),
+        (Property::Symbol { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol property: {}", e))),
         (Property::Object { .. }, Value::Object(o)) => fm.put_symbol("value", o.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object property value: {}", e))),
-        (Property::Object { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object property: {}", e))),
+        (Property::Object { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object property: {}", e))),
         (Property::BoolArray { .. }, Value::BoolArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for bool array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, &b| bld.put_symbol(if b { "TRUE" } else { "FALSE" }));
             fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool array property value: {}", e)))
         }
-        (Property::BoolArray { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool array property: {}", e))),
+        (Property::BoolArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool array property: {}", e))),
         (Property::IntArray { .. }, Value::IntArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for int array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, &i| bld.put_int(i));
             fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int array property value: {}", e)))
         }
-        (Property::IntArray { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int array property: {}", e))),
+        (Property::IntArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int array property: {}", e))),
         (Property::FloatArray { .. }, Value::FloatArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for float array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, &f| bld.put_float(f));
             fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float array property value: {}", e)))
         }
-        (Property::FloatArray { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float array property: {}", e))),
+        (Property::FloatArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float array property: {}", e))),
         (Property::StringArray { .. }, Value::StringArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for string array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, s| bld.put_string(s.as_str()));
             fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string array property value: {}", e)))
         }
-        (Property::StringArray { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string array property: {}", e))),
+        (Property::StringArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string array property: {}", e))),
         (Property::SymbolArray { .. }, Value::StringArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for symbol array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, s| bld.put_symbol(s.as_str()));
             fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol array property value: {}", e)))
         }
-        (Property::SymbolArray { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol array property: {}", e))),
+        (Property::SymbolArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol array property: {}", e))),
         (Property::ObjectArray { .. }, Value::StringArray(arr)) => {
             let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for object array: {}", e)))?;
             let builder = arr.iter().fold(builder, |bld, o| bld.put_symbol(o.as_str()));
             fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object array property value: {}", e)))
         }
-        (Property::ObjectArray { nullable: Some(true), .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object array property: {}", e))),
+        (Property::ObjectArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object array property: {}", e))),
         _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_string())),
     };
     if let Some(t) = time { modifier.and_then(|fm| fm.put_int("time", t.timestamp()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set time slot for property value: {}", e)))) } else { modifier }
 }
 
-fn get_default(property: &Property) -> Option<Value> {
+fn get_default(property: &Property) -> Value {
     match property {
-        Property::Bool { default, nullable, .. } => default.map(Value::Bool).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::Int { default, nullable, .. } => default.map(Value::Int).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::Float { default, nullable, .. } => default.map(Value::Float).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::String { default, nullable, .. } => default.clone().map(Value::String).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::Symbol { default, nullable, .. } => default.clone().map(Value::Symbol).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::Object { default, nullable, .. } => default.clone().map(Value::Object).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::BoolArray { default, nullable } => default.clone().map(Value::BoolArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::IntArray { default, nullable, .. } => default.clone().map(Value::IntArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::FloatArray { default, nullable, .. } => default.clone().map(Value::FloatArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::StringArray { default, nullable } => default.clone().map(Value::StringArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::SymbolArray { default, nullable, .. } => default.clone().map(Value::StringArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
-        Property::ObjectArray { default, nullable, .. } => default.clone().map(Value::StringArray).or_else(|| if *nullable == Some(true) { Some(Value::Null) } else { None }),
+        Property::Bool { default, .. } => default.map(Value::Bool).unwrap_or(Value::Null),
+        Property::Int { default, .. } => default.map(Value::Int).unwrap_or(Value::Null),
+        Property::Float { default, .. } => default.map(Value::Float).unwrap_or(Value::Null),
+        Property::String { default, .. } => default.clone().map(Value::String).unwrap_or(Value::Null),
+        Property::Symbol { default, .. } => default.clone().map(Value::Symbol).unwrap_or(Value::Null),
+        Property::Object { default, .. } => default.clone().map(Value::Object).unwrap_or(Value::Null),
+        Property::BoolArray { default } => default.clone().map(Value::BoolArray).unwrap_or(Value::Null),
+        Property::IntArray { default, .. } => default.clone().map(Value::IntArray).unwrap_or(Value::Null),
+        Property::FloatArray { default, .. } => default.clone().map(Value::FloatArray).unwrap_or(Value::Null),
+        Property::StringArray { default } => default.clone().map(Value::StringArray).unwrap_or(Value::Null),
+        Property::SymbolArray { default, .. } => default.clone().map(Value::StringArray).unwrap_or(Value::Null),
+        Property::ObjectArray { default, .. } => default.clone().map(Value::StringArray).unwrap_or(Value::Null),
     }
 }
 
@@ -797,7 +763,7 @@ mod tests {
     fn test_create_class_with_static_bool_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("active".to_string(), Property::Bool { nullable: Some(false), default: Some(true) });
+        static_props.insert("active".to_string(), Property::Bool { default: Some(true) });
 
         let class = Class {
             name: "Device".to_string(),
@@ -814,7 +780,7 @@ mod tests {
     fn test_create_class_with_static_int_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("temperature".to_string(), Property::Int { nullable: Some(false), default: Some(25), min: Some(0), max: Some(100) });
+        static_props.insert("temperature".to_string(), Property::Int { default: Some(25), min: Some(0), max: Some(100) });
 
         let class = Class {
             name: "Sensor".to_string(),
@@ -831,7 +797,7 @@ mod tests {
     fn test_create_class_with_static_float_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("voltage".to_string(), Property::Float { nullable: Some(false), default: Some(5.0), min: Some(0.0), max: Some(10.0) });
+        static_props.insert("voltage".to_string(), Property::Float { default: Some(5.0), min: Some(0.0), max: Some(10.0) });
 
         let class = Class {
             name: "PowerSupply".to_string(),
@@ -848,7 +814,7 @@ mod tests {
     fn test_create_class_with_static_string_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("name".to_string(), Property::String { nullable: Some(false), default: Some("Default Name".to_string()) });
+        static_props.insert("name".to_string(), Property::String { default: Some("Default Name".to_string()) });
 
         let class = Class {
             name: "Entity".to_string(),
@@ -869,14 +835,7 @@ mod tests {
         allowed_symbols.insert("STATE_ON".to_string());
         allowed_symbols.insert("STATE_OFF".to_string());
 
-        static_props.insert(
-            "state".to_string(),
-            Property::Symbol {
-                nullable: Some(false),
-                default: Some("STATE_OFF".to_string()),
-                allowed_values: Some(allowed_symbols),
-            },
-        );
+        static_props.insert("state".to_string(), Property::Symbol { default: Some("STATE_OFF".to_string()), allowed_values: Some(allowed_symbols) });
 
         let class = Class {
             name: "Switch".to_string(),
@@ -893,7 +852,7 @@ mod tests {
     fn test_create_class_with_static_object_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("owner".to_string(), Property::Object { nullable: Some(true), default: None, class: "Person".to_string() });
+        static_props.insert("owner".to_string(), Property::Object { default: None, class: "Person".to_string() });
 
         let class = Class {
             name: "Item".to_string(),
@@ -911,13 +870,13 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
 
-        static_props.insert("bool_array".to_string(), Property::BoolArray { nullable: Some(false), default: Some(vec![true, false, true]) });
+        static_props.insert("bool_array".to_string(), Property::BoolArray { default: Some(vec![true, false, true]) });
 
-        static_props.insert("int_array".to_string(), Property::IntArray { nullable: Some(false), default: Some(vec![1, 2, 3]), min: Some(0), max: Some(100) });
+        static_props.insert("int_array".to_string(), Property::IntArray { default: Some(vec![1, 2, 3]), min: Some(0), max: Some(100) });
 
-        static_props.insert("float_array".to_string(), Property::FloatArray { nullable: Some(false), default: Some(vec![1.5, 2.5, 3.5]), min: Some(0.0), max: Some(10.0) });
+        static_props.insert("float_array".to_string(), Property::FloatArray { default: Some(vec![1.5, 2.5, 3.5]), min: Some(0.0), max: Some(10.0) });
 
-        static_props.insert("string_array".to_string(), Property::StringArray { nullable: Some(false), default: Some(vec!["a".to_string(), "b".to_string()]) });
+        static_props.insert("string_array".to_string(), Property::StringArray { default: Some(vec!["a".to_string(), "b".to_string()]) });
 
         let class = Class {
             name: "ArrayHolder".to_string(),
@@ -934,7 +893,7 @@ mod tests {
     fn test_create_class_with_dynamic_properties() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("pressure".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: None, max: None });
+        dynamic_props.insert("pressure".to_string(), Property::Float { default: Some(0.0), min: None, max: None });
 
         let class = Class {
             name: "DynamicSensor".to_string(),
@@ -1059,7 +1018,7 @@ mod tests {
     fn test_create_object_with_static_properties() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("count".to_string(), Property::Int { nullable: Some(false), default: Some(0), min: None, max: None });
+        static_props.insert("count".to_string(), Property::Int { default: Some(0), min: None, max: None });
 
         let class = Class {
             name: "Counter".to_string(),
@@ -1085,7 +1044,7 @@ mod tests {
     fn test_create_object_with_dynamic_values() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(20.0), min: None, max: None });
+        dynamic_props.insert("temperature".to_string(), Property::Float { default: Some(20.0), min: None, max: None });
 
         let class = Class {
             name: "ThermometerDynamic".to_string(),
@@ -1190,7 +1149,7 @@ mod tests {
     fn test_set_properties_on_object() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("value".to_string(), Property::Int { nullable: Some(false), default: Some(0), min: None, max: None });
+        static_props.insert("value".to_string(), Property::Int { default: Some(0), min: None, max: None });
 
         let class = Class {
             name: "Configurable".to_string(),
@@ -1231,7 +1190,7 @@ mod tests {
     fn test_add_values_to_object() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("measurement".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: None, max: None });
+        dynamic_props.insert("measurement".to_string(), Property::Float { default: Some(0.0), min: None, max: None });
 
         let class = Class {
             name: "TimeSeries".to_string(),
@@ -1298,91 +1257,87 @@ mod tests {
     // Helper Function Tests
     #[test]
     fn test_get_default_bool_with_default() {
-        let property = Property::Bool { nullable: Some(false), default: Some(true) };
+        let property = Property::Bool { default: Some(true) };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::Bool(true)));
+        assert_eq!(default_val, Value::Bool(true));
     }
 
     #[test]
     fn test_get_default_bool_nullable_without_default() {
-        let property = Property::Bool { nullable: Some(true), default: None };
+        let property = Property::Bool { default: None };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::Null));
+        assert_eq!(default_val, Value::Null);
     }
 
     #[test]
     fn test_get_default_int_with_default() {
-        let property = Property::Int { nullable: Some(false), default: Some(42), min: None, max: None };
+        let property = Property::Int { default: Some(42), min: None, max: None };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::Int(42)));
+        assert_eq!(default_val, Value::Int(42));
     }
 
     #[test]
     fn test_get_default_float_with_default() {
-        let property = Property::Float { nullable: Some(false), default: Some(3.14), min: None, max: None };
+        let property = Property::Float { default: Some(3.14), min: None, max: None };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::Float(3.14)));
+        assert_eq!(default_val, Value::Float(3.14));
     }
 
     #[test]
     fn test_get_default_string_with_default() {
-        let property = Property::String { nullable: Some(false), default: Some("hello".to_string()) };
+        let property = Property::String { default: Some("hello".to_string()) };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::String("hello".to_string())));
+        assert_eq!(default_val, Value::String("hello".to_string()));
     }
 
     #[test]
     fn test_get_default_symbol_with_default() {
-        let property = Property::Symbol { nullable: Some(false), default: Some("SYMBOL_VALUE".to_string()), allowed_values: None };
+        let property = Property::Symbol { default: Some("SYMBOL_VALUE".to_string()), allowed_values: None };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::Symbol("SYMBOL_VALUE".to_string())));
+        assert_eq!(default_val, Value::Symbol("SYMBOL_VALUE".to_string()));
     }
 
     #[test]
     fn test_get_default_object_with_default() {
-        let property = Property::Object { nullable: Some(false), default: Some("obj_id".to_string()), class: "MyClass".to_string() };
+        let property = Property::Object { default: Some("obj_id".to_string()), class: "MyClass".to_string() };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::Object("obj_id".to_string())));
+        assert_eq!(default_val, Value::Object("obj_id".to_string()));
     }
 
     #[test]
     fn test_get_default_bool_array_with_default() {
-        let property = Property::BoolArray { nullable: Some(false), default: Some(vec![true, false]) };
+        let property = Property::BoolArray { default: Some(vec![true, false]) };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::BoolArray(vec![true, false])));
+        assert_eq!(default_val, Value::BoolArray(vec![true, false]));
     }
 
     #[test]
     fn test_get_default_int_array_with_default() {
-        let property = Property::IntArray { nullable: Some(false), default: Some(vec![1, 2, 3]), min: None, max: None };
+        let property = Property::IntArray { default: Some(vec![1, 2, 3]), min: None, max: None };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::IntArray(vec![1, 2, 3])));
+        assert_eq!(default_val, Value::IntArray(vec![1, 2, 3]));
     }
 
     #[test]
     fn test_get_default_float_array_with_default() {
-        let property = Property::FloatArray { nullable: Some(false), default: Some(vec![1.5, 2.5]), min: None, max: None };
+        let property = Property::FloatArray { default: Some(vec![1.5, 2.5]), min: None, max: None };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::FloatArray(vec![1.5, 2.5])));
+        assert_eq!(default_val, Value::FloatArray(vec![1.5, 2.5]));
     }
 
     #[test]
     fn test_get_default_string_array_with_default() {
-        let property = Property::StringArray { nullable: Some(false), default: Some(vec!["a".to_string(), "b".to_string()]) };
+        let property = Property::StringArray { default: Some(vec!["a".to_string(), "b".to_string()]) };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Some(Value::StringArray(vec!["a".to_string(), "b".to_string()])));
+        assert_eq!(default_val, Value::StringArray(vec!["a".to_string(), "b".to_string()]));
     }
 
     #[test]
     fn test_get_default_symbol_array_with_default() {
-        let property = Property::SymbolArray {
-            nullable: Some(false),
-            default: Some(vec!["SYM1".to_string(), "SYM2".to_string()]),
-            allowed_values: None,
-        };
+        let property = Property::SymbolArray { default: Some(vec!["SYM1".to_string(), "SYM2".to_string()]), allowed_values: None };
         let default_val = get_default(&property);
         // Note: SymbolArray returns StringArray due to the implementation
-        assert_eq!(default_val, Some(Value::StringArray(vec!["SYM1".to_string(), "SYM2".to_string()])));
+        assert_eq!(default_val, Value::StringArray(vec!["SYM1".to_string(), "SYM2".to_string()]));
     }
 
     #[test]
@@ -1393,7 +1348,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::Bool { nullable: Some(true), default: Some(false) };
+        let property = Property::Bool { default: Some(false) };
 
         let template = prop_deftemplate(&class, "active", &property, true);
         assert!(template.contains("TestClass_active"));
@@ -1410,7 +1365,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::Int { nullable: Some(false), default: Some(50), min: Some(0), max: Some(100) };
+        let property = Property::Int { default: Some(50), min: Some(0), max: Some(100) };
 
         let template = prop_deftemplate(&class, "percentage", &property, true);
         assert!(template.contains("TestClass_percentage"));
@@ -1427,7 +1382,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::Float { nullable: Some(false), default: Some(1.5), min: None, max: None };
+        let property = Property::Float { default: Some(1.5), min: None, max: None };
 
         let template = prop_deftemplate(&class, "metric", &property, false);
         assert!(template.contains("TestClass_metric"));
@@ -1447,7 +1402,7 @@ mod tests {
         allowed.insert("ON".to_string());
         allowed.insert("OFF".to_string());
 
-        let property = Property::Symbol { nullable: Some(false), default: Some("OFF".to_string()), allowed_values: Some(allowed) };
+        let property = Property::Symbol { default: Some("OFF".to_string()), allowed_values: Some(allowed) };
 
         let template = prop_deftemplate(&class, "state", &property, true);
         assert!(template.contains("TestClass_state"));
@@ -1463,7 +1418,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::IntArray { nullable: Some(false), default: Some(vec![1, 2, 3]), min: Some(0), max: Some(10) };
+        let property = Property::IntArray { default: Some(vec![1, 2, 3]), min: Some(0), max: Some(10) };
 
         let template = prop_deftemplate(&class, "values", &property, true);
         assert!(template.contains("TestClass_values"));
@@ -1479,7 +1434,7 @@ mod tests {
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::StringArray { nullable: Some(true), default: Some(vec!["item1".to_string(), "item2".to_string()]) };
+        let property = Property::StringArray { default: Some(vec!["item1".to_string(), "item2".to_string()]) };
 
         let template = prop_deftemplate(&class, "items", &property, true);
         assert!(template.contains("TestClass_items"));
@@ -1494,11 +1449,11 @@ mod tests {
 
         // Create a class with mixed properties
         let mut static_props = HashMap::new();
-        static_props.insert("name".to_string(), Property::String { nullable: Some(false), default: Some("Unknown".to_string()) });
-        static_props.insert("enabled".to_string(), Property::Bool { nullable: Some(false), default: Some(true) });
+        static_props.insert("name".to_string(), Property::String { default: Some("Unknown".to_string()) });
+        static_props.insert("enabled".to_string(), Property::Bool { default: Some(true) });
 
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("reading".to_string(), Property::Float { nullable: Some(false), default: Some(0.0), min: None, max: None });
+        dynamic_props.insert("reading".to_string(), Property::Float { default: Some(0.0), min: None, max: None });
 
         let class = Class {
             name: "Sensor".to_string(),
@@ -1606,7 +1561,7 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
 
         let mut static_props = HashMap::new();
-        static_props.insert("optional_field".to_string(), Property::String { nullable: Some(true), default: None });
+        static_props.insert("optional_field".to_string(), Property::String { default: None });
 
         let class = Class {
             name: "NullableClass".to_string(),
@@ -1639,7 +1594,7 @@ mod tests {
 
         // Create a class with a dynamic property (temperature monitoring)
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(20.0), min: None, max: None });
+        dynamic_props.insert("temperature".to_string(), Property::Float { default: Some(20.0), min: None, max: None });
 
         let class = Class {
             name: "ThermometerMonitor".to_string(),
@@ -1704,9 +1659,9 @@ mod tests {
 
         // Create a complex sensor class with multiple dynamic properties
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("temperature".to_string(), Property::Float { nullable: Some(false), default: Some(20.0), min: None, max: None });
-        dynamic_props.insert("humidity".to_string(), Property::Float { nullable: Some(false), default: Some(50.0), min: None, max: None });
-        dynamic_props.insert("pressure".to_string(), Property::Float { nullable: Some(false), default: Some(1013.0), min: None, max: None });
+        dynamic_props.insert("temperature".to_string(), Property::Float { default: Some(20.0), min: None, max: None });
+        dynamic_props.insert("humidity".to_string(), Property::Float { default: Some(50.0), min: None, max: None });
+        dynamic_props.insert("pressure".to_string(), Property::Float { default: Some(1013.0), min: None, max: None });
 
         let class = Class {
             name: "EnvironmentalSensor".to_string(),

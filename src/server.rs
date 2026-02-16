@@ -13,7 +13,7 @@ use utoipa::OpenApi;
 
 use crate::{
     CoCo, CoCoError, CoCoState,
-    model::{Class, CoCoEvent, Object, Value},
+    model::{Class, CoCoEvent, Object, Rule, Value},
 };
 
 pub fn build_coco_router<S>() -> Router<S>
@@ -26,6 +26,8 @@ where
         .route("/classes/{name}", get(get_class::<S>))
         .route("/objects", get(get_objects::<S>).post(create_object::<S>))
         .route("/objects/{id}", get(get_object::<S>).patch(set_properties::<S>))
+        .route("/rules", get(get_rules::<S>).post(create_rule::<S>))
+        .route("/rules/{name}", get(get_rule::<S>))
         .route("/openapi", get(openapi))
 }
 
@@ -165,6 +167,63 @@ async fn set_properties<S: CoCoState>(State(coco): State<S>, Path(id): Path<Stri
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update object properties")).into_response(),
+        },
+    }
+}
+
+#[utoipa::path(
+        get,
+        path = "/rules",
+        tag = "System",
+        summary = "List all rules",
+        description = "Retrieve a list of all available rules in the knowledge base.",
+        responses(
+            (status = 200, description = "List of rules", body = [String])
+        )
+    )]
+async fn get_rules<S: CoCoState>(State(coco): State<S>) -> impl IntoResponse {
+    axum::Json(coco.coco().get_rules().await).into_response()
+}
+
+#[utoipa::path(
+        get,
+        path = "/rules/{name}",
+        tag = "System",
+        summary = "Get a rule",
+        description = "Retrieve details for a specific rule by its name.",
+        params(
+            ("name" = String, Path, description = "Name of the rule to retrieve")
+        ),
+        responses(
+            (status = 200, description = "The requested rule", body = String),
+            (status = 404, description = "Rule not found")
+        )
+    )]
+async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(coco): State<S>) -> impl IntoResponse {
+    match coco.coco().get_rule(&name).await {
+        Some(rule) => axum::Json(rule).into_response(),
+        None => (StatusCode::NOT_FOUND, "Rule not found").into_response(),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/rules",
+        tag = "System",
+        summary = "Create a rule",
+        description = "Create a new rule in the knowledge base.",
+        request_body = Rule,
+        responses(
+            (status = 201, description = "Rule created successfully"),
+            (status = 500, description = "Failed to create rule")
+        )
+    )]
+async fn create_rule<S: CoCoState>(State(coco): State<S>, axum::Json(rule): axum::Json<Rule>) -> impl IntoResponse {
+    match coco.coco().create_rule(rule).await {
+        Ok(_) => StatusCode::CREATED.into_response(),
+        Err(e) => match e {
+            CoCoError::RuleAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create rule")).into_response(),
         },
     }
 }

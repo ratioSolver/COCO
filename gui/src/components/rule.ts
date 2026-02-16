@@ -4,7 +4,7 @@ import { flick, ListGroup, ListGroupItem } from "@ratiosolver/flick";
 
 export function RulesList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_rules().values().map(rule => ListGroupItem(rule.get_name(), () => {
-    flick.ctx.current_page = CoCoRule(rule);
+    flick.ctx.current_page = () => CoCoRule(rule);
     flick.ctx.page_title = `Rule: ${rule.get_name()}`;
     flick.redraw();
   }, flick.ctx.page_title === `Rule: ${rule.get_name()}`))));

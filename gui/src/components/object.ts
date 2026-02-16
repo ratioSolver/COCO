@@ -2,7 +2,8 @@ import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
 import { flick, ListGroup } from "@ratiosolver/flick";
 import { CoCoClass } from "./class";
-import * as echarts from 'echarts';
+import * as echarts from 'echarts/core';
+import { CanvasRenderer } from 'echarts/renderers';
 
 const obj_item_listener = {
   class_added: (_cls: coco.CoCoClass) => { },
@@ -25,7 +26,7 @@ export function ObjectGroupItem(obj: coco.CoCoObject): VNode {
     attrs: { 'aria-current': active ? 'true' : 'false' },
     on: {
       click: () => {
-        flick.ctx.current_page = CoCoObject(obj);
+        flick.ctx.current_page = () => CoCoObject(obj);
         flick.ctx.page_title = `Object: ${obj.get_id()}`;
         flick.redraw();
       }
@@ -44,6 +45,7 @@ const obj_listener = {
 };
 
 let chart: echarts.ECharts | null = null;
+echarts.use([CanvasRenderer]);
 
 export function CoCoObject(obj: coco.CoCoObject): VNode {
   const vals = obj.get_values();
@@ -70,7 +72,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
         style: { cursor: 'pointer' },
         on: {
           click: () => {
-            flick.ctx.current_page = CoCoClass(cls);
+            flick.ctx.current_page = () => CoCoClass(cls);
             flick.ctx.page_title = `Class: ${cls.get_name()}`;
             flick.redraw();
           }

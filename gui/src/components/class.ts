@@ -5,7 +5,7 @@ import { CoCoObject } from "./object";
 
 export function ClassesList(coco: coco.CoCo): VNode {
   return ListGroup(Array.from(coco.get_classes().values().map(cls => ListGroupItem(cls.get_name(), () => {
-    flick.ctx.current_page = CoCoClass(cls);
+    flick.ctx.current_page = () => CoCoClass(cls);
     flick.ctx.page_title = `Class: ${cls.get_name()}`;
     flick.redraw();
   }, flick.ctx.page_title === `Class: ${cls.get_name()}`))));
@@ -51,7 +51,7 @@ export function ObjectRow(cls: coco.CoCoClass, obj: coco.CoCoObject): VNode {
     style: { cursor: 'pointer' },
     on: {
       click: () => {
-        flick.ctx.current_page = CoCoObject(obj);
+        flick.ctx.current_page = () => CoCoObject(obj);
         flick.ctx.page_title = `Object: ${obj.get_id()}`;
         flick.redraw();
       }

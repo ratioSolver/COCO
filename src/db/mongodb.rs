@@ -25,6 +25,13 @@ struct MongoObject {
     pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct ObjectData {
+    pub object_id: String,
+    pub values: HashMap<String, Value>,
+    pub timestamp: DateTime<Utc>,
+}
+
 impl MongoDB {
     pub async fn new(name: &str, connection_string: &str) -> Result<Self, DatabaseError> {
         let client = Client::with_uri_str(connection_string).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
@@ -151,14 +158,26 @@ impl Database for MongoDB {
         }
         collection.update_one(doc! { "_id": oid }, doc! { "$set": update_doc }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
 
-        let data_collection = db.collection::<Document>("object_data");
-        let data_doc = doc! {
-            "object_id": object_id,
-            "values": bson::to_bson(values).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?,
-            "timestamp": bson::DateTime::from_millis(date_time.timestamp_millis()),
-        };
+        let data_collection = db.collection::<ObjectData>("object_data");
+        let data_doc = ObjectData { object_id: object_id.to_string(), values: values.clone(), timestamp: *date_time };
         data_collection.insert_one(data_doc).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         Ok(())
+    }
+
+    async fn get_data(&self, object_id: &str, start_time: Option<&DateTime<Utc>>, end_time: Option<&DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<ObjectData>("object_data");
+        let mut filter = doc! { "object_id": object_id };
+        if let Some(start_time) = start_time {
+            filter.insert("timestamp", doc! { "$gte": bson::DateTime::from_millis(start_time.timestamp_millis()) });
+        }
+        if let Some(end_time) = end_time {
+            filter.insert("timestamp", doc! { "$lte": bson::DateTime::from_millis(end_time.timestamp_millis()) });
+        }
+        let cursor = collection.find(filter).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let data: Vec<ObjectData> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let data = data.into_iter().map(|d| (d.values, d.timestamp)).collect();
+        Ok(data)
     }
 
     async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError> {

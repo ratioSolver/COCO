@@ -72,6 +72,7 @@ enum KbCommand {
     CreateObject { object: Object, resp: oneshot::Sender<Result<String, CoCoError>> },
     SetProperties { object_id: String, values: HashMap<String, Value>, resp: oneshot::Sender<Result<(), CoCoError>> },
     AddData { object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>, resp: oneshot::Sender<Result<(), CoCoError>> },
+    GetData { object_id: String, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>, resp: oneshot::Sender<Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError>> },
     GetRules { resp: oneshot::Sender<Vec<Rule>> },
     GetRule { name: String, resp: oneshot::Sender<Option<Rule>> },
     CreateRule { rule: Rule, resp: oneshot::Sender<Result<(), CoCoError>> },
@@ -178,6 +179,12 @@ impl CoCo {
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
     }
 
+    pub async fn get_data(&self, object_id: &str, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = self.kb_tx.send(KbCommand::GetData { object_id: object_id.to_string(), start_time, end_time, resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
+    }
+
     pub async fn get_rules(&self) -> Vec<Rule> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::GetRules { resp: resp_tx }).await;
@@ -253,6 +260,10 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
         }
         KbCommand::AddData { object_id, values, date_time, resp } => {
             let result = db.add_data(&object_id, &values, &date_time).await.map_err(map_db_error).and_then(|_| kb.add_values(&object_id, values, date_time).and_then(|_| kb.run()).map_err(map_kb_error));
+            let _ = resp.send(result);
+        }
+        KbCommand::GetData { object_id, start_time, end_time, resp } => {
+            let result = db.get_data(&object_id, start_time.as_ref(), end_time.as_ref()).await.map_err(map_db_error);
             let _ = resp.send(result);
         }
         KbCommand::GetRules { resp } => {

@@ -31,6 +31,7 @@ pub trait Database: Send + Sync {
     async fn set_properties(&self, object_id: &str, properties: &HashMap<String, Value>) -> Result<(), DatabaseError>;
     async fn get_values(&self, object_id: &str, from: &DateTime<Utc>, to: &DateTime<Utc>) -> Result<HashMap<String, Vec<(Value, DateTime<Utc>)>>, DatabaseError>;
     async fn add_data(&self, object_id: &str, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), DatabaseError>;
+    async fn get_data(&self, object_id: &str, start_time: Option<&DateTime<Utc>>, end_time: Option<&DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, DatabaseError>;
 
     async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError>;
     async fn create_rule(&self, rule: &Rule) -> Result<(), DatabaseError>;

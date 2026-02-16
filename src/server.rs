@@ -41,8 +41,8 @@ where
             (status = 200, description = "List of classes", body = [Class])
         )
     )]
-async fn get_classes<S: CoCoState>(State(coco): State<S>) -> impl IntoResponse {
-    axum::Json(coco.coco().get_classes().await)
+async fn get_classes<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
+    axum::Json(state.coco().get_classes().await)
 }
 
 #[utoipa::path(
@@ -59,8 +59,8 @@ async fn get_classes<S: CoCoState>(State(coco): State<S>) -> impl IntoResponse {
             (status = 404, description = "Class not found")
         )
     )]
-async fn get_class<S: CoCoState>(Path(name): Path<String>, State(coco): State<S>) -> impl IntoResponse {
-    match coco.coco().get_class(&name).await {
+async fn get_class<S: CoCoState>(Path(name): Path<String>, State(state): State<S>) -> impl IntoResponse {
+    match state.coco().get_class(&name).await {
         // We clone the single class to safely return it
         Some(class) => axum::Json(class).into_response(),
         None => (StatusCode::NOT_FOUND, "Class not found").into_response(),
@@ -79,8 +79,8 @@ async fn get_class<S: CoCoState>(Path(name): Path<String>, State(coco): State<S>
             (status = 500, description = "Failed to create class")
         )
     )]
-async fn create_class<S: CoCoState>(State(coco): State<S>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
-    match coco.coco().create_class(class).await {
+async fn create_class<S: CoCoState>(State(state): State<S>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
+    match state.coco().create_class(class).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
             CoCoError::ClassAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
@@ -99,8 +99,8 @@ async fn create_class<S: CoCoState>(State(coco): State<S>, axum::Json(class): ax
             (status = 200, description = "List of objects", body = [Object])
         )
     )]
-async fn get_objects<S: CoCoState>(State(coco): State<S>) -> impl IntoResponse {
-    axum::Json(coco.coco().get_objects().await)
+async fn get_objects<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
+    axum::Json(state.coco().get_objects().await)
 }
 
 #[utoipa::path(
@@ -117,8 +117,8 @@ async fn get_objects<S: CoCoState>(State(coco): State<S>) -> impl IntoResponse {
             (status = 404, description = "Object not found")
         )
     )]
-async fn get_object<S: CoCoState>(Path(id): Path<String>, State(coco): State<S>) -> impl IntoResponse {
-    match coco.coco().get_object(&id).await {
+async fn get_object<S: CoCoState>(Path(id): Path<String>, State(state): State<S>) -> impl IntoResponse {
+    match state.coco().get_object(&id).await {
         Some(object) => axum::Json(object).into_response(),
         None => (StatusCode::NOT_FOUND, "Object not found").into_response(),
     }
@@ -136,8 +136,8 @@ async fn get_object<S: CoCoState>(Path(id): Path<String>, State(coco): State<S>)
             (status = 500, description = "Failed to create object")
         )
     )]
-async fn create_object<S: CoCoState>(State(coco): State<S>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
-    match coco.coco().create_object(object).await {
+async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object): axum::Json<Object>) -> impl IntoResponse {
+    match state.coco().create_object(object).await {
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
         Err(e) => match e {
             CoCoError::ObjectAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
@@ -161,8 +161,8 @@ async fn create_object<S: CoCoState>(State(coco): State<S>, axum::Json(object): 
             (status = 500, description = "Failed to update object properties")
         )
     )]
-async fn set_properties<S: CoCoState>(State(coco): State<S>, Path(id): Path<String>, axum::Json(properties): axum::Json<HashMap<String, Value>>) -> impl IntoResponse {
-    match coco.coco().set_properties(&id, properties).await {
+async fn set_properties<S: CoCoState>(State(state): State<S>, Path(id): Path<String>, axum::Json(properties): axum::Json<HashMap<String, Value>>) -> impl IntoResponse {
+    match state.coco().set_properties(&id, properties).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
@@ -181,8 +181,8 @@ async fn set_properties<S: CoCoState>(State(coco): State<S>, Path(id): Path<Stri
             (status = 200, description = "List of rules", body = [String])
         )
     )]
-async fn get_rules<S: CoCoState>(State(coco): State<S>) -> impl IntoResponse {
-    axum::Json(coco.coco().get_rules().await).into_response()
+async fn get_rules<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
+    axum::Json(state.coco().get_rules().await).into_response()
 }
 
 #[utoipa::path(
@@ -199,8 +199,8 @@ async fn get_rules<S: CoCoState>(State(coco): State<S>) -> impl IntoResponse {
             (status = 404, description = "Rule not found")
         )
     )]
-async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(coco): State<S>) -> impl IntoResponse {
-    match coco.coco().get_rule(&name).await {
+async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(state): State<S>) -> impl IntoResponse {
+    match state.coco().get_rule(&name).await {
         Some(rule) => axum::Json(rule).into_response(),
         None => (StatusCode::NOT_FOUND, "Rule not found").into_response(),
     }
@@ -218,8 +218,8 @@ async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(coco): State<S>)
             (status = 500, description = "Failed to create rule")
         )
     )]
-async fn create_rule<S: CoCoState>(State(coco): State<S>, axum::Json(rule): axum::Json<Rule>) -> impl IntoResponse {
-    match coco.coco().create_rule(rule).await {
+async fn create_rule<S: CoCoState>(State(state): State<S>, axum::Json(rule): axum::Json<Rule>) -> impl IntoResponse {
+    match state.coco().create_rule(rule).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
             CoCoError::RuleAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
@@ -238,8 +238,8 @@ async fn create_rule<S: CoCoState>(State(coco): State<S>, axum::Json(rule): axum
             (status = 101, description = "WebSocket connection established"),
         )
     )]
-async fn ws_handler<S: CoCoState>(ws: WebSocketUpgrade, State(coco): State<S>) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, coco.coco().clone()))
+async fn ws_handler<S: CoCoState>(ws: WebSocketUpgrade, State(state): State<S>) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_socket(socket, state.coco().clone()))
 }
 
 async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {

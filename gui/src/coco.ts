@@ -161,16 +161,12 @@ export namespace coco {
     }
     get_properties(): Record<string, Value> | undefined { return this.properties; }
     _set_properties(properties: Record<string, Value>) {
-      for (const key of Object.keys(this.properties!))
-        delete this.properties![key];
       for (const [key, value] of Object.entries(properties))
         this.properties![key] = value;
       for (const listener of this.listeners) listener.properties_updated(properties);
     }
     get_values(): Record<string, TimeValue> | undefined { return this.values; }
     _set_values(values: Record<string, Value>, date_time: string) {
-      for (const key of Object.keys(this.values!))
-        delete this.values![key];
       for (const [key, value] of Object.entries(values))
         this.values![key] = [value, date_time];
       for (const listener of this.listeners) listener.values_added(values, date_time);

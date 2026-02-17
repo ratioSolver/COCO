@@ -89,7 +89,7 @@ async fn create_class<S: CoCoState>(State(state): State<S>, axum::Json(class): a
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
             CoCoError::ClassAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create class")).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create class").into_response(),
         },
     }
 }
@@ -119,8 +119,8 @@ async fn get_objects<S: CoCoState>(State(state): State<S>, Query(params): Query<
     let filtered_objects: Vec<OpenApiObject> = objects
         .into_iter()
         .filter(|o| {
-            let class_match = params.class.as_ref().map_or(true, |class_name| o.classes.contains(class_name));
-            let extra_match = params.extra.as_ref().map_or(true, |extra| extra.iter().all(|(k, v)| o.properties.as_ref().and_then(|props| props.get(k)).map_or(false, |prop| prop == v)));
+            let class_match = params.class.as_ref().is_none_or(|class_name| o.classes.contains(class_name));
+            let extra_match = params.extra.as_ref().is_none_or(|extra| extra.iter().all(|(k, v)| o.properties.as_ref().and_then(|props| props.get(k)).is_none_or(|prop| prop == v)));
             class_match && extra_match
         })
         .collect();
@@ -165,7 +165,7 @@ async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object):
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
         Err(e) => match e {
             CoCoError::ObjectAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create object")).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create object").into_response(),
         },
     }
 }
@@ -191,7 +191,7 @@ async fn set_properties<S: CoCoState>(State(state): State<S>, Path(id): Path<Str
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update object properties")).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update object properties").into_response(),
         },
     }
 }
@@ -219,11 +219,11 @@ struct DateQuery {
         )
     )]
 async fn add_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<String>, Query(date_time): Query<DateQuery>, axum::Json(values): axum::Json<HashMap<String, Value>>) -> impl IntoResponse {
-    match state.coco().add_data(&object_id, values, date_time.time.unwrap_or_else(|| Utc::now())).await {
+    match state.coco().add_data(&object_id, values, date_time.time.unwrap_or_else(Utc::now)).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to add data to object")).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to add data to object").into_response(),
         },
     }
 }
@@ -256,7 +256,7 @@ async fn get_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<St
         Ok(data) => axum::Json(data).into_response(),
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to retrieve object data")).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve object data").into_response(),
         },
     }
 }
@@ -313,7 +313,7 @@ async fn create_rule<S: CoCoState>(State(state): State<S>, axum::Json(rule): axu
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
             CoCoError::RuleAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create rule")).into_response(),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create rule").into_response(),
         },
     }
 }

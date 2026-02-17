@@ -94,18 +94,37 @@ async fn create_class<S: CoCoState>(State(state): State<S>, axum::Json(class): a
     }
 }
 
+#[derive(serde::Deserialize)]
+struct ObjectFilter {
+    class: Option<String>,
+    extra: Option<HashMap<String, String>>,
+}
+
 #[utoipa::path(
         get,
         path = "/objects",
         tag = "Objects",
         summary = "List all objects",
         description = "Retrieve a list of all available objects in the knowledge base.",
+        params(
+            ("class" = Option<String>, Query, description = "Filter objects by class name (optional)"),
+            ("extra" = Option<HashMap<String, String>>, Query, description = "Additional key-value pairs to filter objects (optional)")
+        ),
         responses(
             (status = 200, description = "List of objects", body = [OpenApiObject])
         )
     )]
-async fn get_objects<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
-    axum::Json(state.coco().get_objects().await)
+async fn get_objects<S: CoCoState>(State(state): State<S>, Query(params): Query<ObjectFilter>) -> impl IntoResponse {
+    let objects = state.coco().get_objects().await;
+    let filtered_objects: Vec<OpenApiObject> = objects
+        .into_iter()
+        .filter(|o| {
+            let class_match = params.class.as_ref().map_or(true, |class_name| o.classes.contains(class_name));
+            let extra_match = params.extra.as_ref().map_or(true, |extra| extra.iter().all(|(k, v)| o.properties.as_ref().and_then(|props| props.get(k)).map_or(false, |prop| prop == v)));
+            class_match && extra_match
+        })
+        .collect();
+    axum::Json(filtered_objects).into_response()
 }
 
 #[utoipa::path(

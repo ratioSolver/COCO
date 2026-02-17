@@ -173,6 +173,42 @@ pub enum Value {
     StringArray(Vec<String>),
 }
 
+impl PartialEq<&str> for Value {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            Value::Null => *other == "null",
+            Value::Bool(b) => other == &b.to_string(),
+            Value::Int(i) => other == &i.to_string(),
+            Value::Float(f) => other == &f.to_string(),
+            Value::String(s) => other == s,
+            Value::Symbol(s) => other == s,
+            Value::Object(o) => other == o,
+            Value::BoolArray(arr) => other == &format!("{:?}", arr),
+            Value::IntArray(arr) => other == &format!("{:?}", arr),
+            Value::FloatArray(arr) => other == &format!("{:?}", arr),
+            Value::StringArray(arr) => other == &format!("{:?}", arr),
+        }
+    }
+}
+
+impl PartialEq<String> for Value {
+    fn eq(&self, other: &String) -> bool {
+        match self {
+            Value::Null => other == "null",
+            Value::Bool(b) => other == &b.to_string(),
+            Value::Int(i) => other == &i.to_string(),
+            Value::Float(f) => other == &f.to_string(),
+            Value::String(s) => other == s,
+            Value::Symbol(s) => other == s,
+            Value::Object(o) => other == o,
+            Value::BoolArray(arr) => other == &format!("{:?}", arr),
+            Value::IntArray(arr) => other == &format!("{:?}", arr),
+            Value::FloatArray(arr) => other == &format!("{:?}", arr),
+            Value::StringArray(arr) => other == &format!("{:?}", arr),
+        }
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

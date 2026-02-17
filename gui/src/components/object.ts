@@ -7,8 +7,9 @@ import { CanvasRenderer } from 'echarts/renderers';
 
 const obj_item_listener = {
   class_added: (_cls: coco.CoCoClass) => { },
-  properties_updated: (_properties: Record<string, coco.Value>) => { flick.redraw(); },
-  values_added: (_values: Record<string, coco.Value>, _date_time: string) => { }
+  properties_updated: (properties: Record<string, coco.Value>) => { if (properties.name) flick.redraw(); },
+  values_added: (_values: Record<string, coco.Value>, _date_time: string) => { },
+  data_updated: (_data: Record<string, Array<coco.TimeValue>>) => { }
 };
 
 export function ObjectGroupItem(obj: coco.CoCoObject): VNode {
@@ -41,7 +42,8 @@ export function ObjectsList(coco: coco.CoCo): VNode {
 const obj_listener = {
   class_added: (_cls: coco.CoCoClass) => { flick.redraw(); },
   properties_updated: (_properties: Record<string, coco.Value>) => { flick.redraw(); },
-  values_added: (_values: Record<string, coco.Value>, _date_time: string) => { flick.redraw(); }
+  values_added: (_values: Record<string, coco.Value>, _date_time: string) => { flick.redraw(); },
+  data_updated: (_data: Record<string, Array<coco.TimeValue>>) => { flick.redraw(); }
 };
 
 let chart: echarts.ECharts | null = null;
@@ -51,6 +53,9 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
   const props_header = ["Property", "Value"];
   const props = obj.get_properties();
   const props_rows = props ? Object.entries(props).map(([name, value]) => Row([name, coco.value_to_string(value)])) : [];
+  const data = obj.get_data();
+  if (!data)
+    obj.load_data();
 
   const vals = obj.get_values();
   const content = h('div.container.mt-2',

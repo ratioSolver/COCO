@@ -141,6 +141,7 @@ export namespace coco {
     private readonly classes: Set<CoCoClass>;
     private readonly properties: Record<string, Value>;
     private readonly values: Record<string, TimeValue>;
+    private readonly data: Record<string, Array<TimeValue>> = {};
     private readonly listeners: Set<CoCoObjectListener> = new Set();
 
     constructor(coco: CoCo, id: string, classes: Set<CoCoClass>, properties?: Record<string, Value>, values?: Record<string, TimeValue>) {
@@ -170,6 +171,22 @@ export namespace coco {
       for (const [key, value] of Object.entries(values))
         this.values![key] = [value, date_time];
       for (const listener of this.listeners) listener.values_added(values, date_time);
+    }
+
+    get_data(): Record<string, Array<TimeValue>> { return this.data; }
+    load_data(from = Date.now() - 1000 * 60 * 60 * 24 * 14, to = Date.now()) {
+      fetch(`/objects/${this.id}/data?start=${from}&end=${to}`).then(res => {
+        if (!res.ok) throw new Error(`Failed to load object data: ${res.statusText}`);
+        return res.json();
+      }).then((data: Record<string, Array<TimeValue>>) => {
+        for (const key of Object.keys(this.data))
+          delete this.data[key];
+        for (const [key, values] of Object.entries(data))
+          this.data[key] = values;
+        for (const listener of this.listeners) listener.data_updated(data);
+      }).catch(error => {
+        console.error('Error loading object data:', error);
+      });
     }
 
     add_listener(listener: CoCoObjectListener) { this.listeners.add(listener); }
@@ -213,10 +230,11 @@ export namespace coco {
     class_added(cls: CoCoClass): void;
     properties_updated(properties: Record<string, Value>): void;
     values_added(values: Record<string, Value>, date_time: string): void;
+    data_updated(data: Record<string, Array<TimeValue>>): void;
   }
 
   export type Value = null | boolean | number | string;
-  type TimeValue = [Value, string];
+  export type TimeValue = [Value, string];
 
   export function value_to_string(value: Value): string {
     switch (typeof value) {

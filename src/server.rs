@@ -171,7 +171,7 @@ async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object):
 }
 
 #[utoipa::path(
-        post,
+        patch,
         path = "/objects/{id}",
         tag = "Objects",
         summary = "Set object properties",
@@ -253,7 +253,15 @@ struct DataFilter {
     )]
 async fn get_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<String>, Query(filter): Query<DataFilter>) -> impl IntoResponse {
     match state.coco().get_data(&object_id, filter.start, filter.end).await {
-        Ok(data) => axum::Json(data).into_response(),
+        Ok(data) => {
+            let mut result: HashMap<String, Vec<(Value, DateTime<Utc>)>> = HashMap::new();
+            for (map, timestamp) in data {
+                for (key, value) in map {
+                    result.entry(key).or_default().push((value, timestamp));
+                }
+            }
+            axum::Json(result).into_response()
+        }
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve object data").into_response(),

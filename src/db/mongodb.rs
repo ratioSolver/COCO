@@ -169,7 +169,6 @@ impl Database for MongoDB {
         let cursor = collection.find(filter).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         let data: Vec<ObjectData> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         let data = data.into_iter().map(|d| (d.values, d.timestamp)).collect();
-        println!("Retrieved data for object_id {}: {:?}", object_id, data);
         Ok(data)
     }
 

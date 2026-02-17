@@ -1,6 +1,6 @@
 import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
-import { flick, Header, ListGroup, ListGroupItem, Table } from "@ratiosolver/flick";
+import { flick, Header, ListGroup, ListGroupItem, Row, Table } from "@ratiosolver/flick";
 import { CoCoObject } from "./object";
 
 export function ClassesList(coco: coco.CoCo): VNode {
@@ -63,6 +63,10 @@ export function CoCoClass(cls: coco.CoCoClass): VNode {
   const header = ["ID", ...cls.get_static_properties().keys().toArray().sort(), ...cls.get_dynamic_properties().keys().toArray().sort()];
   const rows = cls.get_instances().values().map(obj => ObjectRow(cls, obj)).toArray();
 
+  const props_header = ["Name", "Type"];
+  const static_props_rows = cls.get_static_properties().entries().map(([name, type]) => Row([name, type.type])).toArray();
+  const dynamic_props_rows = cls.get_dynamic_properties().entries().map(([name, type]) => Row([name, type.type])).toArray();
+
   return h('div.container.mt-2',
     {
       hook: {
@@ -81,6 +85,8 @@ export function CoCoClass(cls: coco.CoCoClass): VNode {
         on: { click: () => navigator.clipboard.writeText(cls.get_name()) }
       }, h('i.fa-solid.fa-copy')),
     ]),
+    static_props_rows.length > 0 ? Table(Header(props_header), static_props_rows, 'Static Properties') : h('p.mt-2', 'No static properties.'),
+    dynamic_props_rows.length > 0 ? Table(Header(props_header), dynamic_props_rows, 'Dynamic Properties') : h('p.mt-2', 'No dynamic properties.'),
     rows.length > 0 ? Table(Header(header), rows, 'Instances') : h('p.mt-2', 'No instances of this class yet.')
   ]);
 }

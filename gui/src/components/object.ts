@@ -1,6 +1,6 @@
 import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
-import { flick, ListGroup } from "@ratiosolver/flick";
+import { flick, Header, ListGroup, Row, Table } from "@ratiosolver/flick";
 import { CoCoClass } from "./class";
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -48,6 +48,10 @@ let chart: echarts.ECharts | null = null;
 echarts.use([CanvasRenderer]);
 
 export function CoCoObject(obj: coco.CoCoObject): VNode {
+  const props_header = ["Property", "Value"];
+  const props = obj.get_properties();
+  const props_rows = props ? Object.entries(props).map(([name, value]) => Row([name, coco.value_to_string(value)])) : [];
+
   const vals = obj.get_values();
   const content = h('div.container.mt-2',
     {
@@ -79,6 +83,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
         }
       }, cls.get_name())
     )),
+    props_rows.length > 0 ? Table(Header(props_header), props_rows, 'Properties') : h('p.mt-2', 'No properties.'),
     h('div.mt-2', {
       style: { minHeight: `${vals ? Object.values(vals).length * 300 : 30}px` },
       hook: {

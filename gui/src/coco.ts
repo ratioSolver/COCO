@@ -175,7 +175,11 @@ export namespace coco {
 
     get_data(): Record<string, Array<TimeValue>> { return this.data; }
     load_data(from = Date.now() - 1000 * 60 * 60 * 24 * 14, to = Date.now()) {
-      fetch(`/objects/${this.id}/data?start=${from}&end=${to}`).then(res => {
+      const params = new URLSearchParams({
+        start: new Date(from).toISOString(),
+        end: new Date(to).toISOString()
+      });
+      fetch(`/objects/${this.id}/data?${params.toString()}`).then(res => {
         if (!res.ok) throw new Error(`Failed to load object data: ${res.statusText}`);
         return res.json();
       }).then((data: Record<string, Array<TimeValue>>) => {
@@ -245,13 +249,13 @@ export namespace coco {
     }
   }
 
-  type Property =
-    | { type: 'bool', nullable?: boolean, default?: boolean }
-    | { type: 'int', nullable?: boolean, default?: number, min?: number, max?: number }
-    | { type: 'float', nullable?: boolean, default?: number, min?: number, max?: number }
-    | { type: 'string', nullable?: boolean, default?: string }
-    | { type: 'symbol', nullable?: boolean, default?: string, allowed_values?: string[] }
-    | { type: 'object', nullable?: boolean, default?: string, class: string };
+  export type Property =
+    | { type: 'bool', default?: boolean }
+    | { type: 'int', default?: number, min?: number, max?: number }
+    | { type: 'float', default?: number, min?: number, max?: number }
+    | { type: 'string', default?: string }
+    | { type: 'symbol', default?: string, allowed_values?: string[] }
+    | { type: 'object', default?: string, class: string };
 
   type PartialClassMessage = {
     parents?: string[];

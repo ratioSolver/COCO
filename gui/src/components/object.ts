@@ -3,7 +3,10 @@ import { coco } from "../coco";
 import { flick, Header, ListGroup, Row, Table } from "@ratiosolver/flick";
 import { CoCoClass } from "./class";
 import * as echarts from 'echarts/core';
+import { LineChart } from 'echarts/charts';
+import { LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams } from "echarts";
 
 const obj_item_listener = {
   class_added: (_cls: coco.CoCoClass) => { },
@@ -47,14 +50,14 @@ const obj_listener = {
 };
 
 let chart: echarts.ECharts | null = null;
-echarts.use([CanvasRenderer]);
+echarts.use([LineChart, LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent, CanvasRenderer]);
 
 export function CoCoObject(obj: coco.CoCoObject): VNode {
   const props_header = ["Property", "Value"];
   const props = obj.get_properties();
   const props_rows = props ? Object.entries(props).map(([name, value]) => Row([name, coco.value_to_string(value)])) : [];
   const data = obj.get_data();
-  if (!data)
+  if (Object.keys(data).length === 0)
     obj.load_data();
 
   const vals = obj.get_values();
@@ -94,6 +97,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
       hook: {
         insert: (vnode) => {
           chart = echarts.init(vnode.elm as HTMLDivElement);
+          chart.setOption(create_chart(obj));
         },
         destroy: () => {
           if (chart) {
@@ -109,4 +113,82 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
 
 function object_to_string(obj: coco.CoCoObject): string {
   return obj.get_properties()?.name as string || obj.get_id();
+}
+
+function create_chart(obj: coco.CoCoObject): echarts.EChartsCoreOption {
+  const data = obj.get_data();
+  if (!data) return {};
+  const series = Object.keys(data).map(prop_name => create_property_chart(obj, prop_name, data[prop_name]));
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { data: Object.keys(data) },
+    xAxis: { type: 'time' },
+    yAxis: { type: 'value' },
+    dataZoom: [{ type: 'inside' }],
+    series
+  };
+}
+
+function create_property_chart(obj: coco.CoCoObject, name: string, data: Array<coco.TimeValue>): echarts.EChartsCoreOption {
+  const prop = get_property_type(obj, name);
+  switch (prop.type) {
+    case 'int':
+    case 'float':
+      return create_line_chart(prop, data);
+    case 'bool':
+    case 'string':
+    case 'symbol':
+    case 'object':
+      return create_symbol_chart(prop, data);
+    default:
+      throw new Error(`Unsupported property type for chart: ${get_property_type(obj, name)}`);
+  }
+}
+
+function create_line_chart(prop: coco.Property, data: Array<coco.TimeValue>): echarts.EChartsCoreOption {
+  return {
+    name: prop.type,
+    type: 'line',
+    data: data.map(([value, date_time]) => [date_time, value as number])
+  }
+}
+
+function create_symbol_chart(prop: coco.Property, data: Array<coco.TimeValue>): echarts.EChartsCoreOption {
+  return {
+    name: prop.type,
+    type: 'custom',
+    renderItem: (params: CustomSeriesRenderItemParams, api: CustomSeriesRenderItemAPI) => {
+      const coordSys = params.coordSys as unknown as {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+
+      const start = api.coord([api.value(0), 0]);
+      const end = api.coord([api.value(1), 0]);
+
+      return {
+        type: 'rect',
+        shape: {
+          x: start[0],
+          y: coordSys.y,
+          width: Math.max(0, end[0] - start[0]), // Ensure width isn't negative
+          height: coordSys.height
+        },
+        style: {
+          fill: api.visual('color')
+        }
+      };
+    },
+    data: data.map(([value, date_time]) => [date_time, value])
+  }
+}
+
+function get_property_type(obj: coco.CoCoObject, prop_name: string): coco.Property {
+  for (const cls of obj.get_classes().values()) {
+    const prop = cls.get_dynamic_properties().get(prop_name);
+    if (prop) return prop;
+  }
+  throw new Error(`Property ${prop_name} not found in object ${obj.get_id()}`);
 }

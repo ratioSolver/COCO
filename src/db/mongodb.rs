@@ -156,15 +156,20 @@ impl Database for MongoDB {
         let db = self.client.database(&self.name);
         let collection = db.collection::<ObjectData>("object_data");
         let mut filter = doc! { "object_id": object_id };
+        let mut ts_range = doc! {};
         if let Some(start_time) = start_time {
-            filter.insert("timestamp", doc! { "$gte": bson::DateTime::from_millis(start_time.timestamp_millis()) });
+            ts_range.insert("$gte", bson::to_bson(start_time).unwrap());
         }
         if let Some(end_time) = end_time {
-            filter.insert("timestamp", doc! { "$lte": bson::DateTime::from_millis(end_time.timestamp_millis()) });
+            ts_range.insert("$lte", bson::to_bson(end_time).unwrap());
+        }
+        if !ts_range.is_empty() {
+            filter.insert("timestamp", ts_range);
         }
         let cursor = collection.find(filter).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         let data: Vec<ObjectData> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         let data = data.into_iter().map(|d| (d.values, d.timestamp)).collect();
+        println!("Retrieved data for object_id {}: {:?}", object_id, data);
         Ok(data)
     }
 

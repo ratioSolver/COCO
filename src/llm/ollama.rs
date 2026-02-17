@@ -10,8 +10,8 @@ pub struct Ollama {
 }
 
 impl Ollama {
-    pub fn new(host: &str, port: u16, model: &str) -> Self {
-        Ollama { host: host.to_string(), port, model: model.to_string(), client: Client::new() }
+    pub fn new(host: String, port: u16, model: String) -> Self {
+        Ollama { host: host, port, model: model, client: Client::new() }
     }
 }
 

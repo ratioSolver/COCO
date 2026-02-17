@@ -23,8 +23,8 @@ impl CoCoState for AppState {
 
 #[tokio::main]
 async fn main() {
-    let db = Arc::new(MongoDB::new("coco_db", "mongodb://localhost:27017").await.unwrap());
-    let kb = Box::new(CLIPSKnowledgeBase::new());
+    let db = setup_db().await;
+    let kb = setup_kb();
     let llm = setup_llm();
     let msg = setup_messaging();
 
@@ -36,24 +36,70 @@ async fn main() {
         let app = build_coco_router::<AppState>();
         let app = app.with_state(state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
-        println!("Server running on http://0.0.0.0:3000");
-        let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+        let port = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3000);
+
+        println!("Starting server on port {}", port);
+        let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await.unwrap();
         axum::serve(listener, app).await.unwrap();
     }
 }
 
+async fn setup_db() -> Arc<dyn coco::db::Database> {
+    #[cfg(feature = "mongodb")]
+    return setup_mongodb().await;
+
+    #[cfg(not(feature = "mongodb"))]
+    panic!("No database backend configured");
+}
+
+#[cfg(feature = "mongodb")]
+async fn setup_mongodb() -> Arc<dyn coco::db::Database> {
+    let name = std::env::var("DB_NAME").unwrap_or_else(|_| "coco_db".to_string());
+    let host = std::env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_string());
+    let port = std::env::var("DB_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(27017);
+    let uri = format!("mongodb://{}:{}", host, port);
+    Arc::new(MongoDB::new(&name, &uri).await.unwrap())
+}
+
+fn setup_kb() -> Box<dyn coco::kb::KnowledgeBase> {
+    #[cfg(feature = "clips")]
+    return setup_clips();
+
+    #[cfg(not(feature = "clips"))]
+    panic!("No knowledge base backend configured");
+}
+
+#[cfg(feature = "clips")]
+fn setup_clips() -> Box<dyn coco::kb::KnowledgeBase> {
+    Box::new(CLIPSKnowledgeBase::new())
+}
+
 fn setup_llm() -> Option<Box<dyn coco::llm::LLM>> {
     #[cfg(feature = "ollama")]
-    return Some(Box::new(Ollama::new("localhost", 11434, "llama3")));
+    return Some(setup_ollama());
 
     #[cfg(not(feature = "ollama"))]
     None
 }
 
+#[cfg(feature = "ollama")]
+fn setup_ollama() -> Box<dyn coco::llm::LLM> {
+    let host = std::env::var("LLM_HOST").unwrap_or_else(|_| "localhost".to_string());
+    let port = std::env::var("LLM_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(11434);
+    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| "llama3".to_string());
+    Box::new(Ollama::new(host, port, model))
+}
+
 fn setup_messaging() -> Option<Box<dyn Messaging>> {
     #[cfg(feature = "fcm")]
-    return Some(Box::new(FCMClient::new("coco-project-id".to_string())));
+    return Some(setup_fcm());
 
     #[cfg(not(feature = "fcm"))]
     None
+}
+
+#[cfg(feature = "fcm")]
+fn setup_fcm() -> Box<dyn Messaging> {
+    let project_id = std::env::var("FCM_PROJECT_ID").unwrap_or_else(|_| "coco-project-id".to_string());
+    Box::new(FCMClient::new(project_id))
 }

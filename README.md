@@ -47,9 +47,9 @@ Follow these steps to install the required CLIPS library and headers on your loc
    ```
 
 3. **Install Library**:
-   Set the `CLIPS_LIB_DIR` environment variable to the compilation directory (where `libclips.a` is located):
+   Set the `CLIPS_SOURCE_DIR` environment variable to the path of the CLIPS source directory:
    ```bash
-   export CLIPS_LIB_DIR=$(pwd)
+   export CLIPS_SOURCE_DIR=$(pwd)
    ```
    Alternatively, for a global installation:
    ```bash

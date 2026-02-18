@@ -20,7 +20,8 @@ const cls_listener = {
 const obj_item_listener = {
   class_added: (_cls: coco.CoCoClass) => { },
   properties_updated: (_properties: Record<string, coco.Value>) => { flick.redraw(); },
-  values_added: (_values: Record<string, coco.Value>, _date_time: string) => { flick.redraw(); }
+  values_added: (_values: Record<string, coco.Value>, _date_time: string) => { flick.redraw(); },
+  data_updated: (_data: Record<string, Array<coco.TimeValue>>) => { }
 };
 
 export function ObjectRow(cls: coco.CoCoClass, obj: coco.CoCoObject): VNode {

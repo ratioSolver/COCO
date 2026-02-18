@@ -1,7 +1,8 @@
 import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
-import { App, flick, Navbar, OffcanvasBrand } from "@ratiosolver/flick";
+import { App, flick, Navbar, NavbarItem, NavbarList, OffcanvasBrand } from "@ratiosolver/flick";
 import { CoCoOffcanvas } from "./offcanvas";
+import { taxonomy } from "./taxonomy";
 
 const app_listener = {
   initialized: () => flick.redraw(),
@@ -37,7 +38,7 @@ flick.ctx.current_page = landing_page;
 flick.ctx.page_title = 'Home';
 
 export function CoCoApp(coco: coco.CoCo): VNode {
-  const content = h('div',
+  const content = h('div.flex-grow-1.d-flex.flex-column',
     {
       hook: {
         insert: () => {
@@ -52,5 +53,22 @@ export function CoCoApp(coco: coco.CoCo): VNode {
     CoCoOffcanvas(coco)
   ]);
 
-  return App(Navbar(OffcanvasBrand('CoCo')), content);
+  return App(Navbar(OffcanvasBrand('CoCo'), NavbarList([NavbarItem(h('i.fas.fa-home', {
+    on: {
+      click: () => {
+        flick.ctx.current_page = landing_page;
+        flick.ctx.page_title = 'Home';
+        flick.redraw();
+      }
+    }
+  })),
+  NavbarItem(h('i.fas.fa-sitemap', {
+    on: {
+      click: () => {
+        flick.ctx.current_page = () => taxonomy(coco);
+        flick.ctx.page_title = 'Taxonomy';
+        flick.redraw();
+      }
+    }
+  }))])), content);
 }

@@ -2,6 +2,8 @@ import { h, VNode } from "snabbdom";
 import { coco } from "../coco";
 import * as echarts from 'echarts/core';
 import { GraphChart } from "echarts/charts";
+import { flick } from "@ratiosolver/flick";
+import { CoCoClass } from "./class";
 
 echarts.use([GraphChart]);
 
@@ -54,6 +56,18 @@ export function taxonomy(coco: coco.CoCo): VNode {
       insert: (vnode) => {
         chart = echarts.init(vnode.elm as HTMLDivElement);
         chart.setOption(get_option());
+
+        chart.on('click', 'series.graph', (params) => {
+          if (params.dataType === 'node') {
+            const data = params.data as { name: string };
+            const cls = coco.get_class(data.name);
+            if (cls) {
+              flick.ctx.current_page = () => CoCoClass(cls);
+              flick.ctx.page_title = `Class: ${cls.get_name()}`;
+              flick.redraw();
+            }
+          }
+        });
 
         resize_handler = () => chart?.resize();
         window.addEventListener('resize', resize_handler);

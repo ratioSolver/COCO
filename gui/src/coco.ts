@@ -168,8 +168,10 @@ export namespace coco {
     }
     get_values(): Record<string, TimeValue> | undefined { return this.values; }
     _set_values(values: Record<string, Value>, date_time: string) {
-      for (const [key, value] of Object.entries(values))
+      for (const [key, value] of Object.entries(values)) {
         this.values![key] = { value, timestamp: date_time };
+        this.data[key].push({ value, timestamp: date_time });
+      }
       for (const listener of this.listeners) listener.values_added(values, date_time);
     }
 

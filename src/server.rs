@@ -1,6 +1,6 @@
 use crate::{
     CoCo, CoCoError, CoCoState,
-    model::{Class, CoCoEvent, Object, Property, Rule, Value},
+    model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
 };
 use axum::{
     Router,
@@ -253,10 +253,10 @@ struct DataFilter {
 async fn get_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<String>, Query(filter): Query<DataFilter>) -> impl IntoResponse {
     match state.coco().get_data(&object_id, filter.start, filter.end).await {
         Ok(data) => {
-            let mut result: HashMap<String, Vec<(Value, DateTime<Utc>)>> = HashMap::new();
+            let mut result: HashMap<String, Vec<TimedValue>> = HashMap::new();
             for (map, timestamp) in data {
                 for (key, value) in map {
-                    result.entry(key).or_default().push((value, timestamp));
+                    result.entry(key).or_default().push(TimedValue { value, timestamp });
                 }
             }
             axum::Json(result).into_response()

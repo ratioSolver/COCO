@@ -6,7 +6,6 @@ import * as echarts from 'echarts/core';
 import { LineChart } from 'echarts/charts';
 import { LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams } from "echarts";
 
 echarts.use([LineChart, LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent, CanvasRenderer]);
 
@@ -53,56 +52,48 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
   const props = obj.get_properties();
   const props_rows = props ? Object.entries(props).map(([name, value]) => Row([name, coco.value_to_string(value)])) : [];
   const data = obj.get_data();
-  const num_layers = Object.keys(data).length;
+  const data_keys = Object.keys(data); // These are your actual data properties
+  const num_layers = data_keys.length;
   if (num_layers === 0)
     obj.load_data();
 
   let chart: echarts.ECharts | undefined;
 
   const get_option = (): echarts.EChartsCoreOption => {
-    const series = Object.entries(data).map(([name, values], index) => {
-      const prop = get_property_type(obj, name);
-      switch (prop.type) {
-        case 'int':
-        case 'float':
-          return create_line_chart(index, name, prop, values);
-        case 'bool':
-        case 'string':
-        case 'symbol':
-        case 'object':
-          return create_symbol_chart(index, name, prop, values);
-        default:
-          throw new Error(`Unsupported property type for chart: ${get_property_type(obj, name)}`);
-      }
-    });
+    const data = obj.get_data();
+    const data_keys = Object.keys(data); // These are your actual data properties
+    const num_layers = data_keys.length;
 
-    const row_height = 100 / num_layers; // Percentage height per layer
+    if (num_layers === 0) return {}; // Handle empty state
+
+    const rowHeight = 100 / num_layers;
 
     return {
-      axisPointer: {
-        link: [{ xAxisIndex: 'all' }]
-      },
-      tooltip: {
-        trigger: 'axis',
-      },
-      dataZoom: [{
-        type: 'slider',
-        xAxisIndex: Array.from(Array(num_layers).keys()),
-        bottom: 10
-      }],
-      grid: series.map((_, i) => ({
-        left: 30,
+      axisPointer: { link: [{ xAxisIndex: 'all' }] },
+      tooltip: { trigger: 'axis' },
+      grid: data_keys.map((_, i) => ({
+        left: 20,
         right: 10,
-        height: `${row_height - 10}%`,
-        top: `${i * row_height + 5}%`
+        height: `${rowHeight - 15}%`,
+        top: `${i * rowHeight + 10}%`
       })),
-      xAxis: series.map((_, i) => ({
+      xAxis: data_keys.map((_, i) => ({
         type: 'time',
         gridIndex: i,
-        show: i === num_layers - 1,
+        show: i === data_keys.length - 1,
       })),
-      yAxis: series.map((serie) => serie.yAxis),
-      series: series.map((serie) => serie.series)
+      yAxis: data_keys.map((name, i) => ({
+        type: 'value',
+        gridIndex: i,
+        name: name,
+        splitLine: { show: true }
+      })),
+      series: data_keys.map((name, i) => ({
+        type: 'line',
+        xAxisIndex: i,
+        yAxisIndex: i,
+        data: data[name].map(d => [d.timestamp, d.value as number])
+      })),
     };
   }
 
@@ -110,7 +101,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
     class_added: (_cls: coco.CoCoClass) => { flick.redraw(); },
     properties_updated: (_properties: Record<string, coco.Value>) => { flick.redraw(); },
     values_added: (_values: Record<string, coco.Value>, _date_time: string) => { flick.redraw(); if (chart) chart.setOption(get_option()); },
-    data_updated: (_data: Record<string, Array<coco.TimeValue>>) => { if (chart) chart.setOption(get_option()); }
+    data_updated: (_data: Record<string, Array<coco.TimeValue>>) => { flick.redraw(); if (chart) chart.setOption(get_option()); }
   };
 
   let resize_handler: () => void;
@@ -165,52 +156,4 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
 
 function object_to_string(obj: coco.CoCoObject): string {
   return obj.get_properties()?.name as string || obj.get_id();
-}
-
-function get_property_type(obj: coco.CoCoObject, prop_name: string): coco.Property {
-  for (const cls of obj.get_classes().values()) {
-    const prop = cls.get_dynamic_properties().get(prop_name);
-    if (prop) return prop;
-  }
-  throw new Error(`Property ${prop_name} not found in object ${obj.get_id()}`);
-}
-
-function create_line_chart(index: number, name: string, prop: coco.Property, data: Array<coco.TimeValue>): echarts.EChartsCoreOption {
-  return {
-    yAxis: {
-      type: 'value',
-      gridIndex: index,
-      name,
-      min: prop.type === 'int' ? (prop.min ? prop.min as number - 1 : undefined) : undefined,
-      max: prop.type === 'int' ? (prop.max ? prop.max as number + 1 : undefined) : undefined,
-      splitLine: { show: true }
-    },
-    series: {
-      name,
-      type: 'line',
-      xAxisIndex: index,
-      yAxisIndex: index,
-      data: data.map(d => [d.timestamp, d.value as number])
-    }
-  }
-}
-
-function create_symbol_chart(index: number, name: string, prop: coco.Property, data: Array<coco.TimeValue>): echarts.EChartsCoreOption {
-  return {
-    yAxis: {
-      type: 'value',
-      gridIndex: index,
-      name,
-      min: prop.type === 'int' ? (prop.min ? prop.min as number - 1 : undefined) : undefined,
-      max: prop.type === 'int' ? (prop.max ? prop.max as number + 1 : undefined) : undefined,
-      splitLine: { show: true }
-    },
-    series: {
-      name,
-      type: 'line',
-      xAxisIndex: index,
-      yAxisIndex: index,
-      data: data.map(d => [d.timestamp, d.value as number])
-    }
-  }
 }

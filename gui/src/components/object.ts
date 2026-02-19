@@ -3,16 +3,12 @@ import { coco } from "../coco";
 import { flick, Header, ListGroup, Row, Table } from "@ratiosolver/flick";
 import { CoCoClass } from "./class";
 import * as echarts from 'echarts/core';
-import { LineChart } from 'echarts/charts';
+import { LineChart, CustomChart } from 'echarts/charts';
 import { LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams } from "echarts";
 
-echarts.use([LineChart, LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent, CanvasRenderer]);
-
-const PIXELS_PER_ROW = 150;
-const MARGIN_TOP = 40;
-const GAP = 50;
+echarts.use([LineChart, CustomChart, LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent, CanvasRenderer]);
 
 const obj_item_listener = {
   class_added: (_cls: coco.CoCoClass) => { },
@@ -50,13 +46,20 @@ export function ObjectsList(coco: coco.CoCo): VNode {
 
 export function CoCoObject(obj: coco.CoCoObject): VNode {
   let chart: echarts.ECharts | undefined;
+  const all_props = new Map<string, coco.Property>();
+  obj.get_classes().forEach(cls => {
+    cls.get_dynamic_properties().forEach((prop, name) => {
+      all_props.set(name, prop);
+    });
+  });
 
-  const get_option = (obj: coco.CoCoObject): echarts.EChartsCoreOption => {
+  const get_option = (): echarts.EChartsCoreOption => {
+    if (!obj.is_data_loaded())
+      obj.load_data();
+
     const data = obj.get_data();
-    const data_keys = Object.keys(data); // These are your actual data properties
 
-    const series = Object.entries(data).map(([name, values], index) => {
-      const prop = get_property_type(obj, name);
+    const series = Array.from(all_props.entries()).map(([name, prop], index) => {
       switch (prop.type) {
         case 'int':
         case 'float':
@@ -64,14 +67,14 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
             yAxis: {
               type: 'value',
               gridIndex: index,
-              name: name,
+              name,
               splitLine: { show: true }
             },
             series: {
               type: 'line',
               xAxisIndex: index,
               yAxisIndex: index,
-              data: values.map(d => [d.timestamp, d.value as number])
+              data: data[name]?.map(d => [d.timestamp, d.value as number]) || []
             }
           };
         case 'bool':
@@ -115,40 +118,40 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
                 };
               },
               encode: { x: [0, 1], y: 2 },
-              data: data // Ensure this is [[start, end, "VALUE"], ...]
+              data: data[name]?.map(d => [d.timestamp, d.value as string]) || [] // Ensure this is [[start, end, "VALUE"], ...]
             }
           };
-        default:
-          throw new Error(`Unsupported property type for chart: ${get_property_type(obj, name)}`);
       }
     });
 
-    const rowHeight = 100 / series.length;
+    const row_height = 100 / all_props.size;
 
-    return {
+    const option: echarts.EChartsCoreOption = {
       axisPointer: { link: [{ xAxisIndex: 'all' }] },
       tooltip: { trigger: 'axis' },
-      grid: data_keys.map((_, i) => ({
+      grid: series.map((_, i) => ({
         left: 20,
         right: 10,
-        height: `${rowHeight - 15}%`,
-        top: `${i * rowHeight + 10}%`
+        height: `${row_height - 15}%`,
+        top: `${i * row_height + 10}%`
       })),
-      xAxis: data_keys.map((_, i) => ({
+      xAxis: series.map((_, i) => ({
         type: 'time',
         gridIndex: i,
-        show: i === series.length - 1,
+        show: i === all_props.size - 1,
       })),
       yAxis: series.map((serie) => serie.yAxis),
       series: series.map((serie) => serie.series),
     };
+    console.log('Generated ECharts option:', option);
+    return option;
   }
 
   const obj_listener = {
     class_added: (_cls: coco.CoCoClass) => { flick.redraw(); },
     properties_updated: (_properties: Record<string, coco.Value>) => { flick.redraw(); },
-    values_added: (_values: Record<string, coco.Value>, _date_time: string) => { flick.redraw(); if (chart) chart.setOption(get_option(obj)); },
-    data_updated: (_data: Record<string, Array<coco.TimeValue>>) => { flick.redraw(); if (chart) chart.setOption(get_option(obj)); }
+    values_added: (_values: Record<string, coco.Value>, _date_time: string) => { flick.redraw(); if (chart) chart.setOption(get_option()); },
+    data_updated: (_data: Record<string, Array<coco.TimeValue>>) => { flick.redraw(); if (chart) chart.setOption(get_option()); }
   };
 
   let resize_handler: () => void;
@@ -156,13 +159,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
   const props_header = ["Property", "Value"];
   const props = obj.get_properties();
   const props_rows = props ? Object.entries(props).map(([name, value]) => Row([name, coco.value_to_string(value)])) : [];
-  const data = obj.get_data();
-  const data_keys = Object.keys(data); // These are your actual data properties
-  const num_layers = data_keys.length;
-  if (num_layers === 0)
-    obj.load_data();
 
-  const vals = obj.get_values();
   const content = h('div.container.mt-2', [
     h('div.input-group', [
       h('input.form-control', { attrs: { type: 'text', value: obj.get_id(), placeholder: 'Type name', disabled: true } }),
@@ -185,11 +182,11 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
     )),
     props_rows.length > 0 ? Table(Header(props_header), props_rows, 'Properties') : h('p.mt-2', 'No properties.'),
     h('div.mt-2', {
-      style: { minHeight: `${vals ? (Object.values(vals).length * PIXELS_PER_ROW) + MARGIN_TOP + GAP : 30}px` },
+      style: { minHeight: `${all_props.size * 150}px` },
       hook: {
         insert: (vnode) => {
           chart = echarts.init(vnode.elm as HTMLDivElement);
-          chart.setOption(get_option(obj));
+          chart.setOption(get_option());
 
           resize_handler = () => chart?.resize();
           window.addEventListener('resize', resize_handler);
@@ -212,12 +209,4 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
 
 function object_to_string(obj: coco.CoCoObject): string {
   return obj.get_properties()?.name as string || obj.get_id();
-}
-
-function get_property_type(obj: coco.CoCoObject, prop_name: string): coco.Property {
-  for (const cls of obj.get_classes().values()) {
-    const prop = cls.get_dynamic_properties().get(prop_name);
-    if (prop) return prop;
-  }
-  throw new Error(`Property ${prop_name} not found in object ${obj.get_id()}`);
 }

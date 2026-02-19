@@ -141,6 +141,7 @@ export namespace coco {
     private readonly classes: Set<CoCoClass>;
     private readonly properties: Record<string, Value>;
     private readonly values: Record<string, TimeValue>;
+    private data_loaded = false;
     private readonly data: Record<string, Array<TimeValue>> = {};
     private readonly listeners: Set<CoCoObjectListener> = new Set();
 
@@ -176,6 +177,7 @@ export namespace coco {
       for (const listener of this.listeners) listener.values_added(values, date_time);
     }
 
+    is_data_loaded(): boolean { return this.data_loaded; }
     get_data(): Record<string, Array<TimeValue>> { return this.data; }
     load_data(from = Date.now() - 1000 * 60 * 60 * 24 * 14, to = Date.now()) {
       const params = new URLSearchParams({
@@ -190,6 +192,7 @@ export namespace coco {
           delete this.data[key];
         for (const [key, values] of Object.entries(data))
           this.data[key] = values;
+        this.data_loaded = true;
         for (const listener of this.listeners) listener.data_updated(data);
       }).catch(error => {
         console.error('Error loading object data:', error);

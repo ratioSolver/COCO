@@ -10,6 +10,9 @@ import { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams } from "echarts
 
 echarts.use([LineChart, CustomChart, LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent, CanvasRenderer]);
 
+const PIXELS_PER_ROW = 120;
+const BOTTOM_UI_HEIGHT = 50;
+
 const obj_item_listener = {
   class_added: (_cls: coco.CoCoClass) => { },
   properties_updated: (properties: Record<string, coco.Value>) => { if (properties.name) flick.redraw(); },
@@ -100,7 +103,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
             current_start = d.timestamp;
           }
           if (current_value !== null && current_start !== null)
-            c_data.push({ start: current_start, end: new Date(new Date(current_start).getTime() + 1).toISOString(), value: current_value });
+            c_data.push({ start: current_start, end: new Date(new Date(global_max || new Date().getTime()).getTime() + 1).toISOString(), value: current_value });
 
           return {
             yAxis: {
@@ -129,9 +132,9 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
                   type: 'rect',
                   shape: {
                     x: start[0],
-                    y: coordSys.y,
+                    y: coordSys.y + 2,
                     width: Math.max(0, end[0] - start[0]), // Ensure width isn't negative
-                    height: coordSys.height
+                    height: coordSys.height - 4
                   },
                   style: {
                     fill: api.visual('color')
@@ -145,17 +148,15 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
       }
     });
 
-    const row_height = 100 / all_props.size;
-
     return {
       axisPointer: { link: [{ xAxisIndex: 'all' }] },
-      tooltip: { trigger: 'axis' },
+      tooltip: {
+        trigger: 'item'
+      },
       dataZoom: [
         {
           type: 'slider',
           xAxisIndex: 'all',
-          start: 0,
-          end: 100,
         },
         {
           type: 'inside',
@@ -165,8 +166,8 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
       grid: series.map((_, i) => ({
         left: 20,
         right: 10,
-        height: `${row_height - 15}%`,
-        top: `${i * row_height + 10}%`
+        top: (i * PIXELS_PER_ROW),
+        height: PIXELS_PER_ROW - 40,
       })),
       xAxis: series.map((_, i) => ({
         type: 'time',
@@ -215,7 +216,8 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
     )),
     props_rows.length > 0 ? Table(Header(props_header), props_rows, 'Properties') : h('p.mt-2', 'No properties.'),
     h('div.mt-2', {
-      style: { minHeight: `${all_props.size * 200}px` },
+      key: obj.get_id(),
+      style: { minHeight: `${(all_props.size * PIXELS_PER_ROW) + BOTTOM_UI_HEIGHT}px` },
       hook: {
         insert: (vnode) => {
           chart = echarts.init(vnode.elm as HTMLDivElement);

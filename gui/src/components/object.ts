@@ -68,6 +68,8 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
               type: 'value',
               gridIndex: index,
               name,
+              min: prop.min ? prop.min as number : undefined,
+              max: prop.max ? prop.max as number : undefined,
               splitLine: { show: true }
             },
             series: {

@@ -88,7 +88,7 @@ async fn create_class<S: CoCoState>(State(state): State<S>, axum::Json(class): a
     match state.coco().create_class(class).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
-            CoCoError::ClassAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
+            CoCoError::ClassAlreadyExists(msg) => (StatusCode::CONFLICT, format!("Class {} already exists", msg)).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create class").into_response(),
         },
     }
@@ -163,7 +163,7 @@ async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object):
     match state.coco().create_object(object).await {
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
         Err(e) => match e {
-            CoCoError::ObjectAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
+            CoCoError::ObjectAlreadyExists(msg) => (StatusCode::CONFLICT, format!("Object {} already exists", msg)).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create object").into_response(),
         },
     }
@@ -189,7 +189,7 @@ async fn set_properties<S: CoCoState>(State(state): State<S>, Path(id): Path<Str
     match state.coco().set_properties(&id, properties).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
-            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
+            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, format!("Object {} not found", msg)).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update object properties").into_response(),
         },
     }
@@ -221,7 +221,7 @@ async fn add_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<St
     match state.coco().add_data(&object_id, values, date_time.time.unwrap_or_else(Utc::now)).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
-            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
+            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, format!("Object {} not found", msg)).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to add data to object").into_response(),
         },
     }
@@ -262,7 +262,7 @@ async fn get_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<St
             axum::Json(result).into_response()
         }
         Err(e) => match e {
-            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, msg).into_response(),
+            CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, format!("Object {} not found", msg)).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve object data").into_response(),
         },
     }
@@ -319,7 +319,7 @@ async fn create_rule<S: CoCoState>(State(state): State<S>, axum::Json(rule): axu
     match state.coco().create_rule(rule).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
-            CoCoError::RuleAlreadyExists(msg) => (StatusCode::CONFLICT, msg).into_response(),
+            CoCoError::RuleAlreadyExists(msg) => (StatusCode::CONFLICT, format!("Rule {} already exists", msg)).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create rule").into_response(),
         },
     }

@@ -10,7 +10,7 @@ import { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams } from "echarts
 
 echarts.use([LineChart, CustomChart, LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent, CanvasRenderer]);
 
-const PIXELS_PER_ROW = 120;
+const PIXELS_PER_ROW = 150;
 const BOTTOM_UI_HEIGHT = 50;
 
 const obj_item_listener = {

@@ -58,6 +58,11 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
       obj.load_data();
 
     const data = obj.get_data();
+    const all_timestamps: number[] = [];
+    Object.values(data).forEach(seriesData => seriesData.forEach(d => all_timestamps.push(new Date(d.timestamp).getTime())));
+
+    const global_min = all_timestamps.length ? Math.min(...all_timestamps) : undefined;
+    const global_max = all_timestamps.length ? Math.max(...all_timestamps) : undefined;
 
     const series = Array.from(all_props.entries()).map(([name, prop], index) => {
       switch (prop.type) {
@@ -83,6 +88,20 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
         case 'string':
         case 'symbol':
         case 'object':
+          const c_data: { start: string, end: string, value: string }[] = [];
+          let current_value: string | null = null;
+          let current_start: string | null = null;
+
+          for (const d of data[name] || []) {
+            const value_str = coco.value_to_string(d.value);
+            if (current_value !== null && current_start !== null)
+              c_data.push({ start: current_start, end: d.timestamp, value: current_value });
+            current_value = value_str;
+            current_start = d.timestamp;
+          }
+          if (current_value !== null && current_start !== null)
+            c_data.push({ start: current_start, end: new Date(new Date(current_start).getTime() + 1).toISOString(), value: current_value });
+
           return {
             yAxis: {
               type: 'value',
@@ -120,7 +139,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
                 };
               },
               encode: { x: [0, 1], y: 2 },
-              data: data[name]?.map(d => [d.timestamp, d.value as string]) || [] // Ensure this is [[start, end, "VALUE"], ...]
+              data: c_data.map(d => [new Date(d.start).getTime(), new Date(d.end).getTime(), d.value])
             }
           };
       }
@@ -128,9 +147,21 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
 
     const row_height = 100 / all_props.size;
 
-    const option: echarts.EChartsCoreOption = {
+    return {
       axisPointer: { link: [{ xAxisIndex: 'all' }] },
       tooltip: { trigger: 'axis' },
+      dataZoom: [
+        {
+          type: 'slider',
+          xAxisIndex: 'all',
+          start: 0,
+          end: 100,
+        },
+        {
+          type: 'inside',
+          xAxisIndex: 'all'
+        }
+      ],
       grid: series.map((_, i) => ({
         left: 20,
         right: 10,
@@ -140,13 +171,13 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
       xAxis: series.map((_, i) => ({
         type: 'time',
         gridIndex: i,
+        min: global_min,
+        max: global_max,
         show: i === all_props.size - 1,
       })),
-      yAxis: series.map((serie) => serie.yAxis),
-      series: series.map((serie) => serie.series),
+      yAxis: series.map(serie => serie.yAxis),
+      series: series.map(serie => serie.series),
     };
-    console.log('Generated ECharts option:', option);
-    return option;
   }
 
   const obj_listener = {
@@ -184,7 +215,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
     )),
     props_rows.length > 0 ? Table(Header(props_header), props_rows, 'Properties') : h('p.mt-2', 'No properties.'),
     h('div.mt-2', {
-      style: { minHeight: `${all_props.size * 150}px` },
+      style: { minHeight: `${all_props.size * 200}px` },
       hook: {
         insert: (vnode) => {
           chart = echarts.init(vnode.elm as HTMLDivElement);

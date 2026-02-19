@@ -105,6 +105,19 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
           if (current_value !== null && current_start !== null)
             c_data.push({ start: current_start, end: new Date(new Date(global_max || new Date().getTime()).getTime() + 1).toISOString(), value: current_value });
 
+          // Create color map for unique values
+          const colorMap: Record<string, string> = {};
+          if (prop.type === 'bool') {
+            colorMap['true'] = '#91cc75';  // green for true
+            colorMap['false'] = '#ee6666'; // red for false
+          } else {
+            const uniqueValues = [...new Set(c_data.map(d => d.value))];
+            const colorPalette = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'];
+            uniqueValues.forEach((val, i) => {
+              colorMap[val] = colorPalette[i % colorPalette.length];
+            });
+          }
+
           return {
             yAxis: {
               type: 'value',
@@ -127,6 +140,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
 
                 const start = api.coord([api.value(0), 0]);
                 const end = api.coord([api.value(1), 0]);
+                const color = api.value(3) as string;
 
                 return {
                   type: 'rect',
@@ -134,15 +148,16 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
                     x: start[0],
                     y: coordSys.y + 2,
                     width: Math.max(0, end[0] - start[0]), // Ensure width isn't negative
-                    height: coordSys.height - 4
+                    height: coordSys.height - 4,
+                    r: 2
                   },
                   style: {
-                    fill: api.visual('color')
+                    fill: color
                   }
                 };
               },
               encode: { x: [0, 1], y: 2 },
-              data: c_data.map(d => [new Date(d.start).getTime(), new Date(d.end).getTime(), d.value])
+              data: c_data.map(d => [new Date(d.start).getTime(), new Date(d.end).getTime(), d.value, colorMap[d.value]])
             }
           };
       }

@@ -19,7 +19,7 @@ default = [
     "ollama",
     "server",
     "mqtt",
-    "deliberative",
+    "chronoxide",
 ]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
@@ -27,7 +27,7 @@ ollama = ["dep:reqwest"]
 server = ["dep:axum", "dep:tower-http", "dep:utoipa"]
 fcm = ["dep:reqwest", "dep:yup-oauth2"]
 mqtt = ["dep:rumqttc"]
-deliberative = ["dep:chronoxide"]
+chronoxide = ["dep:chronoxide"]
 
 [dependencies]
 axum = { version = "0.8.8", features = ["ws"], optional = true }

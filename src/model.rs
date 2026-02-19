@@ -149,6 +149,13 @@ pub enum Value {
     StringArray(Vec<String>),
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+pub struct TimedValue {
+    pub value: Value,
+    pub timestamp: DateTime<Utc>,
+}
+
 impl PartialEq<&str> for Value {
     fn eq(&self, other: &&str) -> bool {
         match self {
@@ -226,7 +233,7 @@ pub struct Object {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub values: Option<HashMap<String, (Value, DateTime<Utc>)>>,
+    pub values: Option<HashMap<String, TimedValue>>,
 }
 
 impl Display for Object {

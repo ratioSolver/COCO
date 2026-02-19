@@ -1,6 +1,6 @@
 use crate::{
     kb::{KnowledgeBase, KnowledgeBaseError},
-    model::{Class, CoCoEvent, Object, Property, Rule, Value},
+    model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
 };
 use chrono::{DateTime, Utc};
 use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type};
@@ -203,7 +203,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                         let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
                         let fb = fb.put_symbol("id", id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for dynamic property {} of object {}: {}", name, id, e)))?;
                         if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
-                            let fb = set_prop(&self.env, fb, prop, v.0.clone(), Some(v.1)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, id, e)))?;
+                            let fb = set_prop(&self.env, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, id, e)))?;
                             let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
                         } else {
@@ -250,7 +250,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             for (name, prop) in dynamic_props {
                 if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
                     let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
-                    let fb = set_prop(&self.env, fb, prop, v.0.clone(), Some(v.1))?;
+                    let fb = set_prop(&self.env, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, object_id, e)))?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
                     self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
                 } else {
@@ -289,17 +289,17 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         Ok(())
     }
 
-    fn add_values(&mut self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), KnowledgeBaseError> {
+    fn add_values(&mut self, object_id: &str, values: HashMap<String, Value>, timestamp: DateTime<Utc>) -> Result<(), KnowledgeBaseError> {
         let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_string()))?;
         for class_name in &object.classes {
             if let Some(class) = self.classes.get(class_name) {
                 if let Some(dynamic_props) = &class.dynamic_properties {
                     for (name, prop) in dynamic_props {
                         if let Some(v) = values.get(name) {
-                            object.values.get_or_insert_with(HashMap::new).insert(name.clone(), (v.clone(), date_time));
+                            object.values.get_or_insert_with(HashMap::new).insert(name.clone(), TimedValue { value: v.clone(), timestamp });
                             let fact = self.values.get(class_name).and_then(|objs| objs.get(object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for dynamic property {} of object {} of class {} not found", name, object_id, class_name)))?;
                             let fm = self.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
-                            let fm = update_prop(&self.env, fm, prop, v.clone(), Some(date_time))?;
+                            let fm = update_prop(&self.env, fm, prop, v.clone(), Some(timestamp))?;
                             self.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
                         }
                     }
@@ -309,7 +309,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             }
         }
         if self.sender.receiver_count() > 0 {
-            let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values, date_time));
+            let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values, timestamp));
         }
         Ok(())
     }
@@ -707,6 +707,8 @@ fn get_default(property: &Property) -> Value {
 
 #[cfg(test)]
 mod tests {
+    use crate::model::TimedValue;
+
     use super::*;
     use std::collections::{HashMap, HashSet};
 
@@ -1058,7 +1060,7 @@ mod tests {
         classes.insert("ThermometerDynamic".to_string());
 
         let mut values = HashMap::new();
-        values.insert("temperature".to_string(), (Value::Float(36.5), Utc::now()));
+        values.insert("temperature".to_string(), TimedValue { value: Value::Float(36.5), timestamp: Utc::now() });
 
         let object = Object { id: Some("temp_sensor1".to_string()), classes, properties: None, values: Some(values) };
 

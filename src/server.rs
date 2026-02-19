@@ -15,7 +15,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
-use utoipa::OpenApi;
+use utoipa::{IntoParams, OpenApi};
 
 type OpenApiValue = Value;
 type OpenApiObject = Object;
@@ -94,9 +94,11 @@ async fn create_class<S: CoCoState>(State(state): State<S>, axum::Json(class): a
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 struct ObjectFilter {
     class: Option<String>,
+    #[serde(flatten)]
     extra: Option<HashMap<String, String>>,
 }
 
@@ -106,10 +108,7 @@ struct ObjectFilter {
         tag = "Objects",
         summary = "List all objects",
         description = "Retrieve a list of all available objects in the knowledge base.",
-        params(
-            ("class" = Option<String>, Query, description = "Filter objects by class name (optional)"),
-            ("extra" = Option<HashMap<String, String>>, Query, description = "Additional key-value pairs to filter objects (optional)")
-        ),
+        params(ObjectFilter),
         responses(
             (status = 200, description = "List of objects", body = [OpenApiObject])
         )

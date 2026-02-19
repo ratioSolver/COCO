@@ -2,7 +2,7 @@ use crate::{
     db::{Database, DatabaseError},
     kb::{KnowledgeBase, KnowledgeBaseError},
     llm::LLM,
-    model::{Class, CoCoEvent, Object, Property, Rule, Value},
+    model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
     msg::Messaging,
 };
 use chrono::{DateTime, Utc};
@@ -157,7 +157,7 @@ impl CoCo {
         resp_rx.await.unwrap_or(None)
     }
 
-    pub async fn create_new_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, (Value, DateTime<Utc>)>>) -> Result<String, CoCoError> {
+    pub async fn create_new_object(&self, classes: HashSet<String>, properties: Option<HashMap<String, Value>>, values: Option<HashMap<String, TimedValue>>) -> Result<String, CoCoError> {
         self.create_object(Object { id: None, classes, properties, values }).await
     }
 

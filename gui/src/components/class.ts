@@ -36,7 +36,7 @@ export function ObjectRow(cls: coco.CoCoClass, obj: coco.CoCoObject): VNode {
   for (const prop of cls.get_dynamic_properties().keys().toArray().sort()) {
     const props = obj.get_values();
     if (props && prop in props)
-      cells.push(coco.value_to_string(props[prop][0]));
+      cells.push(coco.value_to_string(props[prop].value));
     else
       cells.push('');
   }

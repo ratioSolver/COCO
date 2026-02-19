@@ -207,7 +207,7 @@ function create_line_chart(index: number, total: number, name: string, prop: coc
       type: 'line',
       xAxisIndex: index,
       yAxisIndex: index,
-      data: data.map(d => [d[1], d[0]]) // Map [Value, Time] to [Time, Value]
+      data: data.map(d => [d.timestamp, d.value])
     }
   }
 }

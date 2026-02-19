@@ -169,7 +169,7 @@ export namespace coco {
     get_values(): Record<string, TimeValue> | undefined { return this.values; }
     _set_values(values: Record<string, Value>, date_time: string) {
       for (const [key, value] of Object.entries(values))
-        this.values![key] = [value, date_time];
+        this.values![key] = { value, timestamp: date_time };
       for (const listener of this.listeners) listener.values_added(values, date_time);
     }
 
@@ -238,7 +238,7 @@ export namespace coco {
   }
 
   export type Value = null | boolean | number | string;
-  export type TimeValue = [Value, string];
+  export type TimeValue = { value: Value, timestamp: string };
 
   export function value_to_string(value: Value): string {
     switch (typeof value) {

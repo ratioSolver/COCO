@@ -65,7 +65,7 @@ export function CoCoObject(obj: coco.CoCoObject): VNode {
     Object.values(data).forEach(seriesData => seriesData.forEach(d => all_timestamps.push(new Date(d.timestamp).getTime())));
 
     const global_min = all_timestamps.length ? Math.min(...all_timestamps) : undefined;
-    const global_max = all_timestamps.length ? Math.max(...all_timestamps) : undefined;
+    const global_max = all_timestamps.length ? Math.max(...all_timestamps) : new Date().getTime();
 
     const series = Array.from(all_props.entries()).map(([name, prop], index) => {
       switch (prop.type) {

@@ -6,7 +6,7 @@ use tokio::sync::broadcast;
 use crate::model::{Class, CoCoEvent, Object, Rule, Value};
 
 #[cfg(feature = "clips")]
-pub mod clips;
+mod clips;
 
 #[derive(Debug)]
 pub enum KnowledgeBaseError {
@@ -38,4 +38,19 @@ pub trait KnowledgeBase: Send + Sync {
     fn create_rule(&mut self, rule: Rule) -> Result<(), KnowledgeBaseError>;
 
     fn run(&mut self) -> Result<(), KnowledgeBaseError>;
+}
+
+pub fn setup_kb() -> Box<dyn KnowledgeBase> {
+    #[cfg(feature = "clips")]
+    return setup_clips();
+
+    #[cfg(not(feature = "clips"))]
+    panic!("No knowledge base backend configured");
+}
+
+#[cfg(feature = "clips")]
+fn setup_clips() -> Box<dyn KnowledgeBase> {
+    use crate::kb::clips::CLIPSKnowledgeBase;
+
+    Box::new(CLIPSKnowledgeBase::new())
 }

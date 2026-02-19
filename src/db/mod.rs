@@ -1,10 +1,10 @@
 use crate::model::{Class, Object, Rule, Value};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 #[cfg(feature = "mongodb")]
-pub mod mongodb;
+mod mongodb;
 
 #[derive(Debug)]
 pub enum DatabaseError {
@@ -40,4 +40,23 @@ pub trait Database: Send + Sync {
     async fn get_fcm_tokens(&self, object_id: &str) -> Result<Vec<String>, DatabaseError>;
 
     async fn drop_database(&self) -> Result<(), DatabaseError>;
+}
+
+pub async fn setup_db() -> Arc<dyn Database> {
+    #[cfg(feature = "mongodb")]
+    return setup_mongodb().await;
+
+    #[cfg(not(feature = "mongodb"))]
+    panic!("No database backend configured");
+}
+
+#[cfg(feature = "mongodb")]
+async fn setup_mongodb() -> Arc<dyn Database> {
+    use crate::db::mongodb::MongoDB;
+
+    let name = std::env::var("DB_NAME").unwrap_or_else(|_| "coco_db".to_string());
+    let host = std::env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_string());
+    let port = std::env::var("DB_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(27017);
+    let uri = format!("mongodb://{}:{}", host, port);
+    Arc::new(MongoDB::new(&name, &uri).await.unwrap())
 }

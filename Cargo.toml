@@ -12,13 +12,22 @@ license-file = "LICENSE.txt"
 name = "coco"
 
 [features]
-default = ["mongodb", "clips", "fcm", "ollama", "server", "mqtt"]
+default = [
+    "mongodb",
+    "clips",
+    "fcm",
+    "ollama",
+    "server",
+    "mqtt",
+    "deliberative",
+]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
 ollama = ["dep:reqwest"]
 server = ["dep:axum", "dep:tower-http", "dep:utoipa"]
 fcm = ["dep:reqwest", "dep:yup-oauth2"]
 mqtt = ["dep:rumqttc"]
+deliberative = ["dep:chronoxide"]
 
 [dependencies]
 axum = { version = "0.8.8", features = ["ws"], optional = true }
@@ -26,7 +35,7 @@ tower-http = { version = "0.6.8", features = ["fs"], optional = true }
 tokio = { version = "1.49", features = ["full"] }
 serde = "1.0.228"
 mongodb = { version = "3.5.1", optional = true }
-futures = "0.3.31"
+futures = "0.3.32"
 async-trait = "0.1.89"
 chrono = { version = "0.4.43", features = ["serde"] }
 utoipa = { version = "5.4.0", features = ["chrono"], optional = true }
@@ -35,3 +44,4 @@ reqwest = { version = "0.13.2", features = ["json"], optional = true }
 yup-oauth2 = { version = "12.1.2", optional = true }
 rumqttc = { version = "0.25.1", optional = true }
 clips = { git = "https://github.com/ratioSolver/rust-clips", optional = true }
+chronoxide = { git = "https://github.com/ratioSolver/Chronoxide", optional = true }

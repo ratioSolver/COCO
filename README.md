@@ -18,7 +18,7 @@ The system leverages [CLIPS](https://www.clipsrules.net) for its robust pattern 
 To run the CoCo server:
 
 ```bash
-cargo run --bin server
+cargo run
 ```
 
 The server listens on `http://0.0.0.0:3000` and serves the web interface. 

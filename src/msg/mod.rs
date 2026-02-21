@@ -24,6 +24,6 @@ pub fn setup_messaging() -> Option<Box<dyn Messaging>> {
 fn setup_fcm() -> Box<dyn Messaging> {
     use crate::msg::fcm::FCMClient;
 
-    let project_id = std::env::var("FCM_PROJECT_ID").unwrap_or_else(|_| "coco-project-id".to_string());
+    let project_id = std::env::var("FCM_PROJECT_ID").unwrap_or_else(|_| "coco-project-id".to_owned());
     Box::new(FCMClient::new(project_id))
 }

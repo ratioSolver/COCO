@@ -34,7 +34,7 @@ impl LLM for Ollama {
             Ok(response) => match response.json::<serde_json::Value>().await {
                 Ok(json) => {
                     if let Some(content) = json["message"]["content"].as_str() {
-                        Ok(content.to_string())
+                        Ok(content.to_owned())
                     } else {
                         Err(LLMError::GenerationError("Invalid response format".into()))
                     }

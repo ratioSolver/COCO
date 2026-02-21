@@ -44,5 +44,5 @@ async fn get_token() -> String {
     let auth = ServiceAccountAuthenticator::builder(key).build().await.expect("Failed to create authenticator");
     let scopes = &["https://www.googleapis.com/auth/firebase.messaging"];
     let token = auth.token(scopes).await.expect("Failed to get token");
-    token.token().unwrap().to_string()
+    token.token().unwrap().to_owned()
 }

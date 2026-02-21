@@ -54,7 +54,7 @@ impl MongoDB {
             let index = IndexModel::builder().keys(doc! { "object_id": 1, "token": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             fcm_tokens_collection.create_index(index).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         }
-        Ok(Self { name: name.to_string(), client })
+        Ok(Self { name: name.to_owned(), client })
     }
 }
 

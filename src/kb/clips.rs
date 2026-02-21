@@ -66,7 +66,7 @@ impl CLIPSKnowledgeBase {
                                     "TRUE" => Value::Bool(true),
                                     "FALSE" => Value::Bool(false),
                                     "nil" => Value::Null,
-                                    other => Value::Symbol(other.to_string()),
+                                    other => Value::Symbol(other.to_owned()),
                                 },
                                 ClipsValue::String(s) => Value::String(s),
                                 _ => panic!("Expected symbol, integer, or float in values multifield for add-data UDF"),
@@ -170,7 +170,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn create_object(&mut self, object: Object) -> Result<(), KnowledgeBaseError> {
-        let id = object.id.clone().ok_or_else(|| KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_string()))?;
+        let id = object.id.clone().ok_or_else(|| KnowledgeBaseError::ObjectNotFound("Object must have an ID".to_owned()))?;
         if self.objects.contains_key(&id) {
             return Err(KnowledgeBaseError::ObjectAlreadyExists(id.clone()));
         }
@@ -224,11 +224,11 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
     }
 
     fn add_class(&mut self, object_id: &str, class_name: &str) -> Result<(), KnowledgeBaseError> {
-        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_string()))?;
-        let class = self.classes.get(class_name).ok_or_else(|| KnowledgeBaseError::ClassNotFound(class_name.to_string()))?;
+        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
+        let class = self.classes.get(class_name).ok_or_else(|| KnowledgeBaseError::ClassNotFound(class_name.to_owned()))?;
         let fb = self.env.fact_builder(&class.name).unwrap().put_symbol("id", object_id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", object_id, e)))?;
         let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", object_id, e)))?;
-        self.instances.entry(class.name.clone()).or_default().insert(object_id.to_string(), fact);
+        self.instances.entry(class.name.clone()).or_default().insert(object_id.to_owned(), fact);
 
         if let Some(static_props) = &class.static_properties {
             for (name, prop) in static_props {
@@ -236,12 +236,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
                     let fb = set_prop(&self.env, fb, prop, v.clone(), None)?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
-                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
+                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
                 } else {
                     let def = get_default(prop);
                     let fb = set_prop(&self.env, fb, prop, def.clone(), None)?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
-                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
+                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
                 }
             }
         }
@@ -252,22 +252,22 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                     let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
                     let fb = set_prop(&self.env, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, object_id, e)))?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
-                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
+                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
                 } else {
                     let def = get_default(prop);
                     let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
                     let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now()))?;
                     let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
-                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_string()).or_default().insert(name.clone(), fact);
+                    self.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
                 }
             }
         }
-        let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_string(), class_name.to_string()));
+        let _ = self.sender.send(CoCoEvent::AddedClass(object_id.to_owned(), class_name.to_owned()));
         Ok(())
     }
 
     fn set_properties(&mut self, object_id: &str, properties: HashMap<String, Value>) -> Result<(), KnowledgeBaseError> {
-        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_string()))?;
+        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
         for class_name in &object.classes {
             if let Some(class) = self.classes.get(class_name) {
                 if let Some(static_props) = &class.static_properties {
@@ -285,12 +285,12 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
             }
         }
-        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object_id.to_string(), properties));
+        let _ = self.sender.send(CoCoEvent::UpdatedProperties(object_id.to_owned(), properties));
         Ok(())
     }
 
     fn add_values(&mut self, object_id: &str, values: HashMap<String, Value>, timestamp: DateTime<Utc>) -> Result<(), KnowledgeBaseError> {
-        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_string()))?;
+        let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
         for class_name in &object.classes {
             if let Some(class) = self.classes.get(class_name) {
                 if let Some(dynamic_props) = &class.dynamic_properties {
@@ -309,7 +309,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
             }
         }
         if self.sender.receiver_count() > 0 {
-            let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_string(), values, timestamp));
+            let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_owned(), values, timestamp));
         }
         Ok(())
     }
@@ -365,8 +365,8 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 def.push_str(" (default nil)");
             }
             if min.is_some() || max.is_some() {
-                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
-                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
+                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_owned());
+                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_owned());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
             def.push(')');
@@ -391,13 +391,13 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                         let s = v.to_string();
                         if s.contains('.') { s } else { format!("{}.0", s) }
                     })
-                    .unwrap_or("?VARIABLE".to_string());
+                    .unwrap_or("?VARIABLE".to_owned());
                 let max_str = max
                     .map(|v| {
                         let s = v.to_string();
                         if s.contains('.') { s } else { format!("{}.0", s) }
                     })
-                    .unwrap_or("?VARIABLE".to_string());
+                    .unwrap_or("?VARIABLE".to_owned());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
             def.push(')');
@@ -479,8 +479,8 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                 def.push_str(&format!(" (default {})", def_str));
             }
             if min.is_some() || max.is_some() {
-                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
-                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_string());
+                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_owned());
+                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_owned());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
             def.push(')');
@@ -509,13 +509,13 @@ fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: b
                         let s = v.to_string();
                         if s.contains('.') { s } else { format!("{}.0", s) }
                     })
-                    .unwrap_or("?VARIABLE".to_string());
+                    .unwrap_or("?VARIABLE".to_owned());
                 let max_str = max
                     .map(|v| {
                         let s = v.to_string();
                         if s.contains('.') { s } else { format!("{}.0", s) }
                     })
-                    .unwrap_or("?VARIABLE".to_string());
+                    .unwrap_or("?VARIABLE".to_owned());
                 def.push_str(&format!(" (range {} {})", min_str, max_str));
             }
             def.push(')');
@@ -628,7 +628,7 @@ fn set_prop(env: &Environment, fb: FactBuilder, property: &Property, value: Valu
             fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object array property value: {}", e)))
         }
         (Property::ObjectArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object array property: {}", e))),
-        _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_string())),
+        _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_owned())),
     };
     if let Some(t) = time { builder.and_then(|fb| fb.put_int("time", t.timestamp()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set time slot for property value: {}", e)))) } else { builder }
 }
@@ -683,7 +683,7 @@ fn update_prop(env: &Environment, fm: FactModifier, property: &Property, value: 
             fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object array property value: {}", e)))
         }
         (Property::ObjectArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object array property: {}", e))),
-        _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_string())),
+        _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_owned())),
     };
     if let Some(t) = time { modifier.and_then(|fm| fm.put_int("time", t.timestamp()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set time slot for property value: {}", e)))) } else { modifier }
 }
@@ -734,7 +734,7 @@ mod tests {
     fn test_create_simple_class() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -749,7 +749,7 @@ mod tests {
     fn test_get_class_by_name() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -765,10 +765,10 @@ mod tests {
     fn test_create_class_with_static_bool_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("active".to_string(), Property::Bool { default: Some(true) });
+        static_props.insert("active".to_owned(), Property::Bool { default: Some(true) });
 
         let class = Class {
-            name: "Device".to_string(),
+            name: "Device".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -782,10 +782,10 @@ mod tests {
     fn test_create_class_with_static_int_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("temperature".to_string(), Property::Int { default: Some(25), min: Some(0), max: Some(100) });
+        static_props.insert("temperature".to_owned(), Property::Int { default: Some(25), min: Some(0), max: Some(100) });
 
         let class = Class {
-            name: "Sensor".to_string(),
+            name: "Sensor".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -799,10 +799,10 @@ mod tests {
     fn test_create_class_with_static_float_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("voltage".to_string(), Property::Float { default: Some(5.0), min: Some(0.0), max: Some(10.0) });
+        static_props.insert("voltage".to_owned(), Property::Float { default: Some(5.0), min: Some(0.0), max: Some(10.0) });
 
         let class = Class {
-            name: "PowerSupply".to_string(),
+            name: "PowerSupply".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -816,10 +816,10 @@ mod tests {
     fn test_create_class_with_static_string_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("name".to_string(), Property::String { default: Some("Default Name".to_string()) });
+        static_props.insert("name".to_owned(), Property::String { default: Some("Default Name".to_owned()) });
 
         let class = Class {
-            name: "Entity".to_string(),
+            name: "Entity".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -834,13 +834,13 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         let mut allowed_symbols = HashSet::new();
-        allowed_symbols.insert("STATE_ON".to_string());
-        allowed_symbols.insert("STATE_OFF".to_string());
+        allowed_symbols.insert("STATE_ON".to_owned());
+        allowed_symbols.insert("STATE_OFF".to_owned());
 
-        static_props.insert("state".to_string(), Property::Symbol { default: Some("STATE_OFF".to_string()), allowed_values: Some(allowed_symbols) });
+        static_props.insert("state".to_owned(), Property::Symbol { default: Some("STATE_OFF".to_owned()), allowed_values: Some(allowed_symbols) });
 
         let class = Class {
-            name: "Switch".to_string(),
+            name: "Switch".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -854,10 +854,10 @@ mod tests {
     fn test_create_class_with_static_object_property() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("owner".to_string(), Property::Object { default: None, class: "Person".to_string() });
+        static_props.insert("owner".to_owned(), Property::Object { default: None, class: "Person".to_owned() });
 
         let class = Class {
-            name: "Item".to_string(),
+            name: "Item".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -872,16 +872,16 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
 
-        static_props.insert("bool_array".to_string(), Property::BoolArray { default: Some(vec![true, false, true]) });
+        static_props.insert("bool_array".to_owned(), Property::BoolArray { default: Some(vec![true, false, true]) });
 
-        static_props.insert("int_array".to_string(), Property::IntArray { default: Some(vec![1, 2, 3]), min: Some(0), max: Some(100) });
+        static_props.insert("int_array".to_owned(), Property::IntArray { default: Some(vec![1, 2, 3]), min: Some(0), max: Some(100) });
 
-        static_props.insert("float_array".to_string(), Property::FloatArray { default: Some(vec![1.5, 2.5, 3.5]), min: Some(0.0), max: Some(10.0) });
+        static_props.insert("float_array".to_owned(), Property::FloatArray { default: Some(vec![1.5, 2.5, 3.5]), min: Some(0.0), max: Some(10.0) });
 
-        static_props.insert("string_array".to_string(), Property::StringArray { default: Some(vec!["a".to_string(), "b".to_string()]) });
+        static_props.insert("string_array".to_owned(), Property::StringArray { default: Some(vec!["a".to_owned(), "b".to_owned()]) });
 
         let class = Class {
-            name: "ArrayHolder".to_string(),
+            name: "ArrayHolder".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -895,10 +895,10 @@ mod tests {
     fn test_create_class_with_dynamic_properties() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("pressure".to_string(), Property::Float { default: Some(0.0), min: None, max: None });
+        dynamic_props.insert("pressure".to_owned(), Property::Float { default: Some(0.0), min: None, max: None });
 
         let class = Class {
-            name: "DynamicSensor".to_string(),
+            name: "DynamicSensor".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: Some(dynamic_props),
@@ -912,7 +912,7 @@ mod tests {
     fn test_create_duplicate_class_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
-            name: "DuplicateClass".to_string(),
+            name: "DuplicateClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -932,7 +932,7 @@ mod tests {
     fn test_create_object_without_id_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut classes = HashSet::new();
-        classes.insert("TestClass".to_string());
+        classes.insert("TestClass".to_owned());
 
         let object = Object { id: None, classes, properties: None, values: None };
 
@@ -944,9 +944,9 @@ mod tests {
     fn test_create_object_with_nonexistent_class_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut classes = HashSet::new();
-        classes.insert("NonExistentClass".to_string());
+        classes.insert("NonExistentClass".to_owned());
 
-        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("obj1".to_owned()), classes, properties: None, values: None };
 
         let result = kb.create_object(object);
         assert!(result.is_err());
@@ -956,7 +956,7 @@ mod tests {
     fn test_create_simple_object() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -964,9 +964,9 @@ mod tests {
         kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("TestClass".to_string());
+        classes.insert("TestClass".to_owned());
 
-        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("obj1".to_owned()), classes, properties: None, values: None };
 
         let result = kb.create_object(object);
         assert!(result.is_ok());
@@ -977,7 +977,7 @@ mod tests {
     fn test_get_object_by_id() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -985,21 +985,21 @@ mod tests {
         kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("TestClass".to_string());
+        classes.insert("TestClass".to_owned());
 
-        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("obj1".to_owned()), classes, properties: None, values: None };
         kb.create_object(object).unwrap();
 
         let retrieved = kb.get_object("obj1");
         assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().id, Some("obj1".to_string()));
+        assert_eq!(retrieved.unwrap().id, Some("obj1".to_owned()));
     }
 
     #[test]
     fn test_create_duplicate_object_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1007,9 +1007,9 @@ mod tests {
         kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("TestClass".to_string());
+        classes.insert("TestClass".to_owned());
 
-        let object = Object { id: Some("obj1".to_string()), classes: classes.clone(), properties: None, values: None };
+        let object = Object { id: Some("obj1".to_owned()), classes: classes.clone(), properties: None, values: None };
 
         kb.create_object(object.clone()).unwrap();
         let result = kb.create_object(object);
@@ -1020,10 +1020,10 @@ mod tests {
     fn test_create_object_with_static_properties() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("count".to_string(), Property::Int { default: Some(0), min: None, max: None });
+        static_props.insert("count".to_owned(), Property::Int { default: Some(0), min: None, max: None });
 
         let class = Class {
-            name: "Counter".to_string(),
+            name: "Counter".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -1031,12 +1031,12 @@ mod tests {
         kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("Counter".to_string());
+        classes.insert("Counter".to_owned());
 
         let mut properties = HashMap::new();
-        properties.insert("count".to_string(), Value::Int(42));
+        properties.insert("count".to_owned(), Value::Int(42));
 
-        let object = Object { id: Some("counter1".to_string()), classes, properties: Some(properties), values: None };
+        let object = Object { id: Some("counter1".to_owned()), classes, properties: Some(properties), values: None };
 
         let result = kb.create_object(object);
         assert!(result.is_ok());
@@ -1046,10 +1046,10 @@ mod tests {
     fn test_create_object_with_dynamic_values() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("temperature".to_string(), Property::Float { default: Some(20.0), min: None, max: None });
+        dynamic_props.insert("temperature".to_owned(), Property::Float { default: Some(20.0), min: None, max: None });
 
         let class = Class {
-            name: "ThermometerDynamic".to_string(),
+            name: "ThermometerDynamic".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: Some(dynamic_props),
@@ -1057,12 +1057,12 @@ mod tests {
         kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("ThermometerDynamic".to_string());
+        classes.insert("ThermometerDynamic".to_owned());
 
         let mut values = HashMap::new();
-        values.insert("temperature".to_string(), TimedValue { value: Value::Float(36.5), timestamp: Utc::now() });
+        values.insert("temperature".to_owned(), TimedValue { value: Value::Float(36.5), timestamp: Utc::now() });
 
-        let object = Object { id: Some("temp_sensor1".to_string()), classes, properties: None, values: Some(values) };
+        let object = Object { id: Some("temp_sensor1".to_owned()), classes, properties: None, values: Some(values) };
 
         let result = kb.create_object(object);
         assert!(result.is_ok());
@@ -1073,7 +1073,7 @@ mod tests {
     fn test_add_class_to_nonexistent_object_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1088,7 +1088,7 @@ mod tests {
     fn test_add_nonexistent_class_to_object_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1096,9 +1096,9 @@ mod tests {
         kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("TestClass".to_string());
+        classes.insert("TestClass".to_owned());
 
-        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("obj1".to_owned()), classes, properties: None, values: None };
         kb.create_object(object).unwrap();
 
         let result = kb.add_class("obj1", &"NonExistentClass");
@@ -1110,13 +1110,13 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
 
         let class1 = Class {
-            name: "Class1".to_string(),
+            name: "Class1".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
         };
         let class2 = Class {
-            name: "Class2".to_string(),
+            name: "Class2".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1126,9 +1126,9 @@ mod tests {
         kb.create_class(class2).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("Class1".to_string());
+        classes.insert("Class1".to_owned());
 
-        let object = Object { id: Some("obj1".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("obj1".to_owned()), classes, properties: None, values: None };
         kb.create_object(object).unwrap();
 
         let result = kb.add_class("obj1", "Class2");
@@ -1141,7 +1141,7 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
 
         let mut properties = HashMap::new();
-        properties.insert("prop".to_string(), Value::Int(42));
+        properties.insert("prop".to_owned(), Value::Int(42));
 
         let result = kb.set_properties("nonexistent", properties);
         assert!(result.is_err());
@@ -1151,10 +1151,10 @@ mod tests {
     fn test_set_properties_on_object() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
-        static_props.insert("value".to_string(), Property::Int { default: Some(0), min: None, max: None });
+        static_props.insert("value".to_owned(), Property::Int { default: Some(0), min: None, max: None });
 
         let class = Class {
-            name: "Configurable".to_string(),
+            name: "Configurable".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -1162,13 +1162,13 @@ mod tests {
         kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("Configurable".to_string());
+        classes.insert("Configurable".to_owned());
 
-        let object = Object { id: Some("config1".to_string()), classes: classes.clone(), properties: None, values: None };
+        let object = Object { id: Some("config1".to_owned()), classes: classes.clone(), properties: None, values: None };
         kb.create_object(object).unwrap();
 
         let mut properties = HashMap::new();
-        properties.insert("value".to_string(), Value::Int(100));
+        properties.insert("value".to_owned(), Value::Int(100));
 
         let result = kb.set_properties("config1", properties);
         assert!(result.is_ok());
@@ -1179,10 +1179,10 @@ mod tests {
     fn test_add_values_on_nonexistent_object_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut classes = HashSet::new();
-        classes.insert("NonExistent".to_string());
+        classes.insert("NonExistent".to_owned());
 
         let mut values = HashMap::new();
-        values.insert("value".to_string(), Value::Float(1.0));
+        values.insert("value".to_owned(), Value::Float(1.0));
 
         let result = kb.add_values("nonexistent", values, Utc::now());
         assert!(result.is_err());
@@ -1192,10 +1192,10 @@ mod tests {
     fn test_add_values_to_object() {
         let mut kb = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("measurement".to_string(), Property::Float { default: Some(0.0), min: None, max: None });
+        dynamic_props.insert("measurement".to_owned(), Property::Float { default: Some(0.0), min: None, max: None });
 
         let class = Class {
-            name: "TimeSeries".to_string(),
+            name: "TimeSeries".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: Some(dynamic_props),
@@ -1203,13 +1203,13 @@ mod tests {
         kb.create_class(class).unwrap();
 
         let mut classes = HashSet::new();
-        classes.insert("TimeSeries".to_string());
+        classes.insert("TimeSeries".to_owned());
 
-        let object = Object { id: Some("ts1".to_string()), classes: classes.clone(), properties: None, values: None };
+        let object = Object { id: Some("ts1".to_owned()), classes: classes.clone(), properties: None, values: None };
         kb.create_object(object).unwrap();
 
         let mut values = HashMap::new();
-        values.insert("measurement".to_string(), Value::Float(42.5));
+        values.insert("measurement".to_owned(), Value::Float(42.5));
 
         let result = kb.add_values("ts1", values, Utc::now());
         assert!(result.is_ok());
@@ -1220,8 +1220,8 @@ mod tests {
     fn test_create_simple_rule() {
         let mut kb = CLIPSKnowledgeBase::new();
         let rule = Rule {
-            name: "test_rule".to_string(),
-            content: "(defrule test_rule (fact) => (assert (derived)))".to_string(),
+            name: "test_rule".to_owned(),
+            content: "(defrule test_rule (fact) => (assert (derived)))".to_owned(),
         };
 
         let result = kb.create_rule(rule);
@@ -1233,8 +1233,8 @@ mod tests {
     fn test_get_rule_by_name() {
         let mut kb = CLIPSKnowledgeBase::new();
         let rule = Rule {
-            name: "my_rule".to_string(),
-            content: "(defrule my_rule (fact) => (assert (result)))".to_string(),
+            name: "my_rule".to_owned(),
+            content: "(defrule my_rule (fact) => (assert (result)))".to_owned(),
         };
 
         kb.create_rule(rule).unwrap();
@@ -1247,8 +1247,8 @@ mod tests {
     fn test_create_duplicate_rule_fails() {
         let mut kb = CLIPSKnowledgeBase::new();
         let rule = Rule {
-            name: "duplicate_rule".to_string(),
-            content: "(defrule duplicate_rule (fact) => (assert (result)))".to_string(),
+            name: "duplicate_rule".to_owned(),
+            content: "(defrule duplicate_rule (fact) => (assert (result)))".to_owned(),
         };
 
         kb.create_rule(rule.clone()).unwrap();
@@ -1287,23 +1287,23 @@ mod tests {
 
     #[test]
     fn test_get_default_string_with_default() {
-        let property = Property::String { default: Some("hello".to_string()) };
+        let property = Property::String { default: Some("hello".to_owned()) };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Value::String("hello".to_string()));
+        assert_eq!(default_val, Value::String("hello".to_owned()));
     }
 
     #[test]
     fn test_get_default_symbol_with_default() {
-        let property = Property::Symbol { default: Some("SYMBOL_VALUE".to_string()), allowed_values: None };
+        let property = Property::Symbol { default: Some("SYMBOL_VALUE".to_owned()), allowed_values: None };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Value::Symbol("SYMBOL_VALUE".to_string()));
+        assert_eq!(default_val, Value::Symbol("SYMBOL_VALUE".to_owned()));
     }
 
     #[test]
     fn test_get_default_object_with_default() {
-        let property = Property::Object { default: Some("obj_id".to_string()), class: "MyClass".to_string() };
+        let property = Property::Object { default: Some("obj_id".to_owned()), class: "MyClass".to_owned() };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Value::Object("obj_id".to_string()));
+        assert_eq!(default_val, Value::Object("obj_id".to_owned()));
     }
 
     #[test]
@@ -1329,23 +1329,23 @@ mod tests {
 
     #[test]
     fn test_get_default_string_array_with_default() {
-        let property = Property::StringArray { default: Some(vec!["a".to_string(), "b".to_string()]) };
+        let property = Property::StringArray { default: Some(vec!["a".to_owned(), "b".to_owned()]) };
         let default_val = get_default(&property);
-        assert_eq!(default_val, Value::StringArray(vec!["a".to_string(), "b".to_string()]));
+        assert_eq!(default_val, Value::StringArray(vec!["a".to_owned(), "b".to_owned()]));
     }
 
     #[test]
     fn test_get_default_symbol_array_with_default() {
-        let property = Property::SymbolArray { default: Some(vec!["SYM1".to_string(), "SYM2".to_string()]), allowed_values: None };
+        let property = Property::SymbolArray { default: Some(vec!["SYM1".to_owned(), "SYM2".to_owned()]), allowed_values: None };
         let default_val = get_default(&property);
         // Note: SymbolArray returns StringArray due to the implementation
-        assert_eq!(default_val, Value::StringArray(vec!["SYM1".to_string(), "SYM2".to_string()]));
+        assert_eq!(default_val, Value::StringArray(vec!["SYM1".to_owned(), "SYM2".to_owned()]));
     }
 
     #[test]
     fn test_prop_deftemplate_bool_static() {
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1362,7 +1362,7 @@ mod tests {
     #[test]
     fn test_prop_deftemplate_int_with_range() {
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1379,7 +1379,7 @@ mod tests {
     #[test]
     fn test_prop_deftemplate_float_dynamic() {
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1395,16 +1395,16 @@ mod tests {
     #[test]
     fn test_prop_deftemplate_symbol_with_allowed_values() {
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
         };
         let mut allowed = HashSet::new();
-        allowed.insert("ON".to_string());
-        allowed.insert("OFF".to_string());
+        allowed.insert("ON".to_owned());
+        allowed.insert("OFF".to_owned());
 
-        let property = Property::Symbol { default: Some("OFF".to_string()), allowed_values: Some(allowed) };
+        let property = Property::Symbol { default: Some("OFF".to_owned()), allowed_values: Some(allowed) };
 
         let template = prop_deftemplate(&class, "state", &property, true);
         assert!(template.contains("TestClass_state"));
@@ -1415,7 +1415,7 @@ mod tests {
     #[test]
     fn test_prop_deftemplate_int_array_with_range() {
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1431,12 +1431,12 @@ mod tests {
     #[test]
     fn test_prop_deftemplate_string_array() {
         let class = Class {
-            name: "TestClass".to_string(),
+            name: "TestClass".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
         };
-        let property = Property::StringArray { default: Some(vec!["item1".to_string(), "item2".to_string()]) };
+        let property = Property::StringArray { default: Some(vec!["item1".to_owned(), "item2".to_owned()]) };
 
         let template = prop_deftemplate(&class, "items", &property, true);
         assert!(template.contains("TestClass_items"));
@@ -1451,14 +1451,14 @@ mod tests {
 
         // Create a class with mixed properties
         let mut static_props = HashMap::new();
-        static_props.insert("name".to_string(), Property::String { default: Some("Unknown".to_string()) });
-        static_props.insert("enabled".to_string(), Property::Bool { default: Some(true) });
+        static_props.insert("name".to_owned(), Property::String { default: Some("Unknown".to_owned()) });
+        static_props.insert("enabled".to_owned(), Property::Bool { default: Some(true) });
 
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("reading".to_string(), Property::Float { default: Some(0.0), min: None, max: None });
+        dynamic_props.insert("reading".to_owned(), Property::Float { default: Some(0.0), min: None, max: None });
 
         let class = Class {
-            name: "Sensor".to_string(),
+            name: "Sensor".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: Some(dynamic_props),
@@ -1469,13 +1469,13 @@ mod tests {
 
         // Create an object
         let mut classes = HashSet::new();
-        classes.insert("Sensor".to_string());
+        classes.insert("Sensor".to_owned());
 
         let mut properties = HashMap::new();
-        properties.insert("name".to_string(), Value::String("Temperature Sensor".to_string()));
+        properties.insert("name".to_owned(), Value::String("Temperature Sensor".to_owned()));
 
         let object = Object {
-            id: Some("sensor1".to_string()),
+            id: Some("sensor1".to_owned()),
             classes: classes.clone(),
             properties: Some(properties),
             values: None,
@@ -1485,7 +1485,7 @@ mod tests {
 
         // Add a value
         let mut values = HashMap::new();
-        values.insert("reading".to_string(), Value::Float(23.5));
+        values.insert("reading".to_owned(), Value::Float(23.5));
 
         assert!(kb.add_values("sensor1", values, Utc::now()).is_ok());
 
@@ -1531,13 +1531,13 @@ mod tests {
 
         // Create two classes
         let class1 = Class {
-            name: "Class1".to_string(),
+            name: "Class1".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
         };
         let class2 = Class {
-            name: "Class2".to_string(),
+            name: "Class2".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: None,
@@ -1548,10 +1548,10 @@ mod tests {
 
         // Create an object with both classes
         let mut classes = HashSet::new();
-        classes.insert("Class1".to_string());
-        classes.insert("Class2".to_string());
+        classes.insert("Class1".to_owned());
+        classes.insert("Class2".to_owned());
 
-        let object = Object { id: Some("multi_obj".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("multi_obj".to_owned()), classes, properties: None, values: None };
 
         assert!(kb.create_object(object).is_ok());
         let retrieved = kb.get_object("multi_obj").unwrap();
@@ -1563,10 +1563,10 @@ mod tests {
         let mut kb = CLIPSKnowledgeBase::new();
 
         let mut static_props = HashMap::new();
-        static_props.insert("optional_field".to_string(), Property::String { default: None });
+        static_props.insert("optional_field".to_owned(), Property::String { default: None });
 
         let class = Class {
-            name: "NullableClass".to_string(),
+            name: "NullableClass".to_owned(),
             parents: None,
             static_properties: Some(static_props),
             dynamic_properties: None,
@@ -1575,9 +1575,9 @@ mod tests {
         assert!(kb.create_class(class).is_ok());
 
         let mut classes = HashSet::new();
-        classes.insert("NullableClass".to_string());
+        classes.insert("NullableClass".to_owned());
 
-        let object = Object { id: Some("nullable_obj".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("nullable_obj".to_owned()), classes, properties: None, values: None };
 
         assert!(kb.create_object(object).is_ok());
     }
@@ -1596,10 +1596,10 @@ mod tests {
 
         // Create a class with a dynamic property (temperature monitoring)
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("temperature".to_string(), Property::Float { default: Some(20.0), min: None, max: None });
+        dynamic_props.insert("temperature".to_owned(), Property::Float { default: Some(20.0), min: None, max: None });
 
         let class = Class {
-            name: "ThermometerMonitor".to_string(),
+            name: "ThermometerMonitor".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: Some(dynamic_props),
@@ -1610,9 +1610,9 @@ mod tests {
 
         // Create an object for temperature monitoring
         let mut classes = HashSet::new();
-        classes.insert("ThermometerMonitor".to_string());
+        classes.insert("ThermometerMonitor".to_owned());
 
-        let object = Object { id: Some("thermo1".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("thermo1".to_owned()), classes, properties: None, values: None };
 
         assert!(kb.create_object(object).is_ok());
 
@@ -1620,20 +1620,20 @@ mod tests {
         // When triggered, it will call the add-data UDF with existing dynamic properties
         // add-data signature: (add-data object-id param-names-multifield param-values-multifield [timestamp])
         let rule = Rule {
-            name: "temperature_alert_rule".to_string(),
+            name: "temperature_alert_rule".to_owned(),
             content: "(defrule temperature_alert_rule
                 (ThermometerMonitor_temperature (id ?id) (value ?temp&:(> ?temp 35)))
                 =>
                 (add-data ?id (create$ temperature) (create$ 99.9))
             )"
-            .to_string(),
+            .to_owned(),
         };
 
         assert!(kb.create_rule(rule).is_ok());
 
         // Initial values - set temperature below threshold (should not trigger rule)
         let mut values = HashMap::new();
-        values.insert("temperature".to_string(), Value::Float(25.0));
+        values.insert("temperature".to_owned(), Value::Float(25.0));
         assert!(kb.add_values("thermo1", values, Utc::now()).is_ok());
 
         // Run the knowledge base with low temperature
@@ -1641,7 +1641,7 @@ mod tests {
 
         // Now update temperature to exceed threshold (should trigger rule)
         let mut values_high = HashMap::new();
-        values_high.insert("temperature".to_string(), Value::Float(35.0));
+        values_high.insert("temperature".to_owned(), Value::Float(35.0));
         assert!(kb.add_values("thermo1", values_high, Utc::now()).is_ok());
 
         // Run the knowledge base again - this should trigger the rule and call add-data UDF
@@ -1661,12 +1661,12 @@ mod tests {
 
         // Create a complex sensor class with multiple dynamic properties
         let mut dynamic_props = HashMap::new();
-        dynamic_props.insert("temperature".to_string(), Property::Float { default: Some(20.0), min: None, max: None });
-        dynamic_props.insert("humidity".to_string(), Property::Float { default: Some(50.0), min: None, max: None });
-        dynamic_props.insert("pressure".to_string(), Property::Float { default: Some(1013.0), min: None, max: None });
+        dynamic_props.insert("temperature".to_owned(), Property::Float { default: Some(20.0), min: None, max: None });
+        dynamic_props.insert("humidity".to_owned(), Property::Float { default: Some(50.0), min: None, max: None });
+        dynamic_props.insert("pressure".to_owned(), Property::Float { default: Some(1013.0), min: None, max: None });
 
         let class = Class {
-            name: "EnvironmentalSensor".to_string(),
+            name: "EnvironmentalSensor".to_owned(),
             parents: None,
             static_properties: None,
             dynamic_properties: Some(dynamic_props),
@@ -1676,44 +1676,44 @@ mod tests {
 
         // Create an object
         let mut classes = HashSet::new();
-        classes.insert("EnvironmentalSensor".to_string());
+        classes.insert("EnvironmentalSensor".to_owned());
 
-        let object = Object { id: Some("env_sensor1".to_string()), classes, properties: None, values: None };
+        let object = Object { id: Some("env_sensor1".to_owned()), classes, properties: None, values: None };
 
         assert!(kb.create_object(object).is_ok());
 
         // Register rule for temperature threshold - calls add-data UDF to update the temperature parameter
         // add-data takes: object_id, param-names (multifield), param-values (multifield)
         let temp_rule = Rule {
-            name: "high_temperature_alert".to_string(),
+            name: "high_temperature_alert".to_owned(),
             content: "(defrule high_temperature_alert
                 (EnvironmentalSensor_temperature (id ?id) (value ?temp&:(> ?temp 35)))
                 =>
                 (add-data ?id (create$ temperature) (create$ ?temp))
             )"
-            .to_string(),
+            .to_owned(),
         };
 
         assert!(kb.create_rule(temp_rule).is_ok());
 
         // Register rule for humidity threshold - uses add-data UDF to update humidity parameter
         let humidity_rule = Rule {
-            name: "high_humidity_alert".to_string(),
+            name: "high_humidity_alert".to_owned(),
             content: "(defrule high_humidity_alert
                 (EnvironmentalSensor_humidity (id ?id) (value ?humid&:(> ?humid 80)))
                 =>
                 (add-data ?id (create$ humidity) (create$ ?humid))
             )"
-            .to_string(),
+            .to_owned(),
         };
 
         assert!(kb.create_rule(humidity_rule).is_ok());
 
         // Update all properties with values that trigger both rules
         let mut values = HashMap::new();
-        values.insert("temperature".to_string(), Value::Float(40.0)); // Exceeds 35 threshold
-        values.insert("humidity".to_string(), Value::Float(85.0)); // Exceeds 80 threshold
-        values.insert("pressure".to_string(), Value::Float(1020.0)); // Normal
+        values.insert("temperature".to_owned(), Value::Float(40.0)); // Exceeds 35 threshold
+        values.insert("humidity".to_owned(), Value::Float(85.0)); // Exceeds 80 threshold
+        values.insert("pressure".to_owned(), Value::Float(1020.0)); // Normal
 
         assert!(kb.add_values("env_sensor1", values, Utc::now()).is_ok());
 

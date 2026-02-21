@@ -130,19 +130,19 @@ impl CoCo {
 
     pub async fn get_class(&self, name: &str) -> Option<Class> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetClass { name: name.to_string(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(KbCommand::GetClass { name: name.to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or(None)
     }
 
     pub async fn create_new_class(&self, name: &str, parents: Option<HashSet<String>>, static_properties: Option<HashMap<String, Property>>, dynamic_properties: Option<HashMap<String, Property>>) -> Result<(), CoCoError> {
-        let class = Class { name: name.to_string(), parents, static_properties, dynamic_properties };
+        let class = Class { name: name.to_owned(), parents, static_properties, dynamic_properties };
         self.create_class(class).await
     }
 
     pub async fn create_class(&self, class: Class) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::CreateClass { class, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_objects(&self) -> Vec<Object> {
@@ -153,7 +153,7 @@ impl CoCo {
 
     pub async fn get_object(&self, id: &str) -> Option<Object> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetObject { id: id.to_string(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(KbCommand::GetObject { id: id.to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or(None)
     }
 
@@ -164,25 +164,25 @@ impl CoCo {
     pub async fn create_object(&self, object: Object) -> Result<String, CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::CreateObject { object, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn set_properties(&self, object_id: &str, values: HashMap<String, Value>) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::SetProperties { object_id: object_id.to_string(), values, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
+        let _ = self.kb_tx.send(KbCommand::SetProperties { object_id: object_id.to_owned(), values, resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn add_data(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::AddData { object_id: object_id.to_string(), values, date_time, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
+        let _ = self.kb_tx.send(KbCommand::AddData { object_id: object_id.to_owned(), values, date_time, resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_data(&self, object_id: &str, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetData { object_id: object_id.to_string(), start_time, end_time, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
+        let _ = self.kb_tx.send(KbCommand::GetData { object_id: object_id.to_owned(), start_time, end_time, resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_rules(&self) -> Vec<Rule> {
@@ -193,18 +193,18 @@ impl CoCo {
 
     pub async fn get_rule(&self, name: &str) -> Option<Rule> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetRule { name: name.to_string(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(KbCommand::GetRule { name: name.to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or(None)
     }
 
     pub async fn create_new_rule(&self, name: &str, content: &str) -> Result<(), CoCoError> {
-        self.create_rule(Rule { name: name.to_string(), content: content.to_string() }).await
+        self.create_rule(Rule { name: name.to_owned(), content: content.to_owned() }).await
     }
 
     pub async fn create_rule(&self, rule: Rule) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(KbCommand::CreateRule { rule, resp: resp_tx }).await;
-        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_string())))
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 }
 

@@ -8,9 +8,13 @@ use crate::{
 use chrono::{DateTime, Utc};
 use std::{
     collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
     sync::Arc,
 };
-use tokio::sync::{broadcast, mpsc, oneshot};
+use tokio::{
+    fs,
+    sync::{broadcast, mpsc, oneshot},
+};
 
 pub mod db;
 pub mod kb;
@@ -23,7 +27,7 @@ pub mod msg;
 pub mod server;
 
 pub struct CoCo {
-    kb_tx: mpsc::Sender<KbCommand>,
+    kb_tx: mpsc::Sender<CoCoCommand>,
     event_tx: broadcast::Sender<CoCoEvent>,
 }
 
@@ -33,6 +37,9 @@ pub trait CoCoState: Clone + Send + Sync + 'static {
 
 #[derive(Clone, Debug)]
 pub enum CoCoError {
+    DirectoryReadError(String),
+    FileReadError(String),
+    JsonParseError(String),
     ClassAlreadyExists(String),
     ClassNotFound(String),
     ObjectAlreadyExists(String),
@@ -48,6 +55,9 @@ pub enum CoCoError {
 impl std::fmt::Display for CoCoError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            CoCoError::DirectoryReadError(msg) => write!(f, "Failed to read directory: {}", msg),
+            CoCoError::FileReadError(msg) => write!(f, "Failed to read file: {}", msg),
+            CoCoError::JsonParseError(msg) => write!(f, "Failed to parse JSON: {}", msg),
             CoCoError::ClassAlreadyExists(msg) => write!(f, "Class already exists: {}", msg),
             CoCoError::ClassNotFound(msg) => write!(f, "Class not found: {}", msg),
             CoCoError::ObjectAlreadyExists(msg) => write!(f, "Object already exists: {}", msg),
@@ -62,17 +72,20 @@ impl std::fmt::Display for CoCoError {
     }
 }
 
-enum KbCommand {
+enum CoCoCommand {
     InitData { classes: Vec<Class>, objects: Vec<Object>, rules: Vec<Rule>, resp: oneshot::Sender<()> },
+    LoadClasses { path: PathBuf, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetClasses { resp: oneshot::Sender<Vec<Class>> },
     GetClass { name: String, resp: oneshot::Sender<Option<Class>> },
     CreateClass { class: Class, resp: oneshot::Sender<Result<(), CoCoError>> },
+    LoadObjects { path: PathBuf, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetObjects { resp: oneshot::Sender<Vec<Object>> },
     GetObject { id: String, resp: oneshot::Sender<Option<Object>> },
     CreateObject { object: Object, resp: oneshot::Sender<Result<String, CoCoError>> },
     SetProperties { object_id: String, values: HashMap<String, Value>, resp: oneshot::Sender<Result<(), CoCoError>> },
     AddData { object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetData { object_id: String, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>, resp: oneshot::Sender<Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError>> },
+    LoadRules { path: PathBuf, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetRules { resp: oneshot::Sender<Vec<Rule>> },
     GetRule { name: String, resp: oneshot::Sender<Option<Rule>> },
     CreateRule { rule: Rule, resp: oneshot::Sender<Result<(), CoCoError>> },
@@ -112,7 +125,7 @@ impl CoCo {
             vec![]
         });
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = kb_tx.send(KbCommand::InitData { classes, objects, rules, resp: resp_tx }).await;
+        let _ = kb_tx.send(CoCoCommand::InitData { classes, objects, rules, resp: resp_tx }).await;
         let _ = resp_rx.await;
 
         CoCo { kb_tx, event_tx }
@@ -122,15 +135,21 @@ impl CoCo {
         self.event_tx.clone()
     }
 
+    pub async fn load_classes<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = self.kb_tx.send(CoCoCommand::LoadClasses { path: path.as_ref().to_owned(), resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
+    }
+
     pub async fn get_classes(&self) -> Vec<Class> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetClasses { resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetClasses { resp: resp_tx }).await;
         resp_rx.await.unwrap_or_default()
     }
 
     pub async fn get_class(&self, name: &str) -> Option<Class> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetClass { name: name.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetClass { name: name.to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or(None)
     }
 
@@ -141,19 +160,25 @@ impl CoCo {
 
     pub async fn create_class(&self, class: Class) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::CreateClass { class, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::CreateClass { class, resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
+    }
+
+    pub async fn load_objects<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = self.kb_tx.send(CoCoCommand::LoadObjects { path: path.as_ref().to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_objects(&self) -> Vec<Object> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetObjects { resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetObjects { resp: resp_tx }).await;
         resp_rx.await.unwrap_or_default()
     }
 
     pub async fn get_object(&self, id: &str) -> Option<Object> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetObject { id: id.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetObject { id: id.to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or(None)
     }
 
@@ -163,37 +188,43 @@ impl CoCo {
 
     pub async fn create_object(&self, object: Object) -> Result<String, CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::CreateObject { object, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::CreateObject { object, resp: resp_tx }).await;
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn set_properties(&self, object_id: &str, values: HashMap<String, Value>) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::SetProperties { object_id: object_id.to_owned(), values, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::SetProperties { object_id: object_id.to_owned(), values, resp: resp_tx }).await;
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn add_data(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::AddData { object_id: object_id.to_owned(), values, date_time, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::AddData { object_id: object_id.to_owned(), values, date_time, resp: resp_tx }).await;
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_data(&self, object_id: &str, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetData { object_id: object_id.to_owned(), start_time, end_time, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetData { object_id: object_id.to_owned(), start_time, end_time, resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
+    }
+
+    pub async fn load_rules<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = self.kb_tx.send(CoCoCommand::LoadRules { path: path.as_ref().to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_rules(&self) -> Vec<Rule> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetRules { resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetRules { resp: resp_tx }).await;
         resp_rx.await.unwrap_or_default()
     }
 
     pub async fn get_rule(&self, name: &str) -> Option<Rule> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::GetRule { name: name.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetRule { name: name.to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or(None)
     }
 
@@ -203,14 +234,14 @@ impl CoCo {
 
     pub async fn create_rule(&self, rule: Rule) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(KbCommand::CreateRule { rule, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::CreateRule { rule, resp: resp_tx }).await;
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 }
 
-async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>) {
+async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>) {
     match cmd {
-        KbCommand::InitData { classes, objects, rules, resp } => {
+        CoCoCommand::InitData { classes, objects, rules, resp } => {
             for class in classes {
                 if let Err(e) = kb.create_class(class) {
                     eprintln!("Error adding class to knowledge base: {:?}", e);
@@ -231,48 +262,108 @@ async fn handle_command(cmd: KbCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn
             }
             let _ = resp.send(());
         }
-        KbCommand::GetClasses { resp } => {
+        CoCoCommand::LoadClasses { path, resp } => {
+            let result = async move {
+                let mut entries = fs::read_dir(&path).await.map_err(|e| CoCoError::DirectoryReadError(format!("Failed to read directory '{}': {:?}", path.display(), e)))?;
+                while let Some(entry) = entries.next_entry().await.map_err(|e| CoCoError::FileReadError(format!("Failed to read entry in directory '{}': {:?}", path.display(), e)))? {
+                    let path = entry.path();
+                    if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                        let data = fs::read_to_string(&path).await.map_err(|e| CoCoError::FileReadError(format!("Failed to read file '{}': {:?}", path.display(), e)))?;
+                        let class: Class = serde_json::from_str(&data).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON in file '{}': {:?}", path.display(), e)))?;
+                        if let None = kb.get_class(&class.name) {
+                            db.create_class(&class).await.map_err(map_db_error)?;
+                            kb.create_class(class).map_err(map_kb_error)?;
+                        }
+                    }
+                }
+                kb.run().map_err(map_kb_error)?;
+                Ok(())
+            }
+            .await;
+            let _ = resp.send(result);
+        }
+        CoCoCommand::GetClasses { resp } => {
             let _ = resp.send(kb.get_classes().into_iter().cloned().collect());
         }
-        KbCommand::GetClass { name, resp } => {
+        CoCoCommand::GetClass { name, resp } => {
             let _ = resp.send(kb.get_class(&name).cloned());
         }
-        KbCommand::CreateClass { class, resp } => {
+        CoCoCommand::CreateClass { class, resp } => {
             let result = db.create_class(&class).await.map_err(map_db_error).and_then(|_| kb.create_class(class).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
-        KbCommand::GetObjects { resp } => {
+        CoCoCommand::LoadObjects { path, resp } => {
+            let result = async move {
+                let mut entries = fs::read_dir(&path).await.map_err(|e| CoCoError::DirectoryReadError(format!("Failed to read directory '{}': {:?}", path.display(), e)))?;
+                while let Some(entry) = entries.next_entry().await.map_err(|e| CoCoError::FileReadError(format!("Failed to read entry in directory '{}': {:?}", path.display(), e)))? {
+                    let path = entry.path();
+                    if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                        let data = fs::read_to_string(&path).await.map_err(|e| CoCoError::FileReadError(format!("Failed to read file '{}': {:?}", path.display(), e)))?;
+                        let object: Object = serde_json::from_str(&data).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON in file '{}': {:?}", path.display(), e)))?;
+                        if let None = kb.get_object(object.id.as_ref().unwrap()).cloned() {
+                            db.create_object(&object).await.map_err(map_db_error)?;
+                            kb.create_object(object).map_err(map_kb_error)?;
+                        }
+                    }
+                }
+                kb.run().map_err(map_kb_error)?;
+                Ok(())
+            }
+            .await;
+            let _ = resp.send(result);
+        }
+        CoCoCommand::GetObjects { resp } => {
             let _ = resp.send(kb.get_objects().into_iter().cloned().collect());
         }
-        KbCommand::GetObject { id, resp } => {
+        CoCoCommand::GetObject { id, resp } => {
             let _ = resp.send(kb.get_object(&id).cloned());
         }
-        KbCommand::CreateObject { object, resp } => {
+        CoCoCommand::CreateObject { object, resp } => {
             let result = db.create_object(&object).await.map_err(map_db_error).and_then(|id| {
                 let object = Object { id: Some(id.clone()), ..object };
                 kb.create_object(object).and_then(|_| kb.run()).map_err(map_kb_error).map(|_| id)
             });
             let _ = resp.send(result);
         }
-        KbCommand::SetProperties { object_id, values, resp } => {
+        CoCoCommand::SetProperties { object_id, values, resp } => {
             let result = db.set_properties(&object_id, &values).await.map_err(map_db_error).and_then(|_| kb.set_properties(&object_id, values).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
-        KbCommand::AddData { object_id, values, date_time, resp } => {
+        CoCoCommand::AddData { object_id, values, date_time, resp } => {
             let result = db.add_data(&object_id, &values, &date_time).await.map_err(map_db_error).and_then(|_| kb.add_values(&object_id, values, date_time).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
-        KbCommand::GetData { object_id, start_time, end_time, resp } => {
+        CoCoCommand::GetData { object_id, start_time, end_time, resp } => {
             let result = db.get_data(&object_id, start_time.as_ref(), end_time.as_ref()).await.map_err(map_db_error);
             let _ = resp.send(result);
         }
-        KbCommand::GetRules { resp } => {
+        CoCoCommand::LoadRules { path, resp } => {
+            let result = async move {
+                let mut entries = fs::read_dir(&path).await.map_err(|e| CoCoError::DirectoryReadError(format!("Failed to read directory '{}': {:?}", path.display(), e)))?;
+                while let Some(entry) = entries.next_entry().await.map_err(|e| CoCoError::FileReadError(format!("Failed to read entry in directory '{}': {:?}", path.display(), e)))? {
+                    let path = entry.path();
+                    if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                        let data = fs::read_to_string(&path).await.map_err(|e| CoCoError::FileReadError(format!("Failed to read file '{}': {:?}", path.display(), e)))?;
+                        let rule: Rule = serde_json::from_str(&data).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON in file '{}': {:?}", path.display(), e)))?;
+                        if let None = kb.get_rule(&rule.name).cloned() {
+                            db.create_rule(&rule).await.map_err(map_db_error)?;
+                            kb.create_rule(rule).map_err(map_kb_error)?;
+                        }
+                    }
+                }
+                kb.run().map_err(map_kb_error)?;
+                Ok(())
+            }
+            .await;
+            let _ = resp.send(result);
+        }
+        CoCoCommand::GetRules { resp } => {
             let _ = resp.send(kb.get_rules().into_iter().cloned().collect());
         }
-        KbCommand::GetRule { name, resp } => {
+        CoCoCommand::GetRule { name, resp } => {
             let _ = resp.send(kb.get_rule(&name).cloned());
         }
-        KbCommand::CreateRule { rule, resp } => {
+        CoCoCommand::CreateRule { rule, resp } => {
             let result = db.create_rule(&rule).await.map_err(map_db_error).and_then(|_| kb.create_rule(rule).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }

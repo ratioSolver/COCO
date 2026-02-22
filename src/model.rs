@@ -52,10 +52,12 @@ pub enum Property {
         default: Option<String>,
         class: String,
     },
+    #[serde(rename = "bool-array")]
     BoolArray {
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<bool>>,
     },
+    #[serde(rename = "int-array")]
     IntArray {
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<i64>>,
@@ -64,6 +66,7 @@ pub enum Property {
         #[serde(skip_serializing_if = "Option::is_none")]
         max: Option<i64>,
     },
+    #[serde(rename = "float-array")]
     FloatArray {
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<f64>>,
@@ -72,16 +75,19 @@ pub enum Property {
         #[serde(skip_serializing_if = "Option::is_none")]
         max: Option<f64>,
     },
+    #[serde(rename = "string-array")]
     StringArray {
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<String>>,
     },
+    #[serde(rename = "symbol-array")]
     SymbolArray {
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         allowed_values: Option<HashSet<String>>,
     },
+    #[serde(rename = "object-array")]
     ObjectArray {
         #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<Vec<String>>,
@@ -111,22 +117,22 @@ impl Display for Property {
                 write!(f, "object(default: {:?}, class: {:?})", default, class)
             }
             Property::BoolArray { default } => {
-                write!(f, "bool_array(default: {:?})", default)
+                write!(f, "bool-array(default: {:?})", default)
             }
             Property::IntArray { default, min, max } => {
-                write!(f, "int_array(default: {:?}, min: {:?}, max: {:?})", default, min, max)
+                write!(f, "int-array(default: {:?}, min: {:?}, max: {:?})", default, min, max)
             }
             Property::FloatArray { default, min, max } => {
-                write!(f, "float_array(default: {:?}, min: {:?}, max: {:?})", default, min, max)
+                write!(f, "float-array(default: {:?}, min: {:?}, max: {:?})", default, min, max)
             }
             Property::StringArray { default } => {
-                write!(f, "string_array(default: {:?})", default)
+                write!(f, "string-array(default: {:?})", default)
             }
             Property::SymbolArray { default, allowed_values } => {
-                write!(f, "symbol_array(default: {:?}, allowed_values: {:?})", default, allowed_values)
+                write!(f, "symbol-array(default: {:?}, allowed_values: {:?})", default, allowed_values)
             }
             Property::ObjectArray { default, class } => {
-                write!(f, "object_array(default: {:?}, class: {:?})", default, class)
+                write!(f, "object-array(default: {:?}, class: {:?})", default, class)
             }
         }
     }

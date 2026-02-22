@@ -24,7 +24,7 @@ default = [
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
 ollama = ["dep:reqwest"]
-server = ["dep:axum", "dep:tower-http", "dep:utoipa"]
+server = ["dep:axum", "dep:tower-http", "dep:utoipa", "dep:jsonwebtoken"]
 fcm = ["dep:reqwest", "dep:yup-oauth2"]
 mqtt = ["dep:rumqttc"]
 chronoxide = ["dep:chronoxide"]
@@ -33,6 +33,7 @@ chronoxide = ["dep:chronoxide"]
 axum = { version = "0.8.8", features = ["ws"], optional = true }
 tower-http = { version = "0.6.8", features = ["fs"], optional = true }
 tokio = { version = "1.49", features = ["full"] }
+jsonwebtoken = { version = "10.3.0", optional = true }
 serde = "1.0.228"
 mongodb = { version = "3.5.1", optional = true }
 futures = "0.3.32"

@@ -17,6 +17,8 @@ use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 use utoipa::{IntoParams, OpenApi};
 
+mod auth;
+
 type OpenApiValue = Value;
 type OpenApiObject = Object;
 

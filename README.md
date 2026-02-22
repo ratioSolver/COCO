@@ -3,56 +3,97 @@
 ![Build Status](https://github.com/ratioSolver/COCO/actions/workflows/cmake.yml/badge.svg)
 [![codecov](https://codecov.io/gh/ratioSolver/COCO/branch/master/graph/badge.svg)](https://codecov.io/gh/ratioSolver/COCO)
 
-**CoCo** (Combined deduCtiOn and abduCtiOn) is a dual-process inspired cognitive architecture built in Rust. It integrates a rule-based expert system and a timeline-based planner to invoke deductive and abductive reasoning in dynamic environments.
+**CoCo** (Combined deduCtiOn and abduCtiOn) is a dual-process cognitive architecture written in Rust. It combines a CLIPS-based rule engine with timeline planning to support both deduction and abduction in dynamic environments.
 
-The system leverages [CLIPS](https://www.clipsrules.net) for its robust pattern matching and rule engine capabilities, handling dynamic changes effectively.
+Highlights
+- Hybrid reasoning: deduction + abduction
+- Rust core for performance and safety
+- CLIPS integration for rules and pattern matching
+- Simple web interface for interaction and visualization
 
-## Features
-- **Hybrid Reasoning**: Unites deductive logic with abductive inference.
-- **Rust Core**: Designed for performance, memory safety, and concurrency.
-- **CLIPS Integration**: Seamless binding with the C-based CLIPS expert system.
-- **Web Interface**: Includes a web server (Axum) and visualization tools.
+## Quick start
 
-## Usage
-
-To run the CoCo server:
+Run the server locally:
 
 ```bash
 cargo run
 ```
 
-The server listens on `http://0.0.0.0:3000` and serves the web interface. 
-
+By default the server listens on `http://0.0.0.0:3000` and serves the web UI.
 
 ## Installation
 
 ### Prerequisites
-CoCo relies on **CLIPS v6.4.2** C libraries.
+CoCo links to the CLIPS v6.4.2 C library. Install CLIPS as follows:
 
-### Installing CLIPS
-Follow these steps to install the required CLIPS library and headers on your local machine:
+1. Download and unpack:
 
-1. **Download**:
-   Download [CLIPS v6.4.2](https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download) and unzip the archive.
-   ```bash
-   wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
-   unzip clips_core_source_642.zip
-   ```
+```bash
+wget -O clips_core_source_642.zip https://sourceforge.net/projects/clipsrules/files/CLIPS/6.4.2/clips_core_source_642.zip/download
+unzip clips_core_source_642.zip
+```
 
-2. **Compile**:
-   Navigate to the core source directory and compile:
-   ```bash
-   cd clips_core_source_642/core
-   make release
-   ```
+2. Build the core library:
 
-3. **Install Library**:
-   Set the `CLIPS_SOURCE_DIR` environment variable to the path of the CLIPS source directory:
-   ```bash
-   export CLIPS_SOURCE_DIR=$(pwd)
-   ```
-   Alternatively, for a global installation:
-   ```bash
-   sudo cp libclips.a /usr/local/lib/
-   sudo ldconfig
-   ```
+```bash
+cd clips_core_source_642/core
+make release
+```
+
+3. Either point `CLIPS_SOURCE_DIR` at the extracted source, or install the static library system-wide:
+
+```bash
+export CLIPS_SOURCE_DIR=$(pwd)
+# or
+sudo cp libclips.a /usr/local/lib/
+sudo ldconfig
+```
+
+## Examples: loading Classes, Objects and Rules
+
+Below are minimal examples that show JSON payloads (useful for APIs or config files).
+
+1) Class example (JSON)
+
+```json
+{
+   "name": "Person",
+   "parents": ["Agent"],
+   "static_properties": {
+      "age": { "type": "int", "default": 30, "min": 0, "max": 150 },
+      "name": { "type": "string", "default": "Unknown" }
+   },
+   "dynamic_properties": {
+      "mood": { "type": "symbol", "allowed_values": ["happy", "neutral", "sad"], "default": "neutral" }
+   }
+}
+```
+
+2) Object example (JSON)
+
+```json
+{
+   "classes": ["Person"],
+   "properties": {
+      "age": 28,
+      "name": "Alice"
+   }
+}
+```
+
+3) Rule example (JSON)
+
+```json
+{
+   "name": "greet",
+   "content": "(defrule greet (Person (name ?n)) => (printout t \\\"Hello \\\" ?n \\\"!\\\" crlf))"
+}
+```
+
+## Contributing
+
+Contributions are welcome! Please open issues for bugs or feature requests, and submit pull requests for improvements.
+
+## License
+
+CoCo is licensed under the MIT License. See [LICENSE](LICENSE) for details.

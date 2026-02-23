@@ -1,9 +1,9 @@
 use chrono::{Duration, Utc};
-use jsonwebtoken::{EncodingKey, Header, encode, errors::Error};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, errors::Error};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
+pub struct Claims {
     pub sub: String,
     pub exp: usize,
     pub role: String,
@@ -15,5 +15,12 @@ pub fn create_jwt(user_id: &str, secret: &str) -> Result<String, Error> {
 
     let claims = Claims { sub: user_id.to_owned(), exp: expire.timestamp() as usize, role: "user".to_string() };
 
-    encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
+    jsonwebtoken::encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
+}
+
+pub fn verify_jwt(token: &str, secret: &str) -> Result<Claims, Error> {
+    let decoding_key = DecodingKey::from_secret(secret.as_ref());
+    let validation = Validation::default();
+    let token_data = jsonwebtoken::decode::<Claims>(token, &decoding_key, &validation)?;
+    Ok(token_data.claims)
 }

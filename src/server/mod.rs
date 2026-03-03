@@ -15,6 +15,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
+use tracing::{info, trace};
 use utoipa::{IntoParams, OpenApi};
 
 mod auth;
@@ -49,6 +50,7 @@ where
         )
     )]
 async fn get_classes<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
+    trace!("Handling request to list all classes");
     axum::Json(state.coco().get_classes().await)
 }
 
@@ -67,6 +69,7 @@ async fn get_classes<S: CoCoState>(State(state): State<S>) -> impl IntoResponse 
         )
     )]
 async fn get_class<S: CoCoState>(Path(name): Path<String>, State(state): State<S>) -> impl IntoResponse {
+    trace!("Handling request to get class '{}'", name);
     match state.coco().get_class(&name).await {
         // We clone the single class to safely return it
         Some(class) => axum::Json(class).into_response(),
@@ -87,6 +90,7 @@ async fn get_class<S: CoCoState>(Path(name): Path<String>, State(state): State<S
         )
     )]
 async fn create_class<S: CoCoState>(State(state): State<S>, axum::Json(class): axum::Json<Class>) -> impl IntoResponse {
+    trace!("Handling request to create class '{}'", class.name);
     match state.coco().create_class(class).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
@@ -116,6 +120,7 @@ struct ObjectFilter {
         )
     )]
 async fn get_objects<S: CoCoState>(State(state): State<S>, Query(params): Query<ObjectFilter>) -> impl IntoResponse {
+    trace!("Handling request to list objects with filter: class={:?}, extra={:?}", params.class, params.extra);
     let objects = state.coco().get_objects().await;
     let filtered_objects: Vec<OpenApiObject> = objects
         .into_iter()
@@ -143,6 +148,7 @@ async fn get_objects<S: CoCoState>(State(state): State<S>, Query(params): Query<
         )
     )]
 async fn get_object<S: CoCoState>(Path(id): Path<String>, State(state): State<S>) -> impl IntoResponse {
+    trace!("Handling request to get object with ID '{}'", id);
     match state.coco().get_object(&id).await {
         Some(object) => axum::Json(object).into_response(),
         None => (StatusCode::NOT_FOUND, "Object not found").into_response(),
@@ -162,6 +168,7 @@ async fn get_object<S: CoCoState>(Path(id): Path<String>, State(state): State<S>
         )
     )]
 async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object): axum::Json<OpenApiObject>) -> impl IntoResponse {
+    trace!("Handling request to create object with ID '{:?}'", object.id);
     match state.coco().create_object(object).await {
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
         Err(e) => match e {
@@ -188,6 +195,7 @@ async fn create_object<S: CoCoState>(State(state): State<S>, axum::Json(object):
         )
     )]
 async fn set_properties<S: CoCoState>(State(state): State<S>, Path(id): Path<String>, axum::Json(properties): axum::Json<HashMap<String, Value>>) -> impl IntoResponse {
+    trace!("Handling request to set properties for object with ID '{}'", id);
     match state.coco().set_properties(&id, properties).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
@@ -220,6 +228,7 @@ struct DateQuery {
         )
     )]
 async fn add_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<String>, Query(date_time): Query<DateQuery>, axum::Json(values): axum::Json<HashMap<String, Value>>) -> impl IntoResponse {
+    trace!("Handling request to add data to object with ID '{}'", object_id);
     match state.coco().add_data(&object_id, values, date_time.time.unwrap_or_else(Utc::now)).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
@@ -253,6 +262,7 @@ struct DataFilter {
         )
     )]
 async fn get_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<String>, Query(filter): Query<DataFilter>) -> impl IntoResponse {
+    trace!("Handling request to get data for object with ID '{}' with filter: start={:?}, end={:?}", object_id, filter.start, filter.end);
     match state.coco().get_data(&object_id, filter.start, filter.end).await {
         Ok(data) => {
             let mut result: HashMap<String, Vec<TimedValue>> = HashMap::new();
@@ -281,6 +291,7 @@ async fn get_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<St
         )
     )]
 async fn get_rules<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
+    trace!("Handling request to list all rules");
     axum::Json(state.coco().get_rules().await).into_response()
 }
 
@@ -299,6 +310,7 @@ async fn get_rules<S: CoCoState>(State(state): State<S>) -> impl IntoResponse {
         )
     )]
 async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(state): State<S>) -> impl IntoResponse {
+    trace!("Handling request to get rule '{}'", name);
     match state.coco().get_rule(&name).await {
         Some(rule) => axum::Json(rule).into_response(),
         None => (StatusCode::NOT_FOUND, "Rule not found").into_response(),
@@ -318,6 +330,7 @@ async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(state): State<S>
         )
     )]
 async fn create_rule<S: CoCoState>(State(state): State<S>, axum::Json(rule): axum::Json<Rule>) -> impl IntoResponse {
+    trace!("Handling request to create rule '{}'", rule.name);
     match state.coco().create_rule(rule).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
@@ -387,16 +400,19 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
     while let Ok(msg) = rx.recv().await {
         let send_result = match msg {
             CoCoEvent::ClassCreated(class_name) => {
+                trace!("Received event: ClassCreated for class '{}'", class_name);
                 let mut update_msg = serde_json::to_value(coco.get_class(&class_name).await).unwrap();
                 update_msg["msg_type"] = serde_json::json!("class_created");
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::ObjectCreated(object_id) => {
+                trace!("Received event: ObjectCreated for object '{}'", object_id);
                 let mut update_msg = serde_json::to_value(coco.get_object(&object_id).await).unwrap();
                 update_msg["msg_type"] = serde_json::json!("object_created");
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::AddedClass(object_id, class_name) => {
+                trace!("Received event: AddedClass - object '{}', class '{}'", object_id, class_name);
                 let update_msg = serde_json::json!({
                     "msg_type": "added_class",
                     "object_id": object_id,
@@ -405,6 +421,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::UpdatedProperties(object_id, properties) => {
+                trace!("Received event: UpdatedProperties for object '{}'", object_id);
                 let update_msg = serde_json::json!({
                     "msg_type": "updated_properties",
                     "object_id": object_id,
@@ -413,6 +430,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::AddedValues(object_id, values, date_time) => {
+                trace!("Received event: AddedValues for object '{}'", object_id);
                 let update_msg = serde_json::json!({
                     "msg_type": "added_values",
                     "object_id": object_id,
@@ -422,6 +440,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
             }
             CoCoEvent::RuleCreated(rule) => {
+                trace!("Received event: RuleCreated for rule '{}'", rule);
                 let mut update_msg = serde_json::to_value(coco.get_rule(&rule).await).unwrap();
                 update_msg["msg_type"] = serde_json::json!("rule_created");
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await

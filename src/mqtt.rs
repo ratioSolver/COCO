@@ -20,7 +20,7 @@ pub async fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: String, mqtt_port: u16) {
     let (client, mut eventloop) = AsyncClient::new(mqtt_options, 10);
 
     for obj in coco.get_objects().await {
-        trace!("Subscribing to MQTT topics for existing object '{}'", obj.id.as_ref().unwrap());
+        trace!("Subscribing to MQTT topic for existing object '{}'", obj.id.as_ref().unwrap());
         let mut filter = Filter::new(format!("coco/{}/#", obj.id.as_ref().unwrap()), QoS::AtLeastOnce);
         filter.nolocal = true;
         client.subscribe_many(vec![filter]).await.unwrap();
@@ -42,7 +42,7 @@ pub async fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: String, mqtt_port: u16) {
                     update_msg["msg_type"] = serde_json::json!("object_created");
                     let payload = serde_json::to_string(&update_msg).unwrap();
                     client.publish("coco/events", QoS::AtLeastOnce, false, payload).await.unwrap();
-                    trace!("Subscribing to MQTT topics for object '{}'", object_id);
+                    trace!("Subscribing to MQTT topic for object '{}'", object_id);
                     let mut filter = Filter::new(format!("coco/{}/#", object_id), QoS::AtLeastOnce);
                     filter.nolocal = true;
                     client.subscribe_many(vec![filter]).await.unwrap();
@@ -100,7 +100,6 @@ pub async fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: String, mqtt_port: u16) {
                             coco.add_data(topic_parts[1], values, date_time).await.unwrap();
                         }
                     }
-                    Event::Outgoing(o) => {}
                     _ => {}
                 },
                 Err(e) => eprintln!("Error: {:?}", e),

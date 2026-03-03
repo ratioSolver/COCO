@@ -15,6 +15,7 @@ use tokio::{
     fs,
     sync::{broadcast, mpsc, oneshot},
 };
+use tracing::{info, trace};
 
 pub mod db;
 pub mod kb;
@@ -242,6 +243,7 @@ impl CoCo {
 async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>) {
     match cmd {
         CoCoCommand::InitData { classes, objects, rules, resp } => {
+            info!("Initializing knowledge base with {} classes, {} objects and {} rules", classes.len(), objects.len(), rules.len());
             for class in classes {
                 if let Err(e) = kb.create_class(class) {
                     eprintln!("Error adding class to knowledge base: {:?}", e);
@@ -263,6 +265,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
             let _ = resp.send(());
         }
         CoCoCommand::LoadClasses { path, resp } => {
+            info!("Loading classes from directory '{}'", path.display());
             let result = async move {
                 let mut entries = fs::read_dir(&path).await.map_err(|e| CoCoError::DirectoryReadError(format!("Failed to read directory '{}': {:?}", path.display(), e)))?;
                 while let Some(entry) = entries.next_entry().await.map_err(|e| CoCoError::FileReadError(format!("Failed to read entry in directory '{}': {:?}", path.display(), e)))? {
@@ -319,6 +322,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
             let _ = resp.send(kb.get_object(&id).cloned());
         }
         CoCoCommand::CreateObject { object, resp } => {
+            trace!("Creating object with classes {:?} and properties {:?}", object.classes, object.properties);
             let result = db.create_object(&object).await.map_err(map_db_error).and_then(|id| {
                 let object = Object { id: Some(id.clone()), ..object };
                 kb.create_object(object).and_then(|_| kb.run()).map_err(map_kb_error).map(|_| id)
@@ -326,18 +330,22 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
             let _ = resp.send(result);
         }
         CoCoCommand::SetProperties { object_id, values, resp } => {
+            trace!("Setting properties for object '{}': {:?}", object_id, values);
             let result = db.set_properties(&object_id, &values).await.map_err(map_db_error).and_then(|_| kb.set_properties(&object_id, values).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
         CoCoCommand::AddData { object_id, values, date_time, resp } => {
+            trace!("Adding data for object '{}': {:?} at {}", object_id, values, date_time);
             let result = db.add_data(&object_id, &values, &date_time).await.map_err(map_db_error).and_then(|_| kb.add_values(&object_id, values, date_time).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }
         CoCoCommand::GetData { object_id, start_time, end_time, resp } => {
+            trace!("Getting data for object '{}', start_time: {:?}, end_time: {:?}", object_id, start_time, end_time);
             let result = db.get_data(&object_id, start_time.as_ref(), end_time.as_ref()).await.map_err(map_db_error);
             let _ = resp.send(result);
         }
         CoCoCommand::LoadRules { path, resp } => {
+            info!("Loading rules from directory '{}'", path.display());
             let result = async move {
                 let mut entries = fs::read_dir(&path).await.map_err(|e| CoCoError::DirectoryReadError(format!("Failed to read directory '{}': {:?}", path.display(), e)))?;
                 while let Some(entry) = entries.next_entry().await.map_err(|e| CoCoError::FileReadError(format!("Failed to read entry in directory '{}': {:?}", path.display(), e)))? {
@@ -364,6 +372,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
             let _ = resp.send(kb.get_rule(&name).cloned());
         }
         CoCoCommand::CreateRule { rule, resp } => {
+            trace!("Creating rule '{}'", rule.name);
             let result = db.create_rule(&rule).await.map_err(map_db_error).and_then(|_| kb.create_rule(rule).and_then(|_| kb.run()).map_err(map_kb_error));
             let _ = resp.send(result);
         }

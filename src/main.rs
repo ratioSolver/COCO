@@ -1,5 +1,7 @@
 use coco::{CoCo, CoCoState, db::setup_db, kb::setup_kb, llm::setup_llm, msg::setup_messaging};
 use std::sync::Arc;
+use tracing::{Level, info};
+use tracing_subscriber;
 
 #[derive(Clone)]
 struct AppState {
@@ -15,6 +17,8 @@ impl CoCoState for AppState {
 
 #[tokio::main]
 async fn main() {
+    let subscriber = tracing_subscriber::fmt().with_max_level(Level::TRACE).finish();
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to set global default subscriber");
     let coco = Arc::new(CoCo::new(setup_db().await, setup_kb(), setup_llm(), setup_messaging()).await);
     let state = AppState { coco };
 
@@ -24,7 +28,7 @@ async fn main() {
 
         let mqtt_broker = std::env::var("MQTT_BROKER").unwrap_or_else(|_| "localhost".to_string());
         let mqtt_port = std::env::var("MQTT_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(1883);
-        start_mqtt(state.coco.clone(), &mqtt_broker, mqtt_port);
+        start_mqtt(state.coco.clone(), mqtt_broker, mqtt_port).await;
     }
 
     #[cfg(feature = "server")]
@@ -37,7 +41,7 @@ async fn main() {
 
         let port = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3000);
 
-        println!("Starting server on port {}", port);
+        info!("Starting CoCo server on port {}", port);
         let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await.unwrap();
         axum::serve(listener, app).await.unwrap();
     }

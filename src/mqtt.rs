@@ -11,11 +11,20 @@ use rumqttc::v5::{
     },
 };
 use std::{collections::HashMap, sync::Arc, time::Duration};
+use tracing::{info, trace};
 
-pub fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: &str, mqtt_port: u16) {
-    let mut mqtt_options = MqttOptions::new("coco-client-id", mqtt_broker, mqtt_port);
+pub async fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: String, mqtt_port: u16) {
+    info!("Starting MQTT client connecting to {}:{}", mqtt_broker, mqtt_port);
+    let mut mqtt_options = MqttOptions::new("coco-client-id", mqtt_broker.as_str(), mqtt_port);
     mqtt_options.set_keep_alive(Duration::from_secs(5));
     let (client, mut eventloop) = AsyncClient::new(mqtt_options, 10);
+
+    for obj in coco.get_objects().await {
+        trace!("Subscribing to MQTT topics for existing object '{}'", obj.id.as_ref().unwrap());
+        let mut filter = Filter::new(format!("coco/{}/#", obj.id.as_ref().unwrap()), QoS::AtLeastOnce);
+        filter.nolocal = true;
+        client.subscribe_many(vec![filter]).await.unwrap();
+    }
 
     let mut rx = coco.get_event_sender().subscribe();
     let coco_clone = coco.clone();
@@ -33,6 +42,7 @@ pub fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: &str, mqtt_port: u16) {
                     update_msg["msg_type"] = serde_json::json!("object_created");
                     let payload = serde_json::to_string(&update_msg).unwrap();
                     client.publish("coco/events", QoS::AtLeastOnce, false, payload).await.unwrap();
+                    trace!("Subscribing to MQTT topics for object '{}'", object_id);
                     let mut filter = Filter::new(format!("coco/{}/#", object_id), QoS::AtLeastOnce);
                     filter.nolocal = true;
                     client.subscribe_many(vec![filter]).await.unwrap();
@@ -73,8 +83,10 @@ pub fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: &str, mqtt_port: u16) {
     tokio::spawn(async move {
         loop {
             match eventloop.poll().await {
-                Ok(notification) => {
-                    if let Event::Incoming(Packet::Publish(publish)) = notification {
+                Ok(notification) => match notification {
+                    Event::Incoming(Packet::ConnAck(_)) => info!("Connected to MQTT broker at {}:{}", mqtt_broker, mqtt_port),
+                    Event::Incoming(Packet::Publish(publish)) => {
+                        trace!("Received MQTT message on topic {}", String::from_utf8_lossy(&publish.topic));
                         let topic = String::from_utf8_lossy(&publish.topic).to_string();
                         let topic_parts: Vec<&str> = topic.split('/').collect();
                         let msg = String::from_utf8_lossy(&publish.payload).to_string();
@@ -88,7 +100,9 @@ pub fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: &str, mqtt_port: u16) {
                             coco.add_data(topic_parts[1], values, date_time).await.unwrap();
                         }
                     }
-                }
+                    Event::Outgoing(o) => {}
+                    _ => {}
+                },
                 Err(e) => eprintln!("Error: {:?}", e),
             }
         }

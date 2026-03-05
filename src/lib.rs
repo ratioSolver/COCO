@@ -8,6 +8,7 @@ use crate::{
 use chrono::{DateTime, Utc};
 use std::{
     collections::{HashMap, HashSet},
+    f32::consts::E,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -301,8 +302,11 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
                         let data = fs::read_to_string(&path).await.map_err(|e| CoCoError::FileReadError(format!("Failed to read file '{}': {:?}", path.display(), e)))?;
                         let class: Class = serde_json::from_str(&data).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON in file '{}': {:?}", path.display(), e)))?;
                         if let None = kb.get_class(&class.name) {
+                            info!("Creating class '{}' with parents {:?}, static properties {:?}, and dynamic properties {:?}", class.name, class.parents, class.static_properties, class.dynamic_properties);
                             db.create_class(&class).await.map_err(map_db_error)?;
                             kb.create_class(class).map_err(map_kb_error)?;
+                        } else {
+                            trace!("Class '{}' already exists, skipping", class.name);
                         }
                     }
                 }
@@ -346,7 +350,10 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
                     if path.extension().and_then(|s| s.to_str()) == Some("json") {
                         let data = fs::read_to_string(&path).await.map_err(|e| CoCoError::FileReadError(format!("Failed to read file '{}': {:?}", path.display(), e)))?;
                         let object: Object = serde_json::from_str(&data).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON in file '{}': {:?}", path.display(), e)))?;
-                        if let None = kb.get_object(object.id.as_ref().unwrap()).cloned() {
+                        if let Some(id) = &object.id {
+                            return Err(CoCoError::JsonParseError(format!("Object definition in file '{}' must not contain an 'id' field, but got id '{}'", path.display(), id)));
+                        } else {
+                            info!("Creating object with classes {:?}, properties {:?} and values {:?}", object.classes, object.properties, object.values);
                             db.create_object(&object).await.map_err(map_db_error)?;
                             kb.create_object(object).map_err(map_kb_error)?;
                         }
@@ -413,8 +420,11 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
                         let data = fs::read_to_string(&path).await.map_err(|e| CoCoError::FileReadError(format!("Failed to read file '{}': {:?}", path.display(), e)))?;
                         let rule: Rule = serde_json::from_str(&data).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON in file '{}': {:?}", path.display(), e)))?;
                         if let None = kb.get_rule(&rule.name).cloned() {
+                            info!("Creating rule '{}'", rule.name);
                             db.create_rule(&rule).await.map_err(map_db_error)?;
                             kb.create_rule(rule).map_err(map_kb_error)?;
+                        } else {
+                            trace!("Rule '{}' already exists, skipping", rule.name);
                         }
                     }
                 }

@@ -27,10 +27,7 @@ pub mod model;
 pub mod mqtt;
 pub mod msg;
 #[cfg(feature = "server")]
-pub mod server {
-    pub use axum;
-    pub use tower_http;
-}
+pub mod server;
 
 pub struct CoCo {
     kb_tx: mpsc::Sender<CoCoCommand>,

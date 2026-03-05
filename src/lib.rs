@@ -313,13 +313,15 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
             let _ = resp.send(result);
         }
         CoCoCommand::LoadClass { class_definition, resp } => {
-            info!("Loading class from definition '{}'", class_definition);
             let result = async move {
                 let class: Class = serde_json::from_str(&class_definition).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON for class definition: {:?}", e)))?;
                 if let None = kb.get_class(&class.name) {
+                    info!("Creating class '{}' with parents {:?}, static properties {:?}, and dynamic properties {:?}", class.name, class.parents, class.static_properties, class.dynamic_properties);
                     db.create_class(&class).await.map_err(map_db_error)?;
                     kb.create_class(class).map_err(map_kb_error)?;
                     kb.run().map_err(map_kb_error)?;
+                } else {
+                    trace!("Class '{}' already exists, skipping", class.name);
                 }
                 Ok(())
             }
@@ -360,13 +362,12 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
             let result = async move {
                 let object: Object = serde_json::from_str(&object_definition).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON for object definition: {:?}", e)))?;
                 if let Some(id) = &object.id {
-                    if let None = kb.get_object(id).cloned() {
-                        db.create_object(&object).await.map_err(map_db_error)?;
-                        kb.create_object(object).map_err(map_kb_error)?;
-                        kb.run().map_err(map_kb_error)?;
-                    }
+                    return Err(CoCoError::JsonParseError(format!("Object definition must not contain an 'id' field, but got id '{}'", id)));
                 } else {
-                    return Err(CoCoError::JsonParseError("Object definition must include an 'id' field".to_owned()));
+                    info!("Creating object with classes {:?}, properties {:?} and values {:?}", object.classes, object.properties, object.values);
+                    db.create_object(&object).await.map_err(map_db_error)?;
+                    kb.create_object(object).map_err(map_kb_error)?;
+                    kb.run().map_err(map_kb_error)?;
                 }
                 Ok(())
             }
@@ -424,13 +425,15 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
             let _ = resp.send(result);
         }
         CoCoCommand::LoadRule { rule_definition, resp } => {
-            info!("Loading rule from definition '{}'", rule_definition);
             let result = async move {
                 let rule: Rule = serde_json::from_str(&rule_definition).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON for rule definition: {:?}", e)))?;
                 if let None = kb.get_rule(&rule.name).cloned() {
+                    info!("Creating rule '{}'", rule.name);
                     db.create_rule(&rule).await.map_err(map_db_error)?;
                     kb.create_rule(rule).map_err(map_kb_error)?;
                     kb.run().map_err(map_kb_error)?;
+                } else {
+                    trace!("Rule '{}' already exists, skipping", rule.name);
                 }
                 Ok(())
             }

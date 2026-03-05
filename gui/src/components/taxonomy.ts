@@ -12,16 +12,22 @@ export function taxonomy(coco: coco.CoCo): VNode {
 
   const get_option = (): echarts.EChartsCoreOption => {
     const classes = Array.from(coco.get_classes().values()).map(cls => ({ name: cls.get_name() }));
-    const links: { source: string, target: string }[] = [];
-    for (const cls of coco.get_classes().values())
+    const links: { source: string, target: string, lineStyle?: { type: 'dashed', dashOffset?: number } | { type: 'dotted', dashOffset?: number }, symbol?: [string, string] }[] = [];
+    for (const cls of coco.get_classes().values()) {
       for (const parent of cls.get_parents())
-        links.push({ source: cls.get_name(), target: parent });
+        links.push({ source: cls.get_name(), target: parent, symbol: ['none', 'arrow'] });
+      for (const target of cls.get_static_properties().values().filter(prop => prop.type === 'object').map(prop => prop.class as string))
+        links.push({ source: cls.get_name(), target, lineStyle: { type: 'dotted', dashOffset: 5 }, symbol: ['none', 'circle'] });
+      for (const target of cls.get_dynamic_properties().values().filter(prop => prop.type === 'object').map(prop => prop.class as string))
+        links.push({ source: cls.get_name(), target, lineStyle: { type: 'dashed', dashOffset: 5 }, symbol: ['none', 'circle'] });
+    }
 
     return {
       series: [
         {
           type: 'graph',
           layout: 'force',
+          draggable: true,
           data: classes,
           links,
           roam: true,

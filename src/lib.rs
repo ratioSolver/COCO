@@ -29,7 +29,13 @@ pub mod server {
     pub use axum;
     pub use tower_http;
 }
-pub use tokio::main;
+
+#[macro_export]
+macro_rules! main {
+    ($($tokens:tt)*) => {
+        $crate::tokio::main(crate = "$crate::tokio", $($tokens)*)
+    };
+}
 
 pub struct CoCo {
     kb_tx: mpsc::Sender<CoCoCommand>,

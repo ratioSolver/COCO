@@ -17,7 +17,7 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 pub use tower_http;
-use tracing::{info, trace};
+use tracing::trace;
 use utoipa::{IntoParams, OpenApi};
 
 mod auth;
@@ -383,9 +383,9 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
         .get_rules()
         .await
         .into_iter()
-        .map(|r| {
-            let name = r.name;
-            let mut v = serde_json::to_value(&r.content).unwrap();
+        .map(|mut r| {
+            let name = std::mem::take(&mut r.name);
+            let mut v = serde_json::to_value(&r).unwrap();
             v.as_object_mut().unwrap().remove("name");
             (name, v)
         })

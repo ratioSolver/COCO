@@ -1,4 +1,4 @@
-use coco::{CoCo, CoCoState, db::setup_db, kb::setup_kb, llm::setup_llm, msg::setup_messaging};
+use coco::{CoCo, CoCoState};
 use std::sync::Arc;
 use tracing::{Level, info};
 use tracing_subscriber;
@@ -19,7 +19,7 @@ impl CoCoState for AppState {
 async fn main() {
     let subscriber = tracing_subscriber::fmt().with_max_level(Level::TRACE).finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set global default subscriber");
-    let coco = Arc::new(CoCo::new(setup_db().await, setup_kb(), setup_llm(), setup_messaging()).await);
+    let coco = Arc::new(CoCo::default().await);
     let state = AppState { coco };
 
     #[cfg(feature = "mqtt")]

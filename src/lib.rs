@@ -1,9 +1,9 @@
 use crate::{
-    db::{Database, DatabaseError},
-    kb::{KnowledgeBase, KnowledgeBaseError},
-    llm::LLM,
+    db::{Database, DatabaseError, setup_db},
+    kb::{KnowledgeBase, KnowledgeBaseError, setup_kb},
+    llm::{LLM, setup_llm},
     model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
-    msg::Messaging,
+    msg::{Messaging, setup_messaging},
 };
 use chrono::{DateTime, Utc};
 use std::{
@@ -78,6 +78,7 @@ impl std::fmt::Display for CoCoError {
 enum CoCoCommand {
     InitData { classes: Vec<Class>, objects: Vec<Object>, rules: Vec<Rule>, resp: oneshot::Sender<()> },
     LoadClasses { path: PathBuf, resp: oneshot::Sender<Result<(), CoCoError>> },
+    LoadClass { class_definition: String, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetClasses { resp: oneshot::Sender<Vec<Class>> },
     GetClass { name: String, resp: oneshot::Sender<Option<Class>> },
     CreateClass { class: Class, resp: oneshot::Sender<Result<(), CoCoError>> },
@@ -134,6 +135,10 @@ impl CoCo {
         CoCo { kb_tx, event_tx }
     }
 
+    pub async fn default() -> Self {
+        CoCo::new(setup_db().await, setup_kb(), setup_llm(), setup_messaging()).await
+    }
+
     pub fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
         self.event_tx.clone()
     }
@@ -141,6 +146,12 @@ impl CoCo {
     pub async fn load_classes<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(CoCoCommand::LoadClasses { path: path.as_ref().to_owned(), resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
+    }
+
+    pub async fn load_class(&self, class_definition: &str) -> Result<(), CoCoError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = self.kb_tx.send(CoCoCommand::LoadClass { class_definition: class_definition.to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
@@ -282,6 +293,20 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
                     }
                 }
                 kb.run().map_err(map_kb_error)?;
+                Ok(())
+            }
+            .await;
+            let _ = resp.send(result);
+        }
+        CoCoCommand::LoadClass { class_definition, resp } => {
+            info!("Loading class from definition '{}'", class_definition);
+            let result = async move {
+                let class: Class = serde_json::from_str(&class_definition).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON for class definition: {:?}", e)))?;
+                if let None = kb.get_class(&class.name) {
+                    db.create_class(&class).await.map_err(map_db_error)?;
+                    kb.create_class(class).map_err(map_kb_error)?;
+                    kb.run().map_err(map_kb_error)?;
+                }
                 Ok(())
             }
             .await;

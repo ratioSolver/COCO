@@ -6,7 +6,7 @@ import * as echarts from 'echarts/core';
 import { LineChart, CustomChart } from 'echarts/charts';
 import { LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams } from "echarts";
+import { CustomSeriesRenderItemAPI, CustomSeriesRenderItemParams } from 'echarts/types/dist/shared';
 
 echarts.use([LineChart, CustomChart, LegendComponent, TooltipComponent, GridComponent, DataZoomComponent, AxisPointerComponent, CanvasRenderer]);
 

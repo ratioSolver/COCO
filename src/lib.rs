@@ -15,7 +15,9 @@ use tokio::{
     fs,
     sync::{broadcast, mpsc, oneshot},
 };
+pub use tracing;
 use tracing::{info, trace};
+pub use tracing_subscriber;
 
 pub mod db;
 pub mod kb;

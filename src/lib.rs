@@ -83,6 +83,7 @@ enum CoCoCommand {
     GetClass { name: String, resp: oneshot::Sender<Option<Class>> },
     CreateClass { class: Class, resp: oneshot::Sender<Result<(), CoCoError>> },
     LoadObjects { path: PathBuf, resp: oneshot::Sender<Result<(), CoCoError>> },
+    LoadObject { object_definition: String, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetObjects { resp: oneshot::Sender<Vec<Object>> },
     GetObject { id: String, resp: oneshot::Sender<Option<Object>> },
     CreateObject { object: Object, resp: oneshot::Sender<Result<String, CoCoError>> },
@@ -90,6 +91,7 @@ enum CoCoCommand {
     AddData { object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetData { object_id: String, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>, resp: oneshot::Sender<Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError>> },
     LoadRules { path: PathBuf, resp: oneshot::Sender<Result<(), CoCoError>> },
+    LoadRule { rule_definition: String, resp: oneshot::Sender<Result<(), CoCoError>> },
     GetRules { resp: oneshot::Sender<Vec<Rule>> },
     GetRule { name: String, resp: oneshot::Sender<Option<Rule>> },
     CreateRule { rule: Rule, resp: oneshot::Sender<Result<(), CoCoError>> },
@@ -184,6 +186,12 @@ impl CoCo {
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
+    pub async fn load_object(&self, object_definition: &str) -> Result<(), CoCoError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = self.kb_tx.send(CoCoCommand::LoadObject { object_definition: object_definition.to_owned(), resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
+    }
+
     pub async fn get_objects(&self) -> Vec<Object> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(CoCoCommand::GetObjects { resp: resp_tx }).await;
@@ -227,6 +235,12 @@ impl CoCo {
     pub async fn load_rules<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
         let _ = self.kb_tx.send(CoCoCommand::LoadRules { path: path.as_ref().to_owned(), resp: resp_tx }).await;
+        resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
+    }
+
+    pub async fn load_rule(&self, rule_definition: &str) -> Result<(), CoCoError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = self.kb_tx.send(CoCoCommand::LoadRule { rule_definition: rule_definition.to_owned(), resp: resp_tx }).await;
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
@@ -342,6 +356,23 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
             .await;
             let _ = resp.send(result);
         }
+        CoCoCommand::LoadObject { object_definition, resp } => {
+            let result = async move {
+                let object: Object = serde_json::from_str(&object_definition).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON for object definition: {:?}", e)))?;
+                if let Some(id) = &object.id {
+                    if let None = kb.get_object(id).cloned() {
+                        db.create_object(&object).await.map_err(map_db_error)?;
+                        kb.create_object(object).map_err(map_kb_error)?;
+                        kb.run().map_err(map_kb_error)?;
+                    }
+                } else {
+                    return Err(CoCoError::JsonParseError("Object definition must include an 'id' field".to_owned()));
+                }
+                Ok(())
+            }
+            .await;
+            let _ = resp.send(result);
+        }
         CoCoCommand::GetObjects { resp } => {
             let _ = resp.send(kb.get_objects().into_iter().cloned().collect());
         }
@@ -387,6 +418,20 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
                     }
                 }
                 kb.run().map_err(map_kb_error)?;
+                Ok(())
+            }
+            .await;
+            let _ = resp.send(result);
+        }
+        CoCoCommand::LoadRule { rule_definition, resp } => {
+            info!("Loading rule from definition '{}'", rule_definition);
+            let result = async move {
+                let rule: Rule = serde_json::from_str(&rule_definition).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON for rule definition: {:?}", e)))?;
+                if let None = kb.get_rule(&rule.name).cloned() {
+                    db.create_rule(&rule).await.map_err(map_db_error)?;
+                    kb.create_rule(rule).map_err(map_kb_error)?;
+                    kb.run().map_err(map_kb_error)?;
+                }
                 Ok(())
             }
             .await;

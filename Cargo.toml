@@ -12,15 +12,7 @@ license-file = "LICENSE.txt"
 name = "coco"
 
 [features]
-default = [
-    "mongodb",
-    "clips",
-    "fcm",
-    "ollama",
-    "server",
-    "mqtt",
-    "chronoxide",
-]
+default = ["mongodb", "clips"]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
 ollama = ["dep:reqwest"]

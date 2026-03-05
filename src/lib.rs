@@ -30,13 +30,6 @@ pub mod server {
     pub use tower_http;
 }
 
-#[macro_export]
-macro_rules! main {
-    ($($tokens:tt)*) => {
-        $crate::tokio::main(crate = "$crate::tokio", $($tokens)*)
-    };
-}
-
 pub struct CoCo {
     kb_tx: mpsc::Sender<CoCoCommand>,
     event_tx: broadcast::Sender<CoCoEvent>,

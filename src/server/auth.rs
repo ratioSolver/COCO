@@ -2,9 +2,12 @@ use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
     password_hash::{SaltString, rand_core::OsRng},
 };
+use axum::extract::State;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, errors::Error};
 use serde::{Deserialize, Serialize};
+
+use crate::CoCoState;
 
 fn hash_password(password: &str) -> String {
     let salt = SaltString::generate(&mut OsRng);
@@ -46,7 +49,18 @@ struct RegisterRequest {
     role: String,
 }
 
-async fn register(req: RegisterRequest, secret: &str) -> Result<String, String> {
+#[derive(Deserialize)]
+struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+async fn register<S: CoCoState>(State(state): State<S>, req: RegisterRequest, secret: &str) -> Result<String, String> {
     let _hashed = hash_password(&req.password);
     create_jwt(&req.username, &req.role, secret).map_err(|e| e.to_string())
+}
+
+async fn login<S: CoCoState>(State(state): State<S>, req: LoginRequest, secret: &str) -> Result<String, String> {
+    let _hashed = hash_password(&req.password);
+    create_jwt(&req.username, "user", secret).map_err(|e| e.to_string())
 }

@@ -8,7 +8,6 @@ use crate::{
 use chrono::{DateTime, Utc};
 use std::{
     collections::{HashMap, HashSet},
-    f32::consts::E,
     path::{Path, PathBuf},
     sync::Arc,
 };

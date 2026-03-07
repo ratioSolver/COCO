@@ -1,5 +1,5 @@
 use crate::{
-    CoCo, CoCoError, CoCoState,
+    CoCo, CoCoError,
     model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
 };
 pub use axum;
@@ -24,6 +24,10 @@ mod auth;
 
 type OpenApiValue = Value;
 type OpenApiObject = Object;
+
+pub trait CoCoState: Clone + Send + Sync + 'static {
+    fn coco(&self) -> Arc<CoCo>;
+}
 
 pub fn build_coco_router<S>() -> Router<S>
 where

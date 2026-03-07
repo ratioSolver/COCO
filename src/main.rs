@@ -1,4 +1,6 @@
-use coco::{CoCo, CoCoState};
+use coco::CoCo;
+#[cfg(feature = "server")]
+use coco::server::CoCoState;
 use std::sync::Arc;
 use tracing::{Level, info};
 use tracing_subscriber;

@@ -34,10 +34,6 @@ pub struct CoCo {
     event_tx: broadcast::Sender<CoCoEvent>,
 }
 
-pub trait CoCoState: Clone + Send + Sync + 'static {
-    fn coco(&self) -> Arc<CoCo>;
-}
-
 #[derive(Clone, Debug)]
 pub enum CoCoError {
     DirectoryReadError(String),

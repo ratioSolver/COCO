@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 
 use crate::model::{Class, CoCoEvent, Object, Rule, Value};
 
@@ -20,8 +20,6 @@ pub enum KnowledgeBaseError {
 }
 
 pub trait KnowledgeBase: Send + Sync {
-    fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent>;
-
     fn get_classes(&self) -> Vec<&Class>;
     fn get_class(&self, name: &str) -> Option<&Class>;
     fn create_class(&mut self, class: Class) -> Result<(), KnowledgeBaseError>;
@@ -40,7 +38,7 @@ pub trait KnowledgeBase: Send + Sync {
     fn run(&mut self) -> Result<(), KnowledgeBaseError>;
 }
 
-pub fn setup_kb() -> Box<dyn KnowledgeBase> {
+pub fn setup_kb() -> (Box<dyn KnowledgeBase>, mpsc::UnboundedReceiver<CoCoEvent>) {
     #[cfg(feature = "clips")]
     return setup_clips();
 
@@ -49,8 +47,8 @@ pub fn setup_kb() -> Box<dyn KnowledgeBase> {
 }
 
 #[cfg(feature = "clips")]
-fn setup_clips() -> Box<dyn KnowledgeBase> {
+fn setup_clips() -> (Box<dyn KnowledgeBase>, mpsc::UnboundedReceiver<CoCoEvent>) {
     use crate::kb::clips::CLIPSKnowledgeBase;
 
-    Box::new(CLIPSKnowledgeBase::new())
+    CLIPSKnowledgeBase::new()
 }

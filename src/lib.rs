@@ -8,13 +8,12 @@ use crate::{
 use chrono::{DateTime, Utc};
 use std::{
     collections::{HashMap, HashSet},
-    f32::consts::E,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use tokio::{
     fs,
-    sync::{broadcast, mpsc, oneshot},
+    sync::{mpsc, oneshot},
 };
 pub use tracing;
 use tracing::{info, trace};
@@ -32,7 +31,29 @@ pub mod server;
 
 pub struct CoCo {
     kb_tx: mpsc::UnboundedSender<CoCoCommand>,
-    event_tx: broadcast::Sender<CoCoEvent>,
+    event_bus: CoCoEventBus,
+}
+
+#[derive(Clone)]
+pub struct CoCoEventBus {
+    subscribers: Arc<Mutex<Vec<mpsc::UnboundedSender<CoCoEvent>>>>,
+}
+
+impl CoCoEventBus {
+    fn new() -> Self {
+        Self { subscribers: Arc::new(Mutex::new(Vec::new())) }
+    }
+
+    pub fn subscribe(&self) -> mpsc::UnboundedReceiver<CoCoEvent> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.subscribers.lock().expect("CoCo event subscriber list mutex poisoned").push(tx);
+        rx
+    }
+
+    pub fn send(&self, event: CoCoEvent) {
+        let mut subscribers = self.subscribers.lock().expect("CoCo event subscriber list mutex poisoned");
+        subscribers.retain(|tx| tx.send(event.clone()).is_ok());
+    }
 }
 
 pub trait CoCoState: Clone + Send + Sync + 'static {
@@ -101,9 +122,9 @@ enum CoCoCommand {
 impl CoCo {
     pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>, mut kb_event_rx: mpsc::UnboundedReceiver<CoCoEvent>, llm: Option<Box<dyn LLM>>, fcm: Option<Box<dyn Messaging>>) -> Self {
         let (kb_tx, mut kb_rx) = mpsc::unbounded_channel();
-        let (event_tx, _event_rx) = broadcast::channel(64);
+        let event_bus = CoCoEventBus::new();
         let db_for_task = db.clone();
-        let event_tx_task = event_tx.clone();
+        let event_bus_task = event_bus.clone();
 
         tokio::spawn(async move {
             loop {
@@ -112,7 +133,7 @@ impl CoCo {
                         handle_command(cmd, &db_for_task, &mut kb).await;
                     }
                     Some(event) = kb_event_rx.recv() => {
-                        handle_kb_event(event, &db_for_task, &mut kb, &llm, &fcm, &event_tx_task).await;
+                        handle_kb_event(event, &db_for_task, &mut kb, &llm, &fcm, &event_bus_task).await;
                     }
                 }
             }
@@ -134,7 +155,7 @@ impl CoCo {
         let _ = kb_tx.send(CoCoCommand::InitData { classes, objects, rules, resp: resp_tx });
         let _ = resp_rx.await;
 
-        CoCo { kb_tx, event_tx }
+        CoCo { kb_tx, event_bus }
     }
 
     pub async fn default() -> Self {
@@ -142,8 +163,8 @@ impl CoCo {
         CoCo::new(setup_db().await, kb, kb_event_rx, setup_llm(), setup_messaging()).await
     }
 
-    pub fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
-        self.event_tx.clone()
+    pub fn get_event_sender(&self) -> CoCoEventBus {
+        self.event_bus.clone()
     }
 
     pub async fn load_classes<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
@@ -464,7 +485,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
     }
 }
 
-async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, fcm: &Option<Box<dyn Messaging>>, event_tx: &broadcast::Sender<CoCoEvent>) {
+async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, fcm: &Option<Box<dyn Messaging>>, event_bus: &CoCoEventBus) {
     match event {
         CoCoEvent::PendingClass(object_id, class_name) => {
             db.add_class(&object_id, &class_name).await.unwrap_or_else(|e| {
@@ -486,7 +507,7 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
             if let Some(llm) = llm {
                 match llm.prompt(&message).await {
                     Ok(response) => {
-                        let _ = event_tx.send(CoCoEvent::LLMResponse(object_id.clone(), response));
+                        event_bus.send(CoCoEvent::LLMResponse(object_id.clone(), response));
                     }
                     Err(e) => eprintln!("Error generating LLM response for object '{}': {:?}", object_id, e),
                 }
@@ -511,7 +532,7 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
             }
         }
         _ => {
-            let _ = event_tx.send(event);
+            event_bus.send(event);
         }
     }
 }

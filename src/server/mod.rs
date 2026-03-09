@@ -399,7 +399,7 @@ async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
     socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.ok();
 
     let mut rx = coco.get_event_sender().subscribe();
-    while let Ok(msg) = rx.recv().await {
+    while let Some(msg) = rx.recv().await {
         let send_result = match msg {
             CoCoEvent::ClassCreated(class_name) => {
                 trace!("Received event: ClassCreated for class '{}'", class_name);

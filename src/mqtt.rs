@@ -29,7 +29,7 @@ pub async fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: String, mqtt_port: u16) {
     let mut rx = coco.get_event_sender().subscribe();
     let coco_clone = coco.clone();
     tokio::spawn(async move {
-        while let Ok(event) = rx.recv().await {
+        while let Some(event) = rx.recv().await {
             match event {
                 CoCoEvent::ClassCreated(class_name) => {
                     let mut update_msg = serde_json::to_value(coco_clone.get_class(&class_name).await).unwrap();

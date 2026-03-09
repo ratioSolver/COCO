@@ -9,11 +9,11 @@ use chrono::{DateTime, Utc};
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use tokio::{
     fs,
-    sync::{broadcast, mpsc, oneshot},
+    sync::{mpsc, oneshot},
 };
 pub use tracing;
 use tracing::{info, trace};
@@ -30,8 +30,30 @@ pub mod msg;
 pub mod server;
 
 pub struct CoCo {
-    kb_tx: mpsc::Sender<CoCoCommand>,
-    event_tx: broadcast::Sender<CoCoEvent>,
+    kb_tx: mpsc::UnboundedSender<CoCoCommand>,
+    event_bus: CoCoEventBus,
+}
+
+#[derive(Clone)]
+pub struct CoCoEventBus {
+    subscribers: Arc<Mutex<Vec<mpsc::UnboundedSender<CoCoEvent>>>>,
+}
+
+impl CoCoEventBus {
+    fn new() -> Self {
+        Self { subscribers: Arc::new(Mutex::new(Vec::new())) }
+    }
+
+    pub fn subscribe(&self) -> mpsc::UnboundedReceiver<CoCoEvent> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.subscribers.lock().expect("CoCo event subscriber list mutex poisoned").push(tx);
+        rx
+    }
+
+    pub fn send(&self, event: CoCoEvent) {
+        let mut subscribers = self.subscribers.lock().expect("CoCo event subscriber list mutex poisoned");
+        subscribers.retain(|tx| tx.send(event.clone()).is_ok());
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -94,12 +116,11 @@ enum CoCoCommand {
 }
 
 impl CoCo {
-    pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>, llm: Option<Box<dyn LLM>>, fcm: Option<Box<dyn Messaging>>) -> Self {
-        let (kb_tx, mut kb_rx) = mpsc::channel(64);
-        let (event_tx, _event_rx) = broadcast::channel(64);
-        let mut kb_event_rx = kb.get_event_sender().subscribe();
+    pub async fn new(db: Arc<dyn Database>, mut kb: Box<dyn KnowledgeBase>, mut kb_event_rx: mpsc::UnboundedReceiver<CoCoEvent>, llm: Option<Box<dyn LLM>>, fcm: Option<Box<dyn Messaging>>) -> Self {
+        let (kb_tx, mut kb_rx) = mpsc::unbounded_channel();
+        let event_bus = CoCoEventBus::new();
         let db_for_task = db.clone();
-        let event_tx_task = event_tx.clone();
+        let event_bus_task = event_bus.clone();
 
         tokio::spawn(async move {
             loop {
@@ -107,8 +128,8 @@ impl CoCo {
                     Some(cmd) = kb_rx.recv() => {
                         handle_command(cmd, &db_for_task, &mut kb).await;
                     }
-                    Ok(event) = kb_event_rx.recv() => {
-                        handle_kb_event(event, &db_for_task, &mut kb, &llm, &fcm, &event_tx_task).await;
+                    Some(event) = kb_event_rx.recv() => {
+                        handle_kb_event(event, &db_for_task, &mut kb, &llm, &fcm, &event_bus_task).await;
                     }
                 }
             }
@@ -127,41 +148,42 @@ impl CoCo {
             vec![]
         });
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = kb_tx.send(CoCoCommand::InitData { classes, objects, rules, resp: resp_tx }).await;
+        let _ = kb_tx.send(CoCoCommand::InitData { classes, objects, rules, resp: resp_tx });
         let _ = resp_rx.await;
 
-        CoCo { kb_tx, event_tx }
+        CoCo { kb_tx, event_bus }
     }
 
     pub async fn default() -> Self {
-        CoCo::new(setup_db().await, setup_kb(), setup_llm(), setup_messaging()).await
+        let (kb, kb_event_rx) = setup_kb();
+        CoCo::new(setup_db().await, kb, kb_event_rx, setup_llm(), setup_messaging()).await
     }
 
-    pub fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
-        self.event_tx.clone()
+    pub fn get_event_sender(&self) -> CoCoEventBus {
+        self.event_bus.clone()
     }
 
     pub async fn load_classes<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::LoadClasses { path: path.as_ref().to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::LoadClasses { path: path.as_ref().to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn load_class(&self, class_definition: &str) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::LoadClass { class_definition: class_definition.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::LoadClass { class_definition: class_definition.to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_classes(&self) -> Vec<Class> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::GetClasses { resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetClasses { resp: resp_tx });
         resp_rx.await.unwrap_or_default()
     }
 
     pub async fn get_class(&self, name: &str) -> Option<Class> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::GetClass { name: name.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetClass { name: name.to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or(None)
     }
 
@@ -172,31 +194,31 @@ impl CoCo {
 
     pub async fn create_class(&self, class: Class) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::CreateClass { class, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::CreateClass { class, resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn load_objects<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::LoadObjects { path: path.as_ref().to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::LoadObjects { path: path.as_ref().to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn load_object(&self, object_definition: &str) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::LoadObject { object_definition: object_definition.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::LoadObject { object_definition: object_definition.to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_objects(&self) -> Vec<Object> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::GetObjects { resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetObjects { resp: resp_tx });
         resp_rx.await.unwrap_or_default()
     }
 
     pub async fn get_object(&self, id: &str) -> Option<Object> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::GetObject { id: id.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetObject { id: id.to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or(None)
     }
 
@@ -206,49 +228,49 @@ impl CoCo {
 
     pub async fn create_object(&self, object: Object) -> Result<String, CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::CreateObject { object, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::CreateObject { object, resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn set_properties(&self, object_id: &str, values: HashMap<String, Value>) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::SetProperties { object_id: object_id.to_owned(), values, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::SetProperties { object_id: object_id.to_owned(), values, resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn add_data(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::AddData { object_id: object_id.to_owned(), values, date_time, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::AddData { object_id: object_id.to_owned(), values, date_time, resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_data(&self, object_id: &str, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::GetData { object_id: object_id.to_owned(), start_time, end_time, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetData { object_id: object_id.to_owned(), start_time, end_time, resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn load_rules<P: AsRef<Path>>(&self, path: P) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::LoadRules { path: path.as_ref().to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::LoadRules { path: path.as_ref().to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn load_rule(&self, rule_definition: &str) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::LoadRule { rule_definition: rule_definition.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::LoadRule { rule_definition: rule_definition.to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 
     pub async fn get_rules(&self) -> Vec<Rule> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::GetRules { resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetRules { resp: resp_tx });
         resp_rx.await.unwrap_or_default()
     }
 
     pub async fn get_rule(&self, name: &str) -> Option<Rule> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::GetRule { name: name.to_owned(), resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::GetRule { name: name.to_owned(), resp: resp_tx });
         resp_rx.await.unwrap_or(None)
     }
 
@@ -258,7 +280,7 @@ impl CoCo {
 
     pub async fn create_rule(&self, rule: Rule) -> Result<(), CoCoError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        let _ = self.kb_tx.send(CoCoCommand::CreateRule { rule, resp: resp_tx }).await;
+        let _ = self.kb_tx.send(CoCoCommand::CreateRule { rule, resp: resp_tx });
         resp_rx.await.unwrap_or_else(|_| Err(CoCoError::DatabaseError("KB task closed".to_owned())))
     }
 }
@@ -459,7 +481,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
     }
 }
 
-async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, fcm: &Option<Box<dyn Messaging>>, event_tx: &broadcast::Sender<CoCoEvent>) {
+async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<dyn KnowledgeBase>, llm: &Option<Box<dyn LLM>>, fcm: &Option<Box<dyn Messaging>>, event_bus: &CoCoEventBus) {
     match event {
         CoCoEvent::PendingClass(object_id, class_name) => {
             db.add_class(&object_id, &class_name).await.unwrap_or_else(|e| {
@@ -481,7 +503,7 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
             if let Some(llm) = llm {
                 match llm.prompt(&message).await {
                     Ok(response) => {
-                        let _ = event_tx.send(CoCoEvent::LLMResponse(object_id.clone(), response));
+                        event_bus.send(CoCoEvent::LLMResponse(object_id.clone(), response));
                     }
                     Err(e) => eprintln!("Error generating LLM response for object '{}': {:?}", object_id, e),
                 }
@@ -506,7 +528,7 @@ async fn handle_kb_event(event: CoCoEvent, db: &Arc<dyn Database>, kb: &mut Box<
             }
         }
         _ => {
-            let _ = event_tx.send(event);
+            event_bus.send(event);
         }
     }
 }

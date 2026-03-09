@@ -5,10 +5,10 @@ use crate::{
 use chrono::{DateTime, Utc};
 use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type};
 use std::collections::HashMap;
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 
 pub struct CLIPSKnowledgeBase {
-    sender: broadcast::Sender<CoCoEvent>,
+    sender: mpsc::UnboundedSender<CoCoEvent>,
     classes: HashMap<String, Class>,
     objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
@@ -20,15 +20,9 @@ pub struct CLIPSKnowledgeBase {
 unsafe impl Send for CLIPSKnowledgeBase {}
 unsafe impl Sync for CLIPSKnowledgeBase {}
 
-impl Default for CLIPSKnowledgeBase {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl CLIPSKnowledgeBase {
-    pub fn new() -> Self {
-        let (sender, _receiver) = broadcast::channel(16);
+    pub fn new() -> (Box<dyn KnowledgeBase>, mpsc::UnboundedReceiver<CoCoEvent>) {
+        let (sender, receiver) = mpsc::unbounded_channel();
         let mut kb = Self {
             sender: sender.clone(),
             classes: HashMap::new(),
@@ -123,15 +117,11 @@ impl CLIPSKnowledgeBase {
                 })
                 .expect("Failed to add UDF to CLIPS environment");
         }
-        kb
+        (Box::new(kb), receiver)
     }
 }
 
 impl KnowledgeBase for CLIPSKnowledgeBase {
-    fn get_event_sender(&self) -> broadcast::Sender<CoCoEvent> {
-        self.sender.clone()
-    }
-
     fn get_classes(&self) -> Vec<&Class> {
         self.classes.values().collect()
     }
@@ -308,9 +298,7 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
                 return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
             }
         }
-        if self.sender.receiver_count() > 0 {
-            let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_owned(), values, timestamp));
-        }
+        let _ = self.sender.send(CoCoEvent::AddedValues(object_id.to_owned(), values, timestamp));
         Ok(())
     }
 
@@ -715,15 +703,7 @@ mod tests {
     // Initialization Tests
     #[test]
     fn test_new_knowledge_base() {
-        let kb = CLIPSKnowledgeBase::new();
-        assert_eq!(kb.get_classes().len(), 0);
-        assert_eq!(kb.get_objects().len(), 0);
-        assert_eq!(kb.get_rules().len(), 0);
-    }
-
-    #[test]
-    fn test_default_knowledge_base() {
-        let kb = CLIPSKnowledgeBase::default();
+        let (kb, _rx) = CLIPSKnowledgeBase::new();
         assert_eq!(kb.get_classes().len(), 0);
         assert_eq!(kb.get_objects().len(), 0);
         assert_eq!(kb.get_rules().len(), 0);
@@ -732,7 +712,7 @@ mod tests {
     // Class Creation Tests
     #[test]
     fn test_create_simple_class() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let class = Class {
             name: "TestClass".to_owned(),
             parents: None,
@@ -747,7 +727,7 @@ mod tests {
 
     #[test]
     fn test_get_class_by_name() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let class = Class {
             name: "TestClass".to_owned(),
             parents: None,
@@ -763,7 +743,7 @@ mod tests {
 
     #[test]
     fn test_create_class_with_static_bool_property() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         static_props.insert("active".to_owned(), Property::Bool { default: Some(true) });
 
@@ -780,7 +760,7 @@ mod tests {
 
     #[test]
     fn test_create_class_with_static_int_property() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         static_props.insert("temperature".to_owned(), Property::Int { default: Some(25), min: Some(0), max: Some(100) });
 
@@ -797,7 +777,7 @@ mod tests {
 
     #[test]
     fn test_create_class_with_static_float_property() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         static_props.insert("voltage".to_owned(), Property::Float { default: Some(5.0), min: Some(0.0), max: Some(10.0) });
 
@@ -814,7 +794,7 @@ mod tests {
 
     #[test]
     fn test_create_class_with_static_string_property() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         static_props.insert("name".to_owned(), Property::String { default: Some("Default Name".to_owned()) });
 
@@ -831,7 +811,7 @@ mod tests {
 
     #[test]
     fn test_create_class_with_static_symbol_property() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         let mut allowed_symbols = HashSet::new();
         allowed_symbols.insert("STATE_ON".to_owned());
@@ -852,7 +832,7 @@ mod tests {
 
     #[test]
     fn test_create_class_with_static_object_property() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         static_props.insert("owner".to_owned(), Property::Object { default: None, class: "Person".to_owned() });
 
@@ -869,7 +849,7 @@ mod tests {
 
     #[test]
     fn test_create_class_with_array_properties() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
 
         static_props.insert("bool_array".to_owned(), Property::BoolArray { default: Some(vec![true, false, true]) });
@@ -893,7 +873,7 @@ mod tests {
 
     #[test]
     fn test_create_class_with_dynamic_properties() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
         dynamic_props.insert("pressure".to_owned(), Property::Float { default: Some(0.0), min: None, max: None });
 
@@ -910,7 +890,7 @@ mod tests {
 
     #[test]
     fn test_create_duplicate_class_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let class = Class {
             name: "DuplicateClass".to_owned(),
             parents: None,
@@ -930,7 +910,7 @@ mod tests {
     // Object Creation Tests
     #[test]
     fn test_create_object_without_id_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut classes = HashSet::new();
         classes.insert("TestClass".to_owned());
 
@@ -942,7 +922,7 @@ mod tests {
 
     #[test]
     fn test_create_object_with_nonexistent_class_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut classes = HashSet::new();
         classes.insert("NonExistentClass".to_owned());
 
@@ -954,7 +934,7 @@ mod tests {
 
     #[test]
     fn test_create_simple_object() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let class = Class {
             name: "TestClass".to_owned(),
             parents: None,
@@ -975,7 +955,7 @@ mod tests {
 
     #[test]
     fn test_get_object_by_id() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let class = Class {
             name: "TestClass".to_owned(),
             parents: None,
@@ -997,7 +977,7 @@ mod tests {
 
     #[test]
     fn test_create_duplicate_object_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let class = Class {
             name: "TestClass".to_owned(),
             parents: None,
@@ -1018,7 +998,7 @@ mod tests {
 
     #[test]
     fn test_create_object_with_static_properties() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         static_props.insert("count".to_owned(), Property::Int { default: Some(0), min: None, max: None });
 
@@ -1044,7 +1024,7 @@ mod tests {
 
     #[test]
     fn test_create_object_with_dynamic_values() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
         dynamic_props.insert("temperature".to_owned(), Property::Float { default: Some(20.0), min: None, max: None });
 
@@ -1071,7 +1051,7 @@ mod tests {
     // Adding Class Tests
     #[test]
     fn test_add_class_to_nonexistent_object_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let class = Class {
             name: "TestClass".to_owned(),
             parents: None,
@@ -1086,7 +1066,7 @@ mod tests {
 
     #[test]
     fn test_add_nonexistent_class_to_object_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let class = Class {
             name: "TestClass".to_owned(),
             parents: None,
@@ -1107,7 +1087,7 @@ mod tests {
 
     #[test]
     fn test_add_class_to_object() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
 
         let class1 = Class {
             name: "Class1".to_owned(),
@@ -1138,7 +1118,7 @@ mod tests {
     // Setting Properties Tests
     #[test]
     fn test_set_properties_on_nonexistent_object_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
 
         let mut properties = HashMap::new();
         properties.insert("prop".to_owned(), Value::Int(42));
@@ -1149,7 +1129,7 @@ mod tests {
 
     #[test]
     fn test_set_properties_on_object() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut static_props = HashMap::new();
         static_props.insert("value".to_owned(), Property::Int { default: Some(0), min: None, max: None });
 
@@ -1177,7 +1157,7 @@ mod tests {
     // Adding Values Tests
     #[test]
     fn test_add_values_on_nonexistent_object_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut classes = HashSet::new();
         classes.insert("NonExistent".to_owned());
 
@@ -1190,7 +1170,7 @@ mod tests {
 
     #[test]
     fn test_add_values_to_object() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let mut dynamic_props = HashMap::new();
         dynamic_props.insert("measurement".to_owned(), Property::Float { default: Some(0.0), min: None, max: None });
 
@@ -1218,7 +1198,7 @@ mod tests {
     // Rule Tests
     #[test]
     fn test_create_simple_rule() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let rule = Rule {
             name: "test_rule".to_owned(),
             content: "(defrule test_rule (fact) => (assert (derived)))".to_owned(),
@@ -1231,7 +1211,7 @@ mod tests {
 
     #[test]
     fn test_get_rule_by_name() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let rule = Rule {
             name: "my_rule".to_owned(),
             content: "(defrule my_rule (fact) => (assert (result)))".to_owned(),
@@ -1245,7 +1225,7 @@ mod tests {
 
     #[test]
     fn test_create_duplicate_rule_fails() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         let rule = Rule {
             name: "duplicate_rule".to_owned(),
             content: "(defrule duplicate_rule (fact) => (assert (result)))".to_owned(),
@@ -1447,7 +1427,7 @@ mod tests {
     #[test]
     fn test_complex_workflow() {
         // Create a knowledge base
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
 
         // Create a class with mixed properties
         let mut static_props = HashMap::new();
@@ -1498,7 +1478,7 @@ mod tests {
 
     #[test]
     fn test_multiple_classes_and_objects() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
 
         // Create multiple classes
         for i in 0..5 {
@@ -1527,7 +1507,7 @@ mod tests {
 
     #[test]
     fn test_object_with_multiple_classes() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
 
         // Create two classes
         let class1 = Class {
@@ -1560,7 +1540,7 @@ mod tests {
 
     #[test]
     fn test_nullable_properties() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
 
         let mut static_props = HashMap::new();
         static_props.insert("optional_field".to_owned(), Property::String { default: None });
@@ -1584,7 +1564,7 @@ mod tests {
 
     #[test]
     fn test_run_execution() {
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
         // Just test that run doesn't panic
         assert!(kb.run().is_ok());
     }
@@ -1592,7 +1572,7 @@ mod tests {
     #[test]
     fn test_dynamic_property_with_rule_threshold() {
         // Create a knowledge base
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
 
         // Create a class with a dynamic property (temperature monitoring)
         let mut dynamic_props = HashMap::new();
@@ -1657,7 +1637,7 @@ mod tests {
     #[test]
     fn test_multiple_dynamic_properties_with_multiple_rules() {
         // Create a knowledge base
-        let mut kb = CLIPSKnowledgeBase::new();
+        let (mut kb, _rx) = CLIPSKnowledgeBase::new();
 
         // Create a complex sensor class with multiple dynamic properties
         let mut dynamic_props = HashMap::new();

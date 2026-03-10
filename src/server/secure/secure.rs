@@ -9,7 +9,7 @@ use argon2::{
 };
 use async_trait::async_trait;
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{
         Path, Query, Request, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
@@ -174,10 +174,14 @@ async fn get_class<S: CoCoState>(Path(name): Path<String>, State(state): State<S
         request_body = Class,
         responses(
             (status = 201, description = "Class created successfully"),
+            (status = 409, description = "Class already exists"),
             (status = 500, description = "Failed to create class")
         )
     )]
-async fn create_class<S: CoCoState>(State(state): State<S>, Json(class): Json<Class>) -> impl IntoResponse {
+async fn create_class<S: CoCoState>(State(state): State<S>, Extension(user): Extension<CurrentUser>, Json(class): Json<Class>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can create classes").into_response();
+    }
     trace!("Handling request to create class '{}'", class.name);
     match state.coco().create_class(class).await {
         Ok(_) => StatusCode::CREATED.into_response(),

@@ -111,6 +111,7 @@ async fn get_class<S: CoCoState>(Path(name): Path<String>, State(state): State<S
         request_body = Class,
         responses(
             (status = 201, description = "Class created successfully"),
+            (status = 409, description = "Class already exists"),
             (status = 500, description = "Failed to create class")
         )
     )]
@@ -189,6 +190,8 @@ async fn get_object<S: CoCoState>(Path(id): Path<String>, State(state): State<S>
         request_body = OpenApiObject,
         responses(
             (status = 201, description = "Object created successfully", body = String),
+            (status = 404, description = "Class not found for object"),
+            (status = 409, description = "Object already exists"),
             (status = 500, description = "Failed to create object")
         )
     )]
@@ -351,6 +354,7 @@ async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(state): State<S>
         request_body = Rule,
         responses(
             (status = 201, description = "Rule created successfully"),
+            (status = 409, description = "Rule already exists"),
             (status = 500, description = "Failed to create rule")
         )
     )]

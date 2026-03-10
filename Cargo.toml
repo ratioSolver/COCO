@@ -12,17 +12,12 @@ license-file = "LICENSE.txt"
 name = "coco"
 
 [features]
-default = ["mongodb", "clips", "server"]
+default = ["mongodb", "clips", "secure"]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
 ollama = ["dep:reqwest"]
-server = [
-    "dep:axum",
-    "dep:tower-http",
-    "dep:utoipa",
-    "dep:jsonwebtoken",
-    "dep:argon2",
-]
+server = ["dep:axum", "dep:tower-http", "dep:utoipa"]
+secure = ["server", "dep:jsonwebtoken", "dep:argon2"]
 fcm = ["dep:reqwest", "dep:yup-oauth2"]
 mqtt = ["dep:rumqttc"]
 chronoxide = ["dep:chronoxide"]

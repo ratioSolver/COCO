@@ -1,20 +1,27 @@
 use crate::{
     CoCo, CoCoError,
     model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
+    server::secure::Database,
 };
-pub use axum;
+use argon2::{
+    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+    password_hash::{SaltString, rand_core::OsRng},
+};
+use async_trait::async_trait;
 use axum::{
     Json, Router,
     extract::{
-        Path, Query, State, WebSocketUpgrade,
+        Path, Query, Request, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
-    http::StatusCode,
-    response::IntoResponse,
-    routing::get,
+    http::{StatusCode, header},
+    middleware::Next,
+    response::{IntoResponse, Response},
+    routing::{get, patch, post},
 };
-use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use chrono::{DateTime, Duration, Utc};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, errors::Error};
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 pub use tower_http;
 use tracing::trace;
@@ -23,29 +30,10 @@ use utoipa::{IntoParams, OpenApi};
 type OpenApiValue = Value;
 type OpenApiObject = Object;
 
+#[async_trait]
 pub trait CoCoState: Clone + Send + Sync + 'static {
     fn coco(&self) -> Arc<CoCo>;
-}
-
-#[derive(Clone)]
-pub struct UnsecureCoCoState {
-    coco: Arc<CoCo>,
-}
-
-impl UnsecureCoCoState {
-    pub fn new(coco: Arc<CoCo>) -> Self {
-        Self { coco }
-    }
-
-    pub async fn default() -> Self {
-        Self { coco: Arc::new(CoCo::default().await) }
-    }
-}
-
-impl CoCoState for UnsecureCoCoState {
-    fn coco(&self) -> Arc<CoCo> {
-        self.coco.clone()
-    }
+    fn users_db(&self) -> Arc<dyn Database>;
 }
 
 pub fn build_coco_router<S>() -> Router<S>
@@ -62,6 +50,81 @@ where
         .route("/rules", get(get_rules::<S>).post(create_rule::<S>))
         .route("/rules/{name}", get(get_rule::<S>))
         .route("/openapi", get(openapi))
+}
+
+pub fn hash_password(password: &str) -> String {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default().hash_password(password.as_bytes(), &salt).unwrap().to_string()
+}
+
+pub fn verify_password(password: &str, hash: &str) -> bool {
+    let parsed_hash = PasswordHash::new(hash).unwrap();
+    Argon2::default().verify_password(password.as_bytes(), &parsed_hash).is_ok()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    sub: String,
+    exp: usize,
+    role: String,
+}
+
+pub fn create_jwt(user_id: &str, role: &str, secret: &str) -> Result<String, Error> {
+    let now = Utc::now();
+    let expire = now + Duration::hours(24);
+
+    let claims = Claims { sub: user_id.to_owned(), exp: expire.timestamp() as usize, role: role.to_owned() };
+
+    jsonwebtoken::encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
+}
+
+pub fn verify_jwt(token: &str, secret: String) -> Result<Claims, Error> {
+    let decoding_key = DecodingKey::from_secret(secret.as_ref());
+    let validation = Validation::default();
+    let token_data = jsonwebtoken::decode::<Claims>(token, &decoding_key, &validation)?;
+    Ok(token_data.claims)
+}
+
+#[derive(Deserialize)]
+struct RegisterRequest {
+    username: String,
+    password: String,
+    role: String,
+}
+
+#[derive(Deserialize)]
+struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Clone)]
+struct CurrentUser {
+    id: String,
+    role: String,
+}
+
+async fn register<S: CoCoState>(State(state): State<S>, Json(req): Json<RegisterRequest>) -> impl IntoResponse {
+    if !state.users_db().register(&req.username, &hash_password(&req.password), &req.role).await {
+        return Err(StatusCode::CONFLICT);
+    }
+    create_jwt(&req.username, &req.role, state.users_db().secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn login<S: CoCoState>(State(state): State<S>, Json(req): Json<LoginRequest>) -> impl IntoResponse {
+    let role = state.users_db().login(&req.username, &hash_password(&req.password)).await.ok_or(StatusCode::UNAUTHORIZED)?;
+    create_jwt(&req.username, role.as_str(), state.users_db().secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request, next: Next) -> Result<Response, StatusCode> {
+    let header = req.headers().get(header::AUTHORIZATION).and_then(|h| h.to_str().ok());
+    if let Some(token) = header.and_then(|h| h.strip_prefix("Bearer ")) {
+        if let Ok(claims) = verify_jwt(token, state.users_db().secret().to_string()) {
+            req.extensions_mut().insert(CurrentUser { id: claims.sub, role: claims.role });
+            return Ok(next.run(req).await);
+        }
+    }
+    Err(StatusCode::UNAUTHORIZED)
 }
 
 #[utoipa::path(

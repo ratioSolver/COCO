@@ -1,8 +1,14 @@
+#[cfg(feature = "secure")]
+use crate::server::auth::{SecureCoCoState, login, register};
 use crate::{
     CoCo, CoCoError,
     model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
 };
+#[cfg(feature = "secure")]
+use auth::auth_middleware;
 pub use axum;
+#[cfg(feature = "secure")]
+use axum::middleware::from_fn_with_state;
 use axum::{
     Json, Router,
     extract::{
@@ -12,6 +18,8 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     routing::get,
+    routing::patch,
+    routing::post,
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -20,7 +28,10 @@ pub use tower_http;
 use tracing::trace;
 use utoipa::{IntoParams, OpenApi};
 
+#[cfg(feature = "secure")]
 mod auth;
+#[cfg(all(feature = "secure", feature = "mongodb"))]
+mod mongodb;
 
 type OpenApiValue = Value;
 type OpenApiObject = Object;
@@ -29,6 +40,27 @@ pub trait CoCoState: Clone + Send + Sync + 'static {
     fn coco(&self) -> Arc<CoCo>;
 }
 
+#[cfg(not(feature = "secure"))]
+#[derive(Clone)]
+struct UnsecureCoCoState {
+    coco: Arc<CoCo>,
+}
+
+#[cfg(not(feature = "secure"))]
+impl UnsecureCoCoState {
+    pub fn new(coco: Arc<CoCo>) -> Self {
+        Self { coco }
+    }
+}
+
+#[cfg(not(feature = "secure"))]
+impl CoCoState for UnsecureCoCoState {
+    fn coco(&self) -> Arc<CoCo> {
+        self.coco.clone()
+    }
+}
+
+#[cfg(not(feature = "secure"))]
 pub fn build_coco_router<S>() -> Router<S>
 where
     S: CoCoState,
@@ -43,6 +75,36 @@ where
         .route("/rules", get(get_rules::<S>).post(create_rule::<S>))
         .route("/rules/{name}", get(get_rule::<S>))
         .route("/openapi", get(openapi))
+}
+
+#[cfg(feature = "secure")]
+pub fn build_coco_router<S>(state: S) -> Router<()>
+where
+    S: SecureCoCoState,
+{
+    let protected_routes = Router::new()
+        .route("/ws", get(ws_handler::<S>))
+        .route("/classes", post(create_class::<S>))
+        .route("/objects", post(create_object::<S>))
+        .route("/objects/{id}", patch(set_properties::<S>))
+        .route("/objects/{id}/data", post(add_data::<S>))
+        .route("/rules", post(create_rule::<S>))
+        .route_layer(from_fn_with_state(state.clone(), auth_middleware::<S>));
+
+    Router::new()
+        .route("/ws", get(ws_handler::<S>))
+        .route("/register", post(register::<S>))
+        .route("/login", post(login::<S>))
+        .route("/classes", get(get_classes::<S>))
+        .route("/classes/{name}", get(get_class::<S>))
+        .route("/objects", get(get_objects::<S>))
+        .route("/objects/{id}", get(get_object::<S>))
+        .route("/objects/{id}/data", get(get_data::<S>))
+        .route("/rules", get(get_rules::<S>))
+        .route("/rules/{name}", get(get_rule::<S>))
+        .route("/openapi", get(openapi))
+        .merge(protected_routes)
+        .with_state(state)
 }
 
 #[utoipa::path(

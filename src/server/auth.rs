@@ -1,25 +1,34 @@
+use crate::server::CoCoState;
 use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
     password_hash::{SaltString, rand_core::OsRng},
 };
+use async_trait::async_trait;
 use axum::{
+    Json,
     extract::{Request, State},
     http::{StatusCode, header},
     middleware::Next,
-    response::Response,
+    response::{IntoResponse, Response},
 };
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, errors::Error};
 use serde::{Deserialize, Serialize};
 
-use crate::server::CoCoState;
+#[async_trait]
+pub trait SecureCoCoState: CoCoState {
+    fn secret(&self) -> &str;
 
-fn hash_password(password: &str) -> String {
+    async fn login(&self, username: &str, hashed_password: &str) -> Option<String>;
+    async fn register(&self, username: &str, hashed_password: &str, role: &str) -> bool;
+}
+
+pub fn hash_password(password: &str) -> String {
     let salt = SaltString::generate(&mut OsRng);
     Argon2::default().hash_password(password.as_bytes(), &salt).unwrap().to_string()
 }
 
-fn verify_password(password: &str, hash: &str) -> bool {
+pub fn verify_password(password: &str, hash: &str) -> bool {
     let parsed_hash = PasswordHash::new(hash).unwrap();
     Argon2::default().verify_password(password.as_bytes(), &parsed_hash).is_ok()
 }
@@ -31,7 +40,7 @@ struct Claims {
     role: String,
 }
 
-fn create_jwt(user_id: &str, role: &str, secret: &str) -> Result<String, Error> {
+pub fn create_jwt(user_id: &str, role: &str, secret: &str) -> Result<String, Error> {
     let now = Utc::now();
     let expire = now + Duration::hours(24);
 
@@ -40,7 +49,7 @@ fn create_jwt(user_id: &str, role: &str, secret: &str) -> Result<String, Error> 
     jsonwebtoken::encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
 }
 
-fn verify_jwt(token: &str, secret: String) -> Result<Claims, Error> {
+pub fn verify_jwt(token: &str, secret: String) -> Result<Claims, Error> {
     let decoding_key = DecodingKey::from_secret(secret.as_ref());
     let validation = Validation::default();
     let token_data = jsonwebtoken::decode::<Claims>(token, &decoding_key, &validation)?;
@@ -48,14 +57,14 @@ fn verify_jwt(token: &str, secret: String) -> Result<Claims, Error> {
 }
 
 #[derive(Deserialize)]
-struct RegisterRequest {
+pub(super) struct RegisterRequest {
     username: String,
     password: String,
     role: String,
 }
 
 #[derive(Deserialize)]
-struct LoginRequest {
+pub(super) struct LoginRequest {
     username: String,
     password: String,
 }
@@ -66,21 +75,22 @@ struct CurrentUser {
     role: String,
 }
 
-async fn register<S: CoCoState>(State(state): State<S>, req: RegisterRequest, secret: &str) -> Result<String, String> {
-    let _hashed = hash_password(&req.password);
-    create_jwt(&req.username, &req.role, secret).map_err(|e| e.to_string())
+pub(super) async fn register<S: SecureCoCoState>(State(state): State<S>, Json(req): Json<RegisterRequest>) -> impl IntoResponse {
+    if !state.register(&req.username, &hash_password(&req.password), &req.role).await {
+        return Err(StatusCode::CONFLICT);
+    }
+    create_jwt(&req.username, &req.role, state.secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-async fn login<S: CoCoState>(State(state): State<S>, req: LoginRequest, secret: &str) -> Result<String, String> {
-    let _hashed = hash_password(&req.password);
-    create_jwt(&req.username, "user", secret).map_err(|e| e.to_string())
+pub(super) async fn login<S: SecureCoCoState>(State(state): State<S>, Json(req): Json<LoginRequest>) -> impl IntoResponse {
+    let role = state.login(&req.username, &hash_password(&req.password)).await.ok_or(StatusCode::UNAUTHORIZED)?;
+    create_jwt(&req.username, role.as_str(), state.secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request, next: Next) -> Result<Response, StatusCode> {
+pub(super) async fn auth_middleware<S: SecureCoCoState>(State(state): State<S>, mut req: Request, next: Next) -> Result<Response, StatusCode> {
     let header = req.headers().get(header::AUTHORIZATION).and_then(|h| h.to_str().ok());
     if let Some(token) = header.and_then(|h| h.strip_prefix("Bearer ")) {
-        let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "default_secret".to_string());
-        if let Ok(claims) = verify_jwt(token, secret) {
+        if let Ok(claims) = verify_jwt(token, state.secret().to_string()) {
             req.extensions_mut().insert(CurrentUser { id: claims.sub, role: claims.role });
             return Ok(next.run(req).await);
         }

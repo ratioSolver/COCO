@@ -20,7 +20,7 @@ async fn start_secure_server(coco: Arc<CoCo>) {
     use tower_http::services::{ServeDir, ServeFile};
 
     let state = SecureCoCoState::new(coco, setup_db().await);
-    let app = build_coco_router::<SecureCoCoState>();
+    let app = build_coco_router::<SecureCoCoState>(state.clone());
     let app = app.with_state(state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
     let port = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3000);

@@ -15,7 +15,7 @@ use axum::{
         ws::{Message, WebSocket},
     },
     http::{StatusCode, header},
-    middleware::Next,
+    middleware::{Next, from_fn_with_state},
     response::{IntoResponse, Response},
     routing::{get, patch, post},
 };
@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 pub use tower_http;
 use tracing::trace;
-use utoipa::{IntoParams, OpenApi};
+use utoipa::{IntoParams, OpenApi, ToSchema};
 
 type OpenApiValue = Value;
 type OpenApiObject = Object;
@@ -36,20 +36,31 @@ pub trait CoCoState: Clone + Send + Sync + 'static {
     fn users_db(&self) -> Arc<dyn Database>;
 }
 
-pub fn build_coco_router<S>() -> Router<S>
+pub fn build_coco_router<S>(state: S) -> Router<S>
 where
     S: CoCoState,
 {
+    let protected_routes = Router::new()
+        .route("/classes", post(create_class::<S>))
+        .route("/objects", post(create_object::<S>))
+        .route("/objects/{id}", patch(set_properties::<S>))
+        .route("/objects/{id}/data", post(add_data::<S>))
+        .route("/rules", post(create_rule::<S>))
+        .route_layer(from_fn_with_state(state.clone(), auth_middleware::<S>));
+
     Router::new()
+        .route("/register", post(register::<S>))
+        .route("/login", post(login::<S>))
         .route("/ws", get(ws_handler::<S>))
-        .route("/classes", get(get_classes::<S>).post(create_class::<S>))
+        .route("/classes", get(get_classes::<S>))
         .route("/classes/{name}", get(get_class::<S>))
-        .route("/objects", get(get_objects::<S>).post(create_object::<S>))
-        .route("/objects/{id}", get(get_object::<S>).patch(set_properties::<S>))
-        .route("/objects/{id}/data", get(get_data::<S>).post(add_data::<S>))
-        .route("/rules", get(get_rules::<S>).post(create_rule::<S>))
+        .route("/objects", get(get_objects::<S>))
+        .route("/objects/{id}", get(get_object::<S>))
+        .route("/objects/{id}/data", get(get_data::<S>))
+        .route("/rules", get(get_rules::<S>))
         .route("/rules/{name}", get(get_rule::<S>))
         .route("/openapi", get(openapi))
+        .merge(protected_routes)
 }
 
 pub fn hash_password(password: &str) -> String {
@@ -85,14 +96,14 @@ pub fn verify_jwt(token: &str, secret: String) -> Result<Claims, Error> {
     Ok(token_data.claims)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct RegisterRequest {
     username: String,
     password: String,
     role: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct LoginRequest {
     username: String,
     password: String,
@@ -104,18 +115,6 @@ struct CurrentUser {
     role: String,
 }
 
-async fn register<S: CoCoState>(State(state): State<S>, Json(req): Json<RegisterRequest>) -> impl IntoResponse {
-    if !state.users_db().register(&req.username, &hash_password(&req.password), &req.role).await {
-        return Err(StatusCode::CONFLICT);
-    }
-    create_jwt(&req.username, &req.role, state.users_db().secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
-}
-
-async fn login<S: CoCoState>(State(state): State<S>, Json(req): Json<LoginRequest>) -> impl IntoResponse {
-    let role = state.users_db().login(&req.username, &hash_password(&req.password)).await.ok_or(StatusCode::UNAUTHORIZED)?;
-    create_jwt(&req.username, role.as_str(), state.users_db().secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
-}
-
 async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request, next: Next) -> Result<Response, StatusCode> {
     let header = req.headers().get(header::AUTHORIZATION).and_then(|h| h.to_str().ok());
     if let Some(token) = header.and_then(|h| h.strip_prefix("Bearer ")) {
@@ -125,6 +124,44 @@ async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request,
         }
     }
     Err(StatusCode::UNAUTHORIZED)
+}
+
+#[utoipa::path(
+        post,
+        path = "/register",
+        tag = "Authentication",
+        summary = "Register a new user",
+        description = "Create a new user account with a username, password, and role.",
+        request_body = RegisterRequest,
+        responses(
+            (status = 200, description = "User registered successfully, returns JWT token"),
+            (status = 409, description = "Username already exists"),
+            (status = 500, description = "Failed to register user")
+        )
+    )]
+async fn register<S: CoCoState>(State(state): State<S>, Json(req): Json<RegisterRequest>) -> impl IntoResponse {
+    if !state.users_db().register(&req.username, &hash_password(&req.password), &req.role).await {
+        return Err(StatusCode::CONFLICT);
+    }
+    create_jwt(&req.username, &req.role, state.users_db().secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+#[utoipa::path(
+        post,
+        path = "/login",
+        tag = "Authentication",
+        summary = "Login a user",
+        description = "Authenticate a user with their username and password, returns a JWT token if successful.",
+        request_body = LoginRequest,
+        responses(
+            (status = 200, description = "User authenticated successfully, returns JWT token"),
+            (status = 401, description = "Invalid username or password"),
+            (status = 500, description = "Failed to authenticate user")
+        )
+    )]
+async fn login<S: CoCoState>(State(state): State<S>, Json(req): Json<LoginRequest>) -> impl IntoResponse {
+    let role = state.users_db().login(&req.username, &hash_password(&req.password)).await.ok_or(StatusCode::UNAUTHORIZED)?;
+    create_jwt(&req.username, role.as_str(), state.users_db().secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 #[utoipa::path(
@@ -259,7 +296,10 @@ async fn get_object<S: CoCoState>(Path(id): Path<String>, State(state): State<S>
             (status = 500, description = "Failed to create object")
         )
     )]
-async fn create_object<S: CoCoState>(State(state): State<S>, Json(object): Json<OpenApiObject>) -> impl IntoResponse {
+async fn create_object<S: CoCoState>(State(state): State<S>, Extension(user): Extension<CurrentUser>, Json(object): Json<OpenApiObject>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can create objects").into_response();
+    }
     trace!("Handling request to create object with ID '{:?}'", object.id);
     match state.coco().create_object(object).await {
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
@@ -286,7 +326,10 @@ async fn create_object<S: CoCoState>(State(state): State<S>, Json(object): Json<
             (status = 500, description = "Failed to update object properties")
         )
     )]
-async fn set_properties<S: CoCoState>(State(state): State<S>, Path(id): Path<String>, Json(properties): Json<HashMap<String, Value>>) -> impl IntoResponse {
+async fn set_properties<S: CoCoState>(State(state): State<S>, Extension(user): Extension<CurrentUser>, Path(id): Path<String>, Json(properties): Json<HashMap<String, Value>>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can update object properties").into_response();
+    }
     trace!("Handling request to set properties for object with ID '{}'", id);
     match state.coco().set_properties(&id, properties).await {
         Ok(_) => StatusCode::OK.into_response(),
@@ -319,7 +362,10 @@ struct DateQuery {
             (status = 500, description = "Failed to add data to object")
         )
     )]
-async fn add_data<S: CoCoState>(State(state): State<S>, Path(object_id): Path<String>, Query(date_time): Query<DateQuery>, Json(values): Json<HashMap<String, Value>>) -> impl IntoResponse {
+async fn add_data<S: CoCoState>(State(state): State<S>, Extension(user): Extension<CurrentUser>, Path(object_id): Path<String>, Query(date_time): Query<DateQuery>, Json(values): Json<HashMap<String, Value>>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can add data to objects").into_response();
+    }
     trace!("Handling request to add data to object with ID '{}'", object_id);
     match state.coco().add_data(&object_id, values, date_time.time.unwrap_or_else(Utc::now)).await {
         Ok(_) => StatusCode::OK.into_response(),
@@ -421,7 +467,10 @@ async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(state): State<S>
             (status = 500, description = "Failed to create rule")
         )
     )]
-async fn create_rule<S: CoCoState>(State(state): State<S>, Json(rule): Json<Rule>) -> impl IntoResponse {
+async fn create_rule<S: CoCoState>(State(state): State<S>, Extension(user): Extension<CurrentUser>, Json(rule): Json<Rule>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can create rules").into_response();
+    }
     trace!("Handling request to create rule '{}'", rule.name);
     match state.coco().create_rule(rule).await {
         Ok(_) => StatusCode::CREATED.into_response(),
@@ -563,11 +612,12 @@ async fn openapi() -> impl IntoResponse {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
+    paths(register, login, get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     components(
         schemas(Class, Rule, Property, OpenApiObject, OpenApiValue)
     ),
     tags(
+        (name = "Authentication", description = "Endpoints for user registration and login"),
         (name = "Classes", description = "Operations related to knowledge base classes"),
         (name = "Objects", description = "Operations related to knowledge base objects"),
         (name = "Rules", description = "Operations related to knowledge base rules"),

@@ -37,12 +37,11 @@ impl Database for MongoDB {
     async fn login(&self, username: &str, hashed_password: &str) -> Option<String> {
         let db = self.client.database(&self.name);
         let users_collection = db.collection::<Document>("users");
-        if let Ok(Some(user_doc)) = users_collection.find_one(doc! { "username": username }).await {
-            if let (Some(stored_hash), Some(role)) = (user_doc.get_str("password").ok(), user_doc.get_str("role").ok()) {
-                if stored_hash == hashed_password {
-                    return Some(role.to_owned());
-                }
-            }
+        if let Ok(Some(user_doc)) = users_collection.find_one(doc! { "username": username }).await
+            && let (Some(stored_hash), Some(role)) = (user_doc.get_str("password").ok(), user_doc.get_str("role").ok())
+            && stored_hash == hashed_password
+        {
+            return Some(role.to_owned());
         }
         None
     }

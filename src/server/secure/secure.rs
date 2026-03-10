@@ -117,11 +117,11 @@ struct CurrentUser {
 
 async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request, next: Next) -> Result<Response, StatusCode> {
     let header = req.headers().get(header::AUTHORIZATION).and_then(|h| h.to_str().ok());
-    if let Some(token) = header.and_then(|h| h.strip_prefix("Bearer ")) {
-        if let Ok(claims) = verify_jwt(token, state.users_db().secret().to_string()) {
-            req.extensions_mut().insert(CurrentUser { _id: claims.sub, role: claims.role });
-            return Ok(next.run(req).await);
-        }
+    if let Some(token) = header.and_then(|h| h.strip_prefix("Bearer "))
+        && let Ok(claims) = verify_jwt(token, state.users_db().secret().to_string())
+    {
+        req.extensions_mut().insert(CurrentUser { _id: claims.sub, role: claims.role });
+        return Ok(next.run(req).await);
     }
     Err(StatusCode::UNAUTHORIZED)
 }

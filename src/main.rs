@@ -3,7 +3,6 @@ use coco::CoCo;
 use coco::server::start_server;
 use std::sync::Arc;
 use tracing::Level;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() {

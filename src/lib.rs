@@ -318,7 +318,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
                     if path.extension().and_then(|s| s.to_str()) == Some("json") {
                         let data = fs::read_to_string(&path).await.map_err(|e| CoCoError::FileReadError(format!("Failed to read file '{}': {:?}", path.display(), e)))?;
                         let class: Class = serde_json::from_str(&data).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON in file '{}': {:?}", path.display(), e)))?;
-                        if let None = kb.get_class(&class.name) {
+                        if kb.get_class(&class.name).is_none() {
                             info!("Creating class '{}' with parents {:?}, static properties {:?}, and dynamic properties {:?}", class.name, class.parents, class.static_properties, class.dynamic_properties);
                             db.create_class(&class).await.map_err(map_db_error)?;
                             kb.create_class(class).map_err(map_kb_error)?;
@@ -336,7 +336,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
         CoCoCommand::LoadClass { class_definition, resp } => {
             let result = async move {
                 let class: Class = serde_json::from_str(&class_definition).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON for class definition: {:?}", e)))?;
-                if let None = kb.get_class(&class.name) {
+                if kb.get_class(&class.name).is_none() {
                     info!("Creating class '{}' with parents {:?}, static properties {:?}, and dynamic properties {:?}", class.name, class.parents, class.static_properties, class.dynamic_properties);
                     db.create_class(&class).await.map_err(map_db_error)?;
                     kb.create_class(class).map_err(map_kb_error)?;
@@ -436,7 +436,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
                     if path.extension().and_then(|s| s.to_str()) == Some("json") {
                         let data = fs::read_to_string(&path).await.map_err(|e| CoCoError::FileReadError(format!("Failed to read file '{}': {:?}", path.display(), e)))?;
                         let rule: Rule = serde_json::from_str(&data).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON in file '{}': {:?}", path.display(), e)))?;
-                        if let None = kb.get_rule(&rule.name).cloned() {
+                        if kb.get_rule(&rule.name).cloned().is_none() {
                             info!("Creating rule '{}'", rule.name);
                             db.create_rule(&rule).await.map_err(map_db_error)?;
                             kb.create_rule(rule).map_err(map_kb_error)?;
@@ -454,7 +454,7 @@ async fn handle_command(cmd: CoCoCommand, db: &Arc<dyn Database>, kb: &mut Box<d
         CoCoCommand::LoadRule { rule_definition, resp } => {
             let result = async move {
                 let rule: Rule = serde_json::from_str(&rule_definition).map_err(|e| CoCoError::JsonParseError(format!("Failed to parse JSON for rule definition: {:?}", e)))?;
-                if let None = kb.get_rule(&rule.name).cloned() {
+                if kb.get_rule(&rule.name).cloned().is_none() {
                     info!("Creating rule '{}'", rule.name);
                     db.create_rule(&rule).await.map_err(map_db_error)?;
                     kb.create_rule(rule).map_err(map_kb_error)?;

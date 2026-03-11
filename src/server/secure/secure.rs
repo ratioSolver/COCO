@@ -20,10 +20,20 @@ use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 pub use tower_http;
 use tracing::trace;
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::{IntoParams, Modify, OpenApi, ToSchema};
 
 type OpenApiValue = Value;
 type OpenApiObject = Object;
+
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let components = openapi.components.get_or_insert_with(Default::default);
+        components.add_security_scheme("bearerAuth", SecurityScheme::Http(HttpBuilder::new().scheme(HttpAuthScheme::Bearer).bearer_format("JWT").build()));
+    }
+}
 
 #[async_trait]
 pub trait CoCoState: Clone + Send + Sync + 'static {
@@ -131,8 +141,10 @@ async fn register<S: CoCoState>(State(state): State<S>, Json(req): Json<Credenti
         tag = "Authentication",
         summary = "List all users",
         description = "Retrieve a list of all registered users (admin only).",
+        security(("bearerAuth" = [])),
         responses(
             (status = 200, description = "List of users", body = [User]),
+            (status = 401, description = "Missing or invalid JWT token"),
             (status = 403, description = "Forbidden - only admin users can view the list of users"),
             (status = 500, description = "Failed to retrieve users")
         )
@@ -154,8 +166,10 @@ async fn get_users<S: CoCoState>(State(state): State<S>, Extension(user): Extens
         summary = "Create a new user",
         description = "Create a new user account with a username, password, and role (admin only).",
         request_body = Credentials,
+        security(("bearerAuth" = [])),
         responses(
             (status = 201, description = "User created successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
             (status = 403, description = "Forbidden - only admin users can create new users"),
             (status = 409, description = "Username already exists"),
             (status = 500, description = "Failed to create user")
@@ -217,8 +231,11 @@ async fn get_class<S: CoCoState>(Path(name): Path<String>, State(state): State<S
         summary = "Create a class",
         description = "Create a new class in the knowledge base.",
         request_body = Class,
+        security(("bearerAuth" = [])),
         responses(
             (status = 201, description = "Class created successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can create classes"),
             (status = 409, description = "Class already exists"),
             (status = 500, description = "Failed to create class")
         )
@@ -299,8 +316,11 @@ async fn get_object<S: CoCoState>(Path(id): Path<String>, State(state): State<S>
         summary = "Create an object",
         description = "Create a new object in the knowledge base.",
         request_body = OpenApiObject,
+        security(("bearerAuth" = [])),
         responses(
             (status = 201, description = "Object created successfully", body = String),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can create objects"),
             (status = 500, description = "Failed to create object")
         )
     )]
@@ -328,8 +348,11 @@ async fn create_object<S: CoCoState>(State(state): State<S>, Extension(user): Ex
             ("id" = String, Path, description = "ID of the object to update")
         ),
         request_body = inline(HashMap<String, Value>),
+        security(("bearerAuth" = [])),
         responses(
             (status = 200, description = "Object properties updated successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can update object properties"),
             (status = 404, description = "Object not found"),
             (status = 500, description = "Failed to update object properties")
         )
@@ -364,8 +387,11 @@ struct DateQuery {
             ("time" = Option<DateTime<Utc>>, Query, description = "Timestamp for the data being added (optional, defaults to current time)")
         ),
         request_body = inline(HashMap<String, Value>),
+        security(("bearerAuth" = [])),
         responses(
             (status = 200, description = "Data added to object successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can add data to objects"),
             (status = 404, description = "Object not found"),
             (status = 500, description = "Failed to add data to object")
         )
@@ -470,8 +496,11 @@ async fn get_rule<S: CoCoState>(Path(name): Path<String>, State(state): State<S>
         summary = "Create a rule",
         description = "Create a new rule in the knowledge base.",
         request_body = Rule,
+        security(("bearerAuth" = [])),
         responses(
             (status = 201, description = "Rule created successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can create rules"),
             (status = 500, description = "Failed to create rule")
         )
     )]
@@ -622,8 +651,9 @@ async fn openapi() -> impl IntoResponse {
 #[openapi(
     paths(get_users, create_user, register, login, get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     components(
-        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue)
+        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue, User)
     ),
+    modifiers(&SecurityAddon),
     tags(
         (name = "Authentication", description = "Endpoints for user registration and login"),
         (name = "Classes", description = "Operations related to knowledge base classes"),

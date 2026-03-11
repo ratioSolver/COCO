@@ -1,7 +1,14 @@
-use async_trait::async_trait;
-use std::sync::Arc;
-
 use crate::{CoCo, server::secure::secure::CoCoState};
+use argon2::{
+    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+    password_hash::{SaltString, rand_core::OsRng},
+};
+use async_trait::async_trait;
+use chrono::{Duration, Utc};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, errors::Error};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use utoipa::ToSchema;
 
 pub mod secure;
 
@@ -11,14 +18,24 @@ pub mod mongodb;
 #[derive(Debug)]
 pub enum DatabaseError {
     ConnectionError(String),
+    UserAlreadyExists(String),
+    UserNotFound(String),
+    Unauthorized(String),
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+pub struct User {
+    pub username: String,
+    pub role: String,
 }
 
 #[async_trait]
 pub trait Database: Send + Sync {
     fn secret(&self) -> &str;
 
-    async fn login(&self, username: &str, hashed_password: &str) -> Option<String>;
-    async fn register(&self, username: &str, hashed_password: &str, role: &str) -> bool;
+    async fn get_users(&self) -> Result<Vec<User>, DatabaseError>;
+    async fn get_user(&self, username: &str, password: &str) -> Result<User, DatabaseError>;
+    async fn create_user(&self, username: &str, password: &str, role: &str) -> Result<(), DatabaseError>;
 }
 
 #[derive(Clone)]
@@ -45,6 +62,39 @@ impl CoCoState for SecureCoCoState {
     fn users_db(&self) -> Arc<dyn Database> {
         self.db.clone()
     }
+}
+
+pub fn hash_password(password: &str) -> String {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default().hash_password(password.as_bytes(), &salt).unwrap().to_string()
+}
+
+pub fn verify_password(password: &str, hash: &str) -> bool {
+    let parsed_hash = PasswordHash::new(hash).unwrap();
+    Argon2::default().verify_password(password.as_bytes(), &parsed_hash).is_ok()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    sub: String,
+    exp: usize,
+    role: String,
+}
+
+pub fn create_jwt(user_id: &str, role: &str, secret: &str) -> Result<String, Error> {
+    let now = Utc::now();
+    let expire = now + Duration::hours(24);
+
+    let claims = Claims { sub: user_id.to_owned(), exp: expire.timestamp() as usize, role: role.to_owned() };
+
+    jsonwebtoken::encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
+}
+
+pub fn verify_jwt(token: &str, secret: String) -> Result<Claims, Error> {
+    let decoding_key = DecodingKey::from_secret(secret.as_ref());
+    let validation = Validation::default();
+    let token_data = jsonwebtoken::decode::<Claims>(token, &decoding_key, &validation)?;
+    Ok(token_data.claims)
 }
 
 pub async fn setup_db() -> Arc<dyn Database> {

@@ -1,11 +1,7 @@
 use crate::{
     CoCo, CoCoError,
     model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
-    server::secure::Database,
-};
-use argon2::{
-    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
-    password_hash::{SaltString, rand_core::OsRng},
+    server::secure::{Database, DatabaseError, User, create_jwt, verify_jwt},
 };
 use async_trait::async_trait;
 use axum::{
@@ -19,9 +15,8 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{get, patch, post},
 };
-use chrono::{DateTime, Duration, Utc};
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, errors::Error};
-use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 pub use tower_http;
 use tracing::trace;
@@ -41,6 +36,7 @@ where
     S: CoCoState,
 {
     let protected_routes = Router::new()
+        .route("/users", get(get_users::<S>).post(create_user::<S>))
         .route("/classes", post(create_class::<S>))
         .route("/objects", post(create_object::<S>))
         .route("/objects/{id}", patch(set_properties::<S>))
@@ -63,48 +59,8 @@ where
         .merge(protected_routes)
 }
 
-pub fn hash_password(password: &str) -> String {
-    let salt = SaltString::generate(&mut OsRng);
-    Argon2::default().hash_password(password.as_bytes(), &salt).unwrap().to_string()
-}
-
-pub fn verify_password(password: &str, hash: &str) -> bool {
-    let parsed_hash = PasswordHash::new(hash).unwrap();
-    Argon2::default().verify_password(password.as_bytes(), &parsed_hash).is_ok()
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    sub: String,
-    exp: usize,
-    role: String,
-}
-
-pub fn create_jwt(user_id: &str, role: &str, secret: &str) -> Result<String, Error> {
-    let now = Utc::now();
-    let expire = now + Duration::hours(24);
-
-    let claims = Claims { sub: user_id.to_owned(), exp: expire.timestamp() as usize, role: role.to_owned() };
-
-    jsonwebtoken::encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
-}
-
-pub fn verify_jwt(token: &str, secret: String) -> Result<Claims, Error> {
-    let decoding_key = DecodingKey::from_secret(secret.as_ref());
-    let validation = Validation::default();
-    let token_data = jsonwebtoken::decode::<Claims>(token, &decoding_key, &validation)?;
-    Ok(token_data.claims)
-}
-
 #[derive(Deserialize, ToSchema)]
-struct RegisterRequest {
-    username: String,
-    password: String,
-    role: String,
-}
-
-#[derive(Deserialize, ToSchema)]
-struct LoginRequest {
+struct Credentials {
     username: String,
     password: String,
 }
@@ -128,40 +84,92 @@ async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request,
 
 #[utoipa::path(
         post,
-        path = "/register",
-        tag = "Authentication",
-        summary = "Register a new user",
-        description = "Create a new user account with a username, password, and role.",
-        request_body = RegisterRequest,
-        responses(
-            (status = 200, description = "User registered successfully, returns JWT token"),
-            (status = 409, description = "Username already exists"),
-            (status = 500, description = "Failed to register user")
-        )
-    )]
-async fn register<S: CoCoState>(State(state): State<S>, Json(req): Json<RegisterRequest>) -> impl IntoResponse {
-    if !state.users_db().register(&req.username, &hash_password(&req.password), &req.role).await {
-        return Err(StatusCode::CONFLICT);
-    }
-    create_jwt(&req.username, &req.role, state.users_db().secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
-}
-
-#[utoipa::path(
-        post,
         path = "/login",
         tag = "Authentication",
         summary = "Login a user",
         description = "Authenticate a user with their username and password, returns a JWT token if successful.",
-        request_body = LoginRequest,
+        request_body = Credentials,
         responses(
             (status = 200, description = "User authenticated successfully, returns JWT token"),
             (status = 401, description = "Invalid username or password"),
             (status = 500, description = "Failed to authenticate user")
         )
     )]
-async fn login<S: CoCoState>(State(state): State<S>, Json(req): Json<LoginRequest>) -> impl IntoResponse {
-    let role = state.users_db().login(&req.username, &hash_password(&req.password)).await.ok_or(StatusCode::UNAUTHORIZED)?;
-    create_jwt(&req.username, role.as_str(), state.users_db().secret()).map_err(|e| e.to_string()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+async fn login<S: CoCoState>(State(state): State<S>, Json(req): Json<Credentials>) -> impl IntoResponse {
+    let user = state.users_db().get_user(&req.username, &req.password).await;
+    match user {
+        Ok(user) => create_jwt(&user.username, &user.role, state.users_db().secret()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
+        Err(DatabaseError::Unauthorized(_)) => Err(StatusCode::UNAUTHORIZED),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/register",
+        tag = "Authentication",
+        summary = "Register a new user",
+        description = "Create a new user account with a username, password, and role.",
+        request_body = Credentials,
+        responses(
+            (status = 200, description = "User registered successfully, returns JWT token"),
+            (status = 409, description = "Username already exists"),
+            (status = 500, description = "Failed to register user")
+        )
+    )]
+async fn register<S: CoCoState>(State(state): State<S>, Json(req): Json<Credentials>) -> impl IntoResponse {
+    match state.users_db().create_user(&req.username, &req.password, "user").await {
+        Ok(_) => create_jwt(&req.username, "user", state.users_db().secret()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
+        Err(DatabaseError::UserAlreadyExists(_)) => Err(StatusCode::CONFLICT),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+#[utoipa::path(
+        get,
+        path = "/users",
+        tag = "Authentication",
+        summary = "List all users",
+        description = "Retrieve a list of all registered users (admin only).",
+        responses(
+            (status = 200, description = "List of users", body = [User]),
+            (status = 403, description = "Forbidden - only admin users can view the list of users"),
+            (status = 500, description = "Failed to retrieve users")
+        )
+    )]
+async fn get_users<S: CoCoState>(State(state): State<S>, Extension(user): Extension<CurrentUser>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can view the list of users").into_response();
+    }
+    match state.users_db().get_users().await {
+        Ok(users) => Json(users).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve users").into_response(),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/users",
+        tag = "Authentication",
+        summary = "Create a new user",
+        description = "Create a new user account with a username, password, and role (admin only).",
+        request_body = Credentials,
+        responses(
+            (status = 201, description = "User created successfully"),
+            (status = 403, description = "Forbidden - only admin users can create new users"),
+            (status = 409, description = "Username already exists"),
+            (status = 500, description = "Failed to create user")
+        )
+    )]
+async fn create_user<S: CoCoState>(State(state): State<S>, Extension(user): Extension<CurrentUser>, Json(req): Json<Credentials>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can create new users").into_response();
+    }
+    match state.users_db().create_user(&req.username, &req.password, "user").await {
+        Ok(_) => (StatusCode::CREATED, "User created successfully").into_response(),
+        Err(DatabaseError::UserAlreadyExists(_)) => (StatusCode::CONFLICT, "Username already exists").into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create user").into_response(),
+    }
 }
 
 #[utoipa::path(
@@ -612,7 +620,7 @@ async fn openapi() -> impl IntoResponse {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(register, login, get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
+    paths(get_users, create_user, register, login, get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     components(
         schemas(Class, Rule, Property, OpenApiObject, OpenApiValue)
     ),

@@ -1,13 +1,22 @@
-use crate::server::secure::{Database, DatabaseError};
+use crate::server::secure::{Database, DatabaseError, User, verify_password};
 use async_trait::async_trait;
+use futures::TryStreamExt;
 use mongodb::bson::doc;
 use mongodb::{Client, IndexModel, bson::Document, options::IndexOptions};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct MongoDB {
     secret: String,
     name: String,
     client: Client,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct MongoUser {
+    username: String,
+    password: String,
+    role: String,
 }
 
 impl MongoDB {
@@ -34,22 +43,29 @@ impl Database for MongoDB {
         &self.secret
     }
 
-    async fn login(&self, username: &str, hashed_password: &str) -> Option<String> {
+    async fn get_users(&self) -> Result<Vec<User>, DatabaseError> {
         let db = self.client.database(&self.name);
-        let users_collection = db.collection::<Document>("users");
-        if let Ok(Some(user_doc)) = users_collection.find_one(doc! { "username": username }).await
-            && let (Some(stored_hash), Some(role)) = (user_doc.get_str("password").ok(), user_doc.get_str("role").ok())
-            && stored_hash == hashed_password
-        {
-            return Some(role.to_owned());
-        }
-        None
+        let collection = db.collection::<MongoUser>("users");
+        let cursor = collection.find(doc! {}).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let users: Vec<MongoUser> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(users.into_iter().map(|u| User { username: u.username, role: u.role }).collect())
     }
 
-    async fn register(&self, username: &str, hashed_password: &str, role: &str) -> bool {
+    async fn get_user(&self, username: &str, password: &str) -> Result<User, DatabaseError> {
         let db = self.client.database(&self.name);
-        let users_collection = db.collection::<Document>("users");
-        let new_user = doc! { "username": username, "password": hashed_password, "role": role };
-        users_collection.insert_one(new_user).await.is_ok()
+        let users_collection = db.collection::<MongoUser>("users");
+        let filter = doc! { "username": username };
+        let user = users_collection.find_one(filter).await.map_err(|e| DatabaseError::UserNotFound(e.to_string()))?;
+        match user {
+            Some(user) if verify_password(password, &user.password) => Ok(User { username: user.username, role: user.role }),
+            _ => Err(DatabaseError::Unauthorized("Invalid username or password".to_string())),
+        }
+    }
+
+    async fn create_user(&self, username: &str, password: &str, role: &str) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<MongoUser>("users");
+        collection.insert_one(MongoUser { username: username.to_owned(), password: password.to_owned(), role: role.to_owned() }).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::UserAlreadyExists(e.to_string()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
+        Ok(())
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     CoCo, CoCoError,
     model::{Class, CoCoEvent, Object, Property, Rule, TimedValue, Value},
-    server::secure::{Database, DatabaseError, User, create_jwt, verify_jwt},
+    server::secure::{Database, DatabaseError, User, create_jwt, create_refresh_jwt, verify_jwt},
 };
 use async_trait::async_trait;
 use axum::{
@@ -16,7 +16,7 @@ use axum::{
     routing::{get, patch, post},
 };
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 pub use tower_http;
 use tracing::trace;
@@ -57,6 +57,7 @@ where
     Router::new()
         .route("/register", post(register::<S>))
         .route("/login", post(login::<S>))
+        .route("/refresh", post(refresh::<S>))
         .route("/ws", get(ws_handler::<S>))
         .route("/classes", get(get_classes::<S>))
         .route("/classes/{name}", get(get_class::<S>))
@@ -75,16 +76,36 @@ struct Credentials {
     password: String,
 }
 
+#[derive(Serialize, ToSchema)]
+struct AuthTokens {
+    access_token: String,
+    refresh_token: String,
+    token_type: String,
+}
+
+#[derive(Deserialize, ToSchema)]
+struct RefreshTokenRequest {
+    refresh_token: String,
+}
+
 #[derive(Debug, Clone)]
 struct CurrentUser {
     _id: String,
     role: String,
 }
 
+fn issue_tokens(username: &str, role: &str, secret: &str) -> Result<AuthTokens, StatusCode> {
+    let access_token = create_jwt(username, role, secret).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let refresh_token = create_refresh_jwt(username, role, secret).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(AuthTokens { access_token, refresh_token, token_type: "Bearer".to_owned() })
+}
+
 async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request, next: Next) -> Result<Response, StatusCode> {
     let header = req.headers().get(header::AUTHORIZATION).and_then(|h| h.to_str().ok());
     if let Some(token) = header.and_then(|h| h.strip_prefix("Bearer "))
-        && let Ok(claims) = verify_jwt(token, state.users_db().secret().to_string())
+        && let Ok(claims) = verify_jwt(token, state.users_db().secret())
+        && claims.token_type == "access"
     {
         req.extensions_mut().insert(CurrentUser { _id: claims.sub, role: claims.role });
         return Ok(next.run(req).await);
@@ -97,10 +118,10 @@ async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request,
         path = "/login",
         tag = "Authentication",
         summary = "Login a user",
-        description = "Authenticate a user with their username and password, returns a JWT token if successful.",
+        description = "Authenticate a user with their username and password, returns access and refresh JWT tokens if successful.",
         request_body = Credentials,
         responses(
-            (status = 200, description = "User authenticated successfully, returns JWT token"),
+            (status = 200, description = "User authenticated successfully, returns access and refresh JWT tokens", body = AuthTokens),
             (status = 401, description = "Invalid username or password"),
             (status = 500, description = "Failed to authenticate user")
         )
@@ -108,7 +129,7 @@ async fn auth_middleware<S: CoCoState>(State(state): State<S>, mut req: Request,
 async fn login<S: CoCoState>(State(state): State<S>, Json(req): Json<Credentials>) -> impl IntoResponse {
     let user = state.users_db().get_user(&req.username, &req.password).await;
     match user {
-        Ok(user) => create_jwt(&user.username, &user.role, state.users_db().secret()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(user) => issue_tokens(&user.username, &user.role, state.users_db().secret()).map(Json),
         Err(DatabaseError::Unauthorized(_)) => Err(StatusCode::UNAUTHORIZED),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
@@ -122,16 +143,37 @@ async fn login<S: CoCoState>(State(state): State<S>, Json(req): Json<Credentials
         description = "Create a new user account with a username, password, and role.",
         request_body = Credentials,
         responses(
-            (status = 200, description = "User registered successfully, returns JWT token"),
+            (status = 200, description = "User registered successfully, returns access and refresh JWT tokens", body = AuthTokens),
             (status = 409, description = "Username already exists"),
             (status = 500, description = "Failed to register user")
         )
     )]
 async fn register<S: CoCoState>(State(state): State<S>, Json(req): Json<Credentials>) -> impl IntoResponse {
     match state.users_db().create_user(&req.username, &req.password, "user").await {
-        Ok(_) => create_jwt(&req.username, "user", state.users_db().secret()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(_) => issue_tokens(&req.username, "user", state.users_db().secret()).map(Json),
         Err(DatabaseError::UserAlreadyExists(_)) => Err(StatusCode::CONFLICT),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/refresh",
+        tag = "Authentication",
+        summary = "Refresh authentication tokens",
+        description = "Exchange a valid refresh token for a new access and refresh JWT token pair.",
+        request_body = RefreshTokenRequest,
+        responses(
+            (status = 200, description = "Tokens refreshed successfully", body = AuthTokens),
+            (status = 401, description = "Invalid or expired refresh token"),
+            (status = 500, description = "Failed to refresh tokens")
+        )
+    )]
+async fn refresh<S: CoCoState>(State(state): State<S>, Json(req): Json<RefreshTokenRequest>) -> impl IntoResponse {
+    match verify_jwt(&req.refresh_token, state.users_db().secret()) {
+        Ok(claims) if claims.token_type == "refresh" => issue_tokens(&claims.sub, &claims.role, state.users_db().secret()).map(Json),
+        Ok(_) => Err(StatusCode::UNAUTHORIZED),
+        Err(_) => Err(StatusCode::UNAUTHORIZED),
     }
 }
 
@@ -649,9 +691,9 @@ async fn openapi() -> impl IntoResponse {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(get_users, create_user, register, login, get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
+    paths(get_users, create_user, register, login, refresh, get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     components(
-        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue, User)
+        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue, User, Credentials, AuthTokens, RefreshTokenRequest)
     ),
     modifiers(&SecurityAddon),
     tags(

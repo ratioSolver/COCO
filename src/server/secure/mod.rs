@@ -79,18 +79,33 @@ pub struct Claims {
     sub: String,
     exp: usize,
     role: String,
+    #[serde(default = "default_token_type")]
+    token_type: String,
+}
+
+fn default_token_type() -> String {
+    "access".to_owned()
 }
 
 pub fn create_jwt(user_id: &str, role: &str, secret: &str) -> Result<String, Error> {
     let now = Utc::now();
     let expire = now + Duration::hours(24);
 
-    let claims = Claims { sub: user_id.to_owned(), exp: expire.timestamp() as usize, role: role.to_owned() };
+    let claims = Claims { sub: user_id.to_owned(), exp: expire.timestamp() as usize, role: role.to_owned(), token_type: "access".to_owned() };
 
     jsonwebtoken::encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
 }
 
-pub fn verify_jwt(token: &str, secret: String) -> Result<Claims, Error> {
+pub fn create_refresh_jwt(user_id: &str, role: &str, secret: &str) -> Result<String, Error> {
+    let now = Utc::now();
+    let expire = now + Duration::days(30);
+
+    let claims = Claims { sub: user_id.to_owned(), exp: expire.timestamp() as usize, role: role.to_owned(), token_type: "refresh".to_owned() };
+
+    jsonwebtoken::encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
+}
+
+pub fn verify_jwt(token: &str, secret: &str) -> Result<Claims, Error> {
     let decoding_key = DecodingKey::from_secret(secret.as_ref());
     let validation = Validation::default();
     let token_data = jsonwebtoken::decode::<Claims>(token, &decoding_key, &validation)?;

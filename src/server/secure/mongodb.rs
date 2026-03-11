@@ -1,4 +1,4 @@
-use crate::server::secure::{Database, DatabaseError, User, verify_password};
+use crate::server::secure::{Database, DatabaseError, User, hash_password, verify_password};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
@@ -65,7 +65,10 @@ impl Database for MongoDB {
     async fn create_user(&self, username: &str, password: &str, role: &str) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<MongoUser>("users");
-        collection.insert_one(MongoUser { username: username.to_owned(), password: password.to_owned(), role: role.to_owned() }).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::UserAlreadyExists(e.to_string()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
+        collection
+            .insert_one(MongoUser { username: username.to_owned(), password: hash_password(password), role: role.to_owned() })
+            .await
+            .map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::UserAlreadyExists(e.to_string()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
         Ok(())
     }
 }

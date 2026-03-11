@@ -28,6 +28,9 @@ impl MongoDB {
             let users_collection = db.collection::<Document>("users");
             let index = IndexModel::builder().keys(doc! { "username": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             users_collection.create_index(index).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+            let initial_username = std::env::var("INITIAL_ADMIN_USERNAME").unwrap_or_else(|_| "admin".to_owned());
+            let initial_password = std::env::var("INITIAL_ADMIN_PASSWORD").unwrap_or_else(|_| "admin".to_owned());
+            users_collection.insert_one(doc! { "username": initial_username, "password": hash_password(initial_password.as_str()), "role": "admin" }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         }
         Ok(Self {
             secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "default_secret".to_owned()),

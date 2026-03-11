@@ -13,7 +13,13 @@ use rumqttc::v5::{
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tracing::{info, trace};
 
-pub async fn start_mqtt(coco: Arc<CoCo>, mqtt_broker: String, mqtt_port: u16) {
+pub async fn start_mqtt(coco: Arc<CoCo>) {
+    let mqtt_broker = std::env::var("MQTT_BROKER").unwrap_or_else(|_| "localhost".to_string());
+    let mqtt_port = std::env::var("MQTT_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(1883);
+    start_basic_mqtt(coco, mqtt_broker, mqtt_port).await;
+}
+
+pub async fn start_basic_mqtt(coco: Arc<CoCo>, mqtt_broker: String, mqtt_port: u16) {
     info!("Starting MQTT client connecting to {}:{}", mqtt_broker, mqtt_port);
     let mut mqtt_options = MqttOptions::new("coco-client-id", mqtt_broker.as_str(), mqtt_port);
     mqtt_options.set_keep_alive(Duration::from_secs(5));

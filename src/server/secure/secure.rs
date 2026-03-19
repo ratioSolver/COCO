@@ -691,6 +691,9 @@ async fn openapi() -> impl IntoResponse {
 
 #[derive(OpenApi)]
 #[openapi(
+    servers(
+        (url = "/", description = "Base URL for CoCo API")
+    ),
     paths(get_users, create_user, register, login, refresh, get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     components(
         schemas(Class, Rule, Property, OpenApiObject, OpenApiValue, User, Credentials, AuthTokens, RefreshTokenRequest)

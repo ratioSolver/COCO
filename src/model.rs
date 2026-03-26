@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    fmt::{Display, Formatter},
+    fmt,
 };
 #[cfg(feature = "server")]
 use utoipa::ToSchema;
@@ -95,8 +95,8 @@ pub enum Property {
     },
 }
 
-impl Display for Property {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Property {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Property::Bool { default } => {
                 write!(f, "bool(default: {:?})", default)
@@ -198,8 +198,8 @@ impl PartialEq<String> for Value {
     }
 }
 
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Null => write!(f, "null"),
             Value::Bool(b) => write!(f, "{}", b),
@@ -225,8 +225,8 @@ pub struct Class {
     pub dynamic_properties: Option<HashMap<String, Property>>,
 }
 
-impl Display for Class {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Class {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "class {} parents: {:?} static_properties: {:?} dynamic_properties: {:?}", self.name, self.parents, self.static_properties, self.dynamic_properties)
     }
 }
@@ -242,8 +242,8 @@ pub struct Object {
     pub values: Option<HashMap<String, TimedValue>>,
 }
 
-impl Display for Object {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Object {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "object {} classes: {:?} properties: {:?} values: {:?}", self.id.as_deref().unwrap_or(""), self.classes, self.properties, self.values)
     }
 }
@@ -255,8 +255,8 @@ pub struct Rule {
     pub content: String,
 }
 
-impl Display for Rule {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Rule {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "rule {} content: {}", self.name, self.content)
     }
 }
@@ -274,8 +274,8 @@ pub enum CoCoEvent {
     Message(String, String, String),                            // (object_id, title, message)
 }
 
-impl Display for CoCoEvent {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for CoCoEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CoCoEvent::ClassCreated(class) => write!(f, "ClassCreated: {}", class),
             CoCoEvent::ObjectCreated(object) => write!(f, "ObjectCreated: {}", object),
@@ -286,6 +286,39 @@ impl Display for CoCoEvent {
             CoCoEvent::LLMPrompt(object, prompt) => write!(f, "LLMPrompt to {}: {}", object, prompt),
             CoCoEvent::LLMResponse(object, response) => write!(f, "LLMResponse from {}: {}", object, response),
             CoCoEvent::Message(object, title, message) => write!(f, "FCMMessage to {}: {} - {}", object, title, message),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum CoCoError {
+    DirectoryReadError(String),
+    FileReadError(String),
+    JsonParseError(String),
+    ClassAlreadyExists(String),
+    ClassNotFound(String),
+    ObjectAlreadyExists(String),
+    ObjectNotFound(String),
+    RuleAlreadyExists(String),
+    RuleNotFound(String),
+    DatabaseError(String),
+    KnowledgeBaseError(String),
+}
+
+impl fmt::Display for CoCoError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoCoError::DirectoryReadError(msg) => write!(f, "Failed to read directory: {}", msg),
+            CoCoError::FileReadError(msg) => write!(f, "Failed to read file: {}", msg),
+            CoCoError::JsonParseError(msg) => write!(f, "Failed to parse JSON: {}", msg),
+            CoCoError::ClassAlreadyExists(msg) => write!(f, "Class already exists: {}", msg),
+            CoCoError::ClassNotFound(msg) => write!(f, "Class not found: {}", msg),
+            CoCoError::ObjectAlreadyExists(msg) => write!(f, "Object already exists: {}", msg),
+            CoCoError::ObjectNotFound(msg) => write!(f, "Object not found: {}", msg),
+            CoCoError::RuleAlreadyExists(msg) => write!(f, "Rule already exists: {}", msg),
+            CoCoError::RuleNotFound(msg) => write!(f, "Rule not found: {}", msg),
+            CoCoError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
+            CoCoError::KnowledgeBaseError(msg) => write!(f, "Knowledge base error: {}", msg),
         }
     }
 }

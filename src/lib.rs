@@ -1,4 +1,7 @@
-use crate::{db::Database, kb::KnowledgeBase};
+use crate::{
+    db::{Database, setup_db},
+    kb::{KnowledgeBase, setup_kb},
+};
 use std::sync::Arc;
 use tracing::error;
 
@@ -26,5 +29,11 @@ impl<KB: KnowledgeBase, DB: Database> CoCo<KB, DB> {
             _ => {}
         });
         coco
+    }
+
+    pub async fn default() -> Result<CoCo<impl KnowledgeBase, impl Database + 'static>, Box<dyn std::error::Error>> {
+        let kb = setup_kb().map_err(|e| format!("Failed to set up knowledge base: {}", e))?;
+        let db = setup_db().await.map_err(|e| format!("Failed to set up database: {}", e))?;
+        Ok(CoCo::new(kb, Arc::new(db)))
     }
 }

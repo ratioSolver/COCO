@@ -1,28 +1,39 @@
 use crate::{
     db::{Database, setup_db},
     kb::{KnowledgeBase, setup_kb},
+    model::CoCoEvent,
 };
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tracing::error;
 
 pub mod db;
 pub mod kb;
 pub mod model;
 
-pub struct CoCo<KB: KnowledgeBase, DB: Database + 'static> {
+pub type Callback = Box<dyn Fn(CoCoEvent) + Send + Sync + 'static>;
+
+pub struct CoCo<KB: KnowledgeBase> {
     kb: KB,
-    db: Arc<DB>,
+    callback: Arc<Mutex<Option<Callback>>>,
 }
 
-impl<KB: KnowledgeBase, DB: Database> CoCo<KB, DB> {
-    pub fn new(kb: KB, db: Arc<DB>) -> Self {
-        let coco = Self { kb, db: db.clone() };
+impl<KB: KnowledgeBase> CoCo<KB> {
+    pub fn new(kb: KB, db: Arc<dyn Database + 'static>) -> Self {
+        let callback = Arc::new(Mutex::new(None));
+        let coco = Self { kb, callback: callback.clone() };
+
         coco.kb.set_callback(move |query| match query {
             kb::KnowledgeBaseEvent::AddedClass(object_id, class) => {
                 let db = db.clone();
+                let callback = callback.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = db.add_class(&object_id, &class).await {
-                        error!("Failed to add class '{}' to object '{}': {}", class, object_id, e);
+                    match db.add_class(&object_id, &class).await {
+                        Ok(_) => {
+                            if let Some(cb) = callback.lock().unwrap().as_ref() {
+                                cb(CoCoEvent::AddedClass(object_id.clone(), class.clone()));
+                            }
+                        }
+                        Err(e) => error!("Failed to add class to database: {}", e),
                     }
                 });
             }
@@ -31,9 +42,13 @@ impl<KB: KnowledgeBase, DB: Database> CoCo<KB, DB> {
         coco
     }
 
-    pub async fn default() -> Result<CoCo<impl KnowledgeBase, impl Database + 'static>, Box<dyn std::error::Error>> {
+    pub async fn default() -> Result<CoCo<impl KnowledgeBase>, Box<dyn std::error::Error>> {
         let kb = setup_kb().map_err(|e| format!("Failed to set up knowledge base: {}", e))?;
         let db = setup_db().await.map_err(|e| format!("Failed to set up database: {}", e))?;
         Ok(CoCo::new(kb, Arc::new(db)))
+    }
+
+    pub fn set_callback(&mut self, callback: Callback) {
+        self.callback.lock().unwrap().replace(callback);
     }
 }

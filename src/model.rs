@@ -263,17 +263,15 @@ impl Display for Rule {
 
 #[derive(Clone, Debug)]
 pub enum CoCoEvent {
-    ClassCreated(String),                                         // class_name
-    ObjectCreated(String),                                        // object_id
-    AddedClass(String, String),                                   // (object_id, class_name)
-    PendingClass(String, String),                                 // (object_id, class_name)
-    UpdatedProperties(String, HashMap<String, Value>),            // (object_id, properties)
-    AddedValues(String, HashMap<String, Value>, DateTime<Utc>),   // (object_id, value, date_time)
-    PendingValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
-    RuleCreated(String),                                          // rule_name
-    LLMPrompt(String, String),                                    // (object_id, prompt)
-    LLMResponse(String, String),                                  // (object_id, response)
-    Message(String, String, String),                              // (object_id, title, message)
+    ClassCreated(String),                                       // class_name
+    ObjectCreated(String),                                      // object_id
+    AddedClass(String, String),                                 // (object_id, class_name)
+    UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
+    AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
+    RuleCreated(String),                                        // rule_name
+    LLMPrompt(String, String),                                  // (object_id, prompt)
+    LLMResponse(String, String),                                // (object_id, response)
+    Message(String, String, String),                            // (object_id, title, message)
 }
 
 impl Display for CoCoEvent {
@@ -282,10 +280,8 @@ impl Display for CoCoEvent {
             CoCoEvent::ClassCreated(class) => write!(f, "ClassCreated: {}", class),
             CoCoEvent::ObjectCreated(object) => write!(f, "ObjectCreated: {}", object),
             CoCoEvent::AddedClass(object, class) => write!(f, "AddedClass: {} to {}", class, object),
-            CoCoEvent::PendingClass(object, class) => write!(f, "PendingClass: {} to {}", class, object),
             CoCoEvent::UpdatedProperties(object, properties) => write!(f, "UpdatedProperties for {}: {:?}", object, properties),
             CoCoEvent::AddedValues(object, values, date_time) => write!(f, "AddedValues to {}: {:?} at {}", object, values, date_time),
-            CoCoEvent::PendingValues(object, values, date_time) => write!(f, "PendingValues to {}: {:?} at {}", object, values, date_time),
             CoCoEvent::RuleCreated(rule) => write!(f, "RuleCreated: {}", rule),
             CoCoEvent::LLMPrompt(object, prompt) => write!(f, "LLMPrompt to {}: {}", object, prompt),
             CoCoEvent::LLMResponse(object, response) => write!(f, "LLMResponse from {}: {}", object, response),

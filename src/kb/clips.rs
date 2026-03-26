@@ -7,6 +7,8 @@ use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tracing::debug;
 
+pub type Callback = Box<dyn Fn(KnowledgeBaseEvent)>;
+
 pub struct CLIPSKnowledgeBase {
     classes: HashMap<String, Class>,
     objects: HashMap<String, Object>,
@@ -14,7 +16,7 @@ pub struct CLIPSKnowledgeBase {
     instances: HashMap<String, HashMap<String, Fact>>,               // class name -> object id -> fact
     values: HashMap<String, HashMap<String, HashMap<String, Fact>>>, // class name -> object id -> property name -> fact
     env: Environment,
-    callback: Rc<RefCell<Option<Box<dyn Fn(KnowledgeBaseEvent)>>>>,
+    callback: Rc<RefCell<Option<Callback>>>,
 }
 
 impl CLIPSKnowledgeBase {

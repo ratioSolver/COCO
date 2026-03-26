@@ -37,7 +37,36 @@ impl<KB: KnowledgeBase> CoCo<KB> {
                     }
                 });
             }
-            _ => {}
+            kb::KnowledgeBaseEvent::UpdatedProperties(object_id, properties) => {
+                let db = db.clone();
+                let callback = callback.clone();
+                tokio::spawn(async move {
+                    match db.set_properties(&object_id, &properties).await {
+                        Ok(_) => {
+                            if let Some(cb) = callback.lock().unwrap().as_ref() {
+                                cb(CoCoEvent::UpdatedProperties(object_id.clone(), properties.clone()));
+                            }
+                        }
+                        Err(e) => error!("Failed to update properties in database: {}", e),
+                    }
+                });
+            }
+            kb::KnowledgeBaseEvent::AddedValues(object_id, values, date_time) => {
+                let db = db.clone();
+                let callback = callback.clone();
+                tokio::spawn(async move {
+                    match db.add_data(&object_id, &values, &date_time).await {
+                        Ok(_) => {
+                            if let Some(cb) = callback.lock().unwrap().as_ref() {
+                                cb(CoCoEvent::AddedValues(object_id.clone(), values.clone(), date_time));
+                            }
+                        }
+                        Err(e) => error!("Failed to add values to database: {}", e),
+                    }
+                });
+            }
+            kb::KnowledgeBaseEvent::LLMPrompt(_object_id, _message) => {}
+            kb::KnowledgeBaseEvent::Message(_object_id, _title, _message) => {}
         });
         coco
     }

@@ -38,7 +38,6 @@ pub enum KnowledgeBaseEvent {
     UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
     AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
     LLMPrompt(String, String),                                  // (object_id, prompt)
-    LLMResponse(String, String),                                // (object_id, response)
     Message(String, String, String),                            // (object_id, title, message)
 }
 

@@ -1,15 +1,13 @@
-use std::collections::HashMap;
-
+use crate::model::Value;
 use chrono::{DateTime, Utc};
-use tokio::sync::mpsc;
-
-use crate::model::{Class, CoCoEvent, Object, Rule, Value};
+use std::collections::HashMap;
 
 #[cfg(feature = "clips")]
 mod clips;
 
 #[derive(Debug)]
 pub enum KnowledgeBaseError {
+    CreationError(String),
     ClassAlreadyExists(String),
     ClassNotFound(String),
     ObjectAlreadyExists(String),
@@ -19,26 +17,20 @@ pub enum KnowledgeBaseError {
     KBError(String),
 }
 
-pub trait KnowledgeBase: Send + Sync {
-    fn get_classes(&self) -> Vec<&Class>;
-    fn get_class(&self, name: &str) -> Option<&Class>;
-    fn create_class(&mut self, class: Class) -> Result<(), KnowledgeBaseError>;
-
-    fn get_objects(&self) -> Vec<&Object>;
-    fn get_object(&self, id: &str) -> Option<&Object>;
-    fn create_object(&mut self, object: Object) -> Result<(), KnowledgeBaseError>;
-    fn add_class(&mut self, object_id: &str, class_name: &str) -> Result<(), KnowledgeBaseError>;
-    fn set_properties(&mut self, object_id: &str, properties: HashMap<String, Value>) -> Result<(), KnowledgeBaseError>;
-    fn add_values(&mut self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), KnowledgeBaseError>;
-
-    fn get_rules(&self) -> Vec<&Rule>;
-    fn get_rule(&self, name: &str) -> Option<&Rule>;
-    fn create_rule(&mut self, rule: Rule) -> Result<(), KnowledgeBaseError>;
-
-    fn run(&mut self) -> Result<(), KnowledgeBaseError>;
+#[derive(Debug)]
+pub enum KnowledgeBaseEvent {
+    AddedClass(String, String),                                 // (object_id, class_name)
+    UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
+    AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
 }
 
-pub fn setup_kb() -> (Box<dyn KnowledgeBase>, mpsc::UnboundedReceiver<CoCoEvent>) {
+pub trait KnowledgeBase {
+    fn run(&mut self) -> Result<(), KnowledgeBaseError>;
+
+    fn set_callback(&self, cb: impl Fn(KnowledgeBaseEvent) + 'static);
+}
+
+pub fn setup_kb() -> Result<impl KnowledgeBase, KnowledgeBaseError> {
     #[cfg(feature = "clips")]
     return setup_clips();
 
@@ -47,7 +39,7 @@ pub fn setup_kb() -> (Box<dyn KnowledgeBase>, mpsc::UnboundedReceiver<CoCoEvent>
 }
 
 #[cfg(feature = "clips")]
-fn setup_clips() -> (Box<dyn KnowledgeBase>, mpsc::UnboundedReceiver<CoCoEvent>) {
+fn setup_clips() -> Result<impl KnowledgeBase, KnowledgeBaseError> {
     use crate::kb::clips::CLIPSKnowledgeBase;
 
     CLIPSKnowledgeBase::new()

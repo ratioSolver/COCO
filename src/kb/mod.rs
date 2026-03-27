@@ -39,7 +39,7 @@ pub enum KnowledgeBaseEvent {
     AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
 }
 
-pub trait KnowledgeBase {
+pub trait KnowledgeBase: Send + Sync {
     fn get_classes(&self) -> Vec<&Class>;
     fn get_class(&self, name: &str) -> Option<&Class>;
     fn create_class(&mut self, class: Class) -> Result<(), KnowledgeBaseError>;

@@ -4,7 +4,7 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type};
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::{Arc, Mutex}};
 use tracing::debug;
 
 pub type Callback = Box<dyn Fn(KnowledgeBaseEvent)>;
@@ -15,87 +15,90 @@ pub struct CLIPSKnowledgeBase {
     rules: HashMap<String, Rule>,
     instances: HashMap<String, HashMap<String, Fact>>,               // class name -> object id -> fact
     values: HashMap<String, HashMap<String, HashMap<String, Fact>>>, // class name -> object id -> property name -> fact
-    env: Environment,
-    callback: Rc<RefCell<Option<Callback>>>,
+    env: Mutex<Environment>,
+    callback: Arc<RefCell<Option<Callback>>>,
 }
 
 impl CLIPSKnowledgeBase {
     pub fn new() -> Result<Self, KnowledgeBaseError> {
         let callback = Rc::new(RefCell::new(None));
-        let mut kb = CLIPSKnowledgeBase {
+        let kb = CLIPSKnowledgeBase {
             classes: HashMap::new(),
             objects: HashMap::new(),
             rules: HashMap::new(),
             instances: HashMap::new(),
             values: HashMap::new(),
-            env: Environment::new().map_err(|e| KnowledgeBaseError::CreationError(e.to_string()))?,
+            env: Mutex::new(Environment::new().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create CLIPS environment: {}", e)))?),
             callback: callback.clone(),
         };
 
-        let add_data_callback = callback.clone();
-        kb.env
-            .add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], move |_env, ctx| {
-                debug!("add-data called");
-                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-data UDF");
-                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-data UDF") };
-                let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get args argument for add-data UDF");
-                let args: Vec<String> = if let ClipsValue::Multifield(mf) = args {
-                    mf.into_iter()
-                        .map(|v| match v {
-                            ClipsValue::Symbol(s) => s,
-                            _ => panic!("Expected symbol, integer, or float in args multifield for add-data UDF"),
+        {
+            let mut env_lock: std::sync::MutexGuard<'_, Environment> = kb.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to acquire lock on CLIPS environment: {}", e)))?;
+            let add_data_callback = callback.clone();
+            env_lock
+                .add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], move |_env, ctx| {
+                    debug!("add-data called");
+                    let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-data UDF");
+                    let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-data UDF") };
+                    let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get args argument for add-data UDF");
+                    let args: Vec<String> = if let ClipsValue::Multifield(mf) = args {
+                        mf.into_iter()
+                            .map(|v| match v {
+                                ClipsValue::Symbol(s) => s,
+                                _ => panic!("Expected symbol, integer, or float in args multifield for add-data UDF"),
+                            })
+                            .collect()
+                    } else {
+                        panic!("Expected multifield for args argument in add-data UDF");
+                    };
+                    let vals = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get values argument for add-data UDF");
+                    let vals: Vec<Value> = if let ClipsValue::Multifield(mf) = vals {
+                        mf.into_iter()
+                            .map(|v| match v {
+                                ClipsValue::Integer(i) => Value::Int(i),
+                                ClipsValue::Float(f) => Value::Float(f),
+                                ClipsValue::Symbol(s) => match s.as_str() {
+                                    "TRUE" => Value::Bool(true),
+                                    "FALSE" => Value::Bool(false),
+                                    "nil" => Value::Null,
+                                    other => Value::Symbol(other.to_owned()),
+                                },
+                                ClipsValue::String(s) => Value::String(s),
+                                _ => panic!("Expected symbol, integer, or float in values multifield for add-data UDF"),
+                            })
+                            .collect()
+                    } else {
+                        panic!("Expected multifield for values argument in add-data UDF");
+                    };
+                    let date_time = if ctx.has_next_argument() { Some(ctx.get_next_argument(Type(Type::INTEGER)).expect("Failed to get date_time argument for add-data UDF")) } else { None };
+                    let date_time = date_time
+                        .map(|dt| {
+                            let dt = if let ClipsValue::Integer(i) = dt { i } else { panic!("Expected integer for date_time argument in add-data UDF") };
+                            DateTime::<Utc>::from_timestamp(dt, 0).expect("Failed to convert date_time argument in add-data UDF")
                         })
-                        .collect()
-                } else {
-                    panic!("Expected multifield for args argument in add-data UDF");
-                };
-                let vals = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get values argument for add-data UDF");
-                let vals: Vec<Value> = if let ClipsValue::Multifield(mf) = vals {
-                    mf.into_iter()
-                        .map(|v| match v {
-                            ClipsValue::Integer(i) => Value::Int(i),
-                            ClipsValue::Float(f) => Value::Float(f),
-                            ClipsValue::Symbol(s) => match s.as_str() {
-                                "TRUE" => Value::Bool(true),
-                                "FALSE" => Value::Bool(false),
-                                "nil" => Value::Null,
-                                other => Value::Symbol(other.to_owned()),
-                            },
-                            ClipsValue::String(s) => Value::String(s),
-                            _ => panic!("Expected symbol, integer, or float in values multifield for add-data UDF"),
-                        })
-                        .collect()
-                } else {
-                    panic!("Expected multifield for values argument in add-data UDF");
-                };
-                let date_time = if ctx.has_next_argument() { Some(ctx.get_next_argument(Type(Type::INTEGER)).expect("Failed to get date_time argument for add-data UDF")) } else { None };
-                let date_time = date_time
-                    .map(|dt| {
-                        let dt = if let ClipsValue::Integer(i) = dt { i } else { panic!("Expected integer for date_time argument in add-data UDF") };
-                        DateTime::<Utc>::from_timestamp(dt, 0).expect("Failed to convert date_time argument in add-data UDF")
-                    })
-                    .unwrap_or(Utc::now());
-                let values = args.into_iter().zip(vals).collect::<HashMap<_, _>>();
-                if let Some(cb) = add_data_callback.borrow().as_ref() {
-                    cb(KnowledgeBaseEvent::AddedValues(object_id.clone(), values.clone(), date_time));
-                }
-                ClipsValue::Void()
-            })
-            .map_err(|e| KnowledgeBaseError::KBError(format!("Failed to add UDF to CLIPS environment: {}", e)))?;
+                        .unwrap_or(Utc::now());
+                    let values = args.into_iter().zip(vals).collect::<HashMap<_, _>>();
+                    if let Some(cb) = add_data_callback.borrow().as_ref() {
+                        cb(KnowledgeBaseEvent::AddedValues(object_id.clone(), values.clone(), date_time));
+                    }
+                    ClipsValue::Void()
+                })
+                .map_err(|e| KnowledgeBaseError::KBError(format!("Failed to add UDF to CLIPS environment: {}", e)))?;
 
-        let add_class_callback = callback.clone();
-        kb.env
-            .add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], move |_env, ctx| {
-                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-class UDF");
-                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-class UDF") };
-                let class_name = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get class name argument for add-class UDF");
-                let class_name = if let ClipsValue::Symbol(s) = class_name { s } else { panic!("Expected symbol for class name argument in add-class UDF") };
-                if let Some(cb) = add_class_callback.borrow().as_ref() {
-                    cb(KnowledgeBaseEvent::AddedClass(object_id.clone(), class_name.clone()));
-                }
-                ClipsValue::Void()
-            })
-            .map_err(|e| KnowledgeBaseError::KBError(format!("Failed to add UDF to CLIPS environment: {}", e)))?;
+            let add_class_callback = callback.clone();
+            env_lock
+                .add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], move |_env, ctx| {
+                    let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-class UDF");
+                    let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-class UDF") };
+                    let class_name = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get class name argument for add-class UDF");
+                    let class_name = if let ClipsValue::Symbol(s) = class_name { s } else { panic!("Expected symbol for class name argument in add-class UDF") };
+                    if let Some(cb) = add_class_callback.borrow().as_ref() {
+                        cb(KnowledgeBaseEvent::AddedClass(object_id.clone(), class_name.clone()));
+                    }
+                    ClipsValue::Void()
+                })
+                .map_err(|e| KnowledgeBaseError::KBError(format!("Failed to add UDF to CLIPS environment: {}", e)))?;
+        }
         Ok(kb)
     }
 }
@@ -114,15 +117,16 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
         if self.classes.contains_key(&class_name) {
             return Err(KnowledgeBaseError::ClassAlreadyExists(class.name.clone()));
         }
-        self.env.build(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create class in CLIPS: {}", e)))?;
+        let mut env_lock: std::sync::MutexGuard<'_, Environment> = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to acquire lock on CLIPS environment: {}", e)))?;
+        env_lock.build(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create class in CLIPS: {}", e)))?;
         if let Some(static_props) = &class.static_properties {
             for (name, prop) in static_props {
-                self.env.build(prop_deftemplate(&class, name, prop, true).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create static property {} for class {} in CLIPS: {}", name, class.name, e)))?;
+                env_lock.build(prop_deftemplate(&class, name, prop, true).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create static property {} for class {} in CLIPS: {}", name, class.name, e)))?;
             }
         }
         if let Some(dynamic_props) = &class.dynamic_properties {
             for (name, prop) in dynamic_props {
-                self.env.build(prop_deftemplate(&class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
+                env_lock.build(prop_deftemplate(&class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
             }
         }
         self.classes.insert(class_name.clone(), class);
@@ -142,25 +146,26 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
         if self.objects.contains_key(&id) {
             return Err(KnowledgeBaseError::ObjectAlreadyExists(id.clone()));
         }
+        let mut env_lock: std::sync::MutexGuard<'_, Environment> = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to acquire lock on CLIPS environment: {}", e)))?;
         for class_name in object.classes.iter() {
             if let Some(class) = self.classes.get(class_name.as_str()) {
-                let fb = self.env.fact_builder(&class.name).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for class {}: {}", class_name, e)))?;
+                let fb = env_lock.fact_builder(&class.name).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for class {}: {}", class_name, e)))?;
                 let fb = fb.put_symbol("id", id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", id, e)))?;
-                let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
+                let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", id, e)))?;
                 self.instances.entry(class.name.clone()).or_default().insert(id.clone(), fact);
 
                 if let Some(static_props) = &class.static_properties {
                     for (name, prop) in static_props {
-                        let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, id, e)))?;
+                        let fb = env_lock.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, id, e)))?;
                         let fb = fb.put_symbol("id", id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for property {} of object {}: {}", name, id, e)))?;
                         if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
-                            let fb: FactBuilder = set_prop(&self.env, fb, prop, v.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set property {} for object {}: {:#?}", name, id, e)))?;
-                            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, id, e)))?;
+                            let fb: FactBuilder = set_prop(&env_lock, fb, prop, v.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set property {} for object {}: {:#?}", name, id, e)))?;
+                            let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
                         } else {
                             let def = get_default(prop);
-                            let fb = set_prop(&self.env, fb, prop, def.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for property {} of object {}: {:#?}", name, id, e)))?;
-                            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, id, e)))?;
+                            let fb = set_prop(&env_lock, fb, prop, def.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for property {} of object {}: {:#?}", name, id, e)))?;
+                            let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
                         }
                     }
@@ -168,16 +173,16 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
 
                 if let Some(dynamic_props) = &class.dynamic_properties {
                     for (name, prop) in dynamic_props {
-                        let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
+                        let fb = env_lock.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, id, e)))?;
                         let fb = fb.put_symbol("id", id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for dynamic property {} of object {}: {}", name, id, e)))?;
                         if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
-                            let fb = set_prop(&self.env, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, id, e)))?;
-                            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
+                            let fb = set_prop(&env_lock, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, id, e)))?;
+                            let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
                         } else {
                             let def = get_default(prop);
-                            let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now())).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for dynamic property {} of object {}: {:#?}", name, id, e)))?;
-                            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, id, e)))?;
+                            let fb = set_prop(&env_lock, fb, prop, def.clone(), Some(Utc::now())).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for dynamic property {} of object {}: {:#?}", name, id, e)))?;
+                            let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, id, e)))?;
                             self.values.entry(class.name.clone()).or_default().entry(id.clone()).or_default().insert(name.clone(), fact);
                         }
                     }
@@ -193,21 +198,22 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
     fn add_class(&mut self, object_id: &str, class_name: &str) -> Result<(), KnowledgeBaseError> {
         let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
         let class = self.classes.get(class_name).ok_or_else(|| KnowledgeBaseError::ClassNotFound(class_name.to_owned()))?;
-        let fb = self.env.fact_builder(&class.name).unwrap().put_symbol("id", object_id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", object_id, e)))?;
-        let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", object_id, e)))?;
+        let mut env_lock: std::sync::MutexGuard<'_, Environment> = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to acquire lock on CLIPS environment: {}", e)))?;
+        let fb = env_lock.fact_builder(&class.name).unwrap().put_symbol("id", object_id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", object_id, e)))?;
+        let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", object_id, e)))?;
         self.instances.entry(class.name.clone()).or_default().insert(object_id.to_owned(), fact);
 
         if let Some(static_props) = &class.static_properties {
             for (name, prop) in static_props {
-                let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, object_id, e)))?;
+                let fb = env_lock.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, object_id, e)))?;
                 if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
-                    let fb = set_prop(&self.env, fb, prop, v.clone(), None)?;
-                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
+                    let fb = set_prop(&env_lock, fb, prop, v.clone(), None)?;
+                    let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
                     self.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
                 } else {
                     let def = get_default(prop);
-                    let fb = set_prop(&self.env, fb, prop, def.clone(), None)?;
-                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
+                    let fb = set_prop(&env_lock, fb, prop, def.clone(), None)?;
+                    let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
                     self.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
                 }
             }
@@ -216,15 +222,15 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
         if let Some(dynamic_props) = &class.dynamic_properties {
             for (name, prop) in dynamic_props {
                 if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
-                    let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
-                    let fb = set_prop(&self.env, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, object_id, e)))?;
-                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    let fb = env_lock.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    let fb = set_prop(&env_lock, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, object_id, e)))?;
+                    let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
                     self.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
                 } else {
                     let def = get_default(prop);
-                    let fb = self.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
-                    let fb = set_prop(&self.env, fb, prop, def.clone(), Some(Utc::now()))?;
-                    let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    let fb = env_lock.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                    let fb = set_prop(&env_lock, fb, prop, def.clone(), Some(Utc::now()))?;
+                    let fact = env_lock.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
                     self.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
                 }
             }
@@ -234,6 +240,7 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
 
     fn set_properties(&mut self, object_id: &str, properties: HashMap<String, Value>) -> Result<(), KnowledgeBaseError> {
         let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
+        let mut env_lock: std::sync::MutexGuard<'_, Environment> = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to acquire lock on CLIPS environment: {}", e)))?;
         for class_name in &object.classes {
             if let Some(class) = self.classes.get(class_name) {
                 if let Some(static_props) = &class.static_properties {
@@ -241,9 +248,9 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
                         if let Some(v) = properties.get(name) {
                             object.properties.get_or_insert_with(HashMap::new).insert(name.clone(), v.clone());
                             let fact = self.values.get(class_name).and_then(|objs| objs.get(object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for property {} of object {} of class {} not found", name, object_id, class_name)))?;
-                            let fm = self.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
-                            let fm = update_prop(&self.env, fm, prop, v.clone(), None)?;
-                            self.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for property {} of object {}: {}", name, object_id, e)))?;
+                            let fm = env_lock.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
+                            let fm = update_prop(&env_lock, fm, prop, v.clone(), None)?;
+                            env_lock.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for property {} of object {}: {}", name, object_id, e)))?;
                         }
                     }
                 }
@@ -256,6 +263,7 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
 
     fn add_values(&mut self, object_id: &str, values: HashMap<String, Value>, timestamp: DateTime<Utc>) -> Result<(), KnowledgeBaseError> {
         let object = self.objects.get_mut(object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
+        let mut env_lock: std::sync::MutexGuard<'_, Environment> = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to acquire lock on CLIPS environment: {}", e)))?;
         for class_name in &object.classes {
             if let Some(class) = self.classes.get(class_name) {
                 if let Some(dynamic_props) = &class.dynamic_properties {
@@ -263,9 +271,9 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
                         if let Some(v) = values.get(name) {
                             object.values.get_or_insert_with(HashMap::new).insert(name.clone(), TimedValue { value: v.clone(), timestamp });
                             let fact = self.values.get(class_name).and_then(|objs| objs.get(object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for dynamic property {} of object {} of class {} not found", name, object_id, class_name)))?;
-                            let fm = self.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
-                            let fm = update_prop(&self.env, fm, prop, v.clone(), Some(timestamp))?;
-                            self.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                            let fm = env_lock.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
+                            let fm = update_prop(&env_lock, fm, prop, v.clone(), Some(timestamp))?;
+                            env_lock.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
                         }
                     }
                 }
@@ -289,14 +297,16 @@ impl crate::kb::KnowledgeBase for CLIPSKnowledgeBase {
         if self.rules.contains_key(&rule_name) {
             return Err(KnowledgeBaseError::RuleAlreadyExists(rule_name.clone()));
         }
-        self.env.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
+        let mut env_lock: std::sync::MutexGuard<'_, Environment> = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to acquire lock on CLIPS environment: {}", e)))?;
+        env_lock.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
 
         self.rules.insert(rule_name.clone(), rule);
         Ok(())
     }
 
     fn run(&mut self) -> Result<(), KnowledgeBaseError> {
-        self.env.run(-1);
+        let mut env_lock: std::sync::MutexGuard<'_, Environment> = self.env.lock().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to acquire lock on CLIPS environment: {}", e)))?;
+        env_lock.run(-1);
         Ok(())
     }
 

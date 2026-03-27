@@ -3,11 +3,7 @@ use crate::{
     kb::{KnowledgeBase, KnowledgeBaseError, setup_kb},
     model::{CoCoError, CoCoEvent},
 };
-use std::{
-    fs,
-    path::Path,
-    sync::{Arc, Mutex},
-};
+use std::{fs, path::Path, sync::Arc};
 use tracing::{error, info, trace};
 
 pub mod db;
@@ -16,27 +12,27 @@ pub mod model;
 #[cfg(feature = "server")]
 pub mod server;
 
-pub type Callback = Box<dyn Fn(CoCoEvent) + Send + Sync + 'static>;
+pub type Callback = Arc<dyn Fn(CoCoEvent) + Send + Sync + 'static>;
 
 pub struct CoCo<KB: KnowledgeBase, DB: Database + 'static> {
     kb: KB,
     db: Arc<DB>,
-    callback: Arc<Mutex<Option<Callback>>>,
+    callback: Option<Callback>,
 }
 
 impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
-    pub fn new(kb: KB, db: Arc<DB>) -> Self {
-        let callback = Arc::new(Mutex::new(None));
-        let coco = Self { kb, db: db.clone(), callback: callback.clone() };
+    pub async fn new(kb: KB, db: Arc<DB>) -> Self {
+        let mut coco = Self { kb, db: db.clone(), callback: None };
 
+        let cb_callback = coco.callback.clone();
         coco.kb.set_callback(move |query| match query {
             kb::KnowledgeBaseEvent::AddedClass(object_id, class) => {
                 let db = db.clone();
-                let callback = callback.clone();
+                let cb_callback = cb_callback.clone();
                 tokio::spawn(async move {
                     match db.add_class(&object_id, &class).await {
                         Ok(_) => {
-                            if let Some(cb) = callback.lock().unwrap().as_ref() {
+                            if let Some(cb) = cb_callback.as_ref() {
                                 cb(CoCoEvent::AddedClass(object_id.clone(), class.clone()));
                             }
                         }
@@ -46,11 +42,11 @@ impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
             }
             kb::KnowledgeBaseEvent::UpdatedProperties(object_id, properties) => {
                 let db = db.clone();
-                let callback = callback.clone();
+                let cb_callback = cb_callback.clone();
                 tokio::spawn(async move {
                     match db.set_properties(&object_id, &properties).await {
                         Ok(_) => {
-                            if let Some(cb) = callback.lock().unwrap().as_ref() {
+                            if let Some(cb) = cb_callback.as_ref() {
                                 cb(CoCoEvent::UpdatedProperties(object_id.clone(), properties.clone()));
                             }
                         }
@@ -60,11 +56,11 @@ impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
             }
             kb::KnowledgeBaseEvent::AddedValues(object_id, values, date_time) => {
                 let db = db.clone();
-                let callback = callback.clone();
+                let cb_callback = cb_callback.clone();
                 tokio::spawn(async move {
                     match db.add_data(&object_id, &values, &date_time).await {
                         Ok(_) => {
-                            if let Some(cb) = callback.lock().unwrap().as_ref() {
+                            if let Some(cb) = cb_callback.as_ref() {
                                 cb(CoCoEvent::AddedValues(object_id.clone(), values.clone(), date_time));
                             }
                         }
@@ -73,13 +69,44 @@ impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
                 });
             }
         });
+
+        let classes = coco.db.get_classes().await.unwrap_or_else(|e| {
+            error!("Error fetching classes from database: {:?}", e);
+            vec![]
+        });
+        for class in classes {
+            coco.kb.create_class(class).unwrap_or_else(|e| {
+                error!("Error creating class in knowledge base: {:?}", e);
+            });
+        }
+
+        let objects = coco.db.get_objects().await.unwrap_or_else(|e| {
+            error!("Error fetching objects from database: {:?}", e);
+            vec![]
+        });
+        for object in objects {
+            coco.kb.create_object(object).unwrap_or_else(|e| {
+                error!("Error creating object in knowledge base: {:?}", e);
+            });
+        }
+
+        let rules = coco.db.get_rules().await.unwrap_or_else(|e| {
+            error!("Error fetching rules from database: {:?}", e);
+            vec![]
+        });
+        for rule in rules {
+            coco.kb.create_rule(rule).unwrap_or_else(|e| {
+                error!("Error creating rule in knowledge base: {:?}", e);
+            });
+        }
+
         coco
     }
 
     pub async fn default() -> Result<CoCo<impl KnowledgeBase, impl Database>, Box<dyn std::error::Error>> {
         let kb = setup_kb().map_err(|e| format!("Failed to set up knowledge base: {}", e))?;
         let db = setup_db().await.map_err(|e| format!("Failed to set up database: {}", e))?;
-        Ok(CoCo::new(kb, Arc::new(db)))
+        Ok(CoCo::new(kb, Arc::new(db)).await)
     }
 
     pub async fn load_classes<P: AsRef<Path>>(&mut self, path: P) -> Result<(), CoCoError> {
@@ -92,9 +119,11 @@ impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
                 let content = fs::read_to_string(&path).map_err(|e| CoCoError::FileReadError(e.to_string()))?;
                 let class: model::Class = serde_json::from_str(&content).map_err(|e| CoCoError::JsonParseError(e.to_string()))?;
                 if self.kb.get_class(&class.name).is_none() {
-                    info!("Creating class '{}' with parents {:?}, static properties {:?}, and dynamic properties {:?}", class.name, class.parents, class.static_properties, class.dynamic_properties);
+                    let class_name = class.name.clone();
+                    info!("Creating class '{}' with parents {:?}, static properties {:?}, and dynamic properties {:?}", class_name, class.parents, class.static_properties, class.dynamic_properties);
                     self.db.create_class(&class).await.map_err(map_db_error)?;
                     self.kb.create_class(class).map_err(map_kb_error)?;
+                    self.notify(CoCoEvent::ClassCreated(class_name));
                 } else {
                     trace!("Class '{}' already exists, skipping '{}'", class.name, path.display());
                 }
@@ -103,8 +132,14 @@ impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
         Ok(())
     }
 
+    fn notify(&self, event: CoCoEvent) {
+        if let Some(cb) = self.callback.as_ref() {
+            cb(event);
+        }
+    }
+
     pub fn set_callback(&mut self, callback: Callback) {
-        self.callback.lock().unwrap().replace(callback);
+        self.callback.replace(callback);
     }
 }
 

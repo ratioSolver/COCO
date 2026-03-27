@@ -1,6 +1,5 @@
 use crate::{
     kb::{KnowledgeBase, KnowledgeBaseError, KnowledgeBaseEvent},
-    llm,
     model::{Class, Object, Property, Rule, TimedValue, Value},
 };
 use chrono::{DateTime, Utc};

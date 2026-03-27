@@ -27,17 +27,15 @@ pub type Callback = Arc<dyn Fn(CoCoEvent) + Send + Sync + 'static>;
 pub struct CoCo<KB: KnowledgeBase> {
     kb: KB,
     db: Arc<dyn Database>,
-    llm: Option<Arc<dyn LLM>>,
-    fcm: Option<Arc<dyn Messaging>>,
     callback: Option<Callback>,
 }
 
 impl<KB: KnowledgeBase> CoCo<KB> {
     pub async fn new(kb: KB, db: Arc<dyn Database>, llm: Option<Arc<dyn LLM>>, fcm: Option<Arc<dyn Messaging>>) -> Self {
-        let mut coco = Self { kb, db: db.clone(), llm: llm.clone(), fcm, callback: None };
+        let mut coco = Self { kb, db: db.clone(), callback: None };
 
         let cb_callback = coco.callback.clone();
-        let cb_llm = coco.llm.clone();
+        let cb_llm = llm.clone();
         coco.kb.set_callback(move |query| match query {
             kb::KnowledgeBaseEvent::AddedClass(object_id, class) => {
                 let db = db.clone();
@@ -93,7 +91,18 @@ impl<KB: KnowledgeBase> CoCo<KB> {
                     }
                 });
             }
-            _ => {}
+            kb::KnowledgeBaseEvent::Message(object_id, title, message) => {
+                let fcm = fcm.clone();
+                tokio::spawn(async move {
+                    if let Some(fcm) = fcm.as_ref() {
+                        if fcm.send_message(vec![object_id], &title, &message).await.is_err() {
+                            error!("Failed to send message");
+                        }
+                    } else {
+                        error!("No messaging service configured");
+                    }
+                });
+            }
         });
 
         coco.kb.set_llm_callback(move |prompt| {

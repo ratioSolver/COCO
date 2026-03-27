@@ -117,6 +117,47 @@ impl ActorState {
             })
             .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
 
+        let set_properties_callback = kb.callback.clone();
+        kb.env
+            .add_udf("set-properties", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD)], move |_env, ctx| {
+                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for set-properties UDF");
+                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in set-properties UDF") };
+                let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get properties argument for set-properties UDF");
+                let properties: HashMap<String, Value> = if let ClipsValue::Multifield(mf) = args {
+                    mf.into_iter()
+                        .map(|v| {
+                            if let ClipsValue::Symbol(s) = v {
+                                let mut parts = s.splitn(2, '=');
+                                let name = parts.next().expect("Failed to parse property name in set-properties UDF").to_owned();
+                                let value_str = parts.next().expect("Failed to parse property value in set-properties UDF");
+                                let value = if let Ok(i) = value_str.parse::<i64>() {
+                                    Value::Int(i)
+                                } else if let Ok(f) = value_str.parse::<f64>() {
+                                    Value::Float(f)
+                                } else {
+                                    match value_str {
+                                        "TRUE" => Value::Bool(true),
+                                        "FALSE" => Value::Bool(false),
+                                        "nil" => Value::Null,
+                                        other => Value::Symbol(other.to_owned()),
+                                    }
+                                };
+                                (name, value)
+                            } else {
+                                panic!("Expected symbol in properties multifield for set-properties UDF");
+                            }
+                        })
+                        .collect()
+                } else {
+                    panic!("Expected multifield for properties argument in set-properties UDF");
+                };
+                if let Some(cb) = set_properties_callback.as_ref() {
+                    cb(KnowledgeBaseEvent::UpdatedProperties(object_id.clone(), properties.clone()));
+                }
+                ClipsValue::Void()
+            })
+            .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
+
         let async_prompt_callback = kb.callback.clone();
         kb.env
             .add_udf("async-prompt", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {

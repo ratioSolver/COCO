@@ -58,6 +58,8 @@ pub trait KnowledgeBase: Send + Sync {
     fn get_rule(&self, name: &str) -> Option<&Rule>;
     fn create_rule(&mut self, rule: Rule) -> Result<(), KnowledgeBaseError>;
 
+    fn set_llm_result(&mut self, object_id: &str, result: &str) -> Result<(), KnowledgeBaseError>;
+
     fn run(&mut self) -> Result<(), KnowledgeBaseError>;
 
     fn set_callback(&self, cb: impl Fn(KnowledgeBaseEvent) + Send + Sync + 'static);

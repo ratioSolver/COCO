@@ -21,6 +21,7 @@ enum Command {
     SetProperties(String, HashMap<String, Value>, Reply<()>),
     AddValues(String, HashMap<String, Value>, DateTime<Utc>, Reply<()>),
     CreateRule(Rule, Reply<()>),
+    SetLLMResult(String, String, Reply<()>),
     Run(Reply<()>),
     SetCallback(Callback),
 }
@@ -31,6 +32,7 @@ struct ActorState {
     rules: HashMap<String, Rule>,
     instances: HashMap<String, HashMap<String, Fact>>,               // class name -> object id -> fact
     values: HashMap<String, HashMap<String, HashMap<String, Fact>>>, // class name -> object id -> property name -> fact
+    llm_results: HashMap<String, (String, Fact)>,                    // object id -> (result, fact)
     env: Environment,
     callback: Option<Callback>,
 }
@@ -43,9 +45,13 @@ impl ActorState {
             rules: HashMap::new(),
             instances: HashMap::new(),
             values: HashMap::new(),
+            llm_results: HashMap::new(),
             env: Environment::new().map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to create CLIPS environment: {}", e)))?,
             callback: None,
         };
+
+        kb.env.build("(deftemplate llm-result (slot item_id (type SYMBOL)) (slot result (type STRING)))").map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to create llm-result template in CLIPS: {}", e)))?;
+
         let add_data_callback = kb.callback.clone();
         kb.env
             .add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], move |_env, ctx| {
@@ -328,6 +334,24 @@ impl ActorState {
         Ok(())
     }
 
+    fn set_llm_result(&mut self, object_id: &str, result: &str) -> Result<(), KnowledgeBaseError> {
+        if !self.objects.contains_key(object_id) {
+            return Err(KnowledgeBaseError::ObjectNotFound(object_id.to_owned()));
+        }
+        if let Some((_, fact)) = self.llm_results.get(object_id) {
+            let fm = self.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for LLM result of object {}: {}", object_id, e)))?;
+            let fm = fm.put_string("result", result).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set result slot for LLM result of object {}: {}", object_id, e)))?;
+            self.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for LLM result of object {}: {}", object_id, e)))?;
+        } else {
+            let fb = self.env.fact_builder("llm-result").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for LLM result of object {}: {}", object_id, e)))?;
+            let fb = fb.put_symbol("item_id", object_id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set item_id slot for LLM result of object {}: {}", object_id, e)))?;
+            let fb = fb.put_string("result", result).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set result slot for LLM result of object {}: {}", object_id, e)))?;
+            let fact = self.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for LLM result of object {}: {}", object_id, e)))?;
+            self.llm_results.insert(object_id.to_owned(), (result.to_owned(), fact));
+        };
+        Ok(())
+    }
+
     fn run(&mut self) -> Result<(), KnowledgeBaseError> {
         self.env.run(-1);
         Ok(())
@@ -366,6 +390,9 @@ impl CLIPSKnowledgeBase {
                     }
                     Command::CreateRule(rule, reply) => {
                         let _ = reply.send(state.create_rule(rule));
+                    }
+                    Command::SetLLMResult(object_id, result, reply) => {
+                        let _ = reply.send(state.set_llm_result(&object_id, &result));
                     }
                     Command::Run(reply) => {
                         let _ = reply.send(state.run());
@@ -454,6 +481,11 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         let rule_name = rule.name.clone();
         self.call(|reply| Command::CreateRule(rule.clone(), reply))?;
         self.rules.insert(rule_name, rule);
+        Ok(())
+    }
+
+    fn set_llm_result(&mut self, object_id: &str, result: &str) -> Result<(), KnowledgeBaseError> {
+        self.call(|reply| Command::SetLLMResult(object_id.to_owned(), result.to_owned(), reply))?;
         Ok(())
     }
 

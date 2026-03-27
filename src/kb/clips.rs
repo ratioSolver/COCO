@@ -29,27 +29,20 @@ struct ActorState {
     classes: HashMap<String, Class>,
     objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
-    env: Option<Environment>,
+    env: Environment,
     callback: Option<Callback>,
 }
 
 impl ActorState {
-    fn new() -> Self {
-        Self {
+    fn new() -> Result<Self, KnowledgeBaseError> {
+        let kb = ActorState {
             classes: HashMap::new(),
             objects: HashMap::new(),
             rules: HashMap::new(),
-            env: None,
+            env: Environment::new().map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to create CLIPS environment: {}", e)))?,
             callback: None,
-        }
-    }
-
-    fn env_mut(&mut self) -> Result<&mut Environment, KnowledgeBaseError> {
-        if self.env.is_none() {
-            let env = Environment::new().map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to create CLIPS environment: {}", e)))?;
-            self.env = Some(env);
-        }
-        self.env.as_mut().ok_or_else(|| KnowledgeBaseError::CreationError("CLIPS environment not initialized".to_owned()))
+        };
+        Ok(kb)
     }
 
     fn create_class(&mut self, class: Class) -> Result<(), KnowledgeBaseError> {
@@ -57,7 +50,7 @@ impl ActorState {
         if self.classes.contains_key(&class_name) {
             return Err(KnowledgeBaseError::ClassAlreadyExists(class_name));
         }
-        self.env_mut()?.build(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create class in CLIPS: {}", e)))?;
+        self.env.build(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create class in CLIPS: {}", e)))?;
         self.classes.insert(class_name, class);
         Ok(())
     }
@@ -117,13 +110,13 @@ impl ActorState {
         if self.rules.contains_key(&rule_name) {
             return Err(KnowledgeBaseError::RuleAlreadyExists(rule_name));
         }
-        self.env_mut()?.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
+        self.env.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
         self.rules.insert(rule.name.clone(), rule);
         Ok(())
     }
 
     fn run(&mut self) -> Result<(), KnowledgeBaseError> {
-        self.env_mut()?.run(-1);
+        self.env.run(-1);
         Ok(())
     }
 }
@@ -140,7 +133,7 @@ impl CLIPSKnowledgeBase {
     pub fn new() -> Result<Self, KnowledgeBaseError> {
         let (tx, rx) = mpsc::channel::<Command>();
         thread::spawn(move || {
-            let mut state = ActorState::new();
+            let mut state = ActorState::new().unwrap_or_else(|e| panic!("Failed to initialize CLIPS actor state: {}", e));
             while let Ok(command) = rx.recv() {
                 match command {
                     Command::CreateClass(class, reply) => {

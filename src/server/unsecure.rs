@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     CoCo,
@@ -7,7 +7,10 @@ use crate::{
 };
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{
+        Path, Query, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     http::StatusCode,
     response::IntoResponse,
     routing::get,
@@ -23,7 +26,7 @@ type OpenApiValue = Value;
 type OpenApiObject = Object;
 
 pub trait CoCoState<KB: KnowledgeBase> {
-    fn coco(&self) -> RwLock<CoCo<KB>>;
+    fn coco(&self) -> Arc<RwLock<CoCo<KB>>>;
 }
 
 pub fn build_coco_router<S, KB>() -> Router<S>
@@ -32,6 +35,7 @@ where
     KB: KnowledgeBase + 'static,
 {
     Router::new()
+        .route("/ws", get(ws_handler::<S, KB>))
         .route("/classes", get(get_classes::<S, KB>).post(create_class::<S, KB>))
         .route("/classes/{name}", get(get_class::<S, KB>))
         .route("/objects", get(get_objects::<S, KB>).post(create_object::<S, KB>))
@@ -397,6 +401,31 @@ where
 
 #[utoipa::path(
         get,
+        path = "/ws",
+        tag = "System",
+        summary = "WebSocket connection",
+        description = "Establish a WebSocket connection for real-time updates.",
+        responses(
+            (status = 101, description = "WebSocket connection established"),
+        )
+    )]
+async fn ws_handler<S, KB>(ws: WebSocketUpgrade, State(state): State<S>) -> impl IntoResponse
+where
+    S: CoCoState<KB> + Clone + Send + Sync + 'static,
+    KB: KnowledgeBase,
+{
+    ws.on_upgrade(move |socket| async move { handle_socket::<S, KB>(socket, state.coco().clone()).await })
+}
+
+async fn handle_socket<S, KB>(mut socket: WebSocket, coco: Arc<RwLock<CoCo<KB>>>)
+where
+    S: CoCoState<KB>,
+    KB: KnowledgeBase,
+{
+}
+
+#[utoipa::path(
+        get,
         path = "/openapi",
         tag = "System",
         summary = "Get OpenAPI spec",
@@ -414,7 +443,7 @@ async fn openapi() -> impl IntoResponse {
     servers(
         (url = "/", description = "Base URL for CoCo API")
     ),
-    paths(get_classes, openapi),
+    paths(get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     components(
         schemas(Class, Rule, Property, OpenApiObject, OpenApiValue)
     ),

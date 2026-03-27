@@ -18,7 +18,7 @@ impl Ollama {
 
 #[async_trait]
 impl LLM for Ollama {
-    async fn prompt(&self, prompt: &str) -> Result<String, LLMError> {
+    async fn async_prompt(&self, prompt: &str) -> Result<(), LLMError> {
         let url = format!("http://{}:{}/api/chat", self.host, self.port);
         let body = serde_json::json!({
             "model": self.model,
@@ -47,8 +47,25 @@ impl LLM for Ollama {
                 cb(content);
             }
         });
+        Ok(())
+    }
 
-        Ok("request queued".to_owned())
+    async fn prompt(&self, prompt: &str) -> Result<String, LLMError> {
+        let url = format!("http://{}:{}/api/chat", self.host, self.port);
+        let body = serde_json::json!({
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "stream": false
+        });
+
+        let response = self.client.post(&url).json(&body).send().await.map_err(|e| LLMError::ConnectionError(e.to_string()))?;
+        let json: serde_json::Value = response.json().await.map_err(|e| LLMError::GenerationError(e.to_string()))?;
+        json["message"]["content"].as_str().map(|s| s.to_owned()).ok_or_else(|| LLMError::GenerationError("Invalid response format".to_string()))
     }
 
     fn set_callback(&mut self, cb: Callback) {

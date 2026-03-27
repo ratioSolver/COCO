@@ -27,13 +27,13 @@ pub type Callback = Arc<dyn Fn(CoCoEvent) + Send + Sync + 'static>;
 pub struct CoCo<KB: KnowledgeBase> {
     kb: KB,
     db: Arc<dyn Database>,
-    llm: Option<Box<dyn LLM>>,
-    fcm: Option<Box<dyn Messaging>>,
+    llm: Option<Arc<dyn LLM>>,
+    fcm: Option<Arc<dyn Messaging>>,
     callback: Option<Callback>,
 }
 
 impl<KB: KnowledgeBase> CoCo<KB> {
-    pub async fn new(kb: KB, db: Arc<dyn Database>, llm: Option<Box<dyn LLM>>, fcm: Option<Box<dyn Messaging>>) -> Self {
+    pub async fn new(kb: KB, db: Arc<dyn Database>, llm: Option<Arc<dyn LLM>>, fcm: Option<Arc<dyn Messaging>>) -> Self {
         let mut coco = Self { kb, db: db.clone(), llm, fcm, callback: None };
 
         let cb_callback = coco.callback.clone();

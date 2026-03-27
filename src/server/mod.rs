@@ -2,6 +2,8 @@ use crate::{CoCo, kb::KnowledgeBase};
 #[cfg(not(feature = "secure"))]
 use std::sync::Arc;
 use tokio::sync::RwLock;
+#[cfg(not(feature = "secure"))]
+use tracing::info;
 
 #[cfg(not(feature = "secure"))]
 pub mod unsecure;
@@ -30,7 +32,7 @@ where
     let app = app.with_state(state).nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
 
     let port = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3000);
-    println!("Starting CoCo server on port {}", port);
+    info!("Starting CoCo server on port {}", port);
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

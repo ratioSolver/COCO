@@ -74,5 +74,5 @@ async fn setup_mongodb() -> Result<Arc<impl Database>, DatabaseError> {
     let host = std::env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_owned());
     let port = std::env::var("DB_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(27017);
     let uri = format!("mongodb://{}:{}", host, port);
-    Ok(Arc::new(MongoDB::new(&uri, &name).await?))
+    Ok(Arc::new(MongoDB::new(&name, &uri).await?))
 }

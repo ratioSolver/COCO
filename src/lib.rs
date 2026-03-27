@@ -14,14 +14,14 @@ pub mod server;
 
 pub type Callback = Arc<dyn Fn(CoCoEvent) + Send + Sync + 'static>;
 
-pub struct CoCo<KB: KnowledgeBase, DB: Database + 'static> {
+pub struct CoCo<KB: KnowledgeBase> {
     kb: KB,
-    db: Arc<DB>,
+    db: Arc<dyn Database>,
     callback: Option<Callback>,
 }
 
-impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
-    pub async fn new(kb: KB, db: Arc<DB>) -> Self {
+impl<KB: KnowledgeBase> CoCo<KB> {
+    pub async fn new(kb: KB, db: Arc<dyn Database>) -> Self {
         let mut coco = Self { kb, db: db.clone(), callback: None };
 
         let cb_callback = coco.callback.clone();
@@ -70,6 +70,7 @@ impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
             }
         });
 
+        info!("Loading classes, objects, and rules from database into knowledge base");
         let classes = coco.db.get_classes().await.unwrap_or_else(|e| {
             error!("Error fetching classes from database: {:?}", e);
             vec![]
@@ -103,7 +104,7 @@ impl<KB: KnowledgeBase, DB: Database + 'static> CoCo<KB, DB> {
         coco
     }
 
-    pub async fn default() -> Result<CoCo<impl KnowledgeBase, impl Database>, Box<dyn std::error::Error>> {
+    pub async fn default() -> Result<CoCo<impl KnowledgeBase>, Box<dyn std::error::Error>> {
         let kb = setup_kb().map_err(|e| format!("Failed to set up knowledge base: {}", e))?;
         let db = setup_db().await.map_err(|e| format!("Failed to set up database: {}", e))?;
         Ok(CoCo::new(kb, Arc::new(db)).await)

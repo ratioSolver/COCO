@@ -15,14 +15,13 @@ name = "coco"
 name = "coco-reasoner"
 
 [features]
-default = ["mongodb", "clips", "server", "secure", "ollama", "fcm"]
+default = ["mongodb", "clips", "server"]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
 ollama = ["dep:reqwest"]
 server = ["dep:axum", "dep:tower-http", "dep:utoipa"]
 secure = ["server", "dep:jsonwebtoken", "dep:argon2"]
 fcm = ["dep:reqwest", "dep:yup-oauth2"]
-mqtt = ["dep:rumqttc"]
 chronoxide = ["dep:chronoxide"]
 
 [dependencies]
@@ -44,6 +43,5 @@ utoipa = { version = "5.4.0", features = ["chrono"], optional = true }
 serde_json = "1.0.149"
 reqwest = { version = "0.13.2", features = ["json"], optional = true }
 yup-oauth2 = { version = "12.1.2", optional = true }
-rumqttc = { version = "0.25.1", optional = true }
 clips = { git = "https://github.com/ratioSolver/rust-clips", optional = true }
 chronoxide = { git = "https://github.com/ratioSolver/Chronoxide", optional = true }

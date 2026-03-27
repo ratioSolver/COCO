@@ -57,7 +57,7 @@ pub trait KnowledgeBase: Send + Sync {
 
     fn run(&mut self) -> Result<(), KnowledgeBaseError>;
 
-    fn set_callback(&self, cb: impl Fn(KnowledgeBaseEvent) + 'static);
+    fn set_callback(&self, cb: impl Fn(KnowledgeBaseEvent) + Send + Sync + 'static);
 }
 
 pub fn setup_kb() -> Result<impl KnowledgeBase, KnowledgeBaseError> {

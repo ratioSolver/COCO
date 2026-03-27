@@ -261,7 +261,7 @@ impl fmt::Display for Rule {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum CoCoEvent {
     ClassCreated(String),                                       // class_name
     ObjectCreated(String),                                      // object_id

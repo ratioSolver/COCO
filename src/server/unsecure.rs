@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::{
     CoCo,
     kb::KnowledgeBase,
-    model::{Class, CoCoError, Object, Property, Rule, TimedValue, Value},
+    model::{Class, CoCoError, CoCoEvent, Object, Property, Rule, TimedValue, Value},
 };
 use axum::{
     Json, Router,
@@ -17,7 +17,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, broadcast};
 pub use tower_http;
 use tracing::trace;
 use utoipa::{IntoParams, OpenApi};
@@ -27,6 +27,7 @@ type OpenApiObject = Object;
 
 pub trait CoCoState<KB: KnowledgeBase> {
     fn coco(&self) -> Arc<RwLock<CoCo<KB>>>;
+    fn event_tx(&self) -> broadcast::Sender<CoCoEvent>;
 }
 
 pub fn build_coco_router<S, KB>() -> Router<S>
@@ -414,14 +415,121 @@ where
     S: CoCoState<KB> + Clone + Send + Sync + 'static,
     KB: KnowledgeBase,
 {
-    ws.on_upgrade(move |socket| async move { handle_socket::<S, KB>(socket, state.coco().clone()).await })
+    ws.on_upgrade(move |socket| async move { handle_socket::<S, KB>(socket, state).await })
 }
 
-async fn handle_socket<S, KB>(mut socket: WebSocket, coco: Arc<RwLock<CoCo<KB>>>)
+async fn handle_socket<S, KB>(mut socket: WebSocket, state: S)
 where
     S: CoCoState<KB>,
     KB: KnowledgeBase,
 {
+    let classes_map: std::collections::HashMap<String, serde_json::Value> = state
+        .coco()
+        .read()
+        .await
+        .get_classes()
+        .await
+        .into_iter()
+        .map(|mut c| {
+            let name = std::mem::take(&mut c.name);
+            let mut v = serde_json::to_value(&c).unwrap();
+            v.as_object_mut().unwrap().remove("name");
+            (name, v)
+        })
+        .collect();
+    let objects_map: std::collections::HashMap<String, serde_json::Value> = state
+        .coco()
+        .read()
+        .await
+        .get_objects()
+        .await
+        .into_iter()
+        .map(|mut o| {
+            let id = o.id.take().unwrap();
+            let mut v = serde_json::to_value(&o).unwrap();
+            v.as_object_mut().unwrap().remove("id");
+            (id, v)
+        })
+        .collect();
+    let rules_map: std::collections::HashMap<String, serde_json::Value> = state
+        .coco()
+        .read()
+        .await
+        .get_rules()
+        .await
+        .into_iter()
+        .map(|mut r| {
+            let name = std::mem::take(&mut r.name);
+            let mut v = serde_json::to_value(&r).unwrap();
+            v.as_object_mut().unwrap().remove("name");
+            (name, v)
+        })
+        .collect();
+    let init_msg = serde_json::json!({
+        "msg_type": "coco",
+        "classes": classes_map,
+        "objects": objects_map,
+        "rules": rules_map
+    });
+    socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.ok();
+
+    let mut rx = state.event_tx().subscribe();
+    while let Ok(msg) = rx.recv().await {
+        let send_result = match msg {
+            CoCoEvent::ClassCreated(class_name) => {
+                trace!("Received event: ClassCreated for class '{}'", class_name);
+                let mut update_msg = serde_json::to_value(state.coco().read().await.get_class(&class_name).await).unwrap();
+                update_msg["msg_type"] = serde_json::json!("class_created");
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            CoCoEvent::ObjectCreated(object_id) => {
+                trace!("Received event: ObjectCreated for object '{}'", object_id);
+                let mut update_msg = serde_json::to_value(state.coco().read().await.get_object(&object_id).await).unwrap();
+                update_msg["msg_type"] = serde_json::json!("object_created");
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            CoCoEvent::AddedClass(object_id, class_name) => {
+                trace!("Received event: AddedClass - object '{}', class '{}'", object_id, class_name);
+                let update_msg = serde_json::json!({
+                    "msg_type": "added_class",
+                    "object_id": object_id,
+                    "class_name": class_name
+                });
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            CoCoEvent::UpdatedProperties(object_id, properties) => {
+                trace!("Received event: UpdatedProperties for object '{}'", object_id);
+                let update_msg = serde_json::json!({
+                    "msg_type": "updated_properties",
+                    "object_id": object_id,
+                    "properties": properties
+                });
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            CoCoEvent::AddedValues(object_id, values, date_time) => {
+                trace!("Received event: AddedValues for object '{}'", object_id);
+                let update_msg = serde_json::json!({
+                    "msg_type": "added_values",
+                    "object_id": object_id,
+                    "values": values,
+                    "date_time": date_time
+                });
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            CoCoEvent::RuleCreated(rule) => {
+                trace!("Received event: RuleCreated for rule '{}'", rule);
+                let mut update_msg = serde_json::to_value(state.coco().read().await.get_rule(&rule).await).unwrap();
+                update_msg["msg_type"] = serde_json::json!("rule_created");
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            _ => Ok(()),
+        };
+
+        // If sending fails (e.g., client disconnected), break out of the loop
+        if send_result.is_err() {
+            break;
+        }
+    }
 }
 
 #[utoipa::path(

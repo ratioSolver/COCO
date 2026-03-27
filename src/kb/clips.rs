@@ -3,7 +3,7 @@ use crate::{
     model::{Class, Object, Rule, TimedValue, Value},
 };
 use chrono::{DateTime, Utc};
-use clips::Environment;
+use clips::{ClipsValue, Environment, Type};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock, mpsc},
@@ -35,13 +35,77 @@ struct ActorState {
 
 impl ActorState {
     fn new() -> Result<Self, KnowledgeBaseError> {
-        let kb = ActorState {
+        let mut kb = ActorState {
             classes: HashMap::new(),
             objects: HashMap::new(),
             rules: HashMap::new(),
             env: Environment::new().map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to create CLIPS environment: {}", e)))?,
             callback: None,
         };
+        let add_data_callback = kb.callback.clone();
+        kb.env
+            .add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], move |_env, ctx| {
+                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-data UDF");
+                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-data UDF") };
+                let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get args argument for add-data UDF");
+                let args: Vec<String> = if let ClipsValue::Multifield(mf) = args {
+                    mf.into_iter()
+                        .map(|v| match v {
+                            ClipsValue::Symbol(s) => s,
+                            _ => panic!("Expected symbol, integer, or float in args multifield for add-data UDF"),
+                        })
+                        .collect()
+                } else {
+                    panic!("Expected multifield for args argument in add-data UDF");
+                };
+                let vals = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get values argument for add-data UDF");
+                let vals: Vec<Value> = if let ClipsValue::Multifield(mf) = vals {
+                    mf.into_iter()
+                        .map(|v| match v {
+                            ClipsValue::Integer(i) => Value::Int(i),
+                            ClipsValue::Float(f) => Value::Float(f),
+                            ClipsValue::Symbol(s) => match s.as_str() {
+                                "TRUE" => Value::Bool(true),
+                                "FALSE" => Value::Bool(false),
+                                "nil" => Value::Null,
+                                other => Value::Symbol(other.to_owned()),
+                            },
+                            ClipsValue::String(s) => Value::String(s),
+                            _ => panic!("Expected symbol, integer, or float in values multifield for add-data UDF"),
+                        })
+                        .collect()
+                } else {
+                    panic!("Expected multifield for values argument in add-data UDF");
+                };
+                let date_time = if ctx.has_next_argument() { Some(ctx.get_next_argument(Type(Type::INTEGER)).expect("Failed to get date_time argument for add-data UDF")) } else { None };
+                let date_time = date_time
+                    .map(|dt| {
+                        let dt = if let ClipsValue::Integer(i) = dt { i } else { panic!("Expected integer for date_time argument in add-data UDF") };
+                        DateTime::<Utc>::from_timestamp(dt, 0).expect("Failed to convert date_time argument in add-data UDF")
+                    })
+                    .unwrap_or(Utc::now());
+                let values = args.into_iter().zip(vals).collect::<HashMap<_, _>>();
+                if let Some(cb) = add_data_callback.as_ref() {
+                    cb(KnowledgeBaseEvent::AddedValues(object_id.clone(), values.clone(), date_time));
+                }
+
+                ClipsValue::Void()
+            })
+            .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
+
+        let add_class_callback = kb.callback.clone();
+        kb.env
+            .add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], move |_env, ctx| {
+                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-class UDF");
+                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-class UDF") };
+                let class_name = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get class name argument for add-class UDF");
+                let class_name = if let ClipsValue::Symbol(s) = class_name { s } else { panic!("Expected symbol for class name argument in add-class UDF") };
+                if let Some(cb) = add_class_callback.as_ref() {
+                    cb(KnowledgeBaseEvent::AddedClass(object_id.clone(), class_name.clone()));
+                }
+                ClipsValue::Void()
+            })
+            .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
         Ok(kb)
     }
 

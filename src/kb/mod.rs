@@ -38,7 +38,6 @@ pub enum KnowledgeBaseEvent {
     UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
     AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
     LLMPrompt(String, String),                                  // (object_id, prompt)
-    AsyncLLMPrompt(String, String),                             // (object_id, prompt)
     Message(String, String, String),                            // (object_id, title, message)
 }
 
@@ -62,7 +61,8 @@ pub trait KnowledgeBase: Send + Sync {
 
     fn run(&mut self) -> Result<(), KnowledgeBaseError>;
 
-    fn set_callback(&self, cb: impl Fn(KnowledgeBaseEvent) + Send + Sync + 'static);
+    fn set_callback(&mut self, cb: impl Fn(KnowledgeBaseEvent) + Send + Sync + 'static);
+    fn set_llm_callback(&mut self, cb: impl Fn(String) -> String + Send + Sync + 'static);
 }
 
 pub fn setup_kb() -> Result<impl KnowledgeBase, KnowledgeBaseError> {

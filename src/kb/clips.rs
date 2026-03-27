@@ -1,5 +1,6 @@
 use crate::{
     kb::{KnowledgeBase, KnowledgeBaseError, KnowledgeBaseEvent},
+    llm,
     model::{Class, Object, Property, Rule, TimedValue, Value},
 };
 use chrono::{DateTime, Utc};
@@ -11,6 +12,7 @@ use std::{
 };
 
 type Callback = Arc<dyn Fn(KnowledgeBaseEvent) + Send + Sync + 'static>;
+type LLMCallback = Arc<dyn Fn(String) -> String + Send + Sync + 'static>;
 
 type Reply<T> = mpsc::Sender<Result<T, KnowledgeBaseError>>;
 
@@ -24,6 +26,7 @@ enum Command {
     SetLLMResult(String, String, Reply<()>),
     Run(Reply<()>),
     SetCallback(Callback),
+    SetLLMCallback(LLMCallback),
 }
 
 struct ActorState {
@@ -35,6 +38,7 @@ struct ActorState {
     llm_results: HashMap<String, (String, Fact)>,                    // object id -> (result, fact)
     env: Environment,
     callback: Option<Callback>,
+    llm_callback: Option<LLMCallback>,
 }
 
 impl ActorState {
@@ -48,6 +52,7 @@ impl ActorState {
             llm_results: HashMap::new(),
             env: Environment::new().map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to create CLIPS environment: {}", e)))?,
             callback: None,
+            llm_callback: None,
         };
 
         kb.env.build("(deftemplate llm-result (slot item_id (type SYMBOL)) (slot result (type STRING)))").map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to create llm-result template in CLIPS: {}", e)))?;
@@ -166,23 +171,22 @@ impl ActorState {
                 let prompt = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get prompt argument for prompt UDF");
                 let prompt = if let ClipsValue::String(s) = prompt { s } else { panic!("Expected string for prompt argument in prompt UDF") };
                 if let Some(cb) = async_prompt_callback.as_ref() {
-                    cb(KnowledgeBaseEvent::AsyncLLMPrompt(object_id.clone(), prompt.clone()));
+                    cb(KnowledgeBaseEvent::LLMPrompt(object_id.clone(), prompt.clone()));
                 }
                 ClipsValue::Void()
             })
             .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
 
-        let prompt_callback = kb.callback.clone();
+        let llm_prompt_callback = kb.llm_callback.clone();
         kb.env
-            .add_udf("prompt", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
-                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for sync-prompt UDF");
-                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in sync-prompt UDF") };
+            .add_udf("prompt", Some(Type(Type::STRING)), 1, 1, vec![Type(Type::STRING)], move |_env, ctx| {
                 let prompt = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get prompt argument for sync-prompt UDF");
                 let prompt = if let ClipsValue::String(s) = prompt { s } else { panic!("Expected string for prompt argument in sync-prompt UDF") };
-                if let Some(cb) = prompt_callback.as_ref() {
-                    cb(KnowledgeBaseEvent::LLMPrompt(object_id.clone(), prompt.clone()));
+                if let Some(cb) = llm_prompt_callback.as_ref() {
+                    let result = cb(prompt.clone());
+                    return ClipsValue::String(result);
                 }
-                ClipsValue::Void()
+                ClipsValue::String("LLM callback not set".to_owned())
             })
             .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
 
@@ -404,6 +408,7 @@ pub struct CLIPSKnowledgeBase {
     objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
     callback: Arc<RwLock<Option<Callback>>>,
+    llm_callback: Arc<RwLock<Option<LLMCallback>>>,
     tx: mpsc::Sender<Command>,
 }
 
@@ -441,6 +446,9 @@ impl CLIPSKnowledgeBase {
                     Command::SetCallback(cb) => {
                         state.callback = Some(cb);
                     }
+                    Command::SetLLMCallback(cb) => {
+                        state.llm_callback = Some(cb);
+                    }
                 }
             }
         });
@@ -450,6 +458,7 @@ impl CLIPSKnowledgeBase {
             objects: HashMap::new(),
             rules: HashMap::new(),
             callback: Arc::new(RwLock::new(None)),
+            llm_callback: Arc::new(RwLock::new(None)),
             tx,
         })
     }
@@ -534,12 +543,20 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         self.call(Command::Run)
     }
 
-    fn set_callback(&self, cb: impl Fn(KnowledgeBaseEvent) + Send + Sync + 'static) {
+    fn set_callback(&mut self, cb: impl Fn(KnowledgeBaseEvent) + Send + Sync + 'static) {
         let callback: Callback = Arc::new(cb);
         if let Ok(mut guard) = self.callback.write() {
             *guard = Some(callback.clone());
         }
         let _ = self.tx.send(Command::SetCallback(callback));
+    }
+
+    fn set_llm_callback(&mut self, cb: impl Fn(String) -> String + Send + Sync + 'static) {
+        let callback: LLMCallback = Arc::new(cb);
+        if let Ok(mut guard) = self.llm_callback.write() {
+            *guard = Some(callback.clone());
+        }
+        let _ = self.tx.send(Command::SetLLMCallback(callback));
     }
 }
 

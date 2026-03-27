@@ -18,7 +18,7 @@ impl Ollama {
 
 #[async_trait]
 impl LLM for Ollama {
-    async fn async_prompt(&self, prompt: &str) -> Result<(), LLMError> {
+    async fn async_prompt(&self, object_id: &str, prompt: &str) -> Result<(), LLMError> {
         let url = format!("http://{}:{}/api/chat", self.host, self.port);
         let body = serde_json::json!({
             "model": self.model,
@@ -34,6 +34,7 @@ impl LLM for Ollama {
         let client = self.client.clone();
         let callback = self.callback.clone();
 
+        let object_id = object_id.to_owned();
         tokio::spawn(async move {
             let response_content = match client.post(&url).json(&body).send().await {
                 Ok(response) => match response.json::<serde_json::Value>().await {
@@ -44,7 +45,7 @@ impl LLM for Ollama {
             };
 
             if let (Some(cb), Some(content)) = (callback, response_content) {
-                cb(content);
+                cb(object_id, content);
             }
         });
         Ok(())

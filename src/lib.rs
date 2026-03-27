@@ -34,9 +34,10 @@ pub struct CoCo<KB: KnowledgeBase> {
 
 impl<KB: KnowledgeBase> CoCo<KB> {
     pub async fn new(kb: KB, db: Arc<dyn Database>, llm: Option<Arc<dyn LLM>>, fcm: Option<Arc<dyn Messaging>>) -> Self {
-        let mut coco = Self { kb, db: db.clone(), llm, fcm, callback: None };
+        let mut coco = Self { kb, db: db.clone(), llm: llm.clone(), fcm, callback: None };
 
         let cb_callback = coco.callback.clone();
+        let cb_llm = coco.llm.clone();
         coco.kb.set_callback(move |query| match query {
             kb::KnowledgeBaseEvent::AddedClass(object_id, class) => {
                 let db = db.clone();
@@ -80,7 +81,34 @@ impl<KB: KnowledgeBase> CoCo<KB> {
                     }
                 });
             }
+            kb::KnowledgeBaseEvent::LLMPrompt(object_id, prompt) => {
+                let llm = cb_llm.clone();
+                tokio::spawn(async move {
+                    if let Some(llm) = llm.as_ref() {
+                        if llm.async_prompt(&object_id, &prompt).await.is_err() {
+                            error!("Failed to get LLM response");
+                        }
+                    } else {
+                        error!("No LLM configured");
+                    }
+                });
+            }
             _ => {}
+        });
+
+        coco.kb.set_llm_callback(move |prompt| {
+            if let Some(llm) = llm.as_ref() {
+                let response = tokio::runtime::Handle::current().block_on(llm.prompt(&prompt));
+                match response {
+                    Ok(result) => result,
+                    Err(e) => {
+                        error!("LLM error: {:?}", e);
+                        "LLM error".to_string()
+                    }
+                }
+            } else {
+                "No LLM configured".to_string()
+            }
         });
 
         info!("Loading classes, objects, and rules from database into knowledge base");

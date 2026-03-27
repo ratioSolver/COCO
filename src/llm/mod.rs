@@ -10,11 +10,11 @@ pub enum LLMError {
     GenerationError(String),
 }
 
-pub type Callback = Arc<dyn Fn(String) + Send + Sync + 'static>;
+pub type Callback = Arc<dyn Fn(String, String) + Send + Sync + 'static>;
 
 #[async_trait]
 pub trait LLM: Send + Sync {
-    async fn async_prompt(&self, prompt: &str) -> Result<(), LLMError>;
+    async fn async_prompt(&self, object_id: &str, prompt: &str) -> Result<(), LLMError>;
     async fn prompt(&self, prompt: &str) -> Result<String, LLMError>;
 
     fn set_callback(&mut self, cb: Callback);

@@ -37,6 +37,8 @@ pub enum KnowledgeBaseEvent {
     AddedClass(String, String),                                 // (object_id, class_name)
     UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
     AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
+    LLMPrompt(String, String),                                  // (object_id, prompt)
+    Message(String, String, String),                            // (object_id, title, message)
 }
 
 pub trait KnowledgeBase: Send + Sync {

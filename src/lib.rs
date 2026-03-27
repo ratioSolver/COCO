@@ -80,6 +80,7 @@ impl<KB: KnowledgeBase> CoCo<KB> {
                     }
                 });
             }
+            _ => {}
         });
 
         info!("Loading classes, objects, and rules from database into knowledge base");

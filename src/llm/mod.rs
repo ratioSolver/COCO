@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use std::sync::Arc;
 
 #[cfg(feature = "ollama")]
 mod ollama;
@@ -9,9 +10,13 @@ pub enum LLMError {
     GenerationError(String),
 }
 
+pub type Callback = Arc<dyn Fn(String) + Send + Sync + 'static>;
+
 #[async_trait]
 pub trait LLM: Send + Sync {
     async fn prompt(&self, prompt: &str) -> Result<String, LLMError>;
+
+    fn set_callback(&mut self, cb: Callback);
 }
 
 pub fn setup_llm() -> Option<Box<dyn LLM>> {

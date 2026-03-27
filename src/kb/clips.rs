@@ -10,7 +10,7 @@ use std::{
     thread,
 };
 
-pub type Callback = Arc<dyn Fn(KnowledgeBaseEvent) + Send + Sync + 'static>;
+type Callback = Arc<dyn Fn(KnowledgeBaseEvent) + Send + Sync + 'static>;
 
 type Reply<T> = mpsc::Sender<Result<T, KnowledgeBaseError>>;
 

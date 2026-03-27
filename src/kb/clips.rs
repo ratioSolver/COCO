@@ -110,6 +110,51 @@ impl ActorState {
                 ClipsValue::Void()
             })
             .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
+
+        let async_prompt_callback = kb.callback.clone();
+        kb.env
+            .add_udf("async-prompt", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
+                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for prompt UDF");
+                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in prompt UDF") };
+                let prompt = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get prompt argument for prompt UDF");
+                let prompt = if let ClipsValue::String(s) = prompt { s } else { panic!("Expected string for prompt argument in prompt UDF") };
+                if let Some(cb) = async_prompt_callback.as_ref() {
+                    cb(KnowledgeBaseEvent::AsyncLLMPrompt(object_id.clone(), prompt.clone()));
+                }
+                ClipsValue::Void()
+            })
+            .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
+
+        let prompt_callback = kb.callback.clone();
+        kb.env
+            .add_udf("prompt", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
+                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for sync-prompt UDF");
+                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in sync-prompt UDF") };
+                let prompt = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get prompt argument for sync-prompt UDF");
+                let prompt = if let ClipsValue::String(s) = prompt { s } else { panic!("Expected string for prompt argument in sync-prompt UDF") };
+                if let Some(cb) = prompt_callback.as_ref() {
+                    cb(KnowledgeBaseEvent::LLMPrompt(object_id.clone(), prompt.clone()));
+                }
+                ClipsValue::Void()
+            })
+            .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
+
+        let send_message_callback = kb.callback.clone();
+        kb.env
+            .add_udf("send-message", None, 3, 3, vec![Type(Type::SYMBOL), Type(Type::STRING), Type(Type::STRING)], move |_env, ctx| {
+                let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for send-message UDF");
+                let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in send-message UDF") };
+                let title = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get title argument for send-message UDF");
+                let title = if let ClipsValue::String(s) = title { s } else { panic!("Expected string for title argument in send-message UDF") };
+                let message = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get message argument for send-message UDF");
+                let message = if let ClipsValue::String(s) = message { s } else { panic!("Expected string for message argument in send-message UDF") };
+                if let Some(cb) = send_message_callback.as_ref() {
+                    cb(KnowledgeBaseEvent::Message(object_id.clone(), title.clone(), message.clone()));
+                }
+                ClipsValue::Void()
+            })
+            .map_err(|e| KnowledgeBaseError::CreationError(format!("Failed to add CLIPS UDF: {}", e)))?;
+
         Ok(kb)
     }
 

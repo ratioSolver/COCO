@@ -1,7 +1,9 @@
 use crate::{
     db::{Database, DatabaseError},
     kb::{KnowledgeBase, KnowledgeBaseError},
+    llm::LLM,
     model::{Class, CoCoError, CoCoEvent, Object, Property, Rule, TimedValue, Value},
+    msg::Messaging,
 };
 use chrono::{DateTime, Utc};
 use std::{
@@ -14,7 +16,9 @@ use tracing::{error, info, trace};
 
 pub mod db;
 pub mod kb;
+pub mod llm;
 pub mod model;
+pub mod msg;
 #[cfg(feature = "server")]
 pub mod server;
 
@@ -23,12 +27,14 @@ pub type Callback = Arc<dyn Fn(CoCoEvent) + Send + Sync + 'static>;
 pub struct CoCo<KB: KnowledgeBase> {
     kb: KB,
     db: Arc<dyn Database>,
+    llm: Option<Box<dyn LLM>>,
+    fcm: Option<Box<dyn Messaging>>,
     callback: Option<Callback>,
 }
 
 impl<KB: KnowledgeBase> CoCo<KB> {
-    pub async fn new(kb: KB, db: Arc<dyn Database>) -> Self {
-        let mut coco = Self { kb, db: db.clone(), callback: None };
+    pub async fn new(kb: KB, db: Arc<dyn Database>, llm: Option<Box<dyn LLM>>, fcm: Option<Box<dyn Messaging>>) -> Self {
+        let mut coco = Self { kb, db: db.clone(), llm, fcm, callback: None };
 
         let cb_callback = coco.callback.clone();
         coco.kb.set_callback(move |query| match query {

@@ -10,7 +10,7 @@ pub enum LLMError {
 }
 
 #[async_trait]
-pub trait LLM {
+pub trait LLM: Send + Sync {
     async fn prompt(&self, prompt: &str) -> Result<String, LLMError>;
 }
 

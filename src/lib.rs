@@ -193,7 +193,7 @@ impl<KB: KnowledgeBase> CoCo<KB> {
     }
 
     pub async fn get_classes(&self) -> Vec<Class> {
-        self.kb.get_classes().into_iter().map(|c| c.clone()).collect()
+        self.kb.get_classes().into_iter().cloned().collect()
     }
 
     pub async fn get_class(&self, name: &str) -> Option<Class> {
@@ -237,7 +237,7 @@ impl<KB: KnowledgeBase> CoCo<KB> {
     pub async fn load_object(&mut self, object_definition: &str) -> Result<(), CoCoError> {
         let object: model::Object = serde_json::from_str(object_definition).map_err(|e| CoCoError::JsonParseError(e.to_string()))?;
         if let Some(id) = &object.id {
-            return Err(CoCoError::JsonParseError(format!("Object definition must not contain an 'id' field, but got id '{}'", id)));
+            Err(CoCoError::JsonParseError(format!("Object definition must not contain an 'id' field, but got id '{}'", id)))
         } else {
             info!("Creating object with classes {:?}, properties {:?}, and data {:?}", object.classes, object.properties, object.values);
             let object_id = self.db.create_object(&object).await.map_err(map_db_error)?;
@@ -248,7 +248,7 @@ impl<KB: KnowledgeBase> CoCo<KB> {
     }
 
     pub async fn get_objects(&self) -> Vec<Object> {
-        self.kb.get_objects().into_iter().map(|o| o.clone()).collect()
+        self.kb.get_objects().into_iter().cloned().collect()
     }
 
     pub async fn get_object(&self, id: &str) -> Option<Object> {
@@ -324,7 +324,7 @@ impl<KB: KnowledgeBase> CoCo<KB> {
     }
 
     pub async fn get_rules(&self) -> Vec<Rule> {
-        self.kb.get_rules().into_iter().map(|r| r.clone()).collect()
+        self.kb.get_rules().into_iter().cloned().collect()
     }
 
     pub async fn get_rule(&self, name: &str) -> Option<Rule> {

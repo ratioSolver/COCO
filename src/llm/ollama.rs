@@ -12,7 +12,7 @@ pub struct Ollama {
 
 impl Ollama {
     pub fn new(host: String, port: u16, model: String) -> Self {
-        Ollama { host: host, port, model: model, client: Client::new(), callback: None }
+        Ollama { host, port, model, client: Client::new(), callback: None }
     }
 }
 

@@ -30,6 +30,41 @@ pub trait CoCoState<KB: KnowledgeBase> {
     fn event_tx(&self) -> broadcast::Sender<CoCoEvent>;
 }
 
+pub struct UnsecureCoCoState<KB: KnowledgeBase> {
+    coco: Arc<RwLock<CoCo<KB>>>,
+    event_tx: broadcast::Sender<CoCoEvent>,
+}
+
+impl<KB: KnowledgeBase> Clone for UnsecureCoCoState<KB> {
+    fn clone(&self) -> Self {
+        Self { coco: self.coco.clone(), event_tx: self.event_tx.clone() }
+    }
+}
+
+impl<KB: KnowledgeBase> UnsecureCoCoState<KB> {
+    pub async fn new(coco: Arc<RwLock<CoCo<KB>>>) -> Self {
+        let (event_tx, _) = broadcast::channel(100);
+        coco.write().await.set_callback(Arc::new({
+            let event_tx = event_tx.clone();
+            move |event| {
+                trace!("CoCo event occurred: {:?}", event);
+                let _ = event_tx.send(event);
+            }
+        }));
+        Self { coco, event_tx }
+    }
+}
+
+impl<KB: KnowledgeBase> CoCoState<KB> for UnsecureCoCoState<KB> {
+    fn coco(&self) -> Arc<RwLock<CoCo<KB>>> {
+        self.coco.clone()
+    }
+
+    fn event_tx(&self) -> broadcast::Sender<CoCoEvent> {
+        self.event_tx.clone()
+    }
+}
+
 pub fn build_coco_router<S, KB>() -> Router<S>
 where
     S: CoCoState<KB> + Clone + Send + Sync + 'static,

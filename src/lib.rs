@@ -1,6 +1,6 @@
 use crate::{
-    db::{Database, DatabaseError, setup_db},
-    kb::{KnowledgeBase, KnowledgeBaseError, setup_kb},
+    db::{Database, DatabaseError},
+    kb::{KnowledgeBase, KnowledgeBaseError},
     model::{Class, CoCoError, CoCoEvent, Object, Property, Rule, TimedValue, Value},
 };
 use chrono::{DateTime, Utc};
@@ -108,12 +108,6 @@ impl<KB: KnowledgeBase> CoCo<KB> {
         }
 
         coco
-    }
-
-    pub async fn default() -> Result<CoCo<impl KnowledgeBase>, Box<dyn std::error::Error>> {
-        let kb = setup_kb().map_err(|e| format!("Failed to set up knowledge base: {}", e))?;
-        let db = setup_db().await.map_err(|e| format!("Failed to set up database: {}", e))?;
-        Ok(CoCo::new(kb, Arc::new(db)).await)
     }
 
     pub async fn load_classes<P: AsRef<Path>>(&mut self, path: P) -> Result<(), CoCoError> {

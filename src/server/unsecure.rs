@@ -1,20 +1,20 @@
+use std::collections::HashMap;
+
 use crate::{
     CoCo,
     kb::KnowledgeBase,
-    model::{Class, CoCoEvent, Property, Rule, Value},
+    model::{Class, CoCoError, Object, Property, Rule, TimedValue, Value},
 };
 use axum::{
     Json, Router,
-    extract::{
-        Path, Query, State, WebSocketUpgrade,
-        ws::{Message, WebSocket},
-    },
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
+    routing::get,
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use std::{collections::HashMap, sync::Arc};
+use tokio::sync::RwLock;
 pub use tower_http;
 use tracing::trace;
 use utoipa::{IntoParams, OpenApi};
@@ -23,16 +23,15 @@ type OpenApiValue = Value;
 type OpenApiObject = Object;
 
 pub trait CoCoState<KB: KnowledgeBase> {
-    fn coco(&self) -> Arc<CoCo<KB>>;
+    fn coco(&self) -> RwLock<CoCo<KB>>;
 }
 
-pub fn build_coco_router<S, KB>(state: Arc<S>) -> Router<S>
+pub fn build_coco_router<S, KB>() -> Router<S>
 where
-    S: CoCoState<KB>,
-    KB: KnowledgeBase,
+    S: CoCoState<KB> + Clone + Send + Sync + 'static,
+    KB: KnowledgeBase + 'static,
 {
     Router::new()
-        .route("/ws", get(ws_handler::<S, KB>))
         .route("/classes", get(get_classes::<S, KB>).post(create_class::<S, KB>))
         .route("/classes/{name}", get(get_class::<S, KB>))
         .route("/objects", get(get_objects::<S, KB>).post(create_object::<S, KB>))
@@ -59,7 +58,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to list all classes");
-    Json(state.coco().get_classes().await)
+    Json(state.coco().read().await.get_classes().await).into_response()
 }
 
 #[utoipa::path(
@@ -82,7 +81,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to get class '{}'", name);
-    match state.coco().get_class(&name).await {
+    match state.coco().read().await.get_class(&name).await {
         // We clone the single class to safely return it
         Some(class) => Json(class).into_response(),
         None => (StatusCode::NOT_FOUND, "Class not found").into_response(),
@@ -108,7 +107,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to create class '{}'", class.name);
-    match state.coco().create_class(class).await {
+    match state.coco().write().await.create_class(class).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
             CoCoError::ClassAlreadyExists(msg) => (StatusCode::CONFLICT, format!("Class {} already exists", msg)).into_response(),
@@ -142,7 +141,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to list objects with filter: class={:?}, extra={:?}", params.class, params.extra);
-    let objects = state.coco().get_objects().await;
+    let objects = state.coco().read().await.get_objects().await;
     let filtered_objects: Vec<OpenApiObject> = objects
         .into_iter()
         .filter(|o| {
@@ -174,7 +173,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to get object with ID '{}'", id);
-    match state.coco().get_object(&id).await {
+    match state.coco().read().await.get_object(&id).await {
         Some(object) => Json(object).into_response(),
         None => (StatusCode::NOT_FOUND, "Object not found").into_response(),
     }
@@ -200,7 +199,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to create object with ID '{:?}'", object.id);
-    match state.coco().create_object(object).await {
+    match state.coco().write().await.create_object(object).await {
         Ok(object_id) => (StatusCode::CREATED, object_id).into_response(),
         Err(e) => match e {
             CoCoError::ObjectAlreadyExists(msg) => (StatusCode::CONFLICT, format!("Object {} already exists", msg)).into_response(),
@@ -231,7 +230,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to set properties for object with ID '{}'", id);
-    match state.coco().set_properties(&id, properties).await {
+    match state.coco().write().await.set_properties(&id, properties).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, format!("Object {} not found", msg)).into_response(),
@@ -268,7 +267,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to add data to object with ID '{}'", object_id);
-    match state.coco().add_data(&object_id, values, date_time.time.unwrap_or_else(Utc::now)).await {
+    match state.coco().write().await.add_data(&object_id, values, date_time.time.unwrap_or_else(Utc::now)).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => match e {
             CoCoError::ObjectNotFound(msg) => (StatusCode::NOT_FOUND, format!("Object {} not found", msg)).into_response(),
@@ -306,7 +305,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to get data for object with ID '{}' with filter: start={:?}, end={:?}", object_id, filter.start, filter.end);
-    match state.coco().get_data(&object_id, filter.start, filter.end).await {
+    match state.coco().read().await.get_data(&object_id, filter.start, filter.end).await {
         Ok(data) => {
             let mut result: HashMap<String, Vec<TimedValue>> = HashMap::new();
             for (map, timestamp) in data {
@@ -339,7 +338,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to list all rules");
-    Json(state.coco().get_rules().await).into_response()
+    Json(state.coco().read().await.get_rules().await).into_response()
 }
 
 #[utoipa::path(
@@ -362,7 +361,7 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to get rule '{}'", name);
-    match state.coco().get_rule(&name).await {
+    match state.coco().read().await.get_rule(&name).await {
         Some(rule) => Json(rule).into_response(),
         None => (StatusCode::NOT_FOUND, "Rule not found").into_response(),
     }
@@ -387,131 +386,12 @@ where
     KB: KnowledgeBase,
 {
     trace!("Handling request to create rule '{}'", rule.name);
-    match state.coco().create_rule(rule).await {
+    match state.coco().write().await.create_rule(rule).await {
         Ok(_) => StatusCode::CREATED.into_response(),
         Err(e) => match e {
             CoCoError::RuleAlreadyExists(msg) => (StatusCode::CONFLICT, format!("Rule {} already exists", msg)).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create rule").into_response(),
         },
-    }
-}
-
-#[utoipa::path(
-        get,
-        path = "/ws",
-        tag = "System",
-        summary = "WebSocket connection",
-        description = "Establish a WebSocket connection for real-time updates.",
-        responses(
-            (status = 101, description = "WebSocket connection established"),
-        )
-    )]
-async fn ws_handler<S, KB>(ws: WebSocketUpgrade, State(state): State<S>) -> impl IntoResponse
-where
-    S: CoCoState<KB>,
-    KB: KnowledgeBase,
-{
-    ws.on_upgrade(move |socket| handle_socket(socket, state.coco().clone()))
-}
-
-async fn handle_socket(mut socket: WebSocket, coco: Arc<CoCo>) {
-    let classes_map: std::collections::HashMap<String, serde_json::Value> = coco
-        .get_classes()
-        .await
-        .into_iter()
-        .map(|mut c| {
-            let name = std::mem::take(&mut c.name);
-            let mut v = serde_json::to_value(&c).unwrap();
-            v.as_object_mut().unwrap().remove("name");
-            (name, v)
-        })
-        .collect();
-    let objects_map: std::collections::HashMap<String, serde_json::Value> = coco
-        .get_objects()
-        .await
-        .into_iter()
-        .map(|mut o| {
-            let id = o.id.take().unwrap();
-            let mut v = serde_json::to_value(&o).unwrap();
-            v.as_object_mut().unwrap().remove("id");
-            (id, v)
-        })
-        .collect();
-    let rules_map: std::collections::HashMap<String, serde_json::Value> = coco
-        .get_rules()
-        .await
-        .into_iter()
-        .map(|mut r| {
-            let name = std::mem::take(&mut r.name);
-            let mut v = serde_json::to_value(&r).unwrap();
-            v.as_object_mut().unwrap().remove("name");
-            (name, v)
-        })
-        .collect();
-    let init_msg = serde_json::json!({
-        "msg_type": "coco",
-        "classes": classes_map,
-        "objects": objects_map,
-        "rules": rules_map
-    });
-    socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.ok();
-
-    let mut rx = coco.get_event_sender().subscribe();
-    while let Some(msg) = rx.recv().await {
-        let send_result = match msg {
-            CoCoEvent::ClassCreated(class_name) => {
-                trace!("Received event: ClassCreated for class '{}'", class_name);
-                let mut update_msg = serde_json::to_value(coco.get_class(&class_name).await).unwrap();
-                update_msg["msg_type"] = serde_json::json!("class_created");
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
-            }
-            CoCoEvent::ObjectCreated(object_id) => {
-                trace!("Received event: ObjectCreated for object '{}'", object_id);
-                let mut update_msg = serde_json::to_value(coco.get_object(&object_id).await).unwrap();
-                update_msg["msg_type"] = serde_json::json!("object_created");
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
-            }
-            CoCoEvent::AddedClass(object_id, class_name) => {
-                trace!("Received event: AddedClass - object '{}', class '{}'", object_id, class_name);
-                let update_msg = serde_json::json!({
-                    "msg_type": "added_class",
-                    "object_id": object_id,
-                    "class_name": class_name
-                });
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
-            }
-            CoCoEvent::UpdatedProperties(object_id, properties) => {
-                trace!("Received event: UpdatedProperties for object '{}'", object_id);
-                let update_msg = serde_json::json!({
-                    "msg_type": "updated_properties",
-                    "object_id": object_id,
-                    "properties": properties
-                });
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
-            }
-            CoCoEvent::AddedValues(object_id, values, date_time) => {
-                trace!("Received event: AddedValues for object '{}'", object_id);
-                let update_msg = serde_json::json!({
-                    "msg_type": "added_values",
-                    "object_id": object_id,
-                    "values": values,
-                    "date_time": date_time
-                });
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
-            }
-            CoCoEvent::RuleCreated(rule) => {
-                trace!("Received event: RuleCreated for rule '{}'", rule);
-                let mut update_msg = serde_json::to_value(coco.get_rule(&rule).await).unwrap();
-                update_msg["msg_type"] = serde_json::json!("rule_created");
-                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
-            }
-            _ => Ok(()),
-        };
-
-        // If sending fails (e.g., client disconnected), break out of the loop
-        if send_result.is_err() {
-            break;
-        }
     }
 }
 
@@ -534,7 +414,7 @@ async fn openapi() -> impl IntoResponse {
     servers(
         (url = "/", description = "Base URL for CoCo API")
     ),
-    paths(get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
+    paths(get_classes, openapi),
     components(
         schemas(Class, Rule, Property, OpenApiObject, OpenApiValue)
     ),

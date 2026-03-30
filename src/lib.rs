@@ -262,7 +262,7 @@ impl<KB: KnowledgeBase> CoCo<KB> {
 
     pub async fn create_object(&mut self, object: Object) -> Result<String, CoCoError> {
         let object_id = self.db.create_object(&object).await.map_err(map_db_error)?;
-        self.kb.create_object(object.clone()).map_err(map_kb_error)?;
+        self.kb.create_object(Object { id: Some(object_id.clone()), ..object }).map_err(map_kb_error)?;
         self.notify(CoCoEvent::ObjectCreated(object_id.clone()));
         Ok(object_id)
     }

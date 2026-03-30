@@ -3,7 +3,7 @@ use coco::server::start_server;
 use coco::{CoCo, db::setup_db, kb::setup_kb, llm::setup_llm, msg::setup_messaging};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{Level, subscriber};
+use tracing::{Level, error, subscriber};
 
 #[tokio::main]
 async fn main() {
@@ -13,14 +13,14 @@ async fn main() {
     let kb = match setup_kb() {
         Ok(kb) => kb,
         Err(e) => {
-            eprintln!("Failed to set up knowledge base: {}", e);
+            error!("Failed to set up knowledge base: {}", e);
             return;
         }
     };
     let db = match setup_db().await {
         Ok(db) => db,
         Err(e) => {
-            eprintln!("Failed to set up database: {}", e);
+            error!("Failed to set up database: {}", e);
             return;
         }
     };

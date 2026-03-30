@@ -15,7 +15,7 @@ name = "coco"
 name = "coco-reasoner"
 
 [features]
-default = ["mongodb", "clips", "server"]
+default = ["mongodb", "clips", "secure"]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
 ollama = ["dep:reqwest"]

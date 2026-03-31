@@ -3,7 +3,7 @@ use crate::{
     model::{Class, Object, Rule},
 };
 use async_trait::async_trait;
-use clips::Environment;
+use clips::{Environment, Fact};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -18,10 +18,14 @@ pub struct CLIPSKnowledgeBase {
 }
 
 struct ActorState {
-    env: Environment,
     classes: HashMap<String, Class>,
     objects: HashMap<String, Object>,
     rules: HashMap<String, Rule>,
+
+    env: Environment,
+    instances: HashMap<String, HashMap<String, Fact>>,               // class name -> object id -> fact
+    values: HashMap<String, HashMap<String, HashMap<String, Fact>>>, // class name -> object id -> property name -> fact
+    llm_results: HashMap<String, (String, Fact)>,                    // object id -> (result, fact)
 }
 
 impl CLIPSKnowledgeBase {
@@ -31,17 +35,49 @@ impl CLIPSKnowledgeBase {
 
         tokio::task::spawn_blocking(move || {
             let env = Environment::new().expect("Failed to create CLIPS environment");
-            let mut state = ActorState { env, classes: HashMap::new(), objects: HashMap::new(), rules: HashMap::new() };
+            let mut state = ActorState {
+                classes: HashMap::new(),
+                objects: HashMap::new(),
+                rules: HashMap::new(),
+                env,
+                instances: HashMap::new(),
+                values: HashMap::new(),
+                llm_results: HashMap::new(),
+            };
 
             while let Some(cmd) = rx.blocking_recv() {
                 match cmd {
+                    KBCommand::GetClasses(reply) => {
+                        trace!("Getting all classes");
+                        let _ = reply.send(Ok(state.classes.values().cloned().collect()));
+                    }
+                    KBCommand::GetClass(name, reply) => {
+                        trace!("Getting class: {}", name);
+                        let _ = reply.send(state.classes.get(&name).cloned().ok_or(KnowledgeBaseError::ClassNotFound(name)));
+                    }
                     KBCommand::CreateClass(class, reply) => {
                         trace!("Creating class: {}", class.name);
+                        if state.classes.contains_key(&class.name) {
+                            let _ = reply.send(Err(KnowledgeBaseError::ClassAlreadyExists(class.name.clone())));
+                            continue;
+                        } else if let Some(parents) = &class.parents {
+                            if let Some(missing_parent) = parents.iter().find(|p| !state.classes.contains_key(*p)) {
+                                let _ = reply.send(Err(KnowledgeBaseError::ClassNotFound(missing_parent.clone())));
+                                continue;
+                            }
+                        }
                         let _ = reply.send(Ok(()));
                     }
                     KBCommand::CreateObject(object, reply) => {
                         if let Some(object_id) = object.id {
                             trace!("Creating object: {}", object_id);
+                            if state.objects.contains_key(&object_id) {
+                                let _ = reply.send(Err(KnowledgeBaseError::ObjectAlreadyExists(object_id.clone())));
+                                continue;
+                            } else if let Some(missing_class) = object.classes.iter().find(|c| !state.classes.contains_key(*c)) {
+                                let _ = reply.send(Err(KnowledgeBaseError::ClassNotFound(missing_class.clone())));
+                                continue;
+                            }
                         } else {
                             let _ = reply.send(Err(KnowledgeBaseError::CreationError("Object ID is required".to_string())));
                             continue;

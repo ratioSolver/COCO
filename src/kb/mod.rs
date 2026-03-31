@@ -9,6 +9,8 @@ mod clips;
 
 #[derive(Debug)]
 pub enum KBCommand {
+    GetClasses(oneshot::Sender<Result<Vec<Class>, KnowledgeBaseError>>),
+    GetClass(String, oneshot::Sender<Result<Class, KnowledgeBaseError>>),
     CreateClass(Class, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     CreateObject(Object, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     AddClass(String, String, oneshot::Sender<Result<(), KnowledgeBaseError>>),

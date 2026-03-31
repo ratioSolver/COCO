@@ -44,16 +44,19 @@ impl CLIPSKnowledgeBase {
                         }
                         let _ = reply.send(Ok(()));
                     }
-                    KBCommand::AddClass(class_name, parent_name, reply) => {
-                        trace!("Adding class '{}' as subclass of '{}'", class_name, parent_name);
+                    KBCommand::AddClass(object_id, class_name, reply) => {
+                        trace!("Adding class '{}' to object '{}'", class_name, object_id);
+                        let _ = event_tx.blocking_send(KnowledgeBaseEvent::AddedClass(object_id.clone(), class_name.clone()));
                         let _ = reply.send(Ok(()));
                     }
                     KBCommand::SetProperties(object_id, properties, reply) => {
                         trace!("Setting properties for object '{}': {:?}", object_id, properties);
+                        let _ = event_tx.blocking_send(KnowledgeBaseEvent::UpdatedProperties(object_id.clone(), properties.clone()));
                         let _ = reply.send(Ok(()));
                     }
                     KBCommand::AddValues(object_id, values, timestamp, reply) => {
                         trace!("Adding values for object '{}': {:?} at {}", object_id, values, timestamp);
+                        let _ = event_tx.blocking_send(KnowledgeBaseEvent::AddedValues(object_id.clone(), values.clone(), timestamp));
                         let _ = reply.send(Ok(()));
                     }
                     KBCommand::CreateRule(rule, reply) => {

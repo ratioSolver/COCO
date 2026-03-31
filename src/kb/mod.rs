@@ -75,3 +75,18 @@ pub trait KnowledgeBase: Clone + Send + Sync + 'static {
 
     fn take_event_receiver(&mut self) -> Option<mpsc::Receiver<KnowledgeBaseEvent>>;
 }
+
+pub fn setup_kb() -> Result<impl KnowledgeBase, KnowledgeBaseError> {
+    #[cfg(feature = "clips")]
+    return setup_clips();
+
+    #[cfg(not(feature = "clips"))]
+    panic!("No knowledge base backend configured");
+}
+
+#[cfg(feature = "clips")]
+fn setup_clips() -> Result<impl KnowledgeBase, KnowledgeBaseError> {
+    use crate::kb::clips::CLIPSKnowledgeBase;
+
+    Ok(CLIPSKnowledgeBase::new())
+}

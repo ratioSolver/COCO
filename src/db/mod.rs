@@ -38,3 +38,22 @@ pub trait Database: Clone + Send + Sync + 'static {
     async fn get_classes(&self) -> Result<Vec<Class>, DatabaseError>;
     async fn create_class(&self, class: Class) -> Result<(), DatabaseError>;
 }
+
+pub async fn setup_db() -> Result<impl Database, DatabaseError> {
+    #[cfg(feature = "mongodb")]
+    return setup_mongodb().await;
+
+    #[cfg(not(feature = "mongodb"))]
+    panic!("No database backend configured");
+}
+
+#[cfg(feature = "mongodb")]
+async fn setup_mongodb() -> Result<impl Database, DatabaseError> {
+    use crate::db::mongodb::MongoDB;
+
+    let name = std::env::var("DB_NAME").unwrap_or_else(|_| "coco_db".to_owned());
+    let host = std::env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_owned());
+    let port = std::env::var("DB_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(27017);
+    let uri = format!("mongodb://{}:{}", host, port);
+    Ok(MongoDB::new(&name, &uri).await?)
+}

@@ -1,6 +1,10 @@
 use crate::CoCo;
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use tracing::trace;
+
+pub fn build_coco_router() -> Router<CoCo> {
+    Router::new().route("/classes", get(get_classes))
+}
 
 async fn get_classes(State(state): State<CoCo>) -> impl IntoResponse {
     trace!("Handling request to list all classes");

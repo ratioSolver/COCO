@@ -1,6 +1,5 @@
-use tokio::sync::broadcast;
-
 use crate::{db::Database, kb::KnowledgeBase, model::CoCoEvent};
+use tokio::sync::broadcast;
 
 pub mod db;
 pub mod kb;

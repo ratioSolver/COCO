@@ -1,10 +1,10 @@
 use crate::{
     kb::{KnowledgeBase, KnowledgeBaseError, KnowledgeBaseEvent},
-    model::{Class, Object, Rule, Value},
+    model::{Class, Object, Property, Rule, TimedValue, Value},
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use clips::{ClipsValue, Environment, Fact, Type};
+use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -14,11 +14,7 @@ use tracing::{error, info, trace};
 
 #[derive(Debug)]
 enum KBCommand {
-    GetClasses(oneshot::Sender<Result<Vec<Class>, KnowledgeBaseError>>),
-    GetClass(String, oneshot::Sender<Result<Class, KnowledgeBaseError>>),
     CreateClass(Class, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    GetRules(oneshot::Sender<Result<Vec<Rule>, KnowledgeBaseError>>),
-    GetRule(String, oneshot::Sender<Result<Rule, KnowledgeBaseError>>),
     CreateRule(Rule, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     CreateObject(Object, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     AddClass(String, String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
@@ -115,69 +111,201 @@ impl CLIPSKnowledgeBase {
 
             while let Some(cmd) = rx.blocking_recv() {
                 match cmd {
-                    KBCommand::GetClasses(reply) => {
-                        trace!("Getting all classes");
-                        let _ = reply.send(Ok(kb.classes.values().cloned().collect()));
-                    }
-                    KBCommand::GetClass(name, reply) => {
-                        trace!("Getting class: {}", name);
-                        let _ = reply.send(kb.classes.get(&name).cloned().ok_or(KnowledgeBaseError::ClassNotFound(name)));
-                    }
                     KBCommand::CreateClass(class, reply) => {
                         trace!("Creating class: {}", class.name);
-                        if kb.classes.contains_key(&class.name) {
-                            let _ = reply.send(Err(KnowledgeBaseError::ClassAlreadyExists(class.name.clone())));
-                            continue;
-                        } else if let Some(parents) = &class.parents {
-                            if let Some(missing_parent) = parents.iter().find(|p| !kb.classes.contains_key(*p)) {
-                                let _ = reply.send(Err(KnowledgeBaseError::ClassNotFound(missing_parent.clone())));
-                                continue;
+
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            if kb.classes.contains_key(&class.name) {
+                                return Err(KnowledgeBaseError::ClassAlreadyExists(class.name.clone()));
                             }
-                        }
-                        let _ = reply.send(Ok(()));
-                    }
-                    KBCommand::GetRules(reply) => {
-                        trace!("Getting all rules");
-                        let _ = reply.send(Ok(kb.rules.values().cloned().collect()));
-                    }
-                    KBCommand::GetRule(name, reply) => {
-                        trace!("Getting rule: {}", name);
-                        let _ = reply.send(kb.rules.get(&name).cloned().ok_or(KnowledgeBaseError::RuleNotFound(name)));
+
+                            kb.env.build(format!("(deftemplate {} (slot id (type SYMBOL)))", class.name).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create class in CLIPS: {}", e)))?;
+                            if let Some(static_props) = &class.static_properties {
+                                for (name, prop) in static_props {
+                                    kb.env.build(prop_deftemplate(&class, name, prop, true).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create static property {} for class {} in CLIPS: {}", name, class.name, e)))?;
+                                }
+                            }
+                            if let Some(dynamic_props) = &class.dynamic_properties {
+                                for (name, prop) in dynamic_props {
+                                    kb.env.build(prop_deftemplate(&class, name, prop, false).as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create dynamic property {} for class {} in CLIPS: {}", name, class.name, e)))?;
+                                }
+                            }
+                            kb.classes.insert(class.name.clone(), class);
+
+                            Ok(())
+                        })();
+
+                        let _ = reply.send(result);
                     }
                     KBCommand::CreateRule(rule, reply) => {
                         trace!("Creating rule: {}", rule.name);
                         let _ = reply.send(Ok(()));
                     }
                     KBCommand::CreateObject(object, reply) => {
-                        if let Some(object_id) = object.id {
-                            trace!("Creating object: {}", object_id);
-                            if kb.objects.contains_key(&object_id) {
-                                let _ = reply.send(Err(KnowledgeBaseError::ObjectAlreadyExists(object_id.clone())));
-                                continue;
-                            } else if let Some(missing_class) = object.classes.iter().find(|c| !kb.classes.contains_key(*c)) {
-                                let _ = reply.send(Err(KnowledgeBaseError::ClassNotFound(missing_class.clone())));
-                                continue;
-                            }
-                        } else {
+                        let Some(object_id) = object.id.clone() else {
                             let _ = reply.send(Err(KnowledgeBaseError::CreationError("Object ID is required".to_string())));
                             continue;
+                        };
+                        if kb.objects.contains_key(&object_id) {
+                            let _ = reply.send(Err(KnowledgeBaseError::ObjectAlreadyExists(object_id.clone())));
+                            continue;
                         }
-                        let _ = reply.send(Ok(()));
+                        trace!("Creating object: {}", object_id);
+
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            for class_name in &object.classes {
+                                let Some(class) = kb.classes.get(class_name.as_str()) else {
+                                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
+                                };
+
+                                let fb = kb.env.fact_builder(&class.name).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for class {}: {}", class_name, e)))?;
+                                let fb = fb.put_symbol("id", object_id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", object_id, e)))?;
+                                let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", object_id, e)))?;
+                                kb.instances.entry(class.name.clone()).or_default().insert(object_id.clone(), fact);
+
+                                if let Some(static_props) = &class.static_properties {
+                                    for (name, prop) in static_props {
+                                        let fb = kb.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, object_id, e)))?;
+                                        let fb = fb.put_symbol("id", object_id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for property {} of object {}: {}", name, object_id, e)))?;
+                                        if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
+                                            let fb: FactBuilder = set_prop(&kb.env, fb, prop, v.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set property {} for object {}: {:#?}", name, object_id, e)))?;
+                                            let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
+                                            kb.values.entry(class.name.clone()).or_default().entry(object_id.clone()).or_default().insert(name.clone(), fact);
+                                        } else {
+                                            let def = get_default(prop);
+                                            let fb = set_prop(&kb.env, fb, prop, def.clone(), None).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for property {} of object {}: {:#?}", name, object_id, e)))?;
+                                            let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
+                                            kb.values.entry(class.name.clone()).or_default().entry(object_id.clone()).or_default().insert(name.clone(), fact);
+                                        }
+                                    }
+                                }
+
+                                if let Some(dynamic_props) = &class.dynamic_properties {
+                                    for (name, prop) in dynamic_props {
+                                        let fb = kb.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                        let fb = fb.put_symbol("id", object_id.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                        if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
+                                            let fb = set_prop(&kb.env, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, object_id, e)))?;
+                                            let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                            kb.values.entry(class.name.clone()).or_default().entry(object_id.clone()).or_default().insert(name.clone(), fact);
+                                        } else {
+                                            let def = get_default(prop);
+                                            let fb = set_prop(&kb.env, fb, prop, def.clone(), Some(Utc::now())).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set default value for dynamic property {} of object {}: {:#?}", name, object_id, e)))?;
+                                            let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                            kb.values.entry(class.name.clone()).or_default().entry(object_id.clone()).or_default().insert(name.clone(), fact);
+                                        }
+                                    }
+                                }
+                            }
+
+                            kb.objects.insert(object_id, object);
+                            Ok(())
+                        })();
+
+                        let _ = reply.send(result);
                     }
                     KBCommand::AddClass(object_id, class_name, reply) => {
                         trace!("Adding class '{}' to object '{}'", class_name, object_id);
-                        let _ = event_tx.blocking_send(KnowledgeBaseEvent::AddedClass(object_id.clone(), class_name.clone()));
-                        let _ = reply.send(Ok(()));
+
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            let object = kb.objects.get_mut(&object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
+                            let class = kb.classes.get(&class_name).ok_or_else(|| KnowledgeBaseError::ClassNotFound(class_name.to_owned()))?;
+                            let fb = kb.env.fact_builder(&class.name).unwrap().put_symbol("id", &object_id).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set id slot for object {}: {}", object_id, e)))?;
+                            let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for object {}: {}", object_id, e)))?;
+                            kb.instances.entry(class.name.clone()).or_default().insert(object_id.to_owned(), fact);
+
+                            if let Some(static_props) = &class.static_properties {
+                                for (name, prop) in static_props {
+                                    let fb = kb.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for property {} of object {}: {}", name, object_id, e)))?;
+                                    if let Some(v) = object.properties.as_ref().and_then(|props| props.get(name)) {
+                                        let fb = set_prop(&kb.env, fb, prop, v.clone(), None)?;
+                                        let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for property {} of object {}: {}", name, object_id, e)))?;
+                                        kb.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
+                                    } else {
+                                        let def = get_default(prop);
+                                        let fb = set_prop(&kb.env, fb, prop, def.clone(), None)?;
+                                        let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of property {} of object {}: {}", name, object_id, e)))?;
+                                        kb.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
+                                    }
+                                }
+                            }
+
+                            if let Some(dynamic_props) = &class.dynamic_properties {
+                                for (name, prop) in dynamic_props {
+                                    if let Some(v) = object.values.as_ref().and_then(|vals| vals.get(name)) {
+                                        let fb = kb.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                        let fb = set_prop(&kb.env, fb, prop, v.value.clone(), Some(v.timestamp)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set dynamic property {} for object {}: {:#?}", name, object_id, e)))?;
+                                        let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                        kb.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
+                                    } else {
+                                        let def = get_default(prop);
+                                        let fb = kb.env.fact_builder(&format!("{}_{}", class.name, name)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                        let fb = set_prop(&kb.env, fb, prop, def.clone(), Some(Utc::now()))?;
+                                        let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for default value of dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                        kb.values.entry(class.name.clone()).or_default().entry(object_id.to_owned()).or_default().insert(name.clone(), fact);
+                                    }
+                                }
+                            }
+                            let _ = event_tx.blocking_send(KnowledgeBaseEvent::AddedClass(object_id.clone(), class_name.clone()));
+                            Ok(())
+                        })();
+
+                        let _ = reply.send(result);
                     }
                     KBCommand::SetProperties(object_id, properties, reply) => {
                         trace!("Setting properties for object '{}': {:?}", object_id, properties);
-                        let _ = event_tx.blocking_send(KnowledgeBaseEvent::UpdatedProperties(object_id.clone(), properties.clone()));
-                        let _ = reply.send(Ok(()));
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            let object = kb.objects.get_mut(&object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
+
+                            for class_name in &object.classes {
+                                if let Some(class) = kb.classes.get(class_name) {
+                                    if let Some(static_props) = &class.static_properties {
+                                        for (name, prop) in static_props {
+                                            if let Some(v) = properties.get(name) {
+                                                object.properties.get_or_insert_with(HashMap::new).insert(name.clone(), v.clone());
+                                                let fact = kb.values.get(class_name).and_then(|objs| objs.get(&object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for property {} of object {} of class {} not found", name, object_id, class_name)))?;
+                                                let fm = kb.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
+                                                let fm = update_prop(&kb.env, fm, prop, v.clone(), None)?;
+                                                kb.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for property {} of object {}: {}", name, object_id, e)))?;
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
+                                }
+                            }
+                            let _ = event_tx.blocking_send(KnowledgeBaseEvent::UpdatedProperties(object_id.clone(), properties.clone()));
+                            Ok(())
+                        })();
+
+                        let _ = reply.send(result);
                     }
                     KBCommand::AddValues(object_id, values, timestamp, reply) => {
                         trace!("Adding values for object '{}': {:?} at {}", object_id, values, timestamp);
-                        let _ = event_tx.blocking_send(KnowledgeBaseEvent::AddedValues(object_id.clone(), values.clone(), timestamp));
-                        let _ = reply.send(Ok(()));
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            let object = kb.objects.get_mut(&object_id).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(object_id.to_owned()))?;
+                            for class_name in &object.classes {
+                                if let Some(class) = kb.classes.get(class_name) {
+                                    if let Some(dynamic_props) = &class.dynamic_properties {
+                                        for (name, prop) in dynamic_props {
+                                            if let Some(v) = values.get(name) {
+                                                object.values.get_or_insert_with(HashMap::new).insert(name.clone(), TimedValue { value: v.clone(), timestamp });
+                                                let fact = kb.values.get(class_name).and_then(|objs| objs.get(&object_id)).and_then(|props| props.get(name)).ok_or_else(|| KnowledgeBaseError::ObjectNotFound(format!("Fact for dynamic property {} of object {} of class {} not found", name, object_id, class_name)))?;
+                                                let fm = kb.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for object {}: {}", object_id, e)))?;
+                                                let fm = update_prop(&kb.env, fm, prop, v.clone(), Some(timestamp))?;
+                                                kb.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact for dynamic property {} of object {}: {}", name, object_id, e)))?;
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    return Err(KnowledgeBaseError::ClassNotFound(format!("Class {} not found for object {}", class_name, object_id)));
+                                }
+                            }
+                            let _ = event_tx.blocking_send(KnowledgeBaseEvent::AddedValues(object_id.clone(), values.clone(), timestamp));
+                            Ok(())
+                        })();
+
+                        let _ = reply.send(result);
                     }
                     KBCommand::SetLLMResult(object_id, result, reply) => {
                         trace!("Setting LLM result for object '{}': {}", object_id, result);
@@ -215,9 +343,389 @@ impl KnowledgeBase for CLIPSKnowledgeBase {
         self.tx.send(KBCommand::CreateObject(object, reply_tx)).await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send CreateObject command: {}", e)))?;
         reply_rx.await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for CreateObject command: {}", e)))?
     }
+    async fn add_class(&self, object_id: String, class_name: String) -> Result<(), KnowledgeBaseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        self.tx.send(KBCommand::AddClass(object_id, class_name, reply_tx)).await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send AddClass command: {}", e)))?;
+        reply_rx.await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for AddClass command: {}", e)))?
+    }
+    async fn set_properties(&self, object_id: String, properties: HashMap<String, Value>) -> Result<(), KnowledgeBaseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        self.tx.send(KBCommand::SetProperties(object_id, properties.clone(), reply_tx)).await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send SetProperties command: {}", e)))?;
+        reply_rx.await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for SetProperties command: {}", e)))?
+    }
+    async fn add_values(&self, object_id: String, values: HashMap<String, Value>, timestamp: DateTime<Utc>) -> Result<(), KnowledgeBaseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        self.tx.send(KBCommand::AddValues(object_id, values.clone(), timestamp, reply_tx)).await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send AddValues command: {}", e)))?;
+        reply_rx.await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for AddValues command: {}", e)))?
+    }
 
     fn take_event_receiver(&mut self) -> Option<mpsc::Receiver<KnowledgeBaseEvent>> {
         let mut guard = self.event_rx.lock().unwrap();
         guard.take()
+    }
+}
+
+fn prop_deftemplate(class: &Class, name: &str, property: &Property, is_static: bool) -> String {
+    let mut def = format!("(deftemplate {}_{} (slot id (type SYMBOL))", class.name, name);
+    match property {
+        Property::Bool { default } => {
+            def.push_str(" (slot value (type SYMBOL) (allowed-symbols TRUE FALSE nil)");
+            if let Some(def_val) = default {
+                def.push_str(&format!(" (default {})", if *def_val { "TRUE" } else { "FALSE" }));
+            } else {
+                def.push_str(" (default nil)");
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::Int { default, min, max } => {
+            def.push_str(" (slot value (type INTEGER SYMBOL) (allowed-symbols nil)");
+            if let Some(def_val) = default {
+                def.push_str(&format!(" (default {})", def_val));
+            } else {
+                def.push_str(" (default nil)");
+            }
+            if min.is_some() || max.is_some() {
+                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_owned());
+                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_owned());
+                def.push_str(&format!(" (range {} {})", min_str, max_str));
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::Float { default, min, max } => {
+            def.push_str(" (slot value (type FLOAT SYMBOL) (allowed-symbols nil)");
+            if let Some(def_val) = default {
+                let def_str = def_val.to_string();
+                let def_str = if def_str.contains('.') { def_str } else { format!("{}.0", def_str) };
+                def.push_str(&format!(" (default {})", def_str));
+            } else {
+                def.push_str(" (default nil)");
+            }
+            if min.is_some() || max.is_some() {
+                let min_str = min
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .unwrap_or("?VARIABLE".to_owned());
+                let max_str = max
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .unwrap_or("?VARIABLE".to_owned());
+                def.push_str(&format!(" (range {} {})", min_str, max_str));
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::String { default } => {
+            def.push_str(" (slot value (type STRING SYMBOL) (allowed-symbols nil)");
+            if let Some(def_val) = default {
+                def.push_str(&format!(" (default \"{}\")", def_val));
+            } else {
+                def.push_str(" (default nil)");
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::Symbol { default, allowed_values } => {
+            def.push_str(" (slot value (type SYMBOL)");
+            if let Some(allowed) = allowed_values {
+                def.push_str(" (allowed-symbols nil");
+                for v in allowed {
+                    def.push_str(&format!(" {}", v));
+                }
+                def.push(')');
+            } else {
+                def.push_str(" (allowed-symbols nil)");
+            }
+
+            if let Some(def_val) = default {
+                def.push_str(&format!(" (default {})", def_val));
+            } else {
+                def.push_str(" (default nil)");
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::Object { default, .. } => {
+            def.push_str(" (slot value (type SYMBOL)");
+            if let Some(def_val) = default {
+                def.push_str(&format!(" (default {})", def_val));
+            } else {
+                def.push_str(" (default nil)");
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::BoolArray { default } => {
+            def.push_str(" (multislot value (type SYMBOL) (allowed-symbols TRUE FALSE nil)");
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|b| if *b { "TRUE" } else { "FALSE" }).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::IntArray { default, min, max } => {
+            def.push_str(" (multislot value (type INTEGER SYMBOL) (allowed-symbols nil)");
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            if min.is_some() || max.is_some() {
+                let min_str = min.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_owned());
+                let max_str = max.map(|v| v.to_string()).unwrap_or("?VARIABLE".to_owned());
+                def.push_str(&format!(" (range {} {})", min_str, max_str));
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::FloatArray { default, min, max } => {
+            def.push_str(" (multislot value (type FLOAT SYMBOL) (allowed-symbols nil)");
+            if let Some(def_val) = default {
+                let def_str = def_val
+                    .iter()
+                    .map(|f| {
+                        let s = f.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            if min.is_some() || max.is_some() {
+                let min_str = min
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .unwrap_or("?VARIABLE".to_owned());
+                let max_str = max
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.contains('.') { s } else { format!("{}.0", s) }
+                    })
+                    .unwrap_or("?VARIABLE".to_owned());
+                def.push_str(&format!(" (range {} {})", min_str, max_str));
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::StringArray { default } => {
+            def.push_str(" (multislot value (type STRING SYMBOL) (allowed-symbols nil)");
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::SymbolArray { default, allowed_values } => {
+            def.push_str(" (multislot value (type SYMBOL)");
+            if let Some(allowed) = allowed_values {
+                def.push_str(" (allowed-symbols nil");
+                for v in allowed {
+                    def.push_str(&format!(" {}", v));
+                }
+                def.push(')');
+            } else {
+                def.push_str(" (allowed-symbols nil)");
+            }
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+        Property::ObjectArray { default, .. } => {
+            def.push_str(" (multislot value (type SYMBOL)");
+            if let Some(def_val) = default {
+                let def_str = def_val.iter().map(|o| o.as_str()).collect::<Vec<_>>().join(" ");
+                def.push_str(&format!(" (default {})", def_str));
+            } else {
+                def.push_str(" (default nil)");
+            }
+            def.push(')');
+            if !is_static {
+                def.push_str(" (slot time (type INTEGER))");
+            }
+            def.push(')');
+            def
+        }
+    }
+}
+
+fn set_prop(env: &Environment, fb: FactBuilder, property: &Property, value: Value, time: Option<DateTime<Utc>>) -> Result<FactBuilder, KnowledgeBaseError> {
+    let builder = match (property, value) {
+        (Property::Bool { .. }, Value::Bool(b)) => fb.put_symbol("value", if b { "TRUE" } else { "FALSE" }).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool property value: {}", e))),
+        (Property::Bool { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool property: {}", e))),
+        (Property::Int { .. }, Value::Int(i)) => fb.put_int("value", i).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int property value: {}", e))),
+        (Property::Int { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int property: {}", e))),
+        (Property::Float { .. }, Value::Float(f)) => fb.put_float("value", f).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float property value: {}", e))),
+        (Property::Float { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float property: {}", e))),
+        (Property::String { .. }, Value::String(s)) => fb.put_string("value", s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string property value: {}", e))),
+        (Property::String { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string property: {}", e))),
+        (Property::Symbol { .. }, Value::Symbol(s)) => fb.put_symbol("value", s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol property value: {}", e))),
+        (Property::Symbol { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol property: {}", e))),
+        (Property::Object { .. }, Value::Object(o)) => fb.put_symbol("value", o.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object property value: {}", e))),
+        (Property::Object { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object property: {}", e))),
+        (Property::BoolArray { .. }, Value::BoolArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for bool array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, &b| bld.put_symbol(if b { "TRUE" } else { "FALSE" }));
+            fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool array property value: {}", e)))
+        }
+        (Property::BoolArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool array property: {}", e))),
+        (Property::IntArray { .. }, Value::IntArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for int array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, &i| bld.put_int(i));
+            fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int array property value: {}", e)))
+        }
+        (Property::IntArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int array property: {}", e))),
+        (Property::FloatArray { .. }, Value::FloatArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for float array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, &f| bld.put_float(f));
+            fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float array property value: {}", e)))
+        }
+        (Property::FloatArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float array property: {}", e))),
+        (Property::StringArray { .. }, Value::StringArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for string array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, s| bld.put_string(s.as_str()));
+            fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string array property value: {}", e)))
+        }
+        (Property::StringArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string array property: {}", e))),
+        (Property::SymbolArray { .. }, Value::StringArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for symbol array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, s| bld.put_symbol(s.as_str()));
+            fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol array property value: {}", e)))
+        }
+        (Property::SymbolArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol array property: {}", e))),
+        (Property::ObjectArray { .. }, Value::StringArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for object array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, o| bld.put_symbol(o.as_str()));
+            fb.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object array property value: {}", e)))
+        }
+        (Property::ObjectArray { .. }, Value::Null) => fb.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object array property: {}", e))),
+        _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_owned())),
+    };
+    if let Some(t) = time { builder.and_then(|fb| fb.put_int("time", t.timestamp()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set time slot for property value: {}", e)))) } else { builder }
+}
+
+fn update_prop(env: &Environment, fm: FactModifier, property: &Property, value: Value, time: Option<DateTime<Utc>>) -> Result<FactModifier, KnowledgeBaseError> {
+    let modifier = match (property, value) {
+        (Property::Bool { .. }, Value::Bool(b)) => fm.put_symbol("value", if b { "TRUE" } else { "FALSE" }).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool property value: {}", e))),
+        (Property::Bool { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool property: {}", e))),
+        (Property::Int { .. }, Value::Int(i)) => fm.put_int("value", i).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int property value: {}", e))),
+        (Property::Int { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int property: {}", e))),
+        (Property::Float { .. }, Value::Float(f)) => fm.put_float("value", f).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float property value: {}", e))),
+        (Property::Float { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float property: {}", e))),
+        (Property::String { .. }, Value::String(s)) => fm.put_string("value", s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string property value: {}", e))),
+        (Property::String { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string property: {}", e))),
+        (Property::Symbol { .. }, Value::Symbol(s)) => fm.put_symbol("value", s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol property value: {}", e))),
+        (Property::Symbol { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol property: {}", e))),
+        (Property::Object { .. }, Value::Object(o)) => fm.put_symbol("value", o.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object property value: {}", e))),
+        (Property::Object { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object property: {}", e))),
+        (Property::BoolArray { .. }, Value::BoolArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for bool array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, &b| bld.put_symbol(if b { "TRUE" } else { "FALSE" }));
+            fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool array property value: {}", e)))
+        }
+        (Property::BoolArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for bool array property: {}", e))),
+        (Property::IntArray { .. }, Value::IntArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for int array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, &i| bld.put_int(i));
+            fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int array property value: {}", e)))
+        }
+        (Property::IntArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for int array property: {}", e))),
+        (Property::FloatArray { .. }, Value::FloatArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for float array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, &f| bld.put_float(f));
+            fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float array property value: {}", e)))
+        }
+        (Property::FloatArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for float array property: {}", e))),
+        (Property::StringArray { .. }, Value::StringArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for string array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, s| bld.put_string(s.as_str()));
+            fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string array property value: {}", e)))
+        }
+        (Property::StringArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for string array property: {}", e))),
+        (Property::SymbolArray { .. }, Value::StringArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for symbol array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, s| bld.put_symbol(s.as_str()));
+            fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol array property value: {}", e)))
+        }
+        (Property::SymbolArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for symbol array property: {}", e))),
+        (Property::ObjectArray { .. }, Value::StringArray(arr)) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for object array: {}", e)))?;
+            let builder = arr.iter().fold(builder, |bld, o| bld.put_symbol(o.as_str()));
+            fm.put_multifield("value", builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set object array property value: {}", e)))
+        }
+        (Property::ObjectArray { .. }, Value::Null) => fm.put_symbol("value", "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null value for object array property: {}", e))),
+        _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_owned())),
+    };
+    if let Some(t) = time { modifier.and_then(|fm| fm.put_int("time", t.timestamp()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set time slot for property value: {}", e)))) } else { modifier }
+}
+
+fn get_default(property: &Property) -> Value {
+    match property {
+        Property::Bool { default, .. } => default.map(Value::Bool).unwrap_or(Value::Null),
+        Property::Int { default, .. } => default.map(Value::Int).unwrap_or(Value::Null),
+        Property::Float { default, .. } => default.map(Value::Float).unwrap_or(Value::Null),
+        Property::String { default, .. } => default.clone().map(Value::String).unwrap_or(Value::Null),
+        Property::Symbol { default, .. } => default.clone().map(Value::Symbol).unwrap_or(Value::Null),
+        Property::Object { default, .. } => default.clone().map(Value::Object).unwrap_or(Value::Null),
+        Property::BoolArray { default } => default.clone().map(Value::BoolArray).unwrap_or(Value::Null),
+        Property::IntArray { default, .. } => default.clone().map(Value::IntArray).unwrap_or(Value::Null),
+        Property::FloatArray { default, .. } => default.clone().map(Value::FloatArray).unwrap_or(Value::Null),
+        Property::StringArray { default } => default.clone().map(Value::StringArray).unwrap_or(Value::Null),
+        Property::SymbolArray { default, .. } => default.clone().map(Value::StringArray).unwrap_or(Value::Null),
+        Property::ObjectArray { default, .. } => default.clone().map(Value::StringArray).unwrap_or(Value::Null),
     }
 }

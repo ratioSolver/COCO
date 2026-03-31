@@ -153,7 +153,7 @@ impl Database for MongoDB {
         Ok(())
     }
 
-    async fn add_data(&self, object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), DatabaseError> {
+    async fn add_values(&self, object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<MongoObject>("objects");
         let oid = ObjectId::parse_str(object_id.clone()).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
@@ -169,7 +169,7 @@ impl Database for MongoDB {
         Ok(())
     }
 
-    async fn get_data(&self, object_id: String, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, DatabaseError> {
+    async fn get_values(&self, object_id: String, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<ObjectData>("object_data");
         let mut filter = doc! { "object_id": object_id };

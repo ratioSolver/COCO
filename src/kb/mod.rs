@@ -1,9 +1,13 @@
 use crate::model::{Class, Object, Rule, Value};
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::{collections::HashMap, fmt};
 use tokio::sync::oneshot;
 
-pub enum Command {
+#[cfg(feature = "clips")]
+mod clips;
+
+pub enum KBCommand {
     CreateClass(Class, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     CreateObject(Object, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     AddClass(String, String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
@@ -41,4 +45,7 @@ impl fmt::Display for KnowledgeBaseError {
     }
 }
 
-pub trait KnowledgeBase: Clone + Send + Sync + 'static {}
+#[async_trait]
+pub trait KnowledgeBase: Clone + Send + Sync + 'static {
+    async fn send_command(&self, cmd: KBCommand) -> Result<(), KnowledgeBaseError>;
+}

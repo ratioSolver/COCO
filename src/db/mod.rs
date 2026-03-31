@@ -1,5 +1,9 @@
+use crate::model::Class;
 use async_trait::async_trait;
 use std::fmt;
+
+#[cfg(feature = "mongodb")]
+mod mongodb;
 
 #[derive(Debug)]
 pub enum DatabaseError {
@@ -28,4 +32,8 @@ impl fmt::Display for DatabaseError {
 
 // Il Database deve essere asincrono e clonabile
 #[async_trait]
-pub trait Database: Clone + Send + Sync + 'static {}
+pub trait Database: Clone + Send + Sync + 'static {
+    fn name(&self) -> &str;
+
+    async fn get_classes(&self) -> Result<Vec<Class>, DatabaseError>;
+}

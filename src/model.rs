@@ -269,9 +269,6 @@ pub enum CoCoEvent {
     UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
     AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
     RuleCreated(String),                                        // rule_name
-    LLMPrompt(String, String),                                  // (object_id, prompt)
-    LLMResponse(String, String),                                // (object_id, response)
-    Message(String, String, String),                            // (object_id, title, message)
 }
 
 impl fmt::Display for CoCoEvent {
@@ -283,9 +280,6 @@ impl fmt::Display for CoCoEvent {
             CoCoEvent::UpdatedProperties(object, properties) => write!(f, "UpdatedProperties for {}: {:?}", object, properties),
             CoCoEvent::AddedValues(object, values, date_time) => write!(f, "AddedValues to {}: {:?} at {}", object, values, date_time),
             CoCoEvent::RuleCreated(rule) => write!(f, "RuleCreated: {}", rule),
-            CoCoEvent::LLMPrompt(object, prompt) => write!(f, "LLMPrompt to {}: {}", object, prompt),
-            CoCoEvent::LLMResponse(object, response) => write!(f, "LLMResponse from {}: {}", object, response),
-            CoCoEvent::Message(object, title, message) => write!(f, "FCMMessage to {}: {} - {}", object, title, message),
         }
     }
 }

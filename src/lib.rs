@@ -67,7 +67,16 @@ impl CoCo {
                             error!("Failed to update properties in database: {}", e);
                         }
                     },
-                    _ => {}
+                    KnowledgeBaseEvent::AddedValues(object_id, values, date_time) => match event_db.add_values(object_id.clone(), values.clone(), date_time).await {
+                        Ok(_) => {
+                            let _ = event_tx_for_kb.send(CoCoEvent::AddedValues(object_id, values, date_time));
+                        }
+                        Err(e) => {
+                            error!("Failed to add values to database: {}", e);
+                        }
+                    },
+                    KnowledgeBaseEvent::LLMPrompt(object_id, prompt) => {}
+                    KnowledgeBaseEvent::Message(object_id, title, message) => {}
                 }
             }
         });

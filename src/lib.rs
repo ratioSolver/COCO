@@ -1,9 +1,10 @@
 use crate::{
     db::Database,
     kb::{KBCommand, KnowledgeBase, KnowledgeBaseEvent},
-    model::{Class, CoCoError, CoCoEvent},
+    model::{Class, CoCoError, CoCoEvent, Object, Rule},
 };
 use tokio::sync::{broadcast, mpsc, oneshot};
+use tracing::{error, info, trace};
 
 pub mod db;
 pub mod kb;
@@ -13,6 +14,7 @@ pub mod server;
 
 #[derive(Debug)]
 pub enum CoCoCommand {
+    Init(Vec<Class>, Vec<Rule>, Vec<Object>, oneshot::Sender<Result<(), CoCoError>>),
     GetClasses(oneshot::Sender<Result<Vec<Class>, CoCoError>>),
     GetClass(String, oneshot::Sender<Result<Class, CoCoError>>),
     CreateClass(Class, oneshot::Sender<Result<(), CoCoError>>),
@@ -35,12 +37,18 @@ impl CoCo {
         // Spawn a task to listen for events from the KnowledgeBase and forward them to CoCo's event channel
         let mut event_rx = kb.take_event_receiver().expect("KnowledgeBase must provide an event receiver");
         let event_tx_for_kb = event_tx.clone();
+        let event_db = db.clone();
         tokio::spawn(async move {
             while let Some(event) = event_rx.recv().await {
                 match event {
-                    KnowledgeBaseEvent::AddedClass(object_id, class_name) => {
-                        let _ = event_tx_for_kb.send(CoCoEvent::AddedClass(object_id, class_name));
-                    }
+                    KnowledgeBaseEvent::AddedClass(object_id, class_name) => match event_db.add_class(object_id.clone(), class_name.clone()).await {
+                        Ok(_) => {
+                            let _ = event_tx_for_kb.send(CoCoEvent::ClassCreated(class_name));
+                        }
+                        Err(e) => {
+                            error!("Failed to add class to database: {}", e);
+                        }
+                    },
                     _ => {}
                 }
             }
@@ -50,6 +58,45 @@ impl CoCo {
         tokio::spawn(async move {
             while let Some(command) = command_rx.recv().await {
                 match command {
+                    CoCoCommand::Init(classes, rules, objects, response_tx) => {
+                        for class in classes {
+                            let (kb_response_tx, kb_response_rx) = oneshot::channel();
+                            let result = async {
+                                kb.send_command(KBCommand::CreateClass(class, kb_response_tx)).await.map_err(|e| CoCoError::KnowledgeBaseError(e.to_string()))?;
+                                kb_response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from KnowledgeBase: {}", e)))?.map_err(|e| CoCoError::KnowledgeBaseError(e.to_string()))
+                            }
+                            .await;
+                            if let Err(e) = result {
+                                let _ = response_tx.send(Err(e));
+                                return;
+                            }
+                        }
+                        for rule in rules {
+                            let (kb_response_tx, kb_response_rx) = oneshot::channel();
+                            let result = async {
+                                kb.send_command(KBCommand::CreateRule(rule, kb_response_tx)).await.map_err(|e| CoCoError::KnowledgeBaseError(e.to_string()))?;
+                                kb_response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from KnowledgeBase: {}", e)))?.map_err(|e| CoCoError::KnowledgeBaseError(e.to_string()))
+                            }
+                            .await;
+                            if let Err(e) = result {
+                                let _ = response_tx.send(Err(e));
+                                return;
+                            }
+                        }
+                        for object in objects {
+                            let (kb_response_tx, kb_response_rx) = oneshot::channel();
+                            let result = async {
+                                kb.send_command(KBCommand::CreateObject(object, kb_response_tx)).await.map_err(|e| CoCoError::KnowledgeBaseError(e.to_string()))?;
+                                kb_response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from KnowledgeBase: {}", e)))?.map_err(|e| CoCoError::KnowledgeBaseError(e.to_string()))
+                            }
+                            .await;
+                            if let Err(e) = result {
+                                let _ = response_tx.send(Err(e));
+                                return;
+                            }
+                        }
+                        let _ = response_tx.send(Ok(()));
+                    }
                     CoCoCommand::GetClasses(response_tx) => {
                         let (kb_response_tx, kb_response_rx) = oneshot::channel();
                         let result = async {

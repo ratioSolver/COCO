@@ -39,15 +39,15 @@ pub trait Database: Clone + Send + Sync + 'static {
     async fn get_classes(&self) -> Result<Vec<Class>, DatabaseError>;
     async fn create_class(&self, class: Class) -> Result<(), DatabaseError>;
 
+    async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError>;
+    async fn create_rule(&self, rule: Rule) -> Result<(), DatabaseError>;
+
     async fn get_objects(&self) -> Result<Vec<Object>, DatabaseError>;
     async fn create_object(&self, object: Object) -> Result<String, DatabaseError>;
     async fn add_class(&self, object_id: String, class_name: String) -> Result<(), DatabaseError>;
     async fn set_properties(&self, object_id: String, properties: &HashMap<String, Value>) -> Result<(), DatabaseError>;
     async fn add_data(&self, object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), DatabaseError>;
     async fn get_data(&self, object_id: String, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, DatabaseError>;
-
-    async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError>;
-    async fn create_rule(&self, rule: Rule) -> Result<(), DatabaseError>;
 
     async fn add_fcm_token(&self, object_id: String, token: String) -> Result<(), DatabaseError>;
     async fn remove_fcm_token(&self, object_id: String, token: String) -> Result<(), DatabaseError>;

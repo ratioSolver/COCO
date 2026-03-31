@@ -81,6 +81,21 @@ impl Database for MongoDB {
         Ok(())
     }
 
+    async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Rule>("rules");
+        let cursor = collection.find(doc! {}).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let rules: Vec<Rule> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(rules)
+    }
+
+    async fn create_rule(&self, rule: Rule) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Rule>("rules");
+        collection.insert_one(&rule).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(rule.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
+        Ok(())
+    }
+
     async fn get_objects(&self) -> Result<Vec<Object>, DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<MongoObject>("objects");
@@ -165,21 +180,6 @@ impl Database for MongoDB {
         let data: Vec<ObjectData> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         let data = data.into_iter().map(|d| (d.values, d.timestamp)).collect();
         Ok(data)
-    }
-
-    async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<Rule>("rules");
-        let cursor = collection.find(doc! {}).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        let rules: Vec<Rule> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        Ok(rules)
-    }
-
-    async fn create_rule(&self, rule: Rule) -> Result<(), DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<Rule>("rules");
-        collection.insert_one(&rule).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(rule.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
-        Ok(())
     }
 
     async fn add_fcm_token(&self, object_id: String, token: String) -> Result<(), DatabaseError> {

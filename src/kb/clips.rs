@@ -68,6 +68,18 @@ impl CLIPSKnowledgeBase {
                         }
                         let _ = reply.send(Ok(()));
                     }
+                    KBCommand::GetRules(reply) => {
+                        trace!("Getting all rules");
+                        let _ = reply.send(Ok(state.rules.values().cloned().collect()));
+                    }
+                    KBCommand::GetRule(name, reply) => {
+                        trace!("Getting rule: {}", name);
+                        let _ = reply.send(state.rules.get(&name).cloned().ok_or(KnowledgeBaseError::RuleNotFound(name)));
+                    }
+                    KBCommand::CreateRule(rule, reply) => {
+                        trace!("Creating rule: {}", rule.name);
+                        let _ = reply.send(Ok(()));
+                    }
                     KBCommand::CreateObject(object, reply) => {
                         if let Some(object_id) = object.id {
                             trace!("Creating object: {}", object_id);
@@ -97,10 +109,6 @@ impl CLIPSKnowledgeBase {
                     KBCommand::AddValues(object_id, values, timestamp, reply) => {
                         trace!("Adding values for object '{}': {:?} at {}", object_id, values, timestamp);
                         let _ = event_tx.blocking_send(KnowledgeBaseEvent::AddedValues(object_id.clone(), values.clone(), timestamp));
-                        let _ = reply.send(Ok(()));
-                    }
-                    KBCommand::CreateRule(rule, reply) => {
-                        trace!("Creating rule: {}", rule.name);
                         let _ = reply.send(Ok(()));
                     }
                     KBCommand::SetLLMResult(object_id, result, reply) => {

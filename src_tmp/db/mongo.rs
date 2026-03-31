@@ -1,5 +1,3 @@
-use std::collections::{HashMap, HashSet};
-
 use crate::db::{Database, DatabaseError};
 use crate::model::{Class, Object, Rule, TimedValue, Value};
 use async_trait::async_trait;
@@ -9,12 +7,7 @@ use mongodb::bson::oid::ObjectId;
 use mongodb::bson::{self, doc};
 use mongodb::{Client, IndexModel, bson::Document, options::IndexOptions};
 use serde::{Deserialize, Serialize};
-
-#[derive(Clone)]
-pub struct MongoDB {
-    name: String,
-    client: Client,
-}
+use std::collections::{HashMap, HashSet};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MongoObject {
@@ -34,10 +27,15 @@ struct ObjectData {
     pub timestamp: DateTime<Utc>,
 }
 
+pub struct MongoDB {
+    name: String,
+    client: Client,
+}
+
 impl MongoDB {
-    pub async fn new(name: String, connection_string: String) -> Result<Self, DatabaseError> {
+    pub async fn new(name: &str, connection_string: &str) -> Result<Self, DatabaseError> {
         let client = Client::with_uri_str(connection_string).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        let db = client.database(&name);
+        let db = client.database(name);
         let collection_names = db.list_collection_names().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         if collection_names.is_empty() {
             let classes_collection = db.collection::<Document>("classes");
@@ -56,7 +54,7 @@ impl MongoDB {
             let index = IndexModel::builder().keys(doc! { "object_id": 1, "token": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             fcm_tokens_collection.create_index(index).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         }
-        Ok(Self { name: name, client })
+        Ok(Self { name: name.to_owned(), client })
     }
 }
 
@@ -81,25 +79,10 @@ impl Database for MongoDB {
         Ok(class)
     }
 
-    async fn create_class(&self, class: Class) -> Result<(), DatabaseError> {
+    async fn create_class(&self, class: &Class) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Class>("classes");
-        collection.insert_one(&class).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(class.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
-        Ok(())
-    }
-
-    async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<Rule>("rules");
-        let cursor = collection.find(doc! {}).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        let rules: Vec<Rule> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        Ok(rules)
-    }
-
-    async fn create_rule(&self, rule: Rule) -> Result<(), DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<Rule>("rules");
-        collection.insert_one(&rule).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(rule.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
+        collection.insert_one(class).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(class.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
         Ok(())
     }
 
@@ -120,24 +103,7 @@ impl Database for MongoDB {
         Ok(objects)
     }
 
-    async fn get_object(&self, object_id: String) -> Result<Option<Object>, DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<MongoObject>("objects");
-        let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        let mongo_object = collection.find_one(doc! { "_id": oid }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        if let Some(mongo_object) = mongo_object {
-            Ok(Some(Object {
-                id: mongo_object.id.map(|oid| oid.to_hex()),
-                classes: mongo_object.classes,
-                properties: mongo_object.properties,
-                values: mongo_object.values,
-            }))
-        } else {
-            Ok(None)
-        }
-    }
-
-    async fn create_object(&self, object: Object) -> Result<String, DatabaseError> {
+    async fn create_object(&self, object: &Object) -> Result<String, DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<MongoObject>("objects");
         let mongo_object = MongoObject {
@@ -150,7 +116,7 @@ impl Database for MongoDB {
         Ok(result.inserted_id.as_object_id().unwrap().to_hex())
     }
 
-    async fn add_class(&self, object_id: String, class_name: String) -> Result<(), DatabaseError> {
+    async fn add_class(&self, object_id: &str, class_name: &str) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<MongoObject>("objects");
         let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
@@ -158,7 +124,7 @@ impl Database for MongoDB {
         Ok(())
     }
 
-    async fn set_properties(&self, object_id: String, properties: &HashMap<String, Value>) -> Result<(), DatabaseError> {
+    async fn set_properties(&self, object_id: &str, properties: &HashMap<String, Value>) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<MongoObject>("objects");
         let mut update_doc = doc! {};
@@ -170,31 +136,31 @@ impl Database for MongoDB {
         Ok(())
     }
 
-    async fn add_values(&self, object_id: String, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), DatabaseError> {
+    async fn add_data(&self, object_id: &str, values: &HashMap<String, Value>, date_time: &DateTime<Utc>) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<MongoObject>("objects");
-        let oid = ObjectId::parse_str(object_id.clone()).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let oid = ObjectId::parse_str(object_id).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         let mut update_doc = doc! {};
-        for (prop, value) in &values {
-            update_doc.insert(format!("values.{}", prop), bson::to_bson(&(value.clone(), date_time)).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?);
+        for (prop, value) in values {
+            update_doc.insert(format!("values.{}", prop), bson::to_bson(&(value.clone(), *date_time)).map_err(|e| DatabaseError::ConnectionError(e.to_string()))?);
         }
         collection.update_one(doc! { "_id": oid }, doc! { "$set": update_doc }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
 
         let data_collection = db.collection::<ObjectData>("object_data");
-        let data_doc = ObjectData { object_id: object_id, values: values, timestamp: date_time };
+        let data_doc = ObjectData { object_id: object_id.to_string(), values: values.clone(), timestamp: *date_time };
         data_collection.insert_one(data_doc).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         Ok(())
     }
 
-    async fn get_values(&self, object_id: String, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, DatabaseError> {
+    async fn get_data(&self, object_id: &str, start_time: Option<&DateTime<Utc>>, end_time: Option<&DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<ObjectData>("object_data");
         let mut filter = doc! { "object_id": object_id };
         let mut ts_range = doc! {};
-        if let Some(start_time) = &start_time {
+        if let Some(start_time) = start_time {
             ts_range.insert("$gte", bson::to_bson(start_time).unwrap());
         }
-        if let Some(end_time) = &end_time {
+        if let Some(end_time) = end_time {
             ts_range.insert("$lte", bson::to_bson(end_time).unwrap());
         }
         if !ts_range.is_empty() {
@@ -206,21 +172,36 @@ impl Database for MongoDB {
         Ok(data)
     }
 
-    async fn add_fcm_token(&self, object_id: String, token: String) -> Result<(), DatabaseError> {
+    async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Rule>("rules");
+        let cursor = collection.find(doc! {}).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        let rules: Vec<Rule> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(rules)
+    }
+
+    async fn create_rule(&self, rule: &Rule) -> Result<(), DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Rule>("rules");
+        collection.insert_one(rule).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(rule.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
+        Ok(())
+    }
+
+    async fn add_fcm_token(&self, object_id: &str, token: &str) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Document>("fcm_tokens");
         collection.update_one(doc! { "object_id": object_id }, doc! { "$addToSet": { "token": token } }).upsert(true).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         Ok(())
     }
 
-    async fn remove_fcm_token(&self, object_id: String, token: String) -> Result<(), DatabaseError> {
+    async fn remove_fcm_token(&self, object_id: &str, token: &str) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Document>("fcm_tokens");
         collection.update_one(doc! { "object_id": object_id }, doc! { "$pull": { "token": token } }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         Ok(())
     }
 
-    async fn get_fcm_tokens(&self, object_id: String) -> Result<Vec<String>, DatabaseError> {
+    async fn get_fcm_tokens(&self, object_id: &str) -> Result<Vec<String>, DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Document>("fcm_tokens");
         let doc = collection.find_one(doc! { "object_id": object_id }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;

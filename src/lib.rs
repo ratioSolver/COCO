@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use crate::{
     db::Database,
     kb::{KnowledgeBase, KnowledgeBaseEvent},
-    model::{Class, CoCoError, CoCoEvent, Object, Rule},
+    model::{Class, CoCoError, CoCoEvent, Object, Rule, Value},
 };
+use chrono::{DateTime, Utc};
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tracing::{error, info, trace};
 
@@ -23,6 +26,8 @@ enum CoCoCommand {
     GetObjects(oneshot::Sender<Result<Vec<Object>, CoCoError>>),
     GetObject(String, oneshot::Sender<Result<Option<Object>, CoCoError>>),
     CreateObject(Object, oneshot::Sender<Result<String, CoCoError>>),
+    SetProperties(String, HashMap<String, Value>, oneshot::Sender<Result<(), CoCoError>>),
+    AddValues(String, HashMap<String, Value>, DateTime<Utc>, oneshot::Sender<Result<(), CoCoError>>),
 }
 
 #[derive(Clone)]
@@ -154,6 +159,30 @@ impl CoCo {
                         }
                         let _ = response_tx.send(result);
                     }
+                    CoCoCommand::SetProperties(object_id, properties, response_tx) => {
+                        let result = async {
+                            kb.set_properties(object_id.clone(), properties.clone()).await.map_err(|e| CoCoError::KnowledgeBaseError(e.to_string()))?;
+                            command_db.set_properties(object_id.clone(), &properties).await.map_err(|e| CoCoError::DatabaseError(e.to_string()))?;
+                            Ok::<(), CoCoError>(())
+                        }
+                        .await;
+                        if result.is_ok() {
+                            let _ = event_tx_for_commands.send(CoCoEvent::UpdatedProperties(object_id, properties));
+                        }
+                        let _ = response_tx.send(result);
+                    }
+                    CoCoCommand::AddValues(object_id, values, date_time, response_tx) => {
+                        let result = async {
+                            kb.add_values(object_id.clone(), values.clone(), date_time).await.map_err(|e| CoCoError::KnowledgeBaseError(e.to_string()))?;
+                            command_db.add_values(object_id.clone(), values.clone(), date_time).await.map_err(|e| CoCoError::DatabaseError(e.to_string()))?;
+                            Ok::<(), CoCoError>(())
+                        }
+                        .await;
+                        if result.is_ok() {
+                            let _ = event_tx_for_commands.send(CoCoEvent::AddedValues(object_id, values, date_time));
+                        }
+                        let _ = response_tx.send(result);
+                    }
                 }
             }
         });
@@ -241,5 +270,17 @@ impl CoCo {
             }
             Err(e) => Err(e),
         }
+    }
+
+    pub async fn set_properties(&self, object_id: &str, properties: HashMap<String, Value>) -> Result<(), CoCoError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.tx.send(CoCoCommand::SetProperties(object_id.to_owned(), properties.clone(), response_tx)).await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to send command to CoCo: {}", e)))?;
+        response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from CoCo: {}", e)))?
+    }
+
+    pub async fn add_values(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), CoCoError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.tx.send(CoCoCommand::AddValues(object_id.to_owned(), values.clone(), date_time, response_tx)).await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to send command to CoCo: {}", e)))?;
+        response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from CoCo: {}", e)))?
     }
 }

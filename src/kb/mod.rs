@@ -2,26 +2,10 @@ use crate::model::{Class, Object, Rule, Value};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::{collections::HashMap, fmt};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 
 #[cfg(feature = "clips")]
 mod clips;
-
-#[derive(Debug)]
-pub enum KBCommand {
-    GetClasses(oneshot::Sender<Result<Vec<Class>, KnowledgeBaseError>>),
-    GetClass(String, oneshot::Sender<Result<Class, KnowledgeBaseError>>),
-    CreateClass(Class, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    GetRules(oneshot::Sender<Result<Vec<Rule>, KnowledgeBaseError>>),
-    GetRule(String, oneshot::Sender<Result<Rule, KnowledgeBaseError>>),
-    CreateRule(Rule, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    CreateObject(Object, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    AddClass(String, String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    SetProperties(String, HashMap<String, Value>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    AddValues(String, HashMap<String, Value>, DateTime<Utc>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    SetLLMResult(String, String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    Run(oneshot::Sender<Result<(), KnowledgeBaseError>>),
-}
 
 #[derive(Debug)]
 pub enum KnowledgeBaseError {
@@ -73,7 +57,11 @@ impl fmt::Display for KnowledgeBaseEvent {
 
 #[async_trait]
 pub trait KnowledgeBase: Clone + Send + Sync + 'static {
-    async fn send_command(&self, cmd: KBCommand) -> Result<(), KnowledgeBaseError>;
+    async fn create_class(&self, class: Class) -> Result<(), KnowledgeBaseError>;
+
+    async fn create_rule(&self, rule: Rule) -> Result<(), KnowledgeBaseError>;
+
+    async fn create_object(&self, object: Object) -> Result<(), KnowledgeBaseError>;
 
     fn take_event_receiver(&mut self) -> Option<mpsc::Receiver<KnowledgeBaseEvent>>;
 }

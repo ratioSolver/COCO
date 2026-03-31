@@ -74,6 +74,13 @@ impl Database for MongoDB {
         Ok(classes)
     }
 
+    async fn get_class(&self, name: &str) -> Result<Option<Class>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Class>("classes");
+        let class = collection.find_one(doc! { "name": name }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(class)
+    }
+
     async fn create_class(&self, class: Class) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Class>("classes");

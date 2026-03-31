@@ -2,7 +2,7 @@ use crate::model::{Class, Object, Rule, Value};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::{collections::HashMap, fmt};
-use tokio::sync::oneshot;
+use tokio::sync::{mpsc, oneshot};
 
 #[cfg(feature = "clips")]
 mod clips;
@@ -70,4 +70,6 @@ impl fmt::Display for KnowledgeBaseEvent {
 #[async_trait]
 pub trait KnowledgeBase: Clone + Send + Sync + 'static {
     async fn send_command(&self, cmd: KBCommand) -> Result<(), KnowledgeBaseError>;
+
+    fn take_event_receiver(&mut self) -> Option<mpsc::Receiver<KnowledgeBaseEvent>>;
 }

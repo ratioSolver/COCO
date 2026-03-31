@@ -4,13 +4,17 @@ use crate::{
 };
 use async_trait::async_trait;
 use clips::Environment;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use tokio::sync::mpsc;
 use tracing::{error, info, trace};
 
 #[derive(Clone)]
 pub struct CLIPSKnowledgeBase {
     tx: mpsc::Sender<KBCommand>,
+    event_rx: Arc<Mutex<Option<mpsc::Receiver<KnowledgeBaseEvent>>>>,
 }
 
 struct ActorState {
@@ -21,7 +25,7 @@ struct ActorState {
 }
 
 impl CLIPSKnowledgeBase {
-    pub fn new() -> (Self, mpsc::Receiver<KnowledgeBaseEvent>) {
+    pub fn new() -> Self {
         let (tx, mut rx) = mpsc::channel(100);
         let (event_tx, event_rx) = mpsc::channel(100);
 
@@ -76,7 +80,7 @@ impl CLIPSKnowledgeBase {
             }
         });
 
-        (Self { tx }, event_rx)
+        Self { tx, event_rx: Arc::new(Mutex::new(Some(event_rx))) }
     }
 }
 
@@ -84,5 +88,10 @@ impl CLIPSKnowledgeBase {
 impl KnowledgeBase for CLIPSKnowledgeBase {
     async fn send_command(&self, cmd: KBCommand) -> Result<(), KnowledgeBaseError> {
         self.tx.send(cmd).await.map_err(|e| KnowledgeBaseError::KBError(e.to_string()))
+    }
+
+    fn take_event_receiver(&mut self) -> Option<mpsc::Receiver<KnowledgeBaseEvent>> {
+        let mut guard = self.event_rx.lock().unwrap();
+        guard.take()
     }
 }

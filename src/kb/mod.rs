@@ -7,6 +7,7 @@ use tokio::sync::oneshot;
 #[cfg(feature = "clips")]
 mod clips;
 
+#[derive(Debug)]
 pub enum KBCommand {
     CreateClass(Class, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     CreateObject(Object, oneshot::Sender<Result<(), KnowledgeBaseError>>),
@@ -41,6 +42,27 @@ impl fmt::Display for KnowledgeBaseError {
             KnowledgeBaseError::RuleAlreadyExists(name) => write!(f, "Rule already exists: {}", name),
             KnowledgeBaseError::RuleNotFound(name) => write!(f, "Rule not found: {}", name),
             KnowledgeBaseError::KBError(msg) => write!(f, "Knowledge base error: {}", msg),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum KnowledgeBaseEvent {
+    AddedClass(String, String),                                 // (object_id, class_name)
+    UpdatedProperties(String, HashMap<String, Value>),          // (object_id, properties)
+    AddedValues(String, HashMap<String, Value>, DateTime<Utc>), // (object_id, value, date_time)
+    LLMPrompt(String, String),                                  // (object_id, prompt)
+    Message(String, String, String),                            // (object_id, title, message)
+}
+
+impl fmt::Display for KnowledgeBaseEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KnowledgeBaseEvent::AddedClass(object_id, class_name) => write!(f, "Added class '{}' to object '{}'", class_name, object_id),
+            KnowledgeBaseEvent::UpdatedProperties(object_id, properties) => write!(f, "Updated properties for object '{}': {:?}", object_id, properties),
+            KnowledgeBaseEvent::AddedValues(object_id, values, date_time) => write!(f, "Added values for object '{}': {:?} at {}", object_id, values, date_time),
+            KnowledgeBaseEvent::LLMPrompt(object_id, prompt) => write!(f, "LLM prompt for object '{}': {}", object_id, prompt),
+            KnowledgeBaseEvent::Message(object_id, title, message) => write!(f, "Message for object '{}': {} - {}", object_id, title, message),
         }
     }
 }

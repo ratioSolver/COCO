@@ -1,5 +1,5 @@
 use crate::{
-    kb::{KBCommand, KnowledgeBase, KnowledgeBaseError},
+    kb::{KBCommand, KnowledgeBase, KnowledgeBaseError, KnowledgeBaseEvent},
     model::{Class, Object, Rule},
 };
 use async_trait::async_trait;
@@ -21,8 +21,9 @@ struct ActorState {
 }
 
 impl CLIPSKnowledgeBase {
-    pub fn new() -> Result<Self, KnowledgeBaseError> {
+    pub fn new() -> (Self, mpsc::Receiver<KnowledgeBaseEvent>) {
         let (tx, mut rx) = mpsc::channel(100);
+        let (event_tx, event_rx) = mpsc::channel(100);
 
         tokio::task::spawn_blocking(move || {
             let env = Environment::new().expect("Failed to create CLIPS environment");
@@ -65,13 +66,14 @@ impl CLIPSKnowledgeBase {
                     }
                     KBCommand::Run(reply) => {
                         trace!("Running inference");
+                        state.env.run(-1);
                         let _ = reply.send(Ok(()));
                     }
                 }
             }
         });
 
-        Ok(CLIPSKnowledgeBase { tx })
+        (Self { tx }, event_rx)
     }
 }
 

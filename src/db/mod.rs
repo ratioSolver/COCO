@@ -11,24 +11,16 @@ pub mod mongodb;
 #[derive(Debug)]
 pub enum DatabaseError {
     ConnectionError(String),
-    ClassNotFound(String),
-    ClassAlreadyExists(String),
-    ObjectNotFound(String),
-    ObjectAlreadyExists(String),
-    RuleNotFound(String),
-    RuleAlreadyExists(String),
+    NotFound(String),
+    Exists(String),
 }
 
 impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DatabaseError::ConnectionError(msg) => write!(f, "Connection error: {}", msg),
-            DatabaseError::ClassNotFound(name) => write!(f, "Class not found: {}", name),
-            DatabaseError::ClassAlreadyExists(name) => write!(f, "Class already exists: {}", name),
-            DatabaseError::ObjectNotFound(id) => write!(f, "Object not found: {}", id),
-            DatabaseError::ObjectAlreadyExists(id) => write!(f, "Object already exists: {}", id),
-            DatabaseError::RuleNotFound(name) => write!(f, "Rule not found: {}", name),
-            DatabaseError::RuleAlreadyExists(name) => write!(f, "Rule already exists: {}", name),
+            DatabaseError::NotFound(msg) => write!(f, "Not found: {}", msg),
+            DatabaseError::Exists(msg) => write!(f, "Already exists: {}", msg),
         }
     }
 }

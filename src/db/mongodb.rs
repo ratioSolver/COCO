@@ -80,7 +80,7 @@ impl Database for MongoDB {
     async fn create_class(&self, class: Class) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Class>("classes");
-        collection.insert_one(&class).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(class.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
+        collection.insert_one(&class).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::Exists(class.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
         Ok(())
     }
 
@@ -95,7 +95,7 @@ impl Database for MongoDB {
     async fn create_rule(&self, rule: Rule) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Rule>("rules");
-        collection.insert_one(&rule).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::ClassAlreadyExists(rule.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
+        collection.insert_one(&rule).await.map_err(|e| if e.to_string().contains("duplicate key error") { DatabaseError::Exists(rule.name.clone()) } else { DatabaseError::ConnectionError(e.to_string()) })?;
         Ok(())
     }
 

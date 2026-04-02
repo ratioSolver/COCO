@@ -23,8 +23,8 @@ pub async fn start_server(router: Router) {
 
 pub async fn coco_router(coco: CoCo) -> Router {
     #[cfg(feature = "secure")]
-    return secure_coco_router(coco);
+    return secure_coco_router(coco).await;
 
     #[cfg(not(feature = "secure"))]
-    return secure_coco_router(coco);
+    return secure_coco_router(coco).await;
 }

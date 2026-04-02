@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     CoCo,
     db::DatabaseError,
-    model::{Class, Object, Property, Rule, Value},
+    model::{Class, CoCoError, CoCoEvent, Object, Property, Rule, TimedValue, Value},
 };
 use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
@@ -11,7 +11,10 @@ use argon2::{
 };
 use axum::{
     Extension, Json, Router,
-    extract::{Path, Query, Request, State},
+    extract::{
+        Path, Query, Request, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     http::{StatusCode, header},
     middleware::{Next, from_fn_with_state},
     response::{IntoResponse, Response},
@@ -113,12 +116,14 @@ pub async fn secure_coco_router(coco: CoCo) -> Router {
 
     let protected_router = Router::new().route("/classes", post(create_class)).route("/rules", post(create_rule)).route("/objects", post(create_object)).route("/objects/{id}", patch(set_properties)).route("/objects/{id}/data", post(add_data)).route_layer(from_fn_with_state(db, auth_middleware));
     let coco_router = Router::new()
+        .route("/ws", get(ws_handler))
         .route("/classes", get(get_classes))
         .route("/classes/{name}", get(get_class))
         .route("/rules", get(get_rules))
         .route("/rules/{name}", get(get_rule))
         .route("/objects", get(get_objects))
         .route("/objects/{id}", get(get_object))
+        .route("/objects/{id}/data", get(get_data))
         .route("/openapi", get(openapi))
         .merge(protected_router)
         .with_state(coco);
@@ -625,6 +630,192 @@ async fn add_data(State(coco): State<CoCo>, Extension(user): Extension<CurrentUs
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct DataFilter {
+    start: Option<DateTime<Utc>>,
+    end: Option<DateTime<Utc>>,
+}
+
+#[utoipa::path(
+        get,
+        path = "/objects/{id}/data",
+        tag = "Objects",
+        summary = "Get object data",
+        description = "Retrieve data values for a specific object, optionally filtered by a time range.",
+        params(
+            ("id" = String, Path, description = "ID of the object to retrieve data for"),
+            ("start" = Option<DateTime<Utc>>, Query, description = "Start of the time range filter (optional)"),
+            ("end" = Option<DateTime<Utc>>, Query, description = "End of the time range filter (optional)")
+        ),
+        responses(
+            (status = 200, description = "List of data values for the object", body = [HashMap<String, Value>]),
+            (status = 404, description = "Object not found"),
+            (status = 500, description = "Failed to retrieve object data")
+        )
+    )]
+async fn get_data(State(coco): State<CoCo>, Path(id): Path<String>, Query(filter): Query<DataFilter>) -> impl IntoResponse {
+    trace!("Handling request to get data for object with ID: {}, filter: {:?}", id, filter);
+    match coco.get_values(&id, filter.start, filter.end).await {
+        Ok(data) => {
+            let mut result: HashMap<String, Vec<TimedValue>> = HashMap::new();
+            for (map, timestamp) in data {
+                for (key, value) in map {
+                    result.entry(key).or_default().push(TimedValue { value, timestamp });
+                }
+            }
+            Json(result).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get data for object with ID '{}': {}", id, e)).into_response(),
+    }
+}
+
+#[utoipa::path(
+        get,
+        path = "/ws",
+        tag = "System",
+        summary = "WebSocket connection",
+        description = "Establish a WebSocket connection for real-time updates.",
+        responses(
+            (status = 101, description = "WebSocket connection established"),
+        )
+    )]
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<CoCo>) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move { handle_socket(socket, state).await })
+}
+
+async fn handle_socket(mut socket: WebSocket, coco: CoCo) {
+    trace!("WebSocket connection established");
+
+    let init_msg = match async {
+        let classes_map: std::collections::HashMap<String, serde_json::Value> = coco
+            .get_classes()
+            .await?
+            .into_iter()
+            .map(|mut c| {
+                let name = std::mem::take(&mut c.name);
+                let mut v = serde_json::to_value(&c).unwrap();
+                v.as_object_mut().unwrap().remove("name");
+                (name, v)
+            })
+            .collect();
+
+        let rules_map: std::collections::HashMap<String, serde_json::Value> = coco
+            .get_rules()
+            .await?
+            .into_iter()
+            .map(|mut r| {
+                let name = std::mem::take(&mut r.name);
+                let mut v = serde_json::to_value(&r).unwrap();
+                v.as_object_mut().unwrap().remove("name");
+                (name, v)
+            })
+            .collect();
+
+        let objects_map: std::collections::HashMap<String, serde_json::Value> = coco
+            .get_objects()
+            .await?
+            .into_iter()
+            .map(|mut o| {
+                let id = o.id.take().unwrap();
+                let mut v = serde_json::to_value(&o).unwrap();
+                v.as_object_mut().unwrap().remove("id");
+                (id, v)
+            })
+            .collect();
+
+        Ok::<serde_json::Value, CoCoError>(serde_json::json!({
+            "msg_type": "coco",
+            "classes": classes_map,
+            "rules": rules_map,
+            "objects": objects_map
+        }))
+    }
+    .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            error!("Failed to build websocket init payload: {}", e);
+            return;
+        }
+    };
+    socket.send(Message::Text(serde_json::to_string(&init_msg).unwrap().into())).await.ok();
+
+    let mut rx = coco.event_tx.subscribe();
+    while let Ok(msg) = rx.recv().await {
+        let send_result = match msg {
+            CoCoEvent::ClassCreated(class_name) => {
+                trace!("Received event: ClassCreated for class '{}'", class_name);
+                match coco.get_class(&class_name).await {
+                    Ok(Some(class)) => {
+                        let mut update_msg = serde_json::to_value(class).unwrap();
+                        update_msg["msg_type"] = serde_json::json!("class-created");
+                        socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+                    }
+                    Ok(None) => Ok(()),
+                    Err(_) => Ok(()),
+                }
+            }
+            CoCoEvent::ObjectCreated(object_id) => {
+                trace!("Received event: ObjectCreated for object '{}'", object_id);
+                match coco.get_object(&object_id).await {
+                    Ok(Some(object)) => {
+                        let mut update_msg = serde_json::to_value(object).unwrap();
+                        update_msg["msg_type"] = serde_json::json!("object-created");
+                        socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+                    }
+                    Ok(None) => Ok(()),
+                    Err(_) => Ok(()),
+                }
+            }
+            CoCoEvent::AddedClass(object_id, class_name) => {
+                trace!("Received event: AddedClass - object '{}', class '{}'", object_id, class_name);
+                let update_msg = serde_json::json!({
+                    "msg_type": "added_class",
+                    "object_id": object_id,
+                    "class_name": class_name
+                });
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            CoCoEvent::UpdatedProperties(object_id, properties) => {
+                trace!("Received event: UpdatedProperties for object '{}'", object_id);
+                let update_msg = serde_json::json!({
+                    "msg_type": "updated-properties",
+                    "object_id": object_id,
+                    "properties": properties
+                });
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            CoCoEvent::AddedValues(object_id, values, date_time) => {
+                trace!("Received event: AddedValues for object '{}'", object_id);
+                let update_msg = serde_json::json!({
+                    "msg_type": "added_values",
+                    "object_id": object_id,
+                    "values": values,
+                    "date_time": date_time
+                });
+                socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+            }
+            CoCoEvent::RuleCreated(rule) => {
+                trace!("Received event: RuleCreated for rule '{}'", rule);
+                match coco.get_rule(&rule).await {
+                    Ok(Some(rule)) => {
+                        let mut update_msg = serde_json::to_value(rule).unwrap();
+                        update_msg["msg_type"] = serde_json::json!("rule-created");
+                        socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+                    }
+                    Ok(None) => Ok(()),
+                    Err(_) => Ok(()),
+                }
+            }
+        };
+
+        // If sending fails (e.g., client disconnected), break out of the loop
+        if send_result.is_err() {
+            break;
+        }
+    }
+}
+
 #[utoipa::path(
         get,
         path = "/openapi",
@@ -653,8 +844,7 @@ impl Modify for SecurityAddon {
     servers(
         (url = "/", description = "Base URL for CoCo API")
     ),
-    // paths(, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
-    paths(get_users, create_user, register, login, refresh_token, get_classes, get_class, create_class),
+    paths(get_users, create_user, register, login, refresh_token, get_classes, get_class, create_class, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
     components(
         schemas(Class, Rule, Property, OpenApiObject, OpenApiValue, User, Credentials, AuthTokens, RefreshTokenRequest)
     ),

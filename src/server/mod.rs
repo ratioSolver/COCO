@@ -1,11 +1,14 @@
 use crate::CoCo;
+#[cfg(feature = "secure")]
+use crate::server::secure::secure_coco_router;
 #[cfg(not(feature = "secure"))]
 use crate::server::unsecure::unsecure_coco_router;
-#[cfg(not(feature = "secure"))]
 use axum::Router;
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 
+#[cfg(feature = "secure")]
+pub mod secure;
 #[cfg(not(feature = "secure"))]
 pub mod unsecure;
 
@@ -20,8 +23,8 @@ pub async fn start_server(router: Router) {
 
 pub async fn coco_router(coco: CoCo) -> Router {
     #[cfg(feature = "secure")]
-    return start_secure_server(coco);
+    return secure_coco_router(coco);
 
     #[cfg(not(feature = "secure"))]
-    return unsecure_coco_router(coco);
+    return secure_coco_router(coco);
 }

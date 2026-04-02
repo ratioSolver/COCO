@@ -15,7 +15,7 @@ use utoipa::OpenApi;
 type OpenApiValue = Value;
 type OpenApiObject = Object;
 
-pub fn unsecure_coco_router(coco: CoCo) -> Router {
+pub fn secure_coco_router(coco: CoCo) -> Router {
     Router::new().route("/classes", get(get_classes).post(create_class)).route("/classes/{name}", get(get_class)).route("/openapi", get(openapi)).with_state(coco)
 }
 

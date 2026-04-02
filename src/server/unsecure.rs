@@ -2,8 +2,8 @@ use crate::CoCo;
 use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use tracing::trace;
 
-pub fn build_coco_router() -> Router<CoCo> {
-    Router::new().route("/classes", get(get_classes))
+pub fn unsecure_coco_router(coco: CoCo) -> Router {
+    Router::new().route("/classes", get(get_classes)).with_state(coco)
 }
 
 async fn get_classes(State(state): State<CoCo>) -> impl IntoResponse {

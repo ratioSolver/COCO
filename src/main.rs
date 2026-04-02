@@ -1,10 +1,10 @@
 #[cfg(feature = "fcm")]
-use coco::fcm::setup_fcm;
+use coco::fcm::{fcm_router, setup_fcm};
 #[cfg(feature = "ollama")]
 use coco::kb::clips::ollama::setup_ollama;
-#[cfg(feature = "server")]
-use coco::server::start_server;
-use coco::{CoCo, db::setup_mongodb, kb::setup_clips};
+use coco::{CoCo, db::setup_mongodb, kb::setup_clips, server::coco_router};
+use tower_http::services::{ServeDir, ServeFile};
+use tracing::info;
 use tracing::{Level, error, subscriber};
 
 #[tokio::main]
@@ -29,13 +29,20 @@ async fn main() {
     });
 
     #[cfg(feature = "fcm")]
-    let fcm_router = setup_fcm(db.clone(), &kb).await.unwrap_or_else(|e| {
+    setup_fcm(db.clone(), &kb).await.unwrap_or_else(|e| {
         error!("Failed to add FCM to knowledge base: {}", e);
         std::process::exit(1);
     });
 
-    let coco = CoCo::new(db, kb).await;
+    let coco = CoCo::new(db.clone(), kb).await;
 
-    #[cfg(feature = "server")]
-    start_server(coco).await;
+    let app = coco_router(coco).await;
+    #[cfg(feature = "fcm")]
+    let app = app.merge(fcm_router(db));
+    let app = app.nest_service("/assets", ServeDir::new("gui/dist/assets")).fallback_service(ServeDir::new("gui/dist").not_found_service(ServeFile::new("gui/dist/index.html")));
+
+    let port = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3000);
+    info!("Starting CoCo server on port {}", port);
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }

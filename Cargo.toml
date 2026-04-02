@@ -13,6 +13,7 @@ name = "coco"
 
 [[bin]]
 name = "coco-reasoner"
+required-features = ["server"]
 
 [features]
 default = ["mongodb", "clips", "fcm", "ollama"]

@@ -50,38 +50,38 @@ export namespace coco {
             for (const listener of this.listeners) listener.initialized();
             break;
           }
-          case 'class_created': {
+          case 'class-created': {
             const cls = new CoCoClass(this, msg.name, new Set(msg.parents || []), new Map(Object.entries(msg.static_properties || {})), new Map(Object.entries(msg.dynamic_properties || {})));
             this.classes.set(cls.get_name(), cls);
             for (const listener of this.listeners) listener.created_class(cls);
             break;
           }
-          case 'object_created': {
+          case 'rule-created': {
+            const rule = new CoCoRule(this, msg.name, msg.content);
+            this.rules.set(rule.get_name(), rule);
+            for (const listener of this.listeners) listener.created_rule(rule);
+            break;
+          }
+          case 'object-created': {
             const obj = new CoCoObject(this, msg.id, new Set(msg.classes.map(cls_name => this.get_class(cls_name))), msg.properties, msg.values);
             this.objects.set(obj.get_id(), obj);
             for (const listener of this.listeners) listener.created_object(obj);
             break;
           }
-          case 'added_class': {
+          case 'added-class': {
             const obj = this.get_object(msg.object_id);
             const cls = this.get_class(msg.class_name);
             obj._add_class(cls);
             break;
           }
-          case 'updated_properties': {
+          case 'updated-properties': {
             const obj = this.get_object(msg.object_id);
             obj._set_properties(msg.properties);
             break;
           }
-          case 'added_values': {
+          case 'added-values': {
             const obj = this.get_object(msg.object_id);
             obj._set_values(msg.values, msg.date_time);
-            break;
-          }
-          case 'rule_created': {
-            const rule = new CoCoRule(this, msg.name, msg.content);
-            this.rules.set(rule.get_name(), rule);
-            for (const listener of this.listeners) listener.created_rule(rule);
             break;
           }
         }
@@ -277,10 +277,10 @@ export namespace coco {
 
   type ServerMessage =
     | ({ msg_type: 'coco' } & CoCoMessage)
-    | ({ msg_type: 'class_created' } & ClassMessage)
-    | ({ msg_type: 'object_created' } & ObjectMessage)
-    | ({ msg_type: 'added_class', object_id: string, class_name: string })
-    | ({ msg_type: 'updated_properties', object_id: string, properties: Record<string, Value> })
-    | ({ msg_type: 'added_values', object_id: string, values: Record<string, Value>, date_time: string })
-    | ({ msg_type: 'rule_created', name: string, content: string });
+    | ({ msg_type: 'class-created' } & ClassMessage)
+    | ({ msg_type: 'rule-created', name: string, content: string })
+    | ({ msg_type: 'object-created' } & ObjectMessage)
+    | ({ msg_type: 'added-class', object_id: string, class_name: string })
+    | ({ msg_type: 'updated-properties', object_id: string, properties: Record<string, Value> })
+    | ({ msg_type: 'added-values', object_id: string, values: Record<string, Value>, date_time: string });
 }

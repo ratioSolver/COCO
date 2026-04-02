@@ -422,6 +422,18 @@ async fn handle_socket(mut socket: WebSocket, coco: CoCo) {
                     Err(_) => Ok(()),
                 }
             }
+            CoCoEvent::RuleCreated(rule) => {
+                trace!("Received event: RuleCreated for rule '{}'", rule);
+                match coco.get_rule(&rule).await {
+                    Ok(Some(rule)) => {
+                        let mut update_msg = serde_json::to_value(rule).unwrap();
+                        update_msg["msg_type"] = serde_json::json!("rule-created");
+                        socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
+                    }
+                    Ok(None) => Ok(()),
+                    Err(_) => Ok(()),
+                }
+            }
             CoCoEvent::ObjectCreated(object_id) => {
                 trace!("Received event: ObjectCreated for object '{}'", object_id);
                 match coco.get_object(&object_id).await {
@@ -461,18 +473,6 @@ async fn handle_socket(mut socket: WebSocket, coco: CoCo) {
                     "date_time": date_time
                 });
                 socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
-            }
-            CoCoEvent::RuleCreated(rule) => {
-                trace!("Received event: RuleCreated for rule '{}'", rule);
-                match coco.get_rule(&rule).await {
-                    Ok(Some(rule)) => {
-                        let mut update_msg = serde_json::to_value(rule).unwrap();
-                        update_msg["msg_type"] = serde_json::json!("rule-created");
-                        socket.send(Message::Text(serde_json::to_string(&update_msg).unwrap().into())).await
-                    }
-                    Ok(None) => Ok(()),
-                    Err(_) => Ok(()),
-                }
             }
         };
 

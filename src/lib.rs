@@ -165,7 +165,7 @@ impl CoCo {
                         }
                         .await;
                         if result.is_ok() {
-                            let _ = event_tx_for_commands.send(CoCoEvent::ObjectCreated(result.as_ref().unwrap().clone()));
+                            let _ = event_tx_for_commands.send(CoCoEvent::ObjectCreated(result.clone().unwrap()));
                         }
                         let _ = response_tx.send(result);
                     }

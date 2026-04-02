@@ -52,7 +52,7 @@ impl MongoDB {
             let index = IndexModel::builder().keys(doc! { "object_id": 1, "timestamp": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             object_data_collection.create_index(index).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         }
-        Ok(Self { name: name, client })
+        Ok(Self { name, client })
     }
 }
 
@@ -177,7 +177,7 @@ impl Database for MongoDB {
         collection.update_one(doc! { "_id": oid }, doc! { "$set": update_doc }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
 
         let data_collection = db.collection::<ObjectData>("object_data");
-        let data_doc = ObjectData { object_id: object_id, values: values, timestamp: date_time };
+        let data_doc = ObjectData { object_id, values, timestamp: date_time };
         data_collection.insert_one(data_doc).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         Ok(())
     }

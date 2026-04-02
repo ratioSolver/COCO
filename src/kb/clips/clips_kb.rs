@@ -12,6 +12,8 @@ use std::{
 use tokio::sync::{mpsc, oneshot};
 use tracing::{info, trace};
 
+type Udf = Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send>;
+
 enum KBCommand {
     CreateClass(Class, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     CreateRule(Rule, oneshot::Sender<Result<(), KnowledgeBaseError>>),
@@ -20,7 +22,7 @@ enum KBCommand {
     SetProperties(String, HashMap<String, Value>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     AddValues(String, HashMap<String, Value>, DateTime<Utc>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     Build(String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    AddUDF(String, Option<Type>, u16, u16, Vec<Type>, Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
+    AddUDF(String, Option<Type>, u16, u16, Vec<Type>, Udf, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     AssertFact(String, HashMap<String, Value>, oneshot::Sender<Result<u64, KnowledgeBaseError>>),
     ModifyFact(u64, HashMap<String, Value>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
 }
@@ -41,6 +43,12 @@ struct ActorState {
     values: HashMap<String, HashMap<String, HashMap<String, Fact>>>, // class name -> object id -> property name -> fact
     external_facts: HashMap<u64, Fact>,
     next_fact_id: u64,
+}
+
+impl Default for CLIPSKnowledgeBase {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CLIPSKnowledgeBase {
@@ -105,7 +113,7 @@ impl CLIPSKnowledgeBase {
                         })
                         .unwrap_or(Utc::now());
 
-                    add_data_event_tx.blocking_send(KnowledgeBaseEvent::AddedValues(object_id.clone(), args.into_iter().zip(vals.into_iter()).collect(), date_time)).expect("Failed to send AddedValues event from add-data UDF");
+                    add_data_event_tx.blocking_send(KnowledgeBaseEvent::AddedValues(object_id.clone(), args.into_iter().zip(vals).collect(), date_time)).expect("Failed to send AddedValues event from add-data UDF");
 
                     ClipsValue::Void()
                 })
@@ -375,7 +383,7 @@ impl CLIPSKnowledgeBase {
         reply_rx.blocking_recv().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for Build command: {}", e)))?
     }
 
-    pub fn add_udf(&self, name: &str, return_type: Option<Type>, min_args: u16, max_args: u16, arg_types: Vec<Type>, func: Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send>) -> Result<(), KnowledgeBaseError> {
+    pub fn add_udf(&self, name: &str, return_type: Option<Type>, min_args: u16, max_args: u16, arg_types: Vec<Type>, func: Udf) -> Result<(), KnowledgeBaseError> {
         let (reply_tx, reply_rx) = oneshot::channel();
         self.tx.blocking_send(KBCommand::AddUDF(name.to_owned(), return_type, min_args, max_args, arg_types, func, reply_tx)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send AddUDF command: {}", e)))?;
         reply_rx.blocking_recv().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for AddUDF command: {}", e)))?

@@ -1,5 +1,5 @@
-pub mod clips;
+pub mod clips_kb;
 #[cfg(feature = "ollama")]
 pub mod ollama;
 
-pub use clips::CLIPSKnowledgeBase;
+pub use clips_kb::CLIPSKnowledgeBase;

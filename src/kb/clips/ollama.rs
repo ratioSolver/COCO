@@ -1,5 +1,5 @@
 use crate::{
-    kb::{KnowledgeBaseError, clips::CLIPSKnowledgeBase},
+    kb::{CLIPSKnowledgeBase, KnowledgeBaseError},
     model::Value,
 };
 use clips::{ClipsValue, Type};
@@ -42,7 +42,7 @@ pub fn add_ollama(kb: &CLIPSKnowledgeBase, host: String, port: u16, model: Strin
         2,
         2,
         vec![Type(Type::SYMBOL), Type(Type::STRING)],
-        Box::new(move |_env, ctx| {
+        Box::new(move |_env, ctx: &mut clips::UDFContext| {
             let object_id_val = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for prompt UDF");
             let object_id = match object_id_val {
                 ClipsValue::Symbol(s) => s.to_string(),

@@ -8,8 +8,6 @@ use tokio::sync::mpsc;
 
 #[cfg(feature = "clips")]
 pub mod clips;
-#[cfg(feature = "ollama")]
-pub mod ollama;
 
 #[derive(Debug)]
 pub enum KnowledgeBaseError {

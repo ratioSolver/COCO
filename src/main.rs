@@ -1,5 +1,5 @@
 #[cfg(feature = "ollama")]
-use coco::kb::ollama::add_ollama;
+use coco::kb::clips::ollama::add_ollama;
 #[cfg(feature = "server")]
 use coco::server::start_server;
 use coco::{CoCo, db::setup_db, kb::setup_clips};

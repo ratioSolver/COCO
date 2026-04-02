@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
 use crate::{
     db::Database,
     kb::{KnowledgeBase, KnowledgeBaseEvent},
     model::{Class, CoCoError, CoCoEvent, Object, Rule, Value},
 };
 use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tracing::{error, info, trace};
 

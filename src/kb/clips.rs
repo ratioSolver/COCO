@@ -342,7 +342,7 @@ impl CLIPSKnowledgeBase {
                         trace!("Asserting fact for template '{}'", template);
                         let result = (|| -> Result<u64, KnowledgeBaseError> {
                             let fb = kb.env.fact_builder(&template).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for template {}: {}", template, e)))?;
-                            let fb = fields.iter().try_fold(fb, |fb, (slot, value)| put_value_field(&kb.env, fb, slot, value))?;
+                            let fb = fields.iter().try_fold(fb, |fb, (slot, value)| set_value(&kb.env, fb, slot, value))?;
                             let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for template {}: {}", template, e)))?;
                             let id = kb.next_fact_id;
                             kb.next_fact_id += 1;
@@ -356,7 +356,7 @@ impl CLIPSKnowledgeBase {
                         let result = (|| -> Result<(), KnowledgeBaseError> {
                             let fact = kb.external_facts.get(&fact_id).ok_or_else(|| KnowledgeBaseError::KBError(format!("External fact {} not found", fact_id)))?;
                             let fm = kb.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for fact {}: {}", fact_id, e)))?;
-                            let fm = fields.iter().try_fold(fm, |fm, (slot, value)| put_value_field_modifier(&kb.env, fm, slot, value))?;
+                            let fm = fields.iter().try_fold(fm, |fm, (slot, value)| update_value(&kb.env, fm, slot, value))?;
                             kb.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact {}: {}", fact_id, e)))?;
                             Ok(())
                         })();
@@ -783,7 +783,7 @@ fn update_prop(env: &Environment, fm: FactModifier, property: &Property, value: 
     if let Some(t) = time { modifier.and_then(|fm| fm.put_int("time", t.timestamp()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set time slot for property value: {}", e)))) } else { modifier }
 }
 
-fn put_value_field(env: &Environment, fb: FactBuilder, slot: &str, value: &Value) -> Result<FactBuilder, KnowledgeBaseError> {
+fn set_value(env: &Environment, fb: FactBuilder, slot: &str, value: &Value) -> Result<FactBuilder, KnowledgeBaseError> {
     match value {
         Value::Bool(b) => fb.put_symbol(slot, if *b { "TRUE" } else { "FALSE" }).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool field {}: {}", slot, e))),
         Value::Int(i) => fb.put_int(slot, *i).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int field {}: {}", slot, e))),
@@ -814,7 +814,7 @@ fn put_value_field(env: &Environment, fb: FactBuilder, slot: &str, value: &Value
     }
 }
 
-fn put_value_field_modifier(env: &Environment, fm: FactModifier, slot: &str, value: &Value) -> Result<FactModifier, KnowledgeBaseError> {
+fn update_value(env: &Environment, fm: FactModifier, slot: &str, value: &Value) -> Result<FactModifier, KnowledgeBaseError> {
     match value {
         Value::Bool(b) => fm.put_symbol(slot, if *b { "TRUE" } else { "FALSE" }).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool field {}: {}", slot, e))),
         Value::Int(i) => fm.put_int(slot, *i).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int field {}: {}", slot, e))),

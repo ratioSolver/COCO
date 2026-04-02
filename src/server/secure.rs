@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     CoCo,
     db::DatabaseError,
@@ -9,7 +11,7 @@ use argon2::{
 };
 use axum::{
     Extension, Json, Router,
-    extract::{Path, Request, State},
+    extract::{Path, Query, Request, State},
     http::{StatusCode, header},
     middleware::{Next, from_fn_with_state},
     response::{IntoResponse, Response},
@@ -23,8 +25,7 @@ use mongodb::{Client, IndexModel, bson::Document, options::IndexOptions};
 use serde::{Deserialize, Serialize};
 use tracing::{error, trace};
 use utoipa::{
-    Modify, OpenApi, ToSchema,
-    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+    IntoParams, Modify, OpenApi, ToSchema, openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme}
 };
 
 type OpenApiValue = Value;

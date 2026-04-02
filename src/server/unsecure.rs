@@ -437,7 +437,7 @@ async fn handle_socket(mut socket: WebSocket, coco: CoCo) {
             CoCoEvent::AddedClass(object_id, class_name) => {
                 trace!("Received event: AddedClass - object '{}', class '{}'", object_id, class_name);
                 let update_msg = serde_json::json!({
-                    "msg_type": "added_class",
+                    "msg_type": "added-class",
                     "object_id": object_id,
                     "class_name": class_name
                 });
@@ -455,7 +455,7 @@ async fn handle_socket(mut socket: WebSocket, coco: CoCo) {
             CoCoEvent::AddedValues(object_id, values, date_time) => {
                 trace!("Received event: AddedValues for object '{}'", object_id);
                 let update_msg = serde_json::json!({
-                    "msg_type": "added_values",
+                    "msg_type": "added-values",
                     "object_id": object_id,
                     "values": values,
                     "date_time": date_time

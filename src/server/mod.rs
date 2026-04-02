@@ -26,5 +26,5 @@ pub async fn coco_router(coco: CoCo) -> Router {
     return secure_coco_router(coco).await;
 
     #[cfg(not(feature = "secure"))]
-    return secure_coco_router(coco).await;
+    return unsecure_coco_router(coco).await;
 }

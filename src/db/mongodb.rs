@@ -92,6 +92,13 @@ impl Database for MongoDB {
         Ok(rules)
     }
 
+    async fn get_rule(&self, name: &str) -> Result<Option<Rule>, DatabaseError> {
+        let db = self.client.database(&self.name);
+        let collection = db.collection::<Rule>("rules");
+        let rule = collection.find_one(doc! { "name": name }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
+        Ok(rule)
+    }
+
     async fn create_rule(&self, rule: Rule) -> Result<(), DatabaseError> {
         let db = self.client.database(&self.name);
         let collection = db.collection::<Rule>("rules");

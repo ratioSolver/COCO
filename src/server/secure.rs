@@ -395,6 +395,66 @@ async fn create_class(State(coco): State<CoCo>, Json(class): Json<Class>) -> imp
     }
 }
 
+#[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+struct ObjectFilter {
+    class: Option<String>,
+    #[serde(flatten)]
+    extra: Option<HashMap<String, String>>,
+}
+
+#[utoipa::path(
+        get,
+        path = "/objects",
+        tag = "Objects",
+        summary = "List all objects",
+        description = "Retrieve a list of all available objects in the knowledge base.",
+        params(ObjectFilter),
+        responses(
+            (status = 200, description = "List of objects", body = [OpenApiObject])
+        )
+    )]
+async fn get_objects(State(coco): State<CoCo>, Query(filter): Query<ObjectFilter>) -> impl IntoResponse {
+    trace!("Handling request to list all objects with filter: {:?}", filter);
+    match coco.get_objects().await {
+        Ok(objects) => {
+            let filtered_objects: Vec<OpenApiObject> = objects
+                .into_iter()
+                .filter(|o| {
+                    let class_match = filter.class.as_ref().is_none_or(|class_name| o.classes.contains(class_name));
+                    let extra_match = filter.extra.as_ref().is_none_or(|extra| extra.iter().all(|(k, v)| o.properties.as_ref().and_then(|props| props.get(k)).is_none_or(|prop| prop == v)));
+                    class_match && extra_match
+                })
+                .collect();
+            Json(filtered_objects).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get objects: {}", e)).into_response(),
+    }
+}
+
+#[utoipa::path(
+        get,
+        path = "/objects/{id}",
+        tag = "Objects",
+        summary = "Get an object",
+        description = "Retrieve details for a specific object by its ID.",
+        params(
+            ("id" = String, Path, description = "ID of the object to retrieve")
+        ),
+        responses(
+            (status = 200, description = "The requested object", body = OpenApiObject),
+            (status = 404, description = "Object not found")
+        )
+    )]
+async fn get_object(State(coco): State<CoCo>, Path(id): Path<String>) -> impl IntoResponse {
+    trace!("Handling request to get object with ID: {}", id);
+    match coco.get_object(&id).await {
+        Ok(Some(object)) => Json(object).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, format!("Object with ID '{}' not found", id)).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get object with ID '{}': {}", id, e)).into_response(),
+    }
+}
+
 #[utoipa::path(
         get,
         path = "/openapi",

@@ -35,6 +35,7 @@ pub trait Database: Clone + Send + Sync + 'static {
     async fn create_class(&self, class: Class) -> Result<(), DatabaseError>;
 
     async fn get_rules(&self) -> Result<Vec<Rule>, DatabaseError>;
+    async fn get_rule(&self, name: &str) -> Result<Option<Rule>, DatabaseError>;
     async fn create_rule(&self, rule: Rule) -> Result<(), DatabaseError>;
 
     async fn get_objects(&self) -> Result<Vec<Object>, DatabaseError>;

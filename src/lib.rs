@@ -23,12 +23,14 @@ enum CoCoCommand {
     GetClass(String, oneshot::Sender<Result<Option<Class>, CoCoError>>),
     CreateClass(Class, oneshot::Sender<Result<(), CoCoError>>),
     GetRules(oneshot::Sender<Result<Vec<Rule>, CoCoError>>),
+    GetRule(String, oneshot::Sender<Result<Option<Rule>, CoCoError>>),
     CreateRule(Rule, oneshot::Sender<Result<(), CoCoError>>),
     GetObjects(oneshot::Sender<Result<Vec<Object>, CoCoError>>),
     GetObject(String, oneshot::Sender<Result<Option<Object>, CoCoError>>),
     CreateObject(Object, oneshot::Sender<Result<String, CoCoError>>),
     SetProperties(String, HashMap<String, Value>, oneshot::Sender<Result<(), CoCoError>>),
     AddValues(String, HashMap<String, Value>, DateTime<Utc>, oneshot::Sender<Result<(), CoCoError>>),
+    GetValues(String, Option<DateTime<Utc>>, Option<DateTime<Utc>>, oneshot::Sender<Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError>>),
 }
 
 #[derive(Clone)]
@@ -135,6 +137,10 @@ impl CoCo {
                         let rules = command_db.get_rules().await.map_err(|e| CoCoError::DatabaseError(e.to_string()));
                         let _ = response_tx.send(rules);
                     }
+                    CoCoCommand::GetRule(rule_name, response_tx) => {
+                        let rule = command_db.get_rule(&rule_name).await.map_err(|e| CoCoError::DatabaseError(e.to_string()));
+                        let _ = response_tx.send(rule);
+                    }
                     CoCoCommand::CreateRule(rule, response_tx) => {
                         let rule_name = rule.name.clone();
                         let result = async {
@@ -193,6 +199,14 @@ impl CoCo {
                         }
                         let _ = response_tx.send(result);
                     }
+                    CoCoCommand::GetValues(object_id, start_time, end_time, response_tx) => {
+                        let result = async {
+                            let values = command_db.get_values(object_id.clone(), start_time, end_time).await.map_err(|e| CoCoError::DatabaseError(e.to_string()))?;
+                            Ok::<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError>(values)
+                        }
+                        .await;
+                        let _ = response_tx.send(result);
+                    }
                 }
             }
         });
@@ -249,6 +263,12 @@ impl CoCo {
         response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from CoCo: {}", e)))?
     }
 
+    pub async fn get_rule(&self, name: &str) -> Result<Option<Rule>, CoCoError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.tx.send(CoCoCommand::GetRule(name.to_owned(), response_tx)).await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to send command to CoCo: {}", e)))?;
+        response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from CoCo: {}", e)))?
+    }
+
     pub async fn create_rule(&self, rule: Rule) -> Result<(), CoCoError> {
         let (response_tx, response_rx) = oneshot::channel();
         let rule_name = rule.name.clone();
@@ -291,6 +311,12 @@ impl CoCo {
     pub async fn add_values(&self, object_id: &str, values: HashMap<String, Value>, date_time: DateTime<Utc>) -> Result<(), CoCoError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.tx.send(CoCoCommand::AddValues(object_id.to_owned(), values.clone(), date_time, response_tx)).await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to send command to CoCo: {}", e)))?;
+        response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from CoCo: {}", e)))?
+    }
+
+    pub async fn get_values(&self, object_id: &str, start_time: Option<DateTime<Utc>>, end_time: Option<DateTime<Utc>>) -> Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.tx.send(CoCoCommand::GetValues(object_id.to_owned(), start_time, end_time, response_tx)).await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to send command to CoCo: {}", e)))?;
         response_rx.await.map_err(|e| CoCoError::KnowledgeBaseError(format!("Failed to receive response from CoCo: {}", e)))?
     }
 }

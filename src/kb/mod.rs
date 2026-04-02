@@ -1,3 +1,5 @@
+#[cfg(feature = "clips")]
+use crate::kb::clips::CLIPSKnowledgeBase;
 use crate::model::{Class, Object, Rule, Value};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -78,8 +80,6 @@ pub fn setup_kb() -> Result<impl KnowledgeBase, KnowledgeBaseError> {
 }
 
 #[cfg(feature = "clips")]
-fn setup_clips() -> Result<impl KnowledgeBase, KnowledgeBaseError> {
-    use crate::kb::clips::CLIPSKnowledgeBase;
-
+pub fn setup_clips() -> Result<CLIPSKnowledgeBase, KnowledgeBaseError> {
     Ok(CLIPSKnowledgeBase::new())
 }

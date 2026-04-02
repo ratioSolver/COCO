@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone)]
 pub struct MongoDB {
     name: String,
-    client: Client,
+    pub client: Client,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -8,7 +8,7 @@ use argon2::{
     password_hash::{SaltString, rand_core::OsRng},
 };
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{Path, Request, State},
     http::{StatusCode, header},
     middleware::{Next, from_fn_with_state},
@@ -22,7 +22,10 @@ use mongodb::bson::doc;
 use mongodb::{Client, IndexModel, bson::Document, options::IndexOptions};
 use serde::{Deserialize, Serialize};
 use tracing::{error, trace};
-use utoipa::{OpenApi, ToSchema};
+use utoipa::{
+    Modify, OpenApi, ToSchema,
+    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+};
 
 type OpenApiValue = Value;
 type OpenApiObject = Object;
@@ -103,10 +106,12 @@ pub async fn secure_coco_router(coco: CoCo) -> Router {
         std::process::exit(1);
     });
 
-    let protected_router = Router::new().route("/classes", post(create_class)).route_layer(from_fn_with_state(db.clone(), auth_middleware));
+    let protected_auth_router = Router::new().route("/users", get(get_users).post(create_user)).route_layer(from_fn_with_state(db.clone(), auth_middleware));
+    let auth_router = Router::new().route("/register", post(register)).route("/login", post(login)).route("/refresh_token", post(refresh_token)).merge(protected_auth_router).with_state(db.clone());
 
-    let auth_router = Router::new().route("/login", post(login)).with_state(db);
-    let coco_router = Router::new().route("/classes", get(get_classes)).route("/classes/{name}", get(get_class)).route("/openapi", get(openapi)).with_state(coco);
+    let protected_router = Router::new().route("/classes", post(create_class)).route_layer(from_fn_with_state(db, auth_middleware));
+    let coco_router = Router::new().route("/classes", get(get_classes)).route("/classes/{name}", get(get_class)).route("/openapi", get(openapi)).merge(protected_router).with_state(coco);
+
     auth_router.merge(coco_router)
 }
 
@@ -234,6 +239,101 @@ async fn login(State(db): State<UsersDB>, Json(req): Json<Credentials>) -> impl 
 }
 
 #[utoipa::path(
+        post,
+        path = "/register",
+        tag = "Authentication",
+        summary = "Register a new user",
+        description = "Create a new user account with a username, password, and role.",
+        request_body = Credentials,
+        responses(
+            (status = 200, description = "User registered successfully, returns access and refresh JWT tokens", body = AuthTokens),
+            (status = 409, description = "Username already exists"),
+            (status = 500, description = "Failed to register user")
+        )
+    )]
+async fn register(State(db): State<UsersDB>, Json(req): Json<Credentials>) -> impl IntoResponse {
+    match db.create_user(&req.username, &req.password, "user").await {
+        Ok(_) => match db.get_user(&req.username, &req.password).await {
+            Ok(user) => issue_tokens(&user.username, &user.role, &db.secret).map(Json),
+            Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        },
+        Err(DatabaseError::Exists(_)) => Err(StatusCode::CONFLICT),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/refresh",
+        tag = "Authentication",
+        summary = "Refresh authentication tokens",
+        description = "Exchange a valid refresh token for a new access and refresh JWT token pair.",
+        request_body = RefreshTokenRequest,
+        responses(
+            (status = 200, description = "Tokens refreshed successfully", body = AuthTokens),
+            (status = 401, description = "Invalid or expired refresh token"),
+            (status = 500, description = "Failed to refresh tokens")
+        )
+    )]
+async fn refresh_token(State(db): State<UsersDB>, Json(req): Json<RefreshTokenRequest>) -> impl IntoResponse {
+    match verify_jwt(&req.refresh_token, &db.secret) {
+        Ok(claims) if claims.token_type == "refresh" => issue_tokens(&claims.sub, &claims.role, &db.secret).map(Json).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
+        _ => Err(StatusCode::UNAUTHORIZED),
+    }
+}
+
+#[utoipa::path(
+        get,
+        path = "/users",
+        tag = "Authentication",
+        summary = "List all users",
+        description = "Retrieve a list of all registered users (admin only).",
+        security(("bearerAuth" = [])),
+        responses(
+            (status = 200, description = "List of users", body = [User]),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can view the list of users"),
+            (status = 500, description = "Failed to retrieve users")
+        )
+    )]
+async fn get_users(State(db): State<UsersDB>, Extension(user): Extension<CurrentUser>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can view the list of users").into_response();
+    }
+    match db.get_users().await {
+        Ok(users) => (StatusCode::OK, axum::Json(users)).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve users").into_response(),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/users",
+        tag = "Authentication",
+        summary = "Create a new user",
+        description = "Create a new user account with a username, password, and role (admin only).",
+        request_body = Credentials,
+        security(("bearerAuth" = [])),
+        responses(
+            (status = 201, description = "User created successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can create new users"),
+            (status = 409, description = "Username already exists"),
+            (status = 500, description = "Failed to create user")
+        )
+    )]
+async fn create_user(State(db): State<UsersDB>, Extension(user): Extension<CurrentUser>, Json(req): Json<Credentials>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can create new users").into_response();
+    }
+    match db.create_user(&req.username, &req.password, "user").await {
+        Ok(_) => (StatusCode::CREATED, "User created successfully").into_response(),
+        Err(DatabaseError::Exists(_)) => (StatusCode::CONFLICT, "Username already exists").into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create user").into_response(),
+    }
+}
+
+#[utoipa::path(
         get,
         path = "/classes",
         tag = "Classes",
@@ -309,17 +409,28 @@ async fn openapi() -> impl IntoResponse {
     Json(ApiDoc::openapi())
 }
 
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let components = openapi.components.get_or_insert_with(Default::default);
+        components.add_security_scheme("bearerAuth", SecurityScheme::Http(HttpBuilder::new().scheme(HttpAuthScheme::Bearer).bearer_format("JWT").build()));
+    }
+}
+
 #[derive(OpenApi)]
 #[openapi(
     servers(
         (url = "/", description = "Base URL for CoCo API")
     ),
     // paths(, get_objects, get_object, create_object, set_properties, add_data, get_data, get_rules, get_rule, create_rule, ws_handler, openapi),
-    paths(get_classes, get_class, create_class, openapi),
+    paths(get_users, create_user, register, login, refresh_token, get_classes, get_class, create_class),
     components(
-        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue)
+        schemas(Class, Rule, Property, OpenApiObject, OpenApiValue, User, Credentials, AuthTokens, RefreshTokenRequest)
     ),
+    modifiers(&SecurityAddon),
     tags(
+        (name = "Authentication", description = "Endpoints for user registration and login"),
         (name = "Classes", description = "Operations related to knowledge base classes"),
         (name = "Objects", description = "Operations related to knowledge base objects"),
         (name = "Rules", description = "Operations related to knowledge base rules"),

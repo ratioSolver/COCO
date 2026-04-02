@@ -17,7 +17,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{get, patch, post},
 };
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
 use futures::TryStreamExt;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, errors::Error};
 use mongodb::bson::doc;
@@ -25,7 +25,8 @@ use mongodb::{Client, IndexModel, bson::Document, options::IndexOptions};
 use serde::{Deserialize, Serialize};
 use tracing::{error, trace};
 use utoipa::{
-    IntoParams, Modify, OpenApi, ToSchema, openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme}
+    IntoParams, Modify, OpenApi, ToSchema,
+    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
 };
 
 type OpenApiValue = Value;
@@ -110,8 +111,17 @@ pub async fn secure_coco_router(coco: CoCo) -> Router {
     let protected_auth_router = Router::new().route("/users", get(get_users).post(create_user)).route_layer(from_fn_with_state(db.clone(), auth_middleware));
     let auth_router = Router::new().route("/register", post(register)).route("/login", post(login)).route("/refresh_token", post(refresh_token)).merge(protected_auth_router).with_state(db.clone());
 
-    let protected_router = Router::new().route("/classes", post(create_class)).route_layer(from_fn_with_state(db, auth_middleware));
-    let coco_router = Router::new().route("/classes", get(get_classes)).route("/classes/{name}", get(get_class)).route("/openapi", get(openapi)).merge(protected_router).with_state(coco);
+    let protected_router = Router::new().route("/classes", post(create_class)).route("/rules", post(create_rule)).route("/objects", post(create_object)).route("/objects/{id}", patch(set_properties)).route("/objects/{id}/data", post(add_data)).route_layer(from_fn_with_state(db, auth_middleware));
+    let coco_router = Router::new()
+        .route("/classes", get(get_classes))
+        .route("/classes/{name}", get(get_class))
+        .route("/rules", get(get_rules))
+        .route("/rules/{name}", get(get_rule))
+        .route("/objects", get(get_objects))
+        .route("/objects/{id}", get(get_object))
+        .route("/openapi", get(openapi))
+        .merge(protected_router)
+        .with_state(coco);
 
     auth_router.merge(coco_router)
 }
@@ -396,6 +406,73 @@ async fn create_class(State(coco): State<CoCo>, Json(class): Json<Class>) -> imp
     }
 }
 
+#[utoipa::path(
+        get,
+        path = "/rules",
+        tag = "Rules",
+        summary = "List all rules",
+        description = "Retrieve a list of all available rules in the knowledge base.",
+        responses(
+            (status = 200, description = "List of rules", body = [String])
+        )
+    )]
+async fn get_rules(State(coco): State<CoCo>) -> impl IntoResponse {
+    trace!("Handling request to list all rules");
+    match coco.get_rules().await {
+        Ok(rules) => Json(rules).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get rules: {}", e)).into_response(),
+    }
+}
+
+#[utoipa::path(
+        get,
+        path = "/rules/{name}",
+        tag = "Rules",
+        summary = "Get a rule",
+        description = "Retrieve details for a specific rule by its name.",
+        params(
+            ("name" = String, Path, description = "Name of the rule to retrieve")
+        ),
+        responses(
+            (status = 200, description = "The requested rule", body = String),
+            (status = 404, description = "Rule not found")
+        )
+    )]
+async fn get_rule(State(coco): State<CoCo>, Path(name): Path<String>) -> impl IntoResponse {
+    trace!("Handling request to get rule with name: {}", name);
+    match coco.get_rule(&name).await {
+        Ok(Some(rule)) => Json(rule).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, format!("Rule '{}' not found", name)).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get rule '{}': {}", name, e)).into_response(),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/rules",
+        tag = "Rules",
+        summary = "Create a rule",
+        description = "Create a new rule in the knowledge base.",
+        request_body = Rule,
+        security(("bearerAuth" = [])),
+        responses(
+            (status = 201, description = "Rule created successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can create rules"),
+            (status = 500, description = "Failed to create rule")
+        )
+    )]
+async fn create_rule(State(coco): State<CoCo>, Extension(user): Extension<CurrentUser>, Json(rule): Json<Rule>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can create rules").into_response();
+    }
+    trace!("Handling request to create rule with name: {}", rule.name);
+    match coco.create_rule(rule).await {
+        Ok(_) => (StatusCode::CREATED, "Rule created successfully".to_string()).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create rule: {}", e)).into_response(),
+    }
+}
+
 #[derive(Debug, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 struct ObjectFilter {
@@ -453,6 +530,98 @@ async fn get_object(State(coco): State<CoCo>, Path(id): Path<String>) -> impl In
         Ok(Some(object)) => Json(object).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, format!("Object with ID '{}' not found", id)).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get object with ID '{}': {}", id, e)).into_response(),
+    }
+}
+
+#[utoipa::path(
+        post,
+        path = "/objects",
+        tag = "Objects",
+        summary = "Create an object",
+        description = "Create a new object in the knowledge base.",
+        request_body = OpenApiObject,
+        security(("bearerAuth" = [])),
+        responses(
+            (status = 201, description = "Object created successfully", body = String),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can create objects"),
+            (status = 500, description = "Failed to create object")
+        )
+    )]
+async fn create_object(State(coco): State<CoCo>, Extension(user): Extension<CurrentUser>, Json(object): Json<OpenApiObject>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can create objects").into_response();
+    }
+    trace!("Handling request to create object with properties: {:?}", object.properties);
+    match coco.create_object(object).await {
+        Ok(id) => (StatusCode::CREATED, id).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create object: {}", e)).into_response(),
+    }
+}
+
+#[utoipa::path(
+        patch,
+        path = "/objects/{id}",
+        tag = "Objects",
+        summary = "Set object properties",
+        description = "Update the properties of an existing object.",
+        params(
+            ("id" = String, Path, description = "ID of the object to update")
+        ),
+        request_body = inline(HashMap<String, Value>),
+        security(("bearerAuth" = [])),
+        responses(
+            (status = 200, description = "Object properties updated successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can update object properties"),
+            (status = 404, description = "Object not found"),
+            (status = 500, description = "Failed to update object properties")
+        )
+    )]
+async fn set_properties(State(coco): State<CoCo>, Extension(user): Extension<CurrentUser>, Path(id): Path<String>, Json(properties): Json<HashMap<String, Value>>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can update object properties").into_response();
+    }
+    trace!("Handling request to set properties for object with ID: {}, properties: {:?}", id, properties);
+    match coco.set_properties(&id, properties).await {
+        Ok(_) => (StatusCode::OK, "Object properties updated successfully".to_string()).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update properties for object with ID '{}': {}", id, e)).into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct DateQuery {
+    time: Option<DateTime<Utc>>,
+}
+
+#[utoipa::path(
+        post,
+        path = "/objects/{id}/data",
+        tag = "Objects",
+        summary = "Add data to an object",
+        description = "Add new data values to an existing object.",
+        params(
+            ("id" = String, Path, description = "ID of the object to update"),
+            ("time" = Option<DateTime<Utc>>, Query, description = "Timestamp for the data being added (optional, defaults to current time)")
+        ),
+        request_body = inline(HashMap<String, Value>),
+        security(("bearerAuth" = [])),
+        responses(
+            (status = 200, description = "Data added to object successfully"),
+            (status = 401, description = "Missing or invalid JWT token"),
+            (status = 403, description = "Forbidden - only admin users can add data to objects"),
+            (status = 404, description = "Object not found"),
+            (status = 500, description = "Failed to add data to object")
+        )
+    )]
+async fn add_data(State(coco): State<CoCo>, Extension(user): Extension<CurrentUser>, Path(id): Path<String>, Query(date_query): Query<DateQuery>, Json(data): Json<HashMap<String, Value>>) -> impl IntoResponse {
+    if user.role != "admin" {
+        return (StatusCode::FORBIDDEN, "Only admin users can add data to objects").into_response();
+    }
+    let timestamp = date_query.time.unwrap_or_else(Utc::now);
+    match coco.add_values(&id, data, timestamp).await {
+        Ok(_) => (StatusCode::OK, "Data added to object successfully".to_string()).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to add data to object with ID '{}': {}", id, e)).into_response(),
     }
 }
 

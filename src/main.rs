@@ -1,6 +1,10 @@
 #[cfg(feature = "server")]
 use coco::server::start_server;
-use coco::{CoCo, db::setup_db, kb::setup_kb};
+use coco::{
+    CoCo,
+    db::setup_db,
+    kb::{self, clips::CLIPSKnowledgeBase, setup_kb},
+};
 use tracing::{Level, error, info, subscriber, trace};
 
 #[tokio::main]
@@ -16,13 +20,7 @@ async fn main() {
         }
     };
 
-    let kb = match setup_kb() {
-        Ok(kb) => kb,
-        Err(e) => {
-            error!("Failed to set up knowledge base: {}", e);
-            return;
-        }
-    };
+    let kb = CLIPSKnowledgeBase::new();
 
     let coco = CoCo::new(db, kb).await;
 

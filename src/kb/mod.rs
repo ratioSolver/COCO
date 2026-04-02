@@ -5,7 +5,7 @@ use std::{collections::HashMap, fmt};
 use tokio::sync::mpsc;
 
 #[cfg(feature = "clips")]
-mod clips;
+pub mod clips;
 
 #[derive(Debug)]
 pub enum KnowledgeBaseError {

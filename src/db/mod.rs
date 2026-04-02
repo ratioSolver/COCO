@@ -1,10 +1,12 @@
+#[cfg(feature = "mongodb")]
+use crate::db::mongodb::MongoDB;
 use crate::model::{Class, Object, Rule, Value};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::{collections::HashMap, fmt};
 
 #[cfg(feature = "mongodb")]
-mod mongodb;
+pub mod mongodb;
 
 #[derive(Debug)]
 pub enum DatabaseError {
@@ -67,9 +69,7 @@ pub async fn setup_db() -> Result<impl Database, DatabaseError> {
 }
 
 #[cfg(feature = "mongodb")]
-async fn setup_mongodb() -> Result<impl Database, DatabaseError> {
-    use crate::db::mongodb::MongoDB;
-
+async fn setup_mongodb() -> Result<MongoDB, DatabaseError> {
     let name = std::env::var("DB_NAME").unwrap_or_else(|_| "coco_db".to_owned());
     let host = std::env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_owned());
     let port = std::env::var("DB_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(27017);

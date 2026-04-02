@@ -4,15 +4,14 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type};
+use clips::{ClipsValue, Environment, Fact, FactBuilder, FactModifier, Type, UDFContext};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 use tokio::sync::{mpsc, oneshot};
-use tracing::{error, info, trace};
+use tracing::{info, trace};
 
-#[derive(Debug)]
 enum KBCommand {
     CreateClass(Class, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     CreateRule(Rule, oneshot::Sender<Result<(), KnowledgeBaseError>>),
@@ -20,8 +19,7 @@ enum KBCommand {
     AddClass(String, String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     SetProperties(String, HashMap<String, Value>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     AddValues(String, HashMap<String, Value>, DateTime<Utc>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    SetLLMResult(String, String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    Run(oneshot::Sender<Result<(), KnowledgeBaseError>>),
+    AddUDF(String, Option<Type>, u16, u16, Vec<Type>, Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send + Sync>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
 }
 
 #[derive(Clone)]
@@ -38,7 +36,6 @@ struct ActorState {
     env: Environment,
     instances: HashMap<String, HashMap<String, Fact>>,               // class name -> object id -> fact
     values: HashMap<String, HashMap<String, HashMap<String, Fact>>>, // class name -> object id -> property name -> fact
-    llm_results: HashMap<String, (String, Fact)>,                    // object id -> (result, fact)
 }
 
 impl CLIPSKnowledgeBase {
@@ -46,6 +43,7 @@ impl CLIPSKnowledgeBase {
         let (tx, mut rx) = mpsc::channel(100);
         let (event_tx, event_rx) = mpsc::channel(100);
 
+        info!("Starting CLIPS knowledge base");
         tokio::task::spawn_blocking(move || {
             let env = Environment::new().expect("Failed to create CLIPS environment");
             let mut kb = ActorState {
@@ -55,7 +53,6 @@ impl CLIPSKnowledgeBase {
                 env,
                 instances: HashMap::new(),
                 values: HashMap::new(),
-                llm_results: HashMap::new(),
             };
 
             kb.env.build("(deftemplate llm-result (slot item_id (type SYMBOL)) (slot result (type STRING)))").expect("Failed to build CLIPS template");
@@ -139,7 +136,18 @@ impl CLIPSKnowledgeBase {
                     }
                     KBCommand::CreateRule(rule, reply) => {
                         trace!("Creating rule: {}", rule.name);
-                        let _ = reply.send(Ok(()));
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            if kb.rules.contains_key(&rule.name) {
+                                return Err(KnowledgeBaseError::RuleAlreadyExists(rule.name.clone()));
+                            }
+
+                            kb.env.build(rule.content.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create rule in CLIPS: {}", e)))?;
+                            kb.rules.insert(rule.name.clone(), rule);
+
+                            Ok(())
+                        })();
+
+                        let _ = reply.send(result);
                     }
                     KBCommand::CreateObject(object, reply) => {
                         let Some(object_id) = object.id.clone() else {
@@ -307,20 +315,25 @@ impl CLIPSKnowledgeBase {
 
                         let _ = reply.send(result);
                     }
-                    KBCommand::SetLLMResult(object_id, result, reply) => {
-                        trace!("Setting LLM result for object '{}': {}", object_id, result);
-                        let _ = reply.send(Ok(()));
-                    }
-                    KBCommand::Run(reply) => {
-                        trace!("Running inference");
-                        kb.env.run(-1);
-                        let _ = reply.send(Ok(()));
+                    KBCommand::AddUDF(name, return_type, min_args, max_args, arg_types, func, reply) => {
+                        trace!("Adding UDF '{}'", name);
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            kb.env.add_udf(&name, return_type, min_args, max_args, arg_types, func).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to add UDF {}: {}", name, e)))?;
+                            Ok(())
+                        })();
+                        let _ = reply.send(result);
                     }
                 }
             }
         });
 
         Self { tx, event_rx: Arc::new(Mutex::new(Some(event_rx))) }
+    }
+
+    pub async fn add_udf(&self, name: String, return_type: Option<Type>, min_args: u16, max_args: u16, arg_types: Vec<Type>, func: Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send + Sync>) -> Result<(), KnowledgeBaseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        self.tx.send(KBCommand::AddUDF(name, return_type, min_args, max_args, arg_types, func, reply_tx)).await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send AddUDF command: {}", e)))?;
+        reply_rx.await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for AddUDF command: {}", e)))?
     }
 }
 

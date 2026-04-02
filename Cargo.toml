@@ -15,13 +15,13 @@ name = "coco"
 name = "coco-reasoner"
 
 [features]
-default = ["mongodb", "clips", "server", "ollama", "fcm"]
+default = ["mongodb", "clips", "fcm", "ollama"]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
 ollama = ["clips", "dep:reqwest"]
 server = ["dep:axum", "dep:tower-http", "dep:utoipa"]
 secure = ["server", "dep:jsonwebtoken", "dep:argon2"]
-fcm = ["dep:reqwest", "dep:yup-oauth2"]
+fcm = ["clips", "mongodb", "server", "dep:reqwest", "dep:yup-oauth2"]
 chronoxide = ["dep:chronoxide"]
 
 [dependencies]

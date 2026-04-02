@@ -8,6 +8,13 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::error;
 
+pub fn setup_ollama(kb: &CLIPSKnowledgeBase) -> Result<(), KnowledgeBaseError> {
+    let host = std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "localhost".to_string());
+    let port = std::env::var("OLLAMA_PORT").unwrap_or_else(|_| "11434".to_string()).parse::<u16>().unwrap_or(11434);
+    let model = std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3".to_string());
+    add_ollama(&kb, host, port, model)
+}
+
 pub fn add_ollama(kb: &CLIPSKnowledgeBase, host: String, port: u16, model: String) -> Result<(), KnowledgeBaseError> {
     let url = format!("http://{}:{}/api/chat", host, port);
     let client = Client::new();

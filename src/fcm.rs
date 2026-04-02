@@ -1,9 +1,38 @@
-use crate::kb::{KnowledgeBaseError, clips::CLIPSKnowledgeBase};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
+
+use crate::{
+    CoCo,
+    db::mongodb::MongoDB,
+    kb::{KnowledgeBaseError, clips::CLIPSKnowledgeBase},
+};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    response::IntoResponse,
+    routing::post,
+};
 use clips::{ClipsValue, Type};
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
+use tokio::sync::RwLock;
+use tracing::trace;
 use yup_oauth2::{ServiceAccountAuthenticator, read_service_account_key};
 
-pub fn add_fcm(kb: &CLIPSKnowledgeBase, project_id: String) -> Result<(), KnowledgeBaseError> {
+#[derive(Clone)]
+pub struct FcmTokens {
+    tokens: Arc<RwLock<HashMap<String, HashSet<String>>>>,
+}
+
+pub fn setup_fcm(db: &MongoDB, kb: &CLIPSKnowledgeBase) -> Result<Router, KnowledgeBaseError> {
+    let project_id = std::env::var("FCM_PROJECT_ID").unwrap_or_else(|_| {
+        panic!("Missing FCM_PROJECT_ID environment variable");
+    });
+    add_fcm(db, kb, project_id)
+}
+
+pub fn add_fcm(db: &MongoDB, kb: &CLIPSKnowledgeBase, project_id: String) -> Result<Router, KnowledgeBaseError> {
     let url = format!("https://fcm.googleapis.com/v1/projects/{}/messages:send", project_id);
     let client = Client::new();
 
@@ -23,7 +52,8 @@ pub fn add_fcm(kb: &CLIPSKnowledgeBase, project_id: String) -> Result<(), Knowle
             ClipsValue::Void()
         }),
     )?;
-    Ok(())
+
+    Ok(Router::new().route("/add_token/{id}", post(add_token)).with_state(FcmTokens { tokens: Arc::new(RwLock::new(HashMap::new())) }))
 }
 
 async fn get_token() -> String {
@@ -32,4 +62,10 @@ async fn get_token() -> String {
     let scopes = &["https://www.googleapis.com/auth/firebase.messaging"];
     let token = auth.token(scopes).await.expect("Failed to get token");
     token.token().unwrap().to_owned()
+}
+
+async fn add_token(State(state): State<FcmTokens>, Path(id): Path<String>, token: String) -> impl IntoResponse {
+    trace!("Adding FCM token for ID: {}", id);
+    state.tokens.write().await.entry(id.clone()).or_insert_with(HashSet::new).insert(token);
+    (StatusCode::OK, format!("Token added for ID: {}", id)).into_response()
 }

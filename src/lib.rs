@@ -9,6 +9,8 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 use tracing::{error, info, trace};
 
 pub mod db;
+#[cfg(feature = "fcm")]
+pub mod fcm;
 pub mod kb;
 pub mod model;
 #[cfg(feature = "server")]

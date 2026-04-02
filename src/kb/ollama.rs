@@ -1,11 +1,14 @@
 use crate::kb::{KnowledgeBaseError, clips::CLIPSKnowledgeBase};
-use clips::{ClipsValue, Type};
+use clips::{ClipsValue, Fact, Type};
 use reqwest::Client;
+use std::collections::HashMap;
 
 pub fn add_ollama(kb: &CLIPSKnowledgeBase, host: String, port: u16, model: String) -> Result<(), KnowledgeBaseError> {
     let url = format!("http://{}:{}/api/chat", host, port);
     let client = Client::new();
     let udf_client = client.clone();
+
+    let llm_results: HashMap<String, (String, Fact)> = HashMap::new();
 
     kb.build("(deftemplate llm-result (slot item_id (type SYMBOL)) (slot result (type STRING)))")?;
     kb.add_udf(

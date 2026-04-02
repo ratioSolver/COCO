@@ -21,6 +21,8 @@ enum KBCommand {
     AddValues(String, HashMap<String, Value>, DateTime<Utc>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     Build(String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     AddUDF(String, Option<Type>, u16, u16, Vec<Type>, Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
+    AssertFact(String, HashMap<String, Value>, oneshot::Sender<Result<u64, KnowledgeBaseError>>),
+    ModifyFact(u64, HashMap<String, Value>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
 }
 
 #[derive(Clone)]
@@ -37,6 +39,8 @@ struct ActorState {
     env: Environment,
     instances: HashMap<String, HashMap<String, Fact>>,               // class name -> object id -> fact
     values: HashMap<String, HashMap<String, HashMap<String, Fact>>>, // class name -> object id -> property name -> fact
+    external_facts: HashMap<u64, Fact>,
+    next_fact_id: u64,
 }
 
 impl CLIPSKnowledgeBase {
@@ -54,6 +58,8 @@ impl CLIPSKnowledgeBase {
                 env,
                 instances: HashMap::new(),
                 values: HashMap::new(),
+                external_facts: HashMap::new(),
+                next_fact_id: 0,
             };
 
             let add_data_event_tx = event_tx.clone();
@@ -332,6 +338,30 @@ impl CLIPSKnowledgeBase {
 
                         let _ = reply.send(result);
                     }
+                    KBCommand::AssertFact(template, fields, reply) => {
+                        trace!("Asserting fact for template '{}'", template);
+                        let result = (|| -> Result<u64, KnowledgeBaseError> {
+                            let fb = kb.env.fact_builder(&template).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact builder for template {}: {}", template, e)))?;
+                            let fb = fields.iter().try_fold(fb, |fb, (slot, value)| put_value_field(&kb.env, fb, slot, value))?;
+                            let fact = kb.env.assert_fact(fb).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to assert fact for template {}: {}", template, e)))?;
+                            let id = kb.next_fact_id;
+                            kb.next_fact_id += 1;
+                            kb.external_facts.insert(id, fact);
+                            Ok(id)
+                        })();
+                        let _ = reply.send(result);
+                    }
+                    KBCommand::ModifyFact(fact_id, fields, reply) => {
+                        trace!("Modifying fact {}", fact_id);
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            let fact = kb.external_facts.get(&fact_id).ok_or_else(|| KnowledgeBaseError::KBError(format!("External fact {} not found", fact_id)))?;
+                            let fm = kb.env.fact_modifier(fact).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create fact modifier for fact {}: {}", fact_id, e)))?;
+                            let fm = fields.iter().try_fold(fm, |fm, (slot, value)| put_value_field_modifier(&kb.env, fm, slot, value))?;
+                            kb.env.modify_fact(fm).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to modify fact {}: {}", fact_id, e)))?;
+                            Ok(())
+                        })();
+                        let _ = reply.send(result);
+                    }
                 }
             }
         });
@@ -349,6 +379,18 @@ impl CLIPSKnowledgeBase {
         let (reply_tx, reply_rx) = oneshot::channel();
         self.tx.blocking_send(KBCommand::AddUDF(name.to_owned(), return_type, min_args, max_args, arg_types, func, reply_tx)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send AddUDF command: {}", e)))?;
         reply_rx.blocking_recv().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for AddUDF command: {}", e)))?
+    }
+
+    pub fn assert_fact(&self, template: &str, fields: HashMap<String, Value>) -> Result<u64, KnowledgeBaseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        self.tx.blocking_send(KBCommand::AssertFact(template.to_owned(), fields, reply_tx)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send AssertFact command: {}", e)))?;
+        reply_rx.blocking_recv().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for AssertFact command: {}", e)))?
+    }
+
+    pub fn modify_fact(&self, fact_id: u64, fields: HashMap<String, Value>) -> Result<(), KnowledgeBaseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        self.tx.blocking_send(KBCommand::ModifyFact(fact_id, fields, reply_tx)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send ModifyFact command: {}", e)))?;
+        reply_rx.blocking_recv().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for ModifyFact command: {}", e)))?
     }
 }
 
@@ -739,6 +781,68 @@ fn update_prop(env: &Environment, fm: FactModifier, property: &Property, value: 
         _ => Err(KnowledgeBaseError::KBError("Property type and value type do not match".to_owned())),
     };
     if let Some(t) = time { modifier.and_then(|fm| fm.put_int("time", t.timestamp()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set time slot for property value: {}", e)))) } else { modifier }
+}
+
+fn put_value_field(env: &Environment, fb: FactBuilder, slot: &str, value: &Value) -> Result<FactBuilder, KnowledgeBaseError> {
+    match value {
+        Value::Bool(b) => fb.put_symbol(slot, if *b { "TRUE" } else { "FALSE" }).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool field {}: {}", slot, e))),
+        Value::Int(i) => fb.put_int(slot, *i).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int field {}: {}", slot, e))),
+        Value::Float(f) => fb.put_float(slot, *f).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float field {}: {}", slot, e))),
+        Value::String(s) => fb.put_string(slot, s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string field {}: {}", slot, e))),
+        Value::Symbol(s) | Value::Object(s) => fb.put_symbol(slot, s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol field {}: {}", slot, e))),
+        Value::Null => fb.put_symbol(slot, "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null field {}: {}", slot, e))),
+        Value::BoolArray(arr) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for {}: {}", slot, e)))?;
+            let builder = arr.iter().fold(builder, |b, &v| b.put_symbol(if v { "TRUE" } else { "FALSE" }));
+            fb.put_multifield(slot, builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool array field {}: {}", slot, e)))
+        }
+        Value::IntArray(arr) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for {}: {}", slot, e)))?;
+            let builder = arr.iter().fold(builder, |b, &v| b.put_int(v));
+            fb.put_multifield(slot, builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int array field {}: {}", slot, e)))
+        }
+        Value::FloatArray(arr) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for {}: {}", slot, e)))?;
+            let builder = arr.iter().fold(builder, |b, &v| b.put_float(v));
+            fb.put_multifield(slot, builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float array field {}: {}", slot, e)))
+        }
+        Value::StringArray(arr) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for {}: {}", slot, e)))?;
+            let builder = arr.iter().fold(builder, |b, v| b.put_string(v.as_str()));
+            fb.put_multifield(slot, builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string array field {}: {}", slot, e)))
+        }
+    }
+}
+
+fn put_value_field_modifier(env: &Environment, fm: FactModifier, slot: &str, value: &Value) -> Result<FactModifier, KnowledgeBaseError> {
+    match value {
+        Value::Bool(b) => fm.put_symbol(slot, if *b { "TRUE" } else { "FALSE" }).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool field {}: {}", slot, e))),
+        Value::Int(i) => fm.put_int(slot, *i).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int field {}: {}", slot, e))),
+        Value::Float(f) => fm.put_float(slot, *f).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float field {}: {}", slot, e))),
+        Value::String(s) => fm.put_string(slot, s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string field {}: {}", slot, e))),
+        Value::Symbol(s) | Value::Object(s) => fm.put_symbol(slot, s.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set symbol field {}: {}", slot, e))),
+        Value::Null => fm.put_symbol(slot, "nil").map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set null field {}: {}", slot, e))),
+        Value::BoolArray(arr) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for {}: {}", slot, e)))?;
+            let builder = arr.iter().fold(builder, |b, &v| b.put_symbol(if v { "TRUE" } else { "FALSE" }));
+            fm.put_multifield(slot, builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set bool array field {}: {}", slot, e)))
+        }
+        Value::IntArray(arr) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for {}: {}", slot, e)))?;
+            let builder = arr.iter().fold(builder, |b, &v| b.put_int(v));
+            fm.put_multifield(slot, builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set int array field {}: {}", slot, e)))
+        }
+        Value::FloatArray(arr) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for {}: {}", slot, e)))?;
+            let builder = arr.iter().fold(builder, |b, &v| b.put_float(v));
+            fm.put_multifield(slot, builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set float array field {}: {}", slot, e)))
+        }
+        Value::StringArray(arr) => {
+            let builder = env.multifield_builder(arr.len()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to create multifield for {}: {}", slot, e)))?;
+            let builder = arr.iter().fold(builder, |b, v| b.put_string(v.as_str()));
+            fm.put_multifield(slot, builder.create()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to set string array field {}: {}", slot, e)))
+        }
+    }
 }
 
 fn get_default(property: &Property) -> Value {

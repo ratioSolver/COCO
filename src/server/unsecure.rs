@@ -2,18 +2,21 @@ use std::collections::HashMap;
 
 use crate::{
     CoCo,
-    model::{Class, Object, Property, Rule, TimedValue, Value},
+    model::{Class, CoCoError, CoCoEvent, Object, Property, Rule, TimedValue, Value},
 };
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{
+        Path, Query, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     http::StatusCode,
     response::IntoResponse,
     routing::get,
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use tracing::trace;
+use tracing::{error, trace};
 use utoipa::{IntoParams, OpenApi};
 
 type OpenApiValue = Value;
@@ -21,6 +24,7 @@ type OpenApiObject = Object;
 
 pub async fn unsecure_coco_router(coco: CoCo) -> Router {
     Router::new()
+        .route("/ws", get(ws_handler))
         .route("/classes", get(get_classes).post(create_class))
         .route("/classes/{name}", get(get_class))
         .route("/rules", get(get_rules).post(create_rule))
@@ -350,7 +354,7 @@ async fn handle_socket(mut socket: WebSocket, coco: CoCo) {
     trace!("WebSocket connection established");
 
     let init_msg = match async {
-        let classes_map: std::collections::HashMap<String, serde_json::Value> = coco
+        let classes_map: HashMap<String, serde_json::Value> = coco
             .get_classes()
             .await?
             .into_iter()
@@ -362,7 +366,7 @@ async fn handle_socket(mut socket: WebSocket, coco: CoCo) {
             })
             .collect();
 
-        let rules_map: std::collections::HashMap<String, serde_json::Value> = coco
+        let rules_map: HashMap<String, serde_json::Value> = coco
             .get_rules()
             .await?
             .into_iter()
@@ -374,7 +378,7 @@ async fn handle_socket(mut socket: WebSocket, coco: CoCo) {
             })
             .collect();
 
-        let objects_map: std::collections::HashMap<String, serde_json::Value> = coco
+        let objects_map: HashMap<String, serde_json::Value> = coco
             .get_objects()
             .await?
             .into_iter()

@@ -51,10 +51,6 @@ impl MongoDB {
             let object_data_collection = db.collection::<Document>("object_data");
             let index = IndexModel::builder().keys(doc! { "object_id": 1, "timestamp": 1 }).options(IndexOptions::builder().unique(true).build()).build();
             object_data_collection.create_index(index).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-
-            let fcm_tokens_collection = db.collection::<Document>("fcm_tokens");
-            let index = IndexModel::builder().keys(doc! { "object_id": 1, "token": 1 }).options(IndexOptions::builder().unique(true).build()).build();
-            fcm_tokens_collection.create_index(index).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         }
         Ok(Self { name: name, client })
     }
@@ -204,27 +200,6 @@ impl Database for MongoDB {
         let data: Vec<ObjectData> = cursor.try_collect().await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
         let data = data.into_iter().map(|d| (d.values, d.timestamp)).collect();
         Ok(data)
-    }
-
-    async fn add_fcm_token(&self, object_id: String, token: String) -> Result<(), DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<Document>("fcm_tokens");
-        collection.update_one(doc! { "object_id": object_id }, doc! { "$addToSet": { "token": token } }).upsert(true).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        Ok(())
-    }
-
-    async fn remove_fcm_token(&self, object_id: String, token: String) -> Result<(), DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<Document>("fcm_tokens");
-        collection.update_one(doc! { "object_id": object_id }, doc! { "$pull": { "token": token } }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        Ok(())
-    }
-
-    async fn get_fcm_tokens(&self, object_id: String) -> Result<Vec<String>, DatabaseError> {
-        let db = self.client.database(&self.name);
-        let collection = db.collection::<Document>("fcm_tokens");
-        let doc = collection.find_one(doc! { "object_id": object_id }).await.map_err(|e| DatabaseError::ConnectionError(e.to_string()))?;
-        if let Some(doc) = doc { if let Ok(tokens) = doc.get_array("token") { Ok(tokens.iter().filter_map(|v| v.as_str()).map(|s| s.to_string()).collect()) } else { Ok(vec![]) } } else { Ok(vec![]) }
     }
 
     async fn drop_database(&self) -> Result<(), DatabaseError> {

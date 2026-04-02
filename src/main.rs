@@ -29,7 +29,7 @@ async fn main() {
     });
 
     #[cfg(feature = "fcm")]
-    let fcm_router = setup_fcm(&db, &kb).unwrap_or_else(|e| {
+    let fcm_router = setup_fcm(db.clone(), &kb).await.unwrap_or_else(|e| {
         error!("Failed to add FCM to knowledge base: {}", e);
         std::process::exit(1);
     });

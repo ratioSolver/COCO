@@ -286,6 +286,7 @@ impl fmt::Display for CoCoEvent {
 
 #[derive(Clone, Debug)]
 pub enum CoCoError {
+    ConfigurationError(String),
     DirectoryReadError(String),
     FileReadError(String),
     JsonParseError(String),
@@ -302,6 +303,7 @@ pub enum CoCoError {
 impl fmt::Display for CoCoError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            CoCoError::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
             CoCoError::DirectoryReadError(msg) => write!(f, "Failed to read directory: {}", msg),
             CoCoError::FileReadError(msg) => write!(f, "Failed to read file: {}", msg),
             CoCoError::JsonParseError(msg) => write!(f, "Failed to parse JSON: {}", msg),

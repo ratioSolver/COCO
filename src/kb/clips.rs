@@ -19,7 +19,8 @@ enum KBCommand {
     AddClass(String, String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     SetProperties(String, HashMap<String, Value>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
     AddValues(String, HashMap<String, Value>, DateTime<Utc>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
-    AddUDF(String, Option<Type>, u16, u16, Vec<Type>, Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send + Sync>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
+    Build(String, oneshot::Sender<Result<(), KnowledgeBaseError>>),
+    AddUDF(String, Option<Type>, u16, u16, Vec<Type>, Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send>, oneshot::Sender<Result<(), KnowledgeBaseError>>),
 }
 
 #[derive(Clone)]
@@ -54,8 +55,6 @@ impl CLIPSKnowledgeBase {
                 instances: HashMap::new(),
                 values: HashMap::new(),
             };
-
-            kb.env.build("(deftemplate llm-result (slot item_id (type SYMBOL)) (slot result (type STRING)))").expect("Failed to build CLIPS template");
 
             let add_data_event_tx = event_tx.clone();
             kb.env
@@ -315,12 +314,22 @@ impl CLIPSKnowledgeBase {
 
                         let _ = reply.send(result);
                     }
+                    KBCommand::Build(construct, reply) => {
+                        trace!("Building construct: {}", construct);
+                        let result = (|| -> Result<(), KnowledgeBaseError> {
+                            kb.env.build(construct.as_str()).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to build construct in CLIPS: {}", e)))?;
+                            Ok(())
+                        })();
+
+                        let _ = reply.send(result);
+                    }
                     KBCommand::AddUDF(name, return_type, min_args, max_args, arg_types, func, reply) => {
                         trace!("Adding UDF '{}'", name);
                         let result = (|| -> Result<(), KnowledgeBaseError> {
                             kb.env.add_udf(&name, return_type, min_args, max_args, arg_types, func).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to add UDF {}: {}", name, e)))?;
                             Ok(())
                         })();
+
                         let _ = reply.send(result);
                     }
                 }
@@ -330,10 +339,16 @@ impl CLIPSKnowledgeBase {
         Self { tx, event_rx: Arc::new(Mutex::new(Some(event_rx))) }
     }
 
-    pub async fn add_udf(&self, name: String, return_type: Option<Type>, min_args: u16, max_args: u16, arg_types: Vec<Type>, func: Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send + Sync>) -> Result<(), KnowledgeBaseError> {
+    pub fn build(&self, construct: &str) -> Result<(), KnowledgeBaseError> {
         let (reply_tx, reply_rx) = oneshot::channel();
-        self.tx.send(KBCommand::AddUDF(name, return_type, min_args, max_args, arg_types, func, reply_tx)).await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send AddUDF command: {}", e)))?;
-        reply_rx.await.map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for AddUDF command: {}", e)))?
+        self.tx.blocking_send(KBCommand::Build(construct.to_owned(), reply_tx)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send Build command: {}", e)))?;
+        reply_rx.blocking_recv().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for Build command: {}", e)))?
+    }
+
+    pub fn add_udf(&self, name: &str, return_type: Option<Type>, min_args: u16, max_args: u16, arg_types: Vec<Type>, func: Box<dyn FnMut(&mut Environment, &mut UDFContext) -> ClipsValue + Send>) -> Result<(), KnowledgeBaseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        self.tx.blocking_send(KBCommand::AddUDF(name.to_owned(), return_type, min_args, max_args, arg_types, func, reply_tx)).map_err(|e| KnowledgeBaseError::KBError(format!("Failed to send AddUDF command: {}", e)))?;
+        reply_rx.blocking_recv().map_err(|e| KnowledgeBaseError::KBError(format!("Failed to receive response for AddUDF command: {}", e)))?
     }
 }
 

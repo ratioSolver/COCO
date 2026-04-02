@@ -15,10 +15,10 @@ name = "coco"
 name = "coco-reasoner"
 
 [features]
-default = ["mongodb", "clips", "server"]
+default = ["mongodb", "clips", "server", "ollama"]
 mongodb = ["dep:mongodb"]
 clips = ["dep:clips"]
-ollama = ["dep:reqwest"]
+ollama = ["clips", "dep:reqwest"]
 server = ["dep:axum", "dep:tower-http", "dep:utoipa"]
 secure = ["server", "dep:jsonwebtoken", "dep:argon2"]
 fcm = ["dep:reqwest", "dep:yup-oauth2"]

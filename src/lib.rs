@@ -49,6 +49,7 @@ impl CoCo {
         let event_tx_for_kb = event_tx.clone();
         let event_db = db.clone();
         tokio::spawn(async move {
+            trace!("Starting task to listen for KnowledgeBase events");
             while let Some(event) = event_rx.recv().await {
                 match event {
                     KnowledgeBaseEvent::AddedClass(object_id, class_name) => match event_db.add_class(object_id.clone(), class_name.clone()).await {
@@ -75,8 +76,6 @@ impl CoCo {
                             error!("Failed to add values to database: {}", e);
                         }
                     },
-                    KnowledgeBaseEvent::LLMPrompt(object_id, prompt) => {}
-                    KnowledgeBaseEvent::Message(object_id, title, message) => {}
                 }
             }
         });
@@ -85,6 +84,7 @@ impl CoCo {
         let event_tx_for_commands = event_tx.clone();
         let command_db = db.clone();
         tokio::spawn(async move {
+            trace!("Starting task to listen for CoCo commands");
             while let Some(command) = command_rx.recv().await {
                 match command {
                     CoCoCommand::Init(classes, rules, objects, response_tx) => {

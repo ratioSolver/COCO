@@ -58,7 +58,7 @@ impl ActorState {
 
         let add_data_callback = kb.callback.clone();
         kb.env
-            .add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], move |_env, ctx| {
+            .add_udf("add-data", None, 3, 4, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD), Type(Type::MULTIFIELD), Type(Type::INTEGER)], |_env, ctx| {
                 let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-data UDF");
                 let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-data UDF") };
                 let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get args argument for add-data UDF");
@@ -109,7 +109,7 @@ impl ActorState {
 
         let add_class_callback = kb.callback.clone();
         kb.env
-            .add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], move |_env, ctx| {
+            .add_udf("add-class", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::SYMBOL)], |_env, ctx| {
                 let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for add-class UDF");
                 let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in add-class UDF") };
                 let class_name = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get class name argument for add-class UDF");
@@ -123,7 +123,7 @@ impl ActorState {
 
         let set_properties_callback = kb.callback.clone();
         kb.env
-            .add_udf("set-properties", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD)], move |_env, ctx| {
+            .add_udf("set-properties", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::MULTIFIELD)], |_env, ctx| {
                 let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for set-properties UDF");
                 let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in set-properties UDF") };
                 let args = ctx.get_next_argument(Type(Type::MULTIFIELD)).expect("Failed to get properties argument for set-properties UDF");
@@ -164,7 +164,7 @@ impl ActorState {
 
         let async_prompt_callback = kb.callback.clone();
         kb.env
-            .add_udf("async-prompt", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], move |_env, ctx| {
+            .add_udf("async-prompt", None, 2, 2, vec![Type(Type::SYMBOL), Type(Type::STRING)], |_env, ctx| {
                 let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for prompt UDF");
                 let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in prompt UDF") };
                 let prompt = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get prompt argument for prompt UDF");
@@ -178,7 +178,7 @@ impl ActorState {
 
         let llm_prompt_callback = kb.llm_callback.clone();
         kb.env
-            .add_udf("prompt", Some(Type(Type::STRING)), 1, 1, vec![Type(Type::STRING)], move |_env, ctx| {
+            .add_udf("prompt", Some(Type(Type::STRING)), 1, 1, vec![Type(Type::STRING)], |_env, ctx| {
                 let prompt = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get prompt argument for sync-prompt UDF");
                 let prompt = if let ClipsValue::String(s) = prompt { s } else { panic!("Expected string for prompt argument in sync-prompt UDF") };
                 if let Some(cb) = llm_prompt_callback.as_ref() {
@@ -191,7 +191,7 @@ impl ActorState {
 
         let send_message_callback = kb.callback.clone();
         kb.env
-            .add_udf("send-message", None, 3, 3, vec![Type(Type::SYMBOL), Type(Type::STRING), Type(Type::STRING)], move |_env, ctx| {
+            .add_udf("send-message", None, 3, 3, vec![Type(Type::SYMBOL), Type(Type::STRING), Type(Type::STRING)], |_env, ctx| {
                 let object_id = ctx.get_next_argument(Type(Type::SYMBOL)).expect("Failed to get object ID argument for send-message UDF");
                 let object_id = if let ClipsValue::Symbol(s) = object_id { s } else { panic!("Expected symbol for object ID argument in send-message UDF") };
                 let title = ctx.get_next_argument(Type(Type::STRING)).expect("Failed to get title argument for send-message UDF");
@@ -414,7 +414,8 @@ pub struct CLIPSKnowledgeBase {
 impl CLIPSKnowledgeBase {
     pub fn new() -> Result<Self, KnowledgeBaseError> {
         let (tx, rx) = mpsc::channel::<Command>();
-        thread::spawn(move || {
+        thread::spawn(|| {
+            trace!("Starting CLIPS actor thread");
             let mut state = ActorState::new().unwrap_or_else(|e| panic!("Failed to initialize CLIPS actor state: {}", e));
             while let Ok(command) = rx.recv() {
                 match command {

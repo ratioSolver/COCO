@@ -16,21 +16,24 @@ pub mod model;
 #[cfg(feature = "server")]
 pub mod server;
 
+type CommandResult<T> = oneshot::Sender<Result<T, CoCoError>>;
+type Pulse = (HashMap<String, Value>, DateTime<Utc>);
+
 #[derive(Debug)]
 enum CoCoCommand {
-    Init(Vec<Class>, Vec<Rule>, Vec<Object>, oneshot::Sender<Result<(), CoCoError>>),
-    GetClasses(oneshot::Sender<Result<Vec<Class>, CoCoError>>),
-    GetClass(String, oneshot::Sender<Result<Option<Class>, CoCoError>>),
-    CreateClass(Class, oneshot::Sender<Result<(), CoCoError>>),
-    GetRules(oneshot::Sender<Result<Vec<Rule>, CoCoError>>),
-    GetRule(String, oneshot::Sender<Result<Option<Rule>, CoCoError>>),
-    CreateRule(Rule, oneshot::Sender<Result<(), CoCoError>>),
-    GetObjects(oneshot::Sender<Result<Vec<Object>, CoCoError>>),
-    GetObject(String, oneshot::Sender<Result<Option<Object>, CoCoError>>),
-    CreateObject(Object, oneshot::Sender<Result<String, CoCoError>>),
-    SetProperties(String, HashMap<String, Value>, oneshot::Sender<Result<(), CoCoError>>),
-    AddValues(String, HashMap<String, Value>, DateTime<Utc>, oneshot::Sender<Result<(), CoCoError>>),
-    GetValues(String, Option<DateTime<Utc>>, Option<DateTime<Utc>>, oneshot::Sender<Result<Vec<(HashMap<String, Value>, DateTime<Utc>)>, CoCoError>>),
+    Init(Vec<Class>, Vec<Rule>, Vec<Object>, CommandResult<()>),
+    GetClasses(CommandResult<Vec<Class>>),
+    GetClass(String, CommandResult<Option<Class>>),
+    CreateClass(Class, CommandResult<()>),
+    GetRules(CommandResult<Vec<Rule>>),
+    GetRule(String, CommandResult<Option<Rule>>),
+    CreateRule(Rule, CommandResult<()>),
+    GetObjects(CommandResult<Vec<Object>>),
+    GetObject(String, CommandResult<Option<Object>>),
+    CreateObject(Object, CommandResult<String>),
+    SetProperties(String, HashMap<String, Value>, CommandResult<()>),
+    AddValues(String, HashMap<String, Value>, DateTime<Utc>, CommandResult<()>),
+    GetValues(String, Option<DateTime<Utc>>, Option<DateTime<Utc>>, CommandResult<Vec<Pulse>>),
 }
 
 #[derive(Clone)]

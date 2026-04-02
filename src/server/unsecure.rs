@@ -286,7 +286,7 @@ struct DateQuery {
     )]
 async fn add_data(State(coco): State<CoCo>, Path(object_id): Path<String>, Query(date_time): Query<DateQuery>, Json(values): Json<HashMap<String, Value>>) -> impl IntoResponse {
     trace!("Handling request to add data to object with ID: {}. Values: {:?}, Timestamp: {:?}", object_id, values, date_time);
-    let timestamp = date_time.time.unwrap_or_else(|| Utc::now());
+    let timestamp = date_time.time.unwrap_or_else(Utc::now);
     match coco.add_values(&object_id, values, timestamp).await {
         Ok(_) => (StatusCode::OK, "Data added to object successfully".to_string()).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to add data to object with ID '{}': {}", object_id, e)).into_response(),
